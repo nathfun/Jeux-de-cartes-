@@ -196,3 +196,76 @@ summary { cursor: pointer; }
 #chart .P { background: #4caf6a; color: #fff; }
 #chart td.current { outline: 3px solid #fff; outline-offset: -3px; font-weight: 700; }
 .total:empty { display: none; }
+
+/* ---------- v3 : onglets, comptage, chat, multijoueur ---------- */
+[hidden] { display: none !important; }
+.topbar { gap: 1rem; flex-wrap: wrap; }
+.tabs { display: flex; gap: .3rem; background: #1a2129; padding: .25rem; border-radius: 10px; }
+.tab { border: none; background: transparent; padding: .4rem .9rem; border-radius: 8px; }
+.tab.active { background: var(--gold); color: #222; font-weight: 600; }
+.tab.active:hover { background: #f5cf70; }
+.main-col { min-width: 0; display: flex; flex-direction: column; gap: 1rem; }
+.row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+input[type="text"], input:not([type]), input[inputmode] {
+  font: inherit; background: #10151c; color: var(--text);
+  border: 1px solid var(--panel-border); border-radius: 8px; padding: .5rem .7rem; flex: 1; min-width: 0;
+}
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+select { font: inherit; background: #2b3540; color: var(--text); border: 1px solid var(--panel-border); border-radius: 6px; padding: .15rem .3rem; }
+
+/* Paris annexes */
+.side-line { display: flex; gap: .8rem; align-items: center; flex-wrap: wrap; justify-content: center; font-size: .88rem; color: #d7efe1; }
+.side-help { position: relative; }
+.side-help summary { list-style: none; cursor: pointer; width: 1.4rem; height: 1.4rem; border-radius: 50%; background: rgba(0,0,0,.35); display: grid; place-items: center; }
+.side-help p { background: #141a21; color: var(--text); padding: .5rem .7rem; border-radius: 8px; margin: .3rem 0 0; max-width: 340px; }
+.side-result { font-size: .8rem; margin-top: .25rem; }
+.side-result .win { color: #7ee787; } .side-result .lose { color: #ffa198; }
+
+/* Détails du coach */
+.fb-actions { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .5rem; }
+.fb-actions button { margin-top: 0; }
+.details { margin-top: .5rem; padding-top: .4rem; border-top: 1px dashed var(--panel-border); font-size: .9rem; }
+.details p { margin: .35rem 0; }
+
+/* Étiquettes Hi-Lo sur les cartes */
+.card .tag { position: absolute; top: 4px; right: 4px; font-size: .62rem; padding: 1px 4px; border-radius: 4px; color: #fff; }
+.tag.plus { background: #2e7d32; } .tag.minus { background: #c62828; } .tag.zero { background: #616161; }
+.count-stats { grid-template-columns: repeat(3, 1fr); }
+.quiz { background: #141a21; border-radius: 8px; padding: .6rem; margin: .5rem 0; display: flex; flex-direction: column; gap: .4rem; font-size: .9rem; }
+.ok { color: var(--good); } .ko { color: var(--bad); }
+#count-panel details p { margin: .4rem 0; }
+
+/* Chats */
+.chat-log { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: .4rem; margin-bottom: .6rem; padding-right: .2rem; }
+.msg { padding: .45rem .65rem; border-radius: 10px; font-size: .9rem; white-space: pre-wrap; overflow-wrap: anywhere; max-width: 92%; }
+.msg.coach, .msg.other { background: #232c35; align-self: flex-start; }
+.msg.me { background: #3a3220; align-self: flex-end; }
+.msg.typing { opacity: .7; }
+
+/* Multijoueur */
+.notice p { margin: .4rem 0; }
+.table-list { list-style: none; padding: 0; margin: .8rem 0 0; display: flex; flex-direction: column; gap: .5rem; }
+.table-list li { display: flex; justify-content: space-between; align-items: center; gap: .6rem; background: #141a21; padding: .6rem .8rem; border-radius: 8px; }
+.table.multi { min-height: 0; }
+.mtable-head { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; }
+.mtable-head .small { margin-top: 0; }
+.seats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: .6rem; }
+.seat { background: rgba(0,0,0,.22); border: 2px solid transparent; border-radius: 12px; padding: .6rem; display: flex; flex-direction: column; gap: .4rem; min-width: 0; }
+.seat.empty { border: 2px dashed rgba(255,255,255,.18); align-items: flex-start; }
+.seat.mine { border-color: rgba(242,193,78,.45); }
+.seat.turn { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(242,193,78,.25); }
+.seat-head { display: flex; justify-content: space-between; gap: .4rem; font-weight: 600; font-size: .9rem; color: #d7efe1; }
+.seat .hand { padding: .3rem; }
+.small-cards .card { width: 50px; height: 72px; }
+.small-cards .card .mid { font-size: 1.4rem; }
+.small-cards .card .tl, .small-cards .card .br { font-size: .78rem; }
+.small-cards { min-height: 74px; gap: .25rem; }
+.seat-bets { display: flex; flex-direction: column; gap: .35rem; font-size: .85rem; }
+.mini-chip { padding: .2rem .45rem; font-size: .8rem; border-radius: 999px; }
+.seat-bets .small { margin-top: 0; }
+.message.flash { background: rgba(242,193,78,.35); }
+@media (max-width: 500px) {
+  .card { width: 58px; height: 84px; }
+  .card .mid { font-size: 1.6rem; }
+  .bank { order: 2; }
+}

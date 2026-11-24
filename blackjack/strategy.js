@@ -161,6 +161,60 @@
     };
   }
 
+  // Probabilité que le croupier saute selon sa carte visible (6 jeux, reste sur 17 souple)
+  const DEALER_BUST = { 2: 35, 3: 37, 4: 40, 5: 42, 6: 42, 7: 26, 8: 24, 9: 23, 10: 23, 11: 17 };
+
+  // Chance de sauter si on tire une carte sur un total dur
+  function bustChance(total) {
+    if (total <= 11) return 0;
+    let bust = 0;
+    for (let v = 1; v <= 10; v++) {
+      if (total + v > 21) bust += v === 10 ? 4 : 1;
+    }
+    return Math.round((bust / 13) * 100);
+  }
+
+  /**
+   * Explications détaillées d'une recommandation (liste de paragraphes en texte brut).
+   */
+  function details(cards, upRank, opts) {
+    const rec = recommend(cards, upRank, opts);
+    const up = cardValue(upRank);
+    const u = upLabel(up);
+    const out = [];
+    const db = DEALER_BUST[up];
+    out.push('Le croupier montre ' + u + ' : il saute dans environ ' + db + ' % des cas. ' +
+      (up <= 6 ? 'C\'est une carte faible : avec une main moyenne, il doit souvent tirer et risque de sauter.'
+        : 'C\'est une carte forte : il finit le plus souvent entre 17 et 21.'));
+
+    const hv = handValue(cards);
+    if (!hv.soft && hv.total >= 12 && hv.total <= 20) {
+      out.push('Si tu tires avec ' + hv.total + ' dur, tu as environ ' + bustChance(hv.total) + ' % de risque de sauter.');
+    } else if (hv.soft) {
+      out.push('Ta main est « souple » : l\'As compte 11, mais il repasse à 1 si besoin. Tirer une carte ne peut donc pas te faire sauter.');
+    } else if (hv.total <= 11) {
+      out.push('Avec ' + hv.total + ', aucune carte ne peut te faire sauter : la seule question est de tirer ou de doubler.');
+    }
+
+    if (rec.action === 'D') {
+      out.push('Pourquoi doubler ? Tu mises deux fois plus dans une situation où tu as l\'avantage. Tu ne reçois qu\'une carte, mais c\'est rentable sur le long terme.');
+    } else if (rec.action === 'S' && hv.total >= 12 && hv.total <= 16) {
+      out.push('Pourquoi rester avec une main faible ? Contre une carte faible, ta main perd souvent, mais tirer perd encore plus souvent. Tu laisses le croupier prendre le risque de sauter.');
+    } else if (rec.action === 'H' && hv.total >= 12 && hv.total <= 16) {
+      out.push('Pourquoi tirer malgré le risque ? Contre une carte forte, rester avec ' + hv.total + ' perd environ 3 fois sur 4. Tirer donne une chance de faire 17-21, même si tu sautes parfois.');
+    } else if (rec.action === 'P') {
+      out.push('Pourquoi séparer ? Tu transformes une mauvaise main (ou une main moyenne) en deux mains qui démarrent mieux, en misant plus quand la situation est favorable.');
+    }
+
+    const mnemo = {
+      hard: 'Astuce : 12 à 16 → reste contre 2-6 (sauf 12 contre 2 et 3), tire contre 7-As. 17 ou plus → reste toujours.',
+      soft: 'Astuce : souple 19 et 20 → reste. Souple 18 → double contre 3-6, reste contre 2, 7, 8, tire contre 9, 10, As. En dessous, double contre les cartes faibles, sinon tire.',
+      pair: 'Astuce : toujours séparer As et 8, jamais 10 et 5. Les petites paires (2, 3, 6, 7) se séparent contre les cartes faibles.',
+    };
+    out.push(mnemo[rec.category]);
+    return { rec, paragraphs: out };
+  }
+
   // Grille complète pour l'affichage du tableau
   function chart() {
     const ups = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
@@ -183,7 +237,7 @@
     return { ups, hard, soft, pairs };
   }
 
-  const api = { recommend, handValue, cardValue, chart, ACTION_LABELS, hardAction, softAction, pairSplit };
+  const api = { recommend, details, handValue, cardValue, chart, ACTION_LABELS, hardAction, softAction, pairSplit, DEALER_BUST };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Strategy = api;
 })(typeof window !== 'undefined' ? window : this);

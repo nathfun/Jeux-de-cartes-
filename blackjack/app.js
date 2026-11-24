@@ -14,6 +14,8 @@
   let shoe = [];
   let bet = 10;
   let round = null; // { dealer: [], hands: [], active, phase, decisions: [] }
+  const side = { pp: 0, t213: 0 }; // paris annexes choisis
+  let lastSituation = null;        // dernière situation analysée (pour les détails et le chat)
   let stats = loadStats();
 
   function freshStats() {
@@ -25,6 +27,8 @@
       patterns: {},   // type d'erreur -> nombre
       hands: 0, wins: 0, losses: 0, pushes: 0, blackjacks: 0,
       net: 0, maxBetRatio: 0, recent: [], // 1/0 des 30 dernières décisions
+      sideBets: 0, sideNet: 0,         // paris annexes
+      countQuiz: 0, countQuizOk: 0,    // entraînement au comptage
     };
   }
   function loadStats() {
@@ -40,6 +44,7 @@
 
   // ---------- Sabot ----------
   function buildShoe() {
+    soloCtx.counter.reset();
     shoe = [];
     for (let d = 0; d < DECKS; d++)
       for (const s of SUITS) for (const r of RANKS) shoe.push({ rank: r, suit: s });
@@ -72,21 +77,32 @@
     document.documentElement.style.setProperty('--anim', (0.45 / speed()) + 's');
   }
 
-  // id de carte -> 'hidden' | 'shown' : permet d'animer seulement les nouvelles cartes
-  const shown = new Map();
+  // Chaque mode (solo, table entre amis) a son propre suivi des cartes affichées et son compteur
+  // shown : id de carte -> 'hidden' | 'shown' : permet d'animer seulement les nouvelles cartes
+  const soloCtx = { shown: new Map(), counter: HiLo.create(), cardsLeft: () => shoe.length };
+  let countCtx = soloCtx; // contexte affiché dans le panneau de comptage
 
   // ---------- Rendu des cartes ----------
-  function cardEl(card, hidden) {
+  function cardEl(card, hidden, ctx) {
+    ctx = ctx || soloCtx;
     const el = document.createElement('div');
-    const prev = shown.get(card.id);
+    const prev = ctx.shown.get(card.id);
     const anim = !prev ? ' dealt' : (prev === 'hidden' && !hidden ? ' flip' : '');
-    shown.set(card.id, hidden ? 'hidden' : 'shown');
+    ctx.shown.set(card.id, hidden ? 'hidden' : 'shown');
     if (hidden) { el.className = 'card back' + anim; return el; }
+    ctx.counter.observe(card);
     const red = card.suit === '♥' || card.suit === '♦';
     el.className = 'card' + (red ? ' red' : '') + anim;
     el.innerHTML = '<div class="tl">' + card.rank + '<br>' + card.suit + '</div>' +
       '<div class="mid">' + card.suit + '</div>' +
       '<div class="br">' + card.rank + '<br>' + card.suit + '</div>';
+    if ($('opt-tags').checked) {
+      const t = HiLo.tag(card.rank);
+      const b = document.createElement('span');
+      b.className = 'tag ' + (t > 0 ? 'plus' : t < 0 ? 'minus' : 'zero');
+      b.textContent = HiLo.tagText(t);
+      el.appendChild(b);
+    }
     el.setAttribute('aria-label', card.rank + card.suit);
     return el;
   }
@@ -125,7 +141,8 @@
         info.className = 'hand-info';
         const bust = value(h.cards).total > 21;
         info.innerHTML = 'Total : <b' + (bust ? ' class="bust"' : '') + '>' + totalText(h.cards) + '</b> · Mise ' + h.bet + ' €' +
-          (h.result ? ' <span class="result ' + h.resultClass + '">' + h.result + '</span>' : '');
+          (h.result ? ' <span class="result ' + h.resultClass + '">' + h.result + '</span>' : '') +
+          (i === 0 && round.sideText ? '<div class="side-result">' + round.sideText + '</div>' : '');
         wrap.appendChild(cards);
         wrap.appendChild(info);
         pc.appendChild(wrap);
@@ -138,7 +155,7 @@
     const playing = round && round.phase === 'playing' && !busy;
     $('bet-controls').classList.toggle('hidden', !!inRound);
     $('play-controls').classList.toggle('hidden', !inRound);
-    $('deal').disabled = busy || bet <= 0 || bet > stats.bankroll;
+    $('deal').disabled = busy || bet <= 0 || bet + side.pp + side.t213 > stats.bankroll;
 
     if (inRound) {
       const opts = playing ? availableActions() : {};
@@ -148,6 +165,7 @@
       $('hint').disabled = !playing;
     }
     renderStats();
+    renderCount();
   }
 
   // ---------- Déroulement ----------
@@ -169,7 +187,7 @@
   }
 
   async function deal() {
-    if (busy || bet <= 0 || bet > stats.bankroll) return;
+    if (busy || bet <= 0 || bet + side.pp + side.t213 > stats.bankroll) return;
     if (round && round.phase !== 'over') return;
     busy = true;
     if (shoe.length < DECKS * 52 * 0.25) {
@@ -178,12 +196,13 @@
     } else {
       setMessage('Distribution…');
     }
-    stats.bankroll -= bet;
+    hideQuiz();
+    stats.bankroll -= bet + side.pp + side.t213;
     stats.maxBetRatio = Math.max(stats.maxBetRatio, bet / (stats.bankroll + bet));
     round = {
       dealer: [],
       hands: [{ cards: [], bet, done: false }],
-      active: 0, phase: 'dealing', decisions: [],
+      active: 0, phase: 'dealing', decisions: [], pp: side.pp, t213: side.t213, sideText: '',
     };
     render();
     await sleep(0.4);
@@ -192,6 +211,7 @@
     await give(round.dealer);
     await give(player);
     await give(round.dealer, 0.8);
+    settleSideBets(player, round.dealer[0]);
 
     const up = Strategy.cardValue(round.dealer[0].rank);
     const dealerBJ = isBlackjack(round.dealer);
@@ -220,7 +240,9 @@
     const opts = availableActions();
     if (!opts[action]) return;
     const h = round.hands[round.active];
-    const rec = Strategy.recommend(h.cards, round.dealer[0].rank, { canDouble: opts.D, canSplit: opts.P });
+    const o = { canDouble: opts.D, canSplit: opts.P };
+    const rec = Strategy.recommend(h.cards, round.dealer[0].rank, o);
+    setSituation({ cards: h.cards, up: round.dealer[0].rank, opts: o }, action);
     recordDecision(rec, action);
     busy = true;
 
@@ -342,9 +364,33 @@
     if (bet > stats.bankroll) bet = Math.max(0, Math.min(bet, stats.bankroll));
     saveStats();
     render();
+    maybeQuiz();
   }
 
   function set(h, text, cls) { h.result = text; h.resultClass = cls; }
+
+  // Paris annexes : réglés juste après la distribution
+  function settleSideBets(cards, up) {
+    const parts = [];
+    const one = (amount, res, label) => {
+      if (!amount) return;
+      stats.sideBets++;
+      if (res) {
+        const win = amount * res.mult;
+        stats.bankroll += amount + win;
+        stats.sideNet += win;
+        parts.push('<span class="win">' + label + ' : ' + res.name + ' +' + win + ' €</span>');
+      } else {
+        stats.sideNet -= amount;
+        parts.push('<span class="lose">' + label + ' perdu −' + amount + ' €</span>');
+      }
+    };
+    one(round.pp, SideBets.perfectPairs(cards[0], cards[1]), 'Paire parfaite');
+    one(round.t213, SideBets.twentyOnePlusThree(cards[0], cards[1], up), '21+3');
+    round.sideText = parts.join(' · ');
+    saveStats();
+    render();
+  }
 
   // ---------- Coach ----------
   function patternOf(rec, played) {
@@ -377,11 +423,49 @@
       const p = patternOf(rec, played);
       stats.patterns[p] = (stats.patterns[p] || 0) + 1;
     }
-    round.decisions.push({ good, rec, played });
+    if (round && round.decisions) round.decisions.push({ good, rec, played });
     saveStats();
 
     if ($('opt-coach').checked) showFeedback(rec, played, good);
     else showFeedbackHidden();
+  }
+
+  // situation = { cards, up (rang), opts }
+  function setSituation(situation, played) {
+    lastSituation = Object.assign({ cards: situation.cards.slice(), played: played || null }, situation);
+    lastSituation.cards = situation.cards.slice();
+  }
+
+  function detailsBlock() {
+    const wrap = document.createElement('div');
+    wrap.className = 'fb-actions';
+    const more = document.createElement('button');
+    more.className = 'ghost small';
+    more.textContent = '🔎 Plus de détails';
+    const box = document.createElement('div');
+    box.className = 'details';
+    box.hidden = true;
+    more.addEventListener('click', () => {
+      if (box.hidden && lastSituation) {
+        const d = Strategy.details(lastSituation.cards, lastSituation.up, lastSituation.opts);
+        box.innerHTML = '';
+        d.paragraphs.forEach((t) => { const p = document.createElement('p'); p.textContent = t; box.appendChild(p); });
+      }
+      box.hidden = !box.hidden;
+      more.textContent = box.hidden ? '🔎 Plus de détails' : 'Masquer les détails';
+    });
+    const ask = document.createElement('button');
+    ask.className = 'ghost small';
+    ask.textContent = '💬 Demander au coach';
+    ask.addEventListener('click', () => {
+      if (window.CoachChat) window.CoachChat.askAboutSituation();
+    });
+    wrap.appendChild(more);
+    wrap.appendChild(ask);
+    const frag = document.createDocumentFragment();
+    frag.appendChild(wrap);
+    frag.appendChild(box);
+    return frag;
   }
 
   function showFeedback(rec, played, good) {
@@ -393,6 +477,16 @@
       : '✘ Tu as choisi « ' + L[played] + ' », il fallait « ' + L[rec.action] + ' »') + '</div>' +
       '<div class="muted small">' + rec.key + '</div>' +
       '<div>' + rec.reason + '</div>';
+    fb.appendChild(detailsBlock());
+    highlightChart(rec);
+  }
+
+  function showHintFor(rec) {
+    const fb = $('feedback');
+    fb.className = 'feedback hint';
+    fb.innerHTML = '<div class="verdict">💡 Conseil : ' + rec.label + '</div>' +
+      '<div class="muted small">' + rec.key + '</div><div>' + rec.reason + '</div>';
+    fb.appendChild(detailsBlock());
     highlightChart(rec);
   }
 
@@ -416,12 +510,10 @@
     if (busy || !round || round.phase !== 'playing') return;
     const h = round.hands[round.active];
     const opts = availableActions();
-    const rec = Strategy.recommend(h.cards, round.dealer[0].rank, { canDouble: opts.D, canSplit: opts.P });
-    const fb = $('feedback');
-    fb.className = 'feedback hint';
-    fb.innerHTML = '<div class="verdict">💡 Conseil : ' + rec.label + '</div>' +
-      '<div class="muted small">' + rec.key + '</div><div>' + rec.reason + '</div>';
-    highlightChart(rec);
+    const o = { canDouble: opts.D, canSplit: opts.P };
+    const rec = Strategy.recommend(h.cards, round.dealer[0].rank, o);
+    setSituation({ cards: h.cards, up: round.dealer[0].rank, opts: o });
+    showHintFor(rec);
   }
   function maybeShowHint() { if ($('opt-hint').checked) showHint(); }
 
@@ -465,6 +557,12 @@
     // Gestion de la banque
     if (stats.maxBetRatio > 0.1) tips.push('Gestion de la banque : tu as déjà misé ' + Math.round(stats.maxBetRatio * 100) + ' % de ta banque sur une seule main. Vise plutôt 1 à 5 % pour encaisser les séries perdantes.');
 
+    if (stats.sideBets >= 5 && stats.sideNet < 0) tips.push('Paris annexes : tu y as perdu ' + (-stats.sideNet) + ' € sur ' + stats.sideBets + ' paris. Ils sont amusants, mais la maison y a un avantage de 4 à 7 % (contre 0,5 % sur la main principale avec une bonne stratégie).');
+    if (stats.countQuiz >= 3) {
+      const r = stats.countQuizOk / stats.countQuiz;
+      if (r < 0.7) tips.push('Comptage : ' + Math.round(r * 100) + ' % de bonnes réponses. Active « Afficher +1/−1 sur les cartes » quelques mains, et compte par paires de cartes (un 5 et un roi s\'annulent).');
+      else if (stats.countQuiz >= 10 && r >= 0.9) tips.push('Ton comptage est solide (' + Math.round(r * 100) + ' %). Prochaine étape : convertir en compte vrai et ajuster ta mise.');
+    }
     if (acc >= 0.95 && stats.decisions >= 50) {
       tips.push('Excellent : ta stratégie de base est quasi parfaite ! Désactive le coach en direct pour te tester, puis intéresse-toi au comptage de cartes (Hi-Lo).');
     }
@@ -517,12 +615,11 @@
 
   function highlightChart(rec) {
     document.querySelectorAll('#chart td.current').forEach((td) => td.classList.remove('current'));
-    if (!round) return;
-    const up = Strategy.cardValue(round.dealer[0].rank);
+    if (!lastSituation) return;
+    const up = Strategy.cardValue(lastSituation.up);
     let rowKey;
     if (rec.category === 'pair') {
-      const h = round.hands[round.active] || round.hands[0];
-      rowKey = 'pair-' + Strategy.cardValue(h.cards[0].rank);
+      rowKey = 'pair-' + Strategy.cardValue(lastSituation.cards[0].rank);
     } else if (rec.category === 'soft') {
       if (rec.total < 13 || rec.total > 20) return;
       rowKey = 'soft-' + rec.total;
@@ -535,6 +632,74 @@
 
   function setMessage(t) { $('message').textContent = t; }
 
+  // ---------- Comptage de cartes ----------
+  function renderCount() {
+    const c = countCtx.counter;
+    const left = countCtx.cardsLeft();
+    const hidden = $('opt-count-hide').checked;
+    const tc = c.trueCount(left);
+    $('c-running').textContent = hidden ? '?' : HiLo.signed(c.running);
+    $('c-decks').textContent = (left / 52).toFixed(1);
+    $('c-true').textContent = hidden ? '?' : HiLo.signed(Math.round(tc * 10) / 10);
+    $('c-advice').textContent = hidden ? 'Compte masqué : entraîne-toi à le suivre de tête.' : HiLo.betAdvice(tc).text;
+    const q = stats.countQuiz;
+    $('c-quiz-score').textContent = q ? 'Quiz : ' + stats.countQuizOk + '/' + q + ' bonnes réponses' : '';
+  }
+
+  function hideQuiz() { $('count-quiz').hidden = true; }
+  function maybeQuiz() {
+    if (!$('opt-count-hide').checked || countCtx !== soloCtx) return;
+    $('count-quiz').hidden = false;
+    $('quiz-answer').value = '';
+    $('quiz-result').textContent = '';
+    $('quiz-result').className = 'small';
+  }
+  function checkQuiz() {
+    const raw = $('quiz-answer').value.trim().replace('−', '-').replace('+', '');
+    if (raw === '' || isNaN(parseInt(raw, 10))) return;
+    const ans = parseInt(raw, 10);
+    const real = countCtx.counter.running;
+    stats.countQuiz++;
+    const ok = ans === real;
+    if (ok) stats.countQuizOk++;
+    $('quiz-result').className = 'small ' + (ok ? 'ok' : 'ko');
+    $('quiz-result').textContent = ok ? '✔ Exact : le compte courant est ' + HiLo.signed(real) + '.'
+      : '✘ Le compte courant est ' + HiLo.signed(real) + ' (tu as répondu ' + HiLo.signed(ans) + ').';
+    saveStats();
+    renderStats();
+    const st = $('c-quiz-score');
+    st.textContent = 'Quiz : ' + stats.countQuizOk + '/' + stats.countQuiz + ' bonnes réponses';
+  }
+
+  // Résumé de la situation et des statistiques, pour le chat du coach
+  function getContext() {
+    const lines = [];
+    if (lastSituation) {
+      const cards = lastSituation.cards.map((c) => c.rank + c.suit).join(' ');
+      const rec = Strategy.recommend(lastSituation.cards, lastSituation.up, lastSituation.opts);
+      lines.push('Dernière situation analysée : main du joueur ' + cards + ' (' + rec.key + '), carte visible du croupier ' + lastSituation.up + '.');
+      if (lastSituation.played) lines.push('Le joueur a choisi : ' + Strategy.ACTION_LABELS[lastSituation.played] + '.');
+      lines.push('Stratégie de base : ' + rec.label + '. Explication courte : ' + rec.reason);
+    }
+    if (stats.decisions) {
+      lines.push('Précision du joueur : ' + Math.round(stats.correct / stats.decisions * 100) + ' % sur ' + stats.decisions + ' décisions.');
+      const ms = Object.entries(stats.mistakes).sort((a, b) => b[1].count - a[1].count).slice(0, 3);
+      if (ms.length) lines.push('Erreurs fréquentes : ' + ms.map(([k, m]) => k + ' (a fait ' + Strategy.ACTION_LABELS[m.played] + ' au lieu de ' + Strategy.ACTION_LABELS[m.optimal] + ')').join(' ; ') + '.');
+    }
+    const c = countCtx.counter;
+    lines.push('Comptage Hi-Lo : compte courant ' + c.running + ', compte vrai ' + c.trueCount(countCtx.cardsLeft()).toFixed(1) + '.');
+    return lines.join('\n');
+  }
+
+  // API partagée avec la table entre amis et le chat du coach
+  window.BJ = {
+    cardEl, recordDecision, setSituation, showHintFor, highlightChart,
+    getContext, render, renderStats,
+    getStats: () => stats,
+    setCountCtx(ctx) { countCtx = ctx || soloCtx; renderCount(); },
+    renderCount,
+  };
+
   // ---------- Événements ----------
   document.querySelectorAll('[data-chip]').forEach((b) => b.addEventListener('click', () => {
     const v = parseInt(b.dataset.chip, 10);
@@ -545,6 +710,12 @@
   $('deal').addEventListener('click', deal);
   document.querySelectorAll('[data-action]').forEach((b) => b.addEventListener('click', () => act(b.dataset.action)));
   $('hint').addEventListener('click', showHint);
+  $('side-pp').addEventListener('change', (e) => { side.pp = parseInt(e.target.value, 10) || 0; render(); });
+  $('side-t213').addEventListener('change', (e) => { side.t213 = parseInt(e.target.value, 10) || 0; render(); });
+  $('opt-tags').addEventListener('change', () => { if (window.Multi) window.Multi.rerender(); render(); });
+  $('opt-count-hide').addEventListener('change', () => { renderCount(); hideQuiz(); });
+  $('quiz-check').addEventListener('click', checkQuiz);
+  $('quiz-answer').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.stopPropagation(); checkQuiz(); } });
   $('opt-hint').addEventListener('change', maybeShowHint);
   $('opt-speed').addEventListener('change', applySpeed);
   let resetArmed = false;
@@ -569,7 +740,8 @@
     render();
   });
   document.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT') return;
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+    if (document.body.dataset.mode === 'multi') return;
     const k = e.key.toLowerCase();
     if (round && round.phase === 'playing') {
       const map = { t: 'H', r: 'S', d: 'D', s: 'P' };
