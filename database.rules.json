@@ -1,0 +1,21 @@
+{
+  "rules": {
+    "tables": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        ".validate": "$code.matches(/^[A-Z0-9]{4}$/)"
+      }
+    },
+    "chats": {
+      "$code": {
+        ".read": "auth != null",
+        "$msg": {
+          ".write": "auth != null && (!data.exists() || data.child('uid').val() === auth.uid)",
+          ".validate": "newData.child('uid').val() === auth.uid && newData.child('text').isString() && newData.child('text').val().length <= 300"
+        },
+        ".write": "auth != null && !newData.exists()"
+      }
+    }
+  }
+}

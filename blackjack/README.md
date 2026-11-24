@@ -23,7 +23,7 @@ Ouvre `index.html` dans un navigateur (aucune installation nécessaire).
 - **Comptage Hi-Lo** (2-6 = +1, 7-9 = 0, 10-As = −1) : compte courant, compte vrai, conseil de mise,
   étiquettes +1/−1 sur les cartes et mode entraînement avec quiz.
 - **Paris annexes** : Paire parfaite et 21+3.
-- **Entre amis** (version en ligne uniquement) : tables partagées de 5 places, chacun choisit une ou plusieurs places,
+- **Entre amis** (claude.ai, ou l'app indépendante avec Firebase et un code de table) : tables partagées de 5 places, chacun choisit une ou plusieurs places,
   mises et paris annexes par place, tour par tour, chat de table.
 
 Raccourcis : `T` tirer · `R` rester · `D` doubler · `S` séparer · `C` conseil · `Entrée` distribuer.
@@ -33,5 +33,6 @@ Raccourcis : `T` tirer · `R` rester · `D` doubler · `S` séparer · `C` conse
 - `strategy.js` — moteur de stratégie de base (utilisable aussi sous Node).
 - `app.js` — partie solo, coach, statistiques et comptage.
 - `count.js` — comptage Hi-Lo. `sidebets.js` — paris annexes.
-- `coach-chat.js` — chat avec le coach. `multi.js` — tables entre amis.
+- `coach-chat.js` — chat avec le coach (version claude.ai uniquement).
+- `net.js` — couche réseau : claude.ai, Firebase (app indépendante) ou local (tests). `multi.js` — tables entre amis.
 - `index.html`, `style.css` — interface.

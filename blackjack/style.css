@@ -269,3 +269,35 @@ select { font: inherit; background: #2b3540; color: var(--text); border: 1px sol
   .card .mid { font-size: 1.6rem; }
   .bank { order: 2; }
 }
+
+/* ---------- v4 : app indépendante, codes, vue personnelle ---------- */
+.home-link { color: var(--gold); text-decoration: none; margin-right: .3rem; }
+.warn { color: var(--gold); min-height: 1em; margin: .3rem 0 0; }
+#lobby { display: flex; flex-direction: column; gap: .7rem; }
+#lobby h2 { margin-bottom: 0; }
+#lobby label { font-size: .9rem; }
+.code-badge { display: inline-flex; align-items: center; gap: .4rem; background: rgba(0,0,0,.3); padding: .2rem .3rem .2rem .6rem; border-radius: 8px; font-size: .85rem; }
+.code-badge b { letter-spacing: .15em; color: var(--gold); font-size: 1.05rem; }
+.code-badge button { margin-top: 0; padding: .2rem .55rem; }
+.seats.others { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); align-items: start; }
+.seats.mine-area { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); padding-top: .6rem; border-top: 1px dashed rgba(255,255,255,.18); }
+.seat.compact { padding: .45rem; gap: .25rem; }
+.seat.compact .seat-head { font-size: .78rem; }
+.seat.compact .small-cards .card { width: 34px; height: 48px; }
+.seat.compact .small-cards .card .mid { font-size: 1rem; }
+.seat.compact .small-cards .card .tl { font-size: .62rem; top: 3px; left: 4px; }
+.seat.compact .small-cards .card .br { display: none; }
+.seat.compact .small-cards { min-height: 50px; }
+.seat.compact .hand-info, .seat.compact .side-result { font-size: .72rem; }
+.seat.compact .card .tag { font-size: .5rem; padding: 0 2px; }
+.seat.spotlight { grid-column: span 2; }
+.seat.mine .small-cards .card { width: 64px; height: 92px; }
+.seat.mine .small-cards .card .mid { font-size: 1.8rem; }
+.seat.mine .small-cards .card .tl, .seat.mine .small-cards .card .br { font-size: .95rem; }
+.seat.mine .small-cards { min-height: 94px; }
+.hand[data-label]::before { content: attr(data-label); display: block; font-size: .72rem; color: #d7efe1; opacity: .8; }
+@media (max-width: 500px) {
+  .seats.others { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .seat.spotlight { grid-column: span 2; }
+  .seats.mine-area { grid-template-columns: 1fr; }
+}

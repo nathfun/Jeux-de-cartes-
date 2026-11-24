@@ -1,8 +1,8 @@
 /*
  * Mode « Entre amis » : une table partagée en ligne (5 places).
  * Chaque joueur choisit une ou plusieurs places, mise (avec paris annexes) et joue à son tour.
- * L'état de la table est un document partagé ; chaque action prend un verrou court,
- * relit l'état, l'applique et le réécrit, pour que deux joueurs ne s'écrasent pas.
+ * L'état de la table est un document partagé ; chaque action est appliquée en
+ * « transaction » (net.js) pour que deux joueurs ne s'écrasent pas.
  */
 (function () {
   'use strict';
@@ -15,11 +15,10 @@
   const TURN_TIMEOUT = 30000; // après 30 s, un autre joueur peut faire rester la main
   const L = Strategy.ACTION_LABELS;
 
-  let db = null, user = null;
+  let net = null;           // couche réseau (voir net.js)
   let me = null;            // id du joueur
   let canWrite = true;
-  const tabId = Math.random().toString(36).slice(2, 8);
-  const names = {};         // id -> nom affiché
+  const names = {};         // id -> nom affiché (profils claude.ai)
 
   let tableId = null;
   let state = null;         // dernier état reçu
@@ -73,6 +72,28 @@
     };
   }
 
+  // Firebase supprime les listes vides : on remet la structure attendue
+  function normalize(st) {
+    st.shoe = st.shoe || [];
+    st.dealer = st.dealer || [];
+    st.players = st.players || {};
+    st.seats = st.seats || [];
+    for (let i = 0; i < SEATS; i++) {
+      const s = st.seats[i] || emptySeat();
+      s.owner = s.owner || null;
+      s.hands = (s.hands || []).map((h) => Object.assign(h, { cards: h.cards || [] }));
+      s.side = s.side || '';
+      st.seats[i] = s;
+    }
+    st.turn = st.turn || null;
+    return st;
+  }
+
+  // Pseudo choisi par le joueur (app indépendante, sans compte)
+  function myName() {
+    try { return (localStorage.getItem('bj-pseudo') || '').trim().slice(0, 16); } catch (e) { return ''; }
+  }
+
   function player(st, uid) {
     if (!st.players[uid]) st.players[uid] = { bankroll: START_BANKROLL };
     return st.players[uid];
@@ -83,7 +104,8 @@
   function opSit(st, i) {
     const seat = st.seats[i];
     if (seat.owner) return false;
-    player(st, me);
+    const p = player(st, me);
+    if (myName()) p.name = myName();
     st.seats[i] = emptySeat();
     st.seats[i].owner = me;
     st.seats[i].bet = 10;
@@ -267,37 +289,25 @@
     };
   }
 
-  // ================= Écriture partagée avec verrou =================
+  // ================= Écriture partagée =================
   async function mutate(fn) {
-    if (!db || !tableId || !canWrite) return false;
+    if (!net || !tableId || !canWrite) return false;
     working = true;
     renderControls();
     try {
-      const lock = db.doc('tables/' + tableId + '/lock/main');
-      let ok = false;
-      for (let t = 0; t < 30 && !ok; t++) {
-        const r = await lock.acquire({ holder: me + ':' + tabId, ttlMs: 1500 });
-        ok = r.acquired;
-        if (!ok) await sleep(120 + Math.random() * 200);
-      }
-      if (!ok) { toast('La table est occupée, réessaie.'); return false; }
-      const ref = db.doc('tables/' + tableId);
-      const snap = await ref.get();
-      if (!snap.exists) { toast('Cette table n\'existe plus.'); return false; }
-      const st = JSON.parse(JSON.stringify(snap.data()));
-      if (fn(st) === false) return false;
-      st.updatedAt = Date.now();
-      await ref.set(st);
-      return true;
+      return await net.transact(tableId, fn);
     } catch (e) {
-      if (e && e.code === 'invalid_argument') {
+      const code = e && e.code;
+      if (code === 'invalid_argument' || code === 'PERMISSION_DENIED') {
         canWrite = false;
         toast('Tu peux regarder cette table, mais pas y jouer : demande au propriétaire du jeu de t\'inviter comme éditeur.');
-      } else toast('Action non envoyée (' + ((e && e.code) || 'erreur') + '). Réessaie.');
+      } else if (code === 'busy') toast('La table est occupée, réessaie.');
+      else if (code === 'gone') toast('Cette table n\'existe plus.');
+      else toast('Action non envoyée. Vérifie ta connexion et réessaie.');
       return false;
     } finally {
       working = false;
-      renderControls();
+      if (state) renderAll(); else renderControls();
     }
   }
 
@@ -305,13 +315,13 @@
     const m = $('m-message');
     m.textContent = text;
     m.classList.add('flash');
-    setTimeout(() => m.classList.remove('flash'), 1200);
+    setTimeout(() => m.classList.remove('flash'), 1600);
   }
 
   // ================= Réception et animation =================
-  function onTableSnapshot(snap) {
-    if (!snap.exists) { state = null; toast('Cette table a été supprimée.'); showLobby(); return; }
-    const st = snap.data();
+  function onTable(raw) {
+    if (!raw) { state = null; showLobby('Cette table n\'existe pas ou a été supprimée.'); return; }
+    const st = normalize(JSON.parse(JSON.stringify(raw)));
     state = st;
     if (st.round !== shownRound) { holeFlipped = false; ctx.counter.reset(st.rcBase); }
     const all = [];
@@ -359,19 +369,19 @@
   function nameOf(uid) {
     if (!uid) return '';
     if (uid === me) return 'Toi';
-    return names[uid] || 'Joueur';
+    const p = state && state.players[uid];
+    return (p && p.name) || names[uid] || 'Joueur';
   }
-  async function resolveNames() {
-    if (!user || !state) return;
+  const asked = new Set();
+  async function resolveNames(extra) {
+    if (!net || net.kind !== 'claude' || !state) return;
     const ids = new Set();
-    state.seats.forEach((s) => s.owner && s.owner !== me && !names[s.owner] && ids.add(s.owner));
+    state.seats.forEach((s) => s.owner && s.owner !== me && !names[s.owner] && !asked.has(s.owner) && ids.add(s.owner));
+    (extra || []).forEach((u) => { if (u !== me && !names[u] && !asked.has(u)) ids.add(u); });
     if (!ids.size) return;
-    try {
-      const ps = await user.profiles([...ids]);
-      let changed = false;
-      ids.forEach((id) => { const n = (ps[id] && ps[id].name) || ''; if (n) { names[id] = n; changed = true; } });
-      if (changed) renderAll();
-    } catch (e) { /* noms indisponibles */ }
+    ids.forEach((i) => asked.add(i));
+    const ps = await net.profiles([...ids]);
+    if (Object.keys(ps).length) { Object.assign(names, ps); renderAll(); if (lastChat) renderChat(lastChat); }
   }
 
   function totalText(cards) {
@@ -386,6 +396,8 @@
     const st = state;
     const anim = animating();
     $('mtable-name').textContent = st.name || 'Table';
+    $('mtable-code').hidden = !net.usesCodes;
+    $('mtable-code-value').textContent = tableId;
     $('mtable-shoe').textContent = 'Sabot : ' + (st.shoe.length / 52).toFixed(1) + ' jeux';
 
     // Croupier
@@ -396,10 +408,19 @@
     const shownDealer = holeFlipped ? dVisible : dVisible.slice(0, 1);
     $('m-dealer-total').textContent = shownDealer.length ? totalText(shownDealer) : '';
 
-    // Places
-    const seatsEl = $('seats');
-    seatsEl.innerHTML = '';
-    st.seats.forEach((s, i) => seatsEl.appendChild(seatEl(st, s, i, anim)));
+    // Places : vue personnelle — tes places en grand en bas, les autres en petit au-dessus.
+    // Quand c'est au tour d'un ami, sa place s'agrandit.
+    const others = $('seats-others'), mine = $('seats-mine');
+    others.innerHTML = ''; mine.innerHTML = '';
+    const turnSeat = st.phase === 'playing' && st.turn && !anim ? st.turn.seat : -1;
+    st.seats.forEach((s, i) => {
+      const own = s.owner === me;
+      const el = seatEl(st, s, i, anim);
+      if (!own && i !== turnSeat) el.classList.add('compact');
+      if (!own && i === turnSeat) el.classList.add('spotlight');
+      (own ? mine : others).appendChild(el);
+    });
+    mine.hidden = !mine.children.length;
 
     // Message
     const msg = $('m-message');
@@ -456,6 +477,7 @@
       hand.className = 'hand' + (isTurn && st.turn.hand === hi ? ' active' : '');
       const cards = document.createElement('div');
       cards.className = 'cards small-cards';
+      if (s.hands.length > 1) hand.dataset.label = 'Main ' + (hi + 1);
       const vis = h.cards.filter((c) => revealed.has(c.id));
       vis.forEach((c) => cards.appendChild(BJ.cardEl(c, false, ctx)));
       hand.appendChild(cards);
@@ -629,83 +651,79 @@
   }
 
   // ================= Chat de la table =================
-  function renderChat(snap) {
+  let lastChat = null;
+  function renderChat(list) {
+    lastChat = list;
     const log = $('table-chat');
     log.innerHTML = '';
-    const docs = snap.docs.slice().reverse();
-    if (!docs.length) {
+    if (!list.length) {
       const p = document.createElement('div');
       p.className = 'muted small';
       p.textContent = 'Aucun message. Dis bonjour à la table !';
       log.appendChild(p);
     }
     const unknown = [];
-    docs.forEach((d) => {
-      const m = d.data();
+    list.forEach((m) => {
       const el = document.createElement('div');
       el.className = 'msg ' + (m.uid === me ? 'me' : 'other');
       const who = document.createElement('b');
-      who.textContent = nameOf(m.uid) + ' ';
-      if (m.uid !== me && !names[m.uid]) unknown.push(m.uid);
+      who.textContent = (m.uid === me ? 'Toi' : (m.name || nameOf(m.uid))) + ' ';
+      if (m.uid !== me && !m.name) unknown.push(m.uid);
       el.appendChild(who);
       el.append(String(m.text || ''));
       log.appendChild(el);
     });
     log.scrollTop = log.scrollHeight;
-    if (unknown.length && user) {
-      user.profiles([...new Set(unknown)]).then((ps) => {
-        let ch = false;
-        Object.keys(ps).forEach((id) => { if (ps[id] && ps[id].name) { names[id] = ps[id].name; ch = true; } });
-        if (ch) renderChat(snap);
-      }).catch(() => {});
-    }
+    if (unknown.length) resolveNames(unknown);
   }
 
   async function sendChat(text) {
     text = text.trim();
-    if (!text || !db || !tableId || !canWrite) return;
-    const col = db.collection('tables/' + tableId + '/chat');
+    if (!text || !net || !tableId || !canWrite) return;
     try {
-      await col.add({ uid: me, text: text.slice(0, 300), ts: Date.now() });
-      // Nettoyage des vieux messages (plus de 3 jours)
-      const old = await col.where('ts', '<', Date.now() - 3 * 864e5).limit(20).get();
-      for (const d of old.docs) await col.doc(d.id).delete();
+      await net.sendChat(tableId, { uid: me, name: myName() || '', text: text.slice(0, 300), ts: Date.now() });
     } catch (e) {
       toast('Message non envoyé.');
     }
   }
 
-  // ================= Lobby =================
-  function showLobby() {
+  // ================= Accueil des tables =================
+  function showLobby(note) {
     if (unsubTable) { unsubTable(); unsubTable = null; }
     if (unsubChat) { unsubChat(); unsubChat = null; }
     tableId = null; state = null;
     $('mtable').hidden = true;
     $('lobby').hidden = false;
     $('table-chat-panel').hidden = true;
+    $('lobby-note').textContent = note || '';
     BJ.setCountCtx(null);
-    if (!unsubLobby) {
-      unsubLobby = db.collection('tables').orderBy('updatedAt', 'desc').limit(30).onSnapshot(renderLobby, () => {
+    setUrlCode(null);
+    const codes = net.usesCodes;
+    $('join-code').hidden = !codes;
+    $('pseudo-row').hidden = !codes;
+    $('table-list').hidden = codes;
+    if (!codes && !unsubLobby) {
+      unsubLobby = net.watchLobby(renderLobby, () => {
         $('table-list').innerHTML = '<li class="muted">Impossible de charger les tables.</li>';
       });
     }
   }
 
-  function renderLobby(snap) {
+  function renderLobby(tables) {
     const list = $('table-list');
     list.innerHTML = '';
-    if (snap.empty) {
+    if (!tables.length) {
       list.innerHTML = '<li class="muted">Aucune table pour l\'instant : crée la première !</li>';
       return;
     }
-    snap.docs.forEach((d) => {
-      const t = d.data();
+    tables.forEach((t) => {
       const li = document.createElement('li');
       const info = document.createElement('div');
       const n = document.createElement('b');
       n.textContent = t.name || 'Table';
-      const seated = new Set((t.seats || []).filter((s) => s.owner).map((s) => s.owner)).size;
-      const free = (t.seats || []).filter((s) => !s.owner).length;
+      const seats = t.seats || [];
+      const seated = new Set(seats.filter((s) => s && s.owner).map((s) => s.owner)).size;
+      const free = SEATS - seats.filter((s) => s && s.owner).length;
       const sub = document.createElement('div');
       sub.className = 'muted small';
       sub.textContent = seated + ' joueur' + (seated > 1 ? 's' : '') + ' · ' + free + ' place' + (free > 1 ? 's' : '') + ' libre' + (free > 1 ? 's' : '');
@@ -714,22 +732,40 @@
       actions.className = 'row';
       const join = document.createElement('button');
       join.textContent = 'Rejoindre';
-      join.addEventListener('click', () => openTable(d.id));
+      join.addEventListener('click', () => openTable(t.id));
       actions.appendChild(join);
-      if (t.creator === me && canWrite) {
-        const del = document.createElement('button');
-        del.className = 'ghost small';
-        del.textContent = 'Supprimer';
-        let armed = false;
-        del.addEventListener('click', async () => {
-          if (!armed) { armed = true; del.textContent = 'Confirmer ?'; setTimeout(() => { armed = false; del.textContent = 'Supprimer'; }, 3000); return; }
-          try { await db.doc('tables/' + d.id).delete(); } catch (e) { /* ignore */ }
-        });
-        actions.appendChild(del);
-      }
+      if (t.creator === me && canWrite) actions.appendChild(deleteButton(t.id));
       li.append(info, actions);
       list.appendChild(li);
     });
+  }
+
+  function deleteButton(id) {
+    const del = document.createElement('button');
+    del.className = 'ghost small';
+    del.textContent = 'Supprimer';
+    let armed = false;
+    del.addEventListener('click', async () => {
+      if (!armed) { armed = true; del.textContent = 'Confirmer ?'; setTimeout(() => { armed = false; del.textContent = 'Supprimer'; }, 3000); return; }
+      try { await net.deleteTable(id); } catch (e) { /* ignore */ }
+    });
+    return del;
+  }
+
+  function setUrlCode(code) {
+    if (!net || !net.usesCodes) return;
+    try {
+      const u = new URL(location.href);
+      if (code) u.searchParams.set('table', code); else u.searchParams.delete('table');
+      history.replaceState(null, '', u.toString());
+    } catch (e) { /* ignore */ }
+  }
+
+  function inviteLink() {
+    const u = new URL(location.href);
+    u.search = '';
+    u.searchParams.set('table', tableId);
+    return u.toString();
   }
 
   function openTable(id) {
@@ -741,34 +777,63 @@
     revealed.clear();
     ctx.shown.clear();
     shownRound = -1;
+    lastChat = null;
     $('lobby').hidden = true;
     $('mtable').hidden = false;
     $('table-chat-panel').hidden = false;
     $('m-message').textContent = 'Connexion à la table…';
+    $('seats-others').innerHTML = ''; $('seats-mine').innerHTML = '';
     BJ.setCountCtx(ctx);
-    unsubTable = db.doc('tables/' + id).onSnapshot(onTableSnapshot, () => toast('Connexion à la table perdue.'));
-    unsubChat = db.collection('tables/' + id + '/chat').orderBy('ts', 'desc').limit(50).onSnapshot(renderChat, () => {});
+    setUrlCode(id);
+    unsubTable = net.watchTable(id, onTable, () => toast('Connexion à la table perdue.'));
+    unsubChat = net.watchChat(id, renderChat);
+  }
+
+  function needPseudo() {
+    if (!net.usesCodes || myName()) return false;
+    $('pseudo').focus();
+    $('lobby-note').textContent = 'Choisis d\'abord un pseudo.';
+    return true;
   }
 
   $('create-table').addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!db || !canWrite) return;
-    const name = $('table-name').value.trim().slice(0, 30) || 'Table de ' + (names[me] || 'blackjack');
-    const ref = db.collection('tables').doc();
+    if (!net || !canWrite || needPseudo()) return;
+    const name = $('table-name').value.trim().slice(0, 30) || 'Table de ' + (myName() || names[me] || 'blackjack');
     try {
-      await ref.set(initialState(name));
+      const st = initialState(name);
+      const id = await net.createTable(st);
       $('table-name').value = '';
-      openTable(ref.id);
+      openTable(id);
     } catch (err) {
-      if (err && err.code === 'invalid_argument') {
-        canWrite = false;
-        toast('Tu n\'as pas le droit de créer une table.');
-      } else if (err && err.code === 'quota_exceeded') {
-        toast('Trop de tables : supprime-en une ancienne.');
-      }
+      const code = err && err.code;
+      if (code === 'invalid_argument' || code === 'PERMISSION_DENIED') { canWrite = false; $('lobby-note').textContent = 'Tu n\'as pas le droit de créer une table.'; }
+      else if (code === 'quota_exceeded') $('lobby-note').textContent = 'Trop de tables : supprime-en une ancienne.';
+      else $('lobby-note').textContent = 'Impossible de créer la table. Vérifie ta connexion.';
     }
   });
-  $('leave-table').addEventListener('click', showLobby);
+  $('join-code').addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (needPseudo()) return;
+    const code = $('code-input').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (code.length !== 4) { $('lobby-note').textContent = 'Le code fait 4 caractères (ex. KQ7P).'; return; }
+    openTable(code);
+  });
+  $('code-input').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase(); });
+  $('pseudo').addEventListener('change', (e) => {
+    try { localStorage.setItem('bj-pseudo', e.target.value.trim().slice(0, 16)); } catch (err) { /* ignore */ }
+    $('lobby-note').textContent = '';
+  });
+  $('invite').addEventListener('click', async () => {
+    const link = inviteLink();
+    const text = 'Rejoins ma table de blackjack ! Code : ' + tableId;
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Blackjack entre amis', text, url: link }); return; } catch (e) { /* annulé */ }
+    }
+    try { await navigator.clipboard.writeText(text + ' — ' + link); toast('Lien d\'invitation copié !'); }
+    catch (e) { toast('Code de la table : ' + tableId); }
+  });
+  $('leave-table').addEventListener('click', () => showLobby());
   $('table-chat-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const v = $('table-chat-input').value;
@@ -776,6 +841,9 @@
     sendChat(v);
   });
   $('m-opt-hint').addEventListener('change', () => maybeHint());
+  // Un seul réglage de vitesse, affiché dans les deux vues
+  $('m-opt-speed').addEventListener('change', (e) => { $('opt-speed').value = e.target.value; $('opt-speed').dispatchEvent(new Event('change')); });
+  $('opt-speed').addEventListener('change', (e) => { $('m-opt-speed').value = e.target.value; });
 
   // ================= Onglets =================
   function setMode(mode) {
@@ -800,21 +868,22 @@
   let started = false;
   async function startMulti() {
     if (tableId) { $('table-chat-panel').hidden = false; BJ.setCountCtx(ctx); renderAll(); return; }
-    if (started) { if (db) showLobby(); return; }
+    if (started) { if (net) showLobby(); return; }
     started = true;
-    const unavailable = () => { $('multi-unavailable').hidden = false; $('lobby').hidden = true; };
-    if (!window.claude || typeof window.claude.use !== 'function') return unavailable();
-    $('lobby').hidden = false;
-    try {
-      [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
-    } catch (e) { db = null; }
-    if (!db || !user) return unavailable();
-    me = await user.id();
-    if (!me) return unavailable();
-    try {
-      const w = await user.can('data.write');
-      canWrite = w !== false;
-    } catch (e) { canWrite = true; }
+    $('lobby').hidden = true;
+    $('multi-loading').hidden = false;
+    let n = null;
+    try { n = await window.createNet(); } catch (e) { n = null; }
+    $('multi-loading').hidden = true;
+    if (!n || n.error) {
+      $('multi-unavailable').hidden = false;
+      if (n && n.error === 'firebase') $('multi-unavailable-detail').textContent = 'Connexion au serveur impossible. Vérifie ta connexion Internet puis recharge la page.';
+      return;
+    }
+    net = n;
+    me = net.me;
+    canWrite = net.canWrite;
+    try { $('pseudo').value = myName(); } catch (e) { /* ignore */ }
     if (!canWrite) {
       const p = document.createElement('p');
       p.className = 'muted small';
@@ -822,8 +891,16 @@
       $('lobby').appendChild(p);
       $('create-table').hidden = true;
     }
+    const code = new URLSearchParams(location.search).get('table'); // lu avant que showLobby nettoie l'adresse
     showLobby();
+    if (code && net.usesCodes) {
+      if (myName()) openTable(code.toUpperCase());
+      else { $('code-input').value = code.toUpperCase(); needPseudo(); }
+    }
   }
 
-  window.Multi = { rerender: () => { if (tableId) renderAll(); } };
+  window.Multi = { rerender: () => { if (tableId) renderAll(); }, normalize };
+
+  // Lien d'invitation : ouvre directement l'onglet « Entre amis »
+  if (new URLSearchParams(location.search).get('table')) setMode('multi');
 })();

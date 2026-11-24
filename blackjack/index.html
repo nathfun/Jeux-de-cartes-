@@ -4,11 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Blackjack Coach</title>
+  <meta name="theme-color" content="#0f5132">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../icons/icon-192.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body data-mode="solo">
   <header class="topbar">
-    <h1>♠ Blackjack Coach</h1>
+    <h1><a id="home-link" class="home-link" href="../index.html" hidden aria-label="Retour aux jeux">←</a> ♠ Blackjack Coach</h1>
     <nav class="tabs" role="tablist">
       <button id="tab-solo" class="tab active" role="tab" aria-selected="true">Solo</button>
       <button id="tab-multi" class="tab" role="tab" aria-selected="false">Entre amis</button>
@@ -83,19 +86,28 @@
 
       <!-- ================= ENTRE AMIS ================= -->
       <section id="multi-view" hidden>
+        <div id="multi-loading" class="panel" hidden><p class="muted">Connexion au serveur de jeu…</p></div>
         <div id="multi-unavailable" class="panel notice" hidden>
           <h2>Jouer entre amis</h2>
-          <p>Le mode multijoueur fonctionne uniquement sur la version en ligne du jeu (la page claude.ai), car les parties sont enregistrées en ligne et partagées entre les joueurs.</p>
-          <p class="muted">Ouvre le jeu depuis son lien claude.ai, connecté à ton compte.</p>
+          <p id="multi-unavailable-detail">Le serveur de jeu n'est pas encore configuré. Le propriétaire de l'app doit suivre le guide FIREBASE.md.</p>
         </div>
 
         <div id="lobby" class="panel" hidden>
           <h2>Tables entre amis</h2>
           <p class="muted small">Crée une table ou rejoins celle d'un ami. Chaque joueur choisit sa ou ses places.</p>
+          <div id="pseudo-row" class="row" hidden>
+            <label for="pseudo">Ton pseudo</label>
+            <input id="pseudo" maxlength="16" placeholder="ex. Nathan" autocomplete="nickname">
+          </div>
+          <form id="join-code" class="row" hidden>
+            <input id="code-input" maxlength="4" placeholder="Code (ex. KQ7P)" aria-label="Code de la table" autocomplete="off" autocapitalize="characters">
+            <button class="primary" type="submit">Rejoindre</button>
+          </form>
           <form id="create-table" class="row">
             <input id="table-name" maxlength="30" placeholder="Nom de la table (ex. Soirée vendredi)" aria-label="Nom de la table">
-            <button class="primary" type="submit">Créer la table</button>
+            <button type="submit">Créer une table</button>
           </form>
+          <p id="lobby-note" class="small warn" role="status"></p>
           <ul id="table-list" class="table-list"><li class="muted">Chargement des tables…</li></ul>
         </div>
 
@@ -103,6 +115,8 @@
           <div class="mtable-head">
             <button id="leave-table" class="ghost small">← Tables</button>
             <strong id="mtable-name"></strong>
+            <span id="mtable-code" class="code-badge" hidden>Code <b id="mtable-code-value"></b>
+              <button id="invite" class="ghost small" type="button">Inviter</button></span>
             <span id="mtable-shoe" class="muted small"></span>
           </div>
           <div class="zone">
@@ -110,10 +124,18 @@
             <div id="m-dealer-cards" class="cards"></div>
           </div>
           <div id="m-message" class="message" role="status"></div>
-          <div id="seats" class="seats"></div>
+          <div id="seats-others" class="seats others"></div>
+          <div id="seats-mine" class="seats mine-area" hidden></div>
           <div id="m-controls" class="controls"></div>
           <div class="options">
             <label><input type="checkbox" id="m-opt-hint"> Afficher le conseil avant de jouer</label>
+            <label>Vitesse de distribution
+              <select id="m-opt-speed">
+                <option value="0.6">Lente</option>
+                <option value="1" selected>Normale</option>
+                <option value="1.8">Rapide</option>
+              </select>
+            </label>
           </div>
         </div>
       </section>
@@ -204,11 +226,14 @@
     </aside>
   </main>
 
+  <script src="../firebase-config.js"></script>
   <script src="strategy.js"></script>
   <script src="count.js"></script>
   <script src="sidebets.js"></script>
   <script src="app.js"></script>
   <script src="coach-chat.js"></script>
+  <script src="net.js"></script>
   <script src="multi.js"></script>
+  <script src="../pwa.js"></script>
 </body>
 </html>

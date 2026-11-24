@@ -81,9 +81,9 @@
     },
   };
 
+  // Hors de claude.ai (app indépendante), le chat du coach n'existe pas : on masque le panneau
   function disable() {
-    $('coach-chat-form').hidden = true;
-    $('coach-chat-off').hidden = false;
+    $('coach-chat-panel').hidden = true;
   }
 
   if (!window.claude || typeof window.claude.use !== 'function') { disable(); return; }
