@@ -111,11 +111,60 @@
     return 'Dur ' + total + ' contre ' + u + ' : le croupier a probablement 17 ou plus. Rester perd trop souvent, tire malgré le risque.';
   }
 
+  // Écarts liés au comptage (« Illustrious 18 », 6 jeux, S17).
+  // Au-delà du seuil de compte vrai, l'action change par rapport à la stratégie de base.
+  const DEVIATIONS = [
+    { pair: 10, up: 5, idx: 5, act: 'P' },
+    { pair: 10, up: 6, idx: 4, act: 'P' },
+    { hard: 16, up: 10, idx: 0, act: 'S' },
+    { hard: 15, up: 10, idx: 4, act: 'S' },
+    { hard: 16, up: 9, idx: 5, act: 'S' },
+    { hard: 10, up: 10, idx: 4, act: 'D' },
+    { hard: 10, up: 11, idx: 4, act: 'D' },
+    { hard: 11, up: 11, idx: 1, act: 'D' },
+    { hard: 9, up: 2, idx: 1, act: 'D' },
+    { hard: 9, up: 7, idx: 3, act: 'D' },
+    { hard: 12, up: 3, idx: 2, act: 'S' },
+    { hard: 12, up: 2, idx: 3, act: 'S' },
+    { hard: 12, up: 4, idx: 0, act: 'H', below: true },
+    { hard: 12, up: 5, idx: -2, act: 'H', below: true, incl: true },
+    { hard: 12, up: 6, idx: -1, act: 'H', below: true, incl: true },
+    { hard: 13, up: 2, idx: -1, act: 'H', below: true, incl: true },
+    { hard: 13, up: 3, idx: -2, act: 'H', below: true, incl: true },
+  ];
+  const signedIdx = (n) => (n > 0 ? '+' + n : String(n));
+
+  function deviationFor(category, total, pairVal, up, action, opts) {
+    const tc = opts.trueCount;
+    if (typeof tc !== 'number') return null;
+    for (const d of DEVIATIONS) {
+      if (d.up !== up) continue;
+      if (d.pair != null) { if (category !== 'pair' || pairVal !== d.pair || !opts.canSplit) continue; }
+      else if (category === 'soft' || action === 'P' || d.hard !== total) continue;
+      const hit = d.below ? (d.incl ? tc <= d.idx : tc < d.idx) : tc >= d.idx;
+      if (!hit || d.act === action) continue;
+      if (d.act === 'D' && !opts.canDouble) continue;
+      return d;
+    }
+    return null;
+  }
+
+  function deviationReason(d, tc, base) {
+    const t = 'Compte vrai ' + signedIdx(Math.round(tc * 10) / 10) + ' (seuil ' + (d.below ? (d.incl ? '≤ ' : '< ') : '≥ ') + signedIdx(d.idx) + ') : ';
+    const why = {
+      S: 'il reste beaucoup de 10 et d\'As. Tirer te ferait sauter plus souvent, et le croupier risque davantage de sauter : reste, alors que la stratégie de base dit « ' + ACTION_LABELS[base] + ' ».',
+      D: 'il reste beaucoup de 10 et d\'As, ta carte unique a plus de chances d\'être forte : double, alors que la stratégie de base dit « ' + ACTION_LABELS[base] + ' ».',
+      H: 'il reste surtout des petites cartes. Tu risques moins de sauter et le croupier saute moins souvent : tire, alors que la stratégie de base dit « ' + ACTION_LABELS[base] + ' ».',
+      P: 'le croupier va très souvent sauter, séparer les 10 rapporte plus que garder 20. (Au casino, ce coup trahit un compteur !)',
+    };
+    return t + why[d.act];
+  }
+
   /**
    * Recommande l'action optimale.
    * @param cards  cartes de la main du joueur
    * @param upRank rang de la carte visible du croupier
-   * @param opts   { canDouble, canSplit }
+   * @param opts   { canDouble, canSplit, trueCount? } — avec trueCount, applique les écarts liés au comptage
    */
   function recommend(cards, upRank, opts) {
     opts = opts || {};
@@ -145,6 +194,16 @@
     if (action === 'Ds') action = opts.canDouble ? 'D' : 'S';
     if (action === 'D' && !opts.canDouble) action = 'H';
 
+    let deviation = null, reason;
+    const dev = deviationFor(category, hv.total, pairVal, up, action, opts);
+    if (dev) {
+      deviation = { base: action, index: dev.idx };
+      reason = deviationReason(dev, opts.trueCount, action);
+      action = dev.act;
+    } else {
+      reason = reasonFor(category, hv.total, up, action, pairVal);
+    }
+
     if (category === 'pair') {
       key = 'Paire de ' + (pairVal === 11 ? 'As' : pairVal) + ' vs ' + upLabel(up);
     } else {
@@ -157,7 +216,8 @@
       category,
       key,
       total: hv.total,
-      reason: reasonFor(category, hv.total, up, action, pairVal),
+      reason,
+      deviation,
     };
   }
 
@@ -206,6 +266,9 @@
       out.push('Pourquoi séparer ? Tu transformes une mauvaise main (ou une main moyenne) en deux mains qui démarrent mieux, en misant plus quand la situation est favorable.');
     }
 
+    if (rec.deviation) {
+      out.push('Écart de comptage : la stratégie de base dit « ' + ACTION_LABELS[rec.deviation.base] + ' », mais avec ce compte vrai l\'action la plus rentable devient « ' + rec.label + ' ». Ces écarts (les « Illustrious 18 ») ne valent que si ton compte est juste.');
+    }
     const mnemo = {
       hard: 'Astuce : 12 à 16 → reste contre 2-6 (sauf 12 contre 2 et 3), tire contre 7-As. 17 ou plus → reste toujours.',
       soft: 'Astuce : souple 19 et 20 → reste. Souple 18 → double contre 3-6, reste contre 2, 7, 8, tire contre 9, 10, As. En dessous, double contre les cartes faibles, sinon tire.',
@@ -237,7 +300,7 @@
     return { ups, hard, soft, pairs };
   }
 
-  const api = { recommend, details, handValue, cardValue, chart, ACTION_LABELS, hardAction, softAction, pairSplit, DEALER_BUST };
+  const api = { DEVIATIONS, recommend, details, handValue, cardValue, chart, ACTION_LABELS, hardAction, softAction, pairSplit, DEALER_BUST };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Strategy = api;
 })(typeof window !== 'undefined' ? window : this);

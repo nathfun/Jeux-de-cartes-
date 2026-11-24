@@ -600,7 +600,7 @@
     const s = st.seats[st.turn.seat];
     const h = s.hands[st.turn.hand];
     const o = availableFor(st);
-    return { cards: h.cards, up: st.dealer[0].rank, opts: { canDouble: o.D, canSplit: o.P } };
+    return { cards: h.cards, up: st.dealer[0].rank, opts: BJ.withCount({ canDouble: o.D, canSplit: o.P }) };
   }
 
   function showHint(force) {

@@ -240,7 +240,7 @@
     const opts = availableActions();
     if (!opts[action]) return;
     const h = round.hands[round.active];
-    const o = { canDouble: opts.D, canSplit: opts.P };
+    const o = withCount({ canDouble: opts.D, canSplit: opts.P });
     const rec = Strategy.recommend(h.cards, round.dealer[0].rank, o);
     setSituation({ cards: h.cards, up: round.dealer[0].rank, opts: o }, action);
     recordDecision(rec, action);
@@ -510,7 +510,7 @@
     if (busy || !round || round.phase !== 'playing') return;
     const h = round.hands[round.active];
     const opts = availableActions();
-    const o = { canDouble: opts.D, canSplit: opts.P };
+    const o = withCount({ canDouble: opts.D, canSplit: opts.P });
     const rec = Strategy.recommend(h.cards, round.dealer[0].rank, o);
     setSituation({ cards: h.cards, up: round.dealer[0].rank, opts: o });
     showHintFor(rec);
@@ -633,6 +633,11 @@
   function setMessage(t) { $('message').textContent = t; }
 
   // ---------- Comptage de cartes ----------
+  // Ajoute le compte vrai aux options si les conseils ajustés au comptage sont activés
+  function withCount(o) {
+    if ($('opt-dev').checked) o.trueCount = countCtx.counter.trueCount(countCtx.cardsLeft());
+    return o;
+  }
   function renderCount() {
     const c = countCtx.counter;
     const left = countCtx.cardsLeft();
@@ -696,6 +701,7 @@
     cardEl, recordDecision, setSituation, showHintFor, highlightChart,
     getContext, render, renderStats,
     getStats: () => stats,
+    withCount,
     setCountCtx(ctx) { countCtx = ctx || soloCtx; renderCount(); },
     renderCount,
   };

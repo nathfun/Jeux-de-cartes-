@@ -164,11 +164,13 @@
         </div>
         <p id="c-quiz-score" class="muted small"></p>
         <label class="small"><input type="checkbox" id="opt-tags"> Afficher +1 / −1 sur les cartes</label><br>
-        <label class="small"><input type="checkbox" id="opt-count-hide"> Mode entraînement : masquer le compte et me tester</label>
+        <label class="small"><input type="checkbox" id="opt-count-hide"> Mode entraînement : masquer le compte et me tester</label><br>
+        <label class="small"><input type="checkbox" id="opt-dev"> Conseils ajustés au compte (écarts « Illustrious 18 »)</label>
         <details class="small">
           <summary>Comment ça marche ?</summary>
           <p>Chaque carte vue reçoit une valeur : <b>2 à 6 = +1</b>, <b>7, 8, 9 = 0</b>, <b>10, figures et As = −1</b>. Additionne-les depuis le dernier mélange : c'est le <b>compte courant</b>.</p>
           <p>Divise-le par le nombre de jeux restant dans le sabot : c'est le <b>compte vrai</b>. Plus il est positif, plus il reste de 10 et d'As, ce qui favorise le joueur (plus de blackjacks, le croupier saute plus).</p>
+          <p>Avec l'option « Conseils ajustés au compte », le coach applique aussi les 17 écarts les plus rentables : par exemple rester sur 16 contre un 10 dès que le compte vrai est positif, ou doubler 11 contre un As à partir de +1.</p>
           <p>Le compteur mise peu quand le compte vrai est faible et davantage quand il dépasse +2. Les casinos l'interdisent souvent en pratique : ici c'est un entraînement.</p>
         </details>
       </section>
