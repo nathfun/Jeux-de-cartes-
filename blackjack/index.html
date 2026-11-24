@@ -14,6 +14,7 @@
 
   <main class="layout">
     <section class="table" aria-label="Table de jeu">
+      <div class="shoe" aria-hidden="true"><div class="shoe-cards"></div><span>Sabot</span></div>
       <div class="zone">
         <div class="zone-title">Croupier <span id="dealer-total" class="total"></span></div>
         <div id="dealer-cards" class="cards"></div>
@@ -52,6 +53,13 @@
       <div class="options">
         <label><input type="checkbox" id="opt-coach" checked> Coach en direct (retour après chaque décision)</label>
         <label><input type="checkbox" id="opt-hint"> Afficher le conseil avant de jouer</label>
+        <label>Vitesse de distribution
+          <select id="opt-speed">
+            <option value="0.6">Lente</option>
+            <option value="1" selected>Normale</option>
+            <option value="1.8">Rapide</option>
+          </select>
+        </label>
       </div>
     </section>
 

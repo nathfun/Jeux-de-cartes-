@@ -48,20 +48,42 @@
       [shoe[i], shoe[j]] = [shoe[j], shoe[i]];
     }
   }
+  let cardSeq = 0;
   function draw() {
     if (shoe.length === 0) buildShoe();
-    return shoe.pop();
+    const c = shoe.pop();
+    return { rank: c.rank, suit: c.suit, id: ++cardSeq };
   }
 
   const value = (cards) => Strategy.handValue(cards);
   const isBlackjack = (cards) => cards.length === 2 && value(cards).total === 21;
 
+  // ---------- Rythme et animations ----------
+  const BASE_DELAY = 650; // ms entre deux cartes à vitesse normale
+  let busy = false;       // bloque les actions pendant une animation
+  function speed() {
+    const v = parseFloat($('opt-speed').value);
+    return v > 0 ? v : 1;
+  }
+  function sleep(factor) {
+    return new Promise((r) => setTimeout(r, BASE_DELAY * (factor || 1) / speed()));
+  }
+  function applySpeed() {
+    document.documentElement.style.setProperty('--anim', (0.45 / speed()) + 's');
+  }
+
+  // id de carte -> 'hidden' | 'shown' : permet d'animer seulement les nouvelles cartes
+  const shown = new Map();
+
   // ---------- Rendu des cartes ----------
   function cardEl(card, hidden) {
     const el = document.createElement('div');
-    if (hidden) { el.className = 'card back'; return el; }
+    const prev = shown.get(card.id);
+    const anim = !prev ? ' dealt' : (prev === 'hidden' && !hidden ? ' flip' : '');
+    shown.set(card.id, hidden ? 'hidden' : 'shown');
+    if (hidden) { el.className = 'card back' + anim; return el; }
     const red = card.suit === '♥' || card.suit === '♦';
-    el.className = 'card' + (red ? ' red' : '');
+    el.className = 'card' + (red ? ' red' : '') + anim;
     el.innerHTML = '<div class="tl">' + card.rank + '<br>' + card.suit + '</div>' +
       '<div class="mid">' + card.suit + '</div>' +
       '<div class="br">' + card.rank + '<br>' + card.suit + '</div>';
@@ -70,6 +92,7 @@
   }
 
   function totalText(cards) {
+    if (!cards.length) return '';
     const v = value(cards);
     if (isBlackjack(cards)) return 'Blackjack';
     return (v.soft && v.total < 21 ? (v.total - 10) + ' / ' : '') + v.total;
@@ -85,10 +108,11 @@
     pc.innerHTML = '';
 
     if (round) {
-      const hideHole = round.phase === 'playing';
+      const hideHole = round.phase === 'playing' || round.phase === 'dealing';
       round.dealer.forEach((c, i) => dc.appendChild(cardEl(c, hideHole && i === 1)));
-      $('dealer-total').textContent = hideHole
-        ? Strategy.cardValue(round.dealer[0].rank) === 11 ? 'As' : String(Strategy.cardValue(round.dealer[0].rank))
+      const up = round.dealer[0] ? Strategy.cardValue(round.dealer[0].rank) : null;
+      $('dealer-total').textContent = !round.dealer.length ? ''
+        : hideHole ? (up === 11 ? 'As' : String(up))
         : totalText(round.dealer);
 
       round.hands.forEach((h, i) => {
@@ -99,7 +123,8 @@
         h.cards.forEach((c) => cards.appendChild(cardEl(c)));
         const info = document.createElement('div');
         info.className = 'hand-info';
-        info.innerHTML = 'Total : <b>' + totalText(h.cards) + '</b> · Mise ' + h.bet + ' €' +
+        const bust = value(h.cards).total > 21;
+        info.innerHTML = 'Total : <b' + (bust ? ' class="bust"' : '') + '>' + totalText(h.cards) + '</b> · Mise ' + h.bet + ' €' +
           (h.result ? ' <span class="result ' + h.resultClass + '">' + h.result + '</span>' : '');
         wrap.appendChild(cards);
         wrap.appendChild(info);
@@ -109,16 +134,18 @@
       $('dealer-total').textContent = '';
     }
 
-    const playing = round && round.phase === 'playing';
-    $('bet-controls').classList.toggle('hidden', playing);
-    $('play-controls').classList.toggle('hidden', !playing);
-    $('deal').disabled = bet <= 0 || bet > stats.bankroll;
+    const inRound = round && round.phase !== 'over';
+    const playing = round && round.phase === 'playing' && !busy;
+    $('bet-controls').classList.toggle('hidden', !!inRound);
+    $('play-controls').classList.toggle('hidden', !inRound);
+    $('deal').disabled = busy || bet <= 0 || bet > stats.bankroll;
 
-    if (playing) {
-      const opts = availableActions();
+    if (inRound) {
+      const opts = playing ? availableActions() : {};
       document.querySelectorAll('[data-action]').forEach((b) => {
         b.disabled = !opts[b.dataset.action];
       });
+      $('hint').disabled = !playing;
     }
     renderStats();
   }
@@ -134,46 +161,73 @@
     return { H: true, S: true, D: canDouble, P: canSplit };
   }
 
-  function deal() {
-    if (bet <= 0 || bet > stats.bankroll) return;
+  // Donne une carte puis laisse le temps de la voir
+  async function give(cards, factor) {
+    cards.push(draw());
+    render();
+    await sleep(factor);
+  }
+
+  async function deal() {
+    if (busy || bet <= 0 || bet > stats.bankroll) return;
+    if (round && round.phase !== 'over') return;
+    busy = true;
     if (shoe.length < DECKS * 52 * 0.25) {
       buildShoe();
       setMessage('Le sabot est mélangé à nouveau.');
+    } else {
+      setMessage('Distribution…');
     }
     stats.bankroll -= bet;
     stats.maxBetRatio = Math.max(stats.maxBetRatio, bet / (stats.bankroll + bet));
     round = {
-      dealer: [draw(), draw()],
-      hands: [{ cards: [draw()], bet, done: false }],
-      active: 0, phase: 'playing', decisions: [],
+      dealer: [],
+      hands: [{ cards: [], bet, done: false }],
+      active: 0, phase: 'dealing', decisions: [],
     };
-    round.hands[0].cards.push(draw());
-
+    render();
+    await sleep(0.4);
     const player = round.hands[0].cards;
+    await give(player);
+    await give(round.dealer);
+    await give(player);
+    await give(round.dealer, 0.8);
+
     const up = Strategy.cardValue(round.dealer[0].rank);
     const dealerBJ = isBlackjack(round.dealer);
 
     if (isBlackjack(player) || (dealerBJ && up >= 10)) {
+      if (dealerBJ && up >= 10) {
+        setMessage('Le croupier vérifie sa carte cachée…');
+        await sleep(0.8);
+      }
       round.phase = 'over';
+      render();
+      await sleep(0.8);
+      busy = false;
       settle();
       return;
     }
+    round.phase = 'playing';
+    busy = false;
     setMessage('À toi de jouer !');
     render();
     maybeShowHint();
   }
 
-  function act(action) {
-    if (!round || round.phase !== 'playing') return;
+  async function act(action) {
+    if (busy || !round || round.phase !== 'playing') return;
     const opts = availableActions();
     if (!opts[action]) return;
     const h = round.hands[round.active];
     const rec = Strategy.recommend(h.cards, round.dealer[0].rank, { canDouble: opts.D, canSplit: opts.P });
     recordDecision(rec, action);
+    busy = true;
 
     if (action === 'H') {
-      h.cards.push(draw());
+      await give(h.cards, 0.8);
       const v = value(h.cards).total;
+      if (v > 21) { setMessage('Tu sautes avec ' + v + ' !'); await sleep(0.8); }
       if (v >= 21) h.done = true;
     } else if (action === 'S') {
       h.done = true;
@@ -181,40 +235,63 @@
       stats.bankroll -= h.bet;
       h.bet *= 2;
       h.doubled = true;
-      h.cards.push(draw());
+      setMessage('Tu doubles : une seule carte.');
+      await give(h.cards, 1);
       h.done = true;
     } else if (action === 'P') {
       stats.bankroll -= h.bet;
       const second = { cards: [h.cards.pop()], bet: h.bet, done: false, split: true };
       h.split = true;
       const aces = h.cards[0].rank === 'A';
-      h.cards.push(draw());
-      second.cards.push(draw());
-      if (aces) { h.done = true; second.done = true; }
       round.hands.splice(round.active + 1, 0, second);
+      setMessage(aces ? 'As séparés : une carte par main.' : 'Main séparée.');
+      render();
+      await sleep(0.6);
+      await give(h.cards);
+      if (aces) { await give(second.cards); h.done = true; second.done = true; }
     }
     if (value(h.cards).total === 21) h.done = true;
-    advance();
+    await advance();
   }
 
-  function advance() {
+  async function advance() {
     while (round.active < round.hands.length && round.hands[round.active].done) round.active++;
     if (round.active < round.hands.length) {
       const h = round.hands[round.active];
-      if (h.cards.length === 1) h.cards.push(draw());
+      if (h.cards.length === 1) {
+        render();
+        await sleep(0.5);
+        await give(h.cards);
+      }
       if (value(h.cards).total === 21) { h.done = true; return advance(); }
+      busy = false;
+      if (round.hands.length > 1) setMessage('Main ' + (round.active + 1) + ' sur ' + round.hands.length + ' : à toi de jouer.');
+      else setMessage('À toi de jouer !');
       render();
       maybeShowHint();
       return;
     }
+    // Tour du croupier : retourne la carte cachée puis tire une carte à la fois
     round.phase = 'dealer';
+    setMessage('Le croupier retourne sa carte…');
+    render();
+    await sleep(1.1);
     const allBust = round.hands.every((h) => value(h.cards).total > 21);
     if (!allBust) {
-      while (value(round.dealer).total < 17) round.dealer.push(draw());
+      while (value(round.dealer).total < 17) {
+        setMessage('Le croupier a ' + value(round.dealer).total + ', il tire…');
+        await sleep(0.5);
+        await give(round.dealer, 1);
+      }
+      const d = value(round.dealer).total;
+      setMessage(d > 21 ? 'Le croupier saute avec ' + d + ' !' : 'Le croupier reste sur ' + d + '.');
+      await sleep(0.9);
     }
     round.phase = 'over';
+    busy = false;
     settle();
   }
+
 
   function settle() {
     const d = value(round.dealer).total;
@@ -336,7 +413,7 @@
   }
 
   function showHint() {
-    if (!round || round.phase !== 'playing') return;
+    if (busy || !round || round.phase !== 'playing') return;
     const h = round.hands[round.active];
     const opts = availableActions();
     const rec = Strategy.recommend(h.cards, round.dealer[0].rank, { canDouble: opts.D, canSplit: opts.P });
@@ -469,8 +546,10 @@
   document.querySelectorAll('[data-action]').forEach((b) => b.addEventListener('click', () => act(b.dataset.action)));
   $('hint').addEventListener('click', showHint);
   $('opt-hint').addEventListener('change', maybeShowHint);
+  $('opt-speed').addEventListener('change', applySpeed);
   let resetArmed = false;
   $('reset').addEventListener('click', () => {
+    if (busy) return;
     const btn = $('reset');
     if (!resetArmed) {
       resetArmed = true;
@@ -503,6 +582,7 @@
   });
 
   buildShoe();
+  applySpeed();
   renderChart();
   render();
 })();
