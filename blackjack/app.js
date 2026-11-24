@@ -469,8 +469,17 @@
   document.querySelectorAll('[data-action]').forEach((b) => b.addEventListener('click', () => act(b.dataset.action)));
   $('hint').addEventListener('click', showHint);
   $('opt-hint').addEventListener('change', maybeShowHint);
+  let resetArmed = false;
   $('reset').addEventListener('click', () => {
-    if (!confirm('Réinitialiser toutes les statistiques et la banque ?')) return;
+    const btn = $('reset');
+    if (!resetArmed) {
+      resetArmed = true;
+      btn.textContent = 'Clique encore pour confirmer';
+      setTimeout(() => { resetArmed = false; btn.textContent = 'Réinitialiser les statistiques'; }, 3000);
+      return;
+    }
+    resetArmed = false;
+    btn.textContent = 'Réinitialiser les statistiques';
     stats = freshStats();
     saveStats();
     round = null;
