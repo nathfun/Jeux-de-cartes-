@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Blackjack Coach</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>♠ Blackjack Coach</h1>
+    <div class="bank">Banque : <strong id="bankroll">1000</strong> €</div>
+  </header>
+
+  <main class="layout">
+    <section class="table" aria-label="Table de jeu">
+      <div class="zone">
+        <div class="zone-title">Croupier <span id="dealer-total" class="total"></span></div>
+        <div id="dealer-cards" class="cards"></div>
+      </div>
+
+      <div id="message" class="message" role="status">Place ta mise et clique sur « Distribuer ».</div>
+
+      <div class="zone">
+        <div class="zone-title">Toi</div>
+        <div id="player-hands" class="hands"></div>
+      </div>
+
+      <div id="bet-controls" class="controls">
+        <div class="chips">
+          <button class="chip" data-chip="5">5</button>
+          <button class="chip" data-chip="10">10</button>
+          <button class="chip" data-chip="25">25</button>
+          <button class="chip" data-chip="100">100</button>
+        </div>
+        <div class="bet-line">
+          Mise : <strong id="bet">10</strong> €
+          <button id="clear-bet" class="ghost">Effacer</button>
+          <button id="deal" class="primary">Distribuer</button>
+        </div>
+      </div>
+
+      <div id="play-controls" class="controls hidden">
+        <button data-action="H">Tirer</button>
+        <button data-action="S">Rester</button>
+        <button data-action="D">Doubler</button>
+        <button data-action="P">Séparer</button>
+        <button id="hint" class="ghost">💡 Conseil</button>
+        <div class="muted small" style="width:100%;text-align:center">Clavier : T tirer · R rester · D doubler · S séparer · C conseil · Entrée distribuer</div>
+      </div>
+
+      <div class="options">
+        <label><input type="checkbox" id="opt-coach" checked> Coach en direct (retour après chaque décision)</label>
+        <label><input type="checkbox" id="opt-hint"> Afficher le conseil avant de jouer</label>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="panel" id="feedback-panel">
+        <h2>Retour du coach</h2>
+        <div id="feedback" class="feedback empty">Tes décisions seront analysées ici.</div>
+      </section>
+
+      <section class="panel">
+        <h2>Tes statistiques</h2>
+        <div class="stats">
+          <div class="stat"><span id="s-accuracy">–</span><small>Précision</small></div>
+          <div class="stat"><span id="s-decisions">0</span><small>Décisions</small></div>
+          <div class="stat"><span id="s-hands">0</span><small>Mains</small></div>
+          <div class="stat"><span id="s-net">0 €</span><small>Gain net</small></div>
+        </div>
+        <div class="bars" id="cat-bars"></div>
+        <div class="wlp" id="s-wlp"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Conseils pour progresser</h2>
+        <ul id="tips" class="tips"><li>Joue quelques mains pour recevoir des conseils personnalisés.</li></ul>
+        <h3>Tes erreurs les plus fréquentes</h3>
+        <ol id="mistakes" class="mistakes"><li class="muted">Aucune erreur pour l'instant.</li></ol>
+        <button id="reset" class="ghost small">Réinitialiser les statistiques</button>
+      </section>
+
+      <details class="panel">
+        <summary><h2>Tableau de stratégie de base</h2></summary>
+        <p class="muted small">6 jeux, croupier reste sur 17 souple, double après séparation autorisé.
+          T = tirer, R = rester, D = doubler, S = séparer, Dr = doubler sinon rester.</p>
+        <div id="chart"></div>
+      </details>
+    </aside>
+  </main>
+
+  <script src="strategy.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

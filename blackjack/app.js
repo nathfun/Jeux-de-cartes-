@@ -1,0 +1,499 @@
+(function () {
+  'use strict';
+
+  const SUITS = ['♠', '♥', '♦', '♣'];
+  const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+  const DECKS = 6;
+  const MAX_HANDS = 4;
+  const START_BANKROLL = 1000;
+  const STORAGE_KEY = 'blackjack-coach-v1';
+  const CAT_LABELS = { hard: 'Mains dures', soft: 'Mains souples', pair: 'Paires' };
+  const $ = (id) => document.getElementById(id);
+
+  // ---------- État ----------
+  let shoe = [];
+  let bet = 10;
+  let round = null; // { dealer: [], hands: [], active, phase, decisions: [] }
+  let stats = loadStats();
+
+  function freshStats() {
+    return {
+      bankroll: START_BANKROLL,
+      decisions: 0, correct: 0,
+      cats: { hard: [0, 0], soft: [0, 0], pair: [0, 0] }, // [corrects, total]
+      mistakes: {},   // clé -> { count, played, optimal }
+      patterns: {},   // type d'erreur -> nombre
+      hands: 0, wins: 0, losses: 0, pushes: 0, blackjacks: 0,
+      net: 0, maxBetRatio: 0, recent: [], // 1/0 des 30 dernières décisions
+    };
+  }
+  function loadStats() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return Object.assign(freshStats(), JSON.parse(raw));
+    } catch (e) { /* stockage indisponible */ }
+    return freshStats();
+  }
+  function saveStats() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(stats)); } catch (e) { /* ignore */ }
+  }
+
+  // ---------- Sabot ----------
+  function buildShoe() {
+    shoe = [];
+    for (let d = 0; d < DECKS; d++)
+      for (const s of SUITS) for (const r of RANKS) shoe.push({ rank: r, suit: s });
+    for (let i = shoe.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shoe[i], shoe[j]] = [shoe[j], shoe[i]];
+    }
+  }
+  function draw() {
+    if (shoe.length === 0) buildShoe();
+    return shoe.pop();
+  }
+
+  const value = (cards) => Strategy.handValue(cards);
+  const isBlackjack = (cards) => cards.length === 2 && value(cards).total === 21;
+
+  // ---------- Rendu des cartes ----------
+  function cardEl(card, hidden) {
+    const el = document.createElement('div');
+    if (hidden) { el.className = 'card back'; return el; }
+    const red = card.suit === '♥' || card.suit === '♦';
+    el.className = 'card' + (red ? ' red' : '');
+    el.innerHTML = '<div class="tl">' + card.rank + '<br>' + card.suit + '</div>' +
+      '<div class="mid">' + card.suit + '</div>' +
+      '<div class="br">' + card.rank + '<br>' + card.suit + '</div>';
+    el.setAttribute('aria-label', card.rank + card.suit);
+    return el;
+  }
+
+  function totalText(cards) {
+    const v = value(cards);
+    if (isBlackjack(cards)) return 'Blackjack';
+    return (v.soft && v.total < 21 ? (v.total - 10) + ' / ' : '') + v.total;
+  }
+
+  function render() {
+    $('bankroll').textContent = stats.bankroll;
+    $('bet').textContent = bet;
+
+    const dc = $('dealer-cards');
+    dc.innerHTML = '';
+    const pc = $('player-hands');
+    pc.innerHTML = '';
+
+    if (round) {
+      const hideHole = round.phase === 'playing';
+      round.dealer.forEach((c, i) => dc.appendChild(cardEl(c, hideHole && i === 1)));
+      $('dealer-total').textContent = hideHole
+        ? Strategy.cardValue(round.dealer[0].rank) === 11 ? 'As' : String(Strategy.cardValue(round.dealer[0].rank))
+        : totalText(round.dealer);
+
+      round.hands.forEach((h, i) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'hand' + (round.phase === 'playing' && i === round.active ? ' active' : '');
+        const cards = document.createElement('div');
+        cards.className = 'cards';
+        h.cards.forEach((c) => cards.appendChild(cardEl(c)));
+        const info = document.createElement('div');
+        info.className = 'hand-info';
+        info.innerHTML = 'Total : <b>' + totalText(h.cards) + '</b> · Mise ' + h.bet + ' €' +
+          (h.result ? ' <span class="result ' + h.resultClass + '">' + h.result + '</span>' : '');
+        wrap.appendChild(cards);
+        wrap.appendChild(info);
+        pc.appendChild(wrap);
+      });
+    } else {
+      $('dealer-total').textContent = '';
+    }
+
+    const playing = round && round.phase === 'playing';
+    $('bet-controls').classList.toggle('hidden', playing);
+    $('play-controls').classList.toggle('hidden', !playing);
+    $('deal').disabled = bet <= 0 || bet > stats.bankroll;
+
+    if (playing) {
+      const opts = availableActions();
+      document.querySelectorAll('[data-action]').forEach((b) => {
+        b.disabled = !opts[b.dataset.action];
+      });
+    }
+    renderStats();
+  }
+
+  // ---------- Déroulement ----------
+  function availableActions() {
+    const h = round.hands[round.active];
+    const two = h.cards.length === 2;
+    const affordable = stats.bankroll >= h.bet;
+    const canDouble = two && affordable;
+    const canSplit = two && affordable && round.hands.length < MAX_HANDS &&
+      Strategy.cardValue(h.cards[0].rank) === Strategy.cardValue(h.cards[1].rank);
+    return { H: true, S: true, D: canDouble, P: canSplit };
+  }
+
+  function deal() {
+    if (bet <= 0 || bet > stats.bankroll) return;
+    if (shoe.length < DECKS * 52 * 0.25) {
+      buildShoe();
+      setMessage('Le sabot est mélangé à nouveau.');
+    }
+    stats.bankroll -= bet;
+    stats.maxBetRatio = Math.max(stats.maxBetRatio, bet / (stats.bankroll + bet));
+    round = {
+      dealer: [draw(), draw()],
+      hands: [{ cards: [draw()], bet, done: false }],
+      active: 0, phase: 'playing', decisions: [],
+    };
+    round.hands[0].cards.push(draw());
+
+    const player = round.hands[0].cards;
+    const up = Strategy.cardValue(round.dealer[0].rank);
+    const dealerBJ = isBlackjack(round.dealer);
+
+    if (isBlackjack(player) || (dealerBJ && up >= 10)) {
+      round.phase = 'over';
+      settle();
+      return;
+    }
+    setMessage('À toi de jouer !');
+    render();
+    maybeShowHint();
+  }
+
+  function act(action) {
+    if (!round || round.phase !== 'playing') return;
+    const opts = availableActions();
+    if (!opts[action]) return;
+    const h = round.hands[round.active];
+    const rec = Strategy.recommend(h.cards, round.dealer[0].rank, { canDouble: opts.D, canSplit: opts.P });
+    recordDecision(rec, action);
+
+    if (action === 'H') {
+      h.cards.push(draw());
+      const v = value(h.cards).total;
+      if (v >= 21) h.done = true;
+    } else if (action === 'S') {
+      h.done = true;
+    } else if (action === 'D') {
+      stats.bankroll -= h.bet;
+      h.bet *= 2;
+      h.doubled = true;
+      h.cards.push(draw());
+      h.done = true;
+    } else if (action === 'P') {
+      stats.bankroll -= h.bet;
+      const second = { cards: [h.cards.pop()], bet: h.bet, done: false, split: true };
+      h.split = true;
+      const aces = h.cards[0].rank === 'A';
+      h.cards.push(draw());
+      second.cards.push(draw());
+      if (aces) { h.done = true; second.done = true; }
+      round.hands.splice(round.active + 1, 0, second);
+    }
+    if (value(h.cards).total === 21) h.done = true;
+    advance();
+  }
+
+  function advance() {
+    while (round.active < round.hands.length && round.hands[round.active].done) round.active++;
+    if (round.active < round.hands.length) {
+      const h = round.hands[round.active];
+      if (h.cards.length === 1) h.cards.push(draw());
+      if (value(h.cards).total === 21) { h.done = true; return advance(); }
+      render();
+      maybeShowHint();
+      return;
+    }
+    round.phase = 'dealer';
+    const allBust = round.hands.every((h) => value(h.cards).total > 21);
+    if (!allBust) {
+      while (value(round.dealer).total < 17) round.dealer.push(draw());
+    }
+    round.phase = 'over';
+    settle();
+  }
+
+  function settle() {
+    const d = value(round.dealer).total;
+    const dealerBJ = isBlackjack(round.dealer);
+    let payout = 0, wagered = 0;
+    const single = round.hands.length === 1;
+
+    for (const h of round.hands) {
+      const p = value(h.cards).total;
+      const pBJ = single && !h.split && isBlackjack(h.cards);
+      wagered += h.bet;
+      stats.hands++;
+      let back = 0;
+      if (pBJ && dealerBJ) { back = h.bet; set(h, 'Égalité', 'push'); stats.pushes++; }
+      else if (pBJ) { back = h.bet * 2.5; set(h, 'Blackjack ! +' + h.bet * 1.5 + ' €', 'win'); stats.wins++; stats.blackjacks++; }
+      else if (dealerBJ) { set(h, 'Blackjack du croupier', 'lose'); stats.losses++; }
+      else if (p > 21) { set(h, 'Sauté', 'lose'); stats.losses++; }
+      else if (d > 21 || p > d) { back = h.bet * 2; set(h, 'Gagné +' + h.bet + ' €', 'win'); stats.wins++; }
+      else if (p === d) { back = h.bet; set(h, 'Égalité', 'push'); stats.pushes++; }
+      else { set(h, 'Perdu', 'lose'); stats.losses++; }
+      payout += back;
+    }
+    stats.bankroll += payout;
+    const net = payout - wagered;
+    stats.net += net;
+
+    let msg = net > 0 ? 'Tu gagnes ' + net + ' € !' : net < 0 ? 'Tu perds ' + (-net) + ' €.' : 'Égalité, mise rendue.';
+    if (dealerBJ) msg = 'Le croupier a un blackjack. ' + msg;
+    if (d > 21) msg = 'Le croupier saute ! ' + msg;
+    setMessage(msg);
+
+    // Leçon sur le résultat vs la décision
+    const decs = round.decisions;
+    if (decs.length) {
+      const allGood = decs.every((x) => x.good);
+      const anyBad = decs.some((x) => !x.good);
+      if (allGood && net < 0) {
+        appendFeedbackNote('Tu as bien joué et pourtant perdu : c\'est normal, l\'avantage du croupier est d\'environ 0,5 %. Juge tes décisions, pas le résultat d\'une main.');
+      } else if (anyBad && net > 0) {
+        appendFeedbackNote('Tu as gagné malgré une erreur : la chance t\'a souri, mais sur le long terme cette décision te coûte de l\'argent.');
+      }
+    }
+
+    if (stats.bankroll < 5) {
+      appendFeedbackNote('Banque épuisée ! Elle a été remise à ' + START_BANKROLL + ' € pour continuer l\'entraînement.');
+      stats.bankroll = START_BANKROLL;
+    }
+    if (bet > stats.bankroll) bet = Math.max(0, Math.min(bet, stats.bankroll));
+    saveStats();
+    render();
+  }
+
+  function set(h, text, cls) { h.result = text; h.resultClass = cls; }
+
+  // ---------- Coach ----------
+  function patternOf(rec, played) {
+    const opt = rec.action;
+    if (opt === 'P') return 'missedSplit';
+    if (played === 'P') return 'badSplit';
+    if (opt === 'D') return 'missedDouble';
+    if (played === 'D') return 'badDouble';
+    if (rec.category === 'soft') return 'soft';
+    if (opt === 'H' && played === 'S') return rec.total >= 12 ? 'standStiff' : 'standLow';
+    if (opt === 'S' && played === 'H') return rec.total >= 17 ? 'hitHigh' : 'hitStiff';
+    return 'other';
+  }
+
+  function recordDecision(rec, played) {
+    const good = rec.action === played;
+    stats.decisions++;
+    if (good) stats.correct++;
+    const cat = stats.cats[rec.category];
+    cat[1]++;
+    if (good) cat[0]++;
+    stats.recent.push(good ? 1 : 0);
+    if (stats.recent.length > 30) stats.recent.shift();
+    if (!good) {
+      const m = stats.mistakes[rec.key] || { count: 0, played: played, optimal: rec.action };
+      m.count++;
+      m.played = played;
+      m.optimal = rec.action;
+      stats.mistakes[rec.key] = m;
+      const p = patternOf(rec, played);
+      stats.patterns[p] = (stats.patterns[p] || 0) + 1;
+    }
+    round.decisions.push({ good, rec, played });
+    saveStats();
+
+    if ($('opt-coach').checked) showFeedback(rec, played, good);
+    else showFeedbackHidden();
+  }
+
+  function showFeedback(rec, played, good) {
+    const fb = $('feedback');
+    fb.className = 'feedback ' + (good ? 'good' : 'bad');
+    const L = Strategy.ACTION_LABELS;
+    fb.innerHTML = '<div class="verdict">' + (good
+      ? '✔ Bonne décision : ' + L[played]
+      : '✘ Tu as choisi « ' + L[played] + ' », il fallait « ' + L[rec.action] + ' »') + '</div>' +
+      '<div class="muted small">' + rec.key + '</div>' +
+      '<div>' + rec.reason + '</div>';
+    highlightChart(rec);
+  }
+
+  function showFeedbackHidden() {
+    const fb = $('feedback');
+    fb.className = 'feedback empty';
+    fb.textContent = 'Coach en direct désactivé : consulte tes statistiques et conseils ci-dessous.';
+  }
+
+  function appendFeedbackNote(text) {
+    const fb = $('feedback');
+    if (fb.classList.contains('empty')) { fb.className = 'feedback hint'; fb.innerHTML = ''; }
+    const p = document.createElement('p');
+    p.className = 'small';
+    p.style.margin = '.6rem 0 0';
+    p.textContent = '📌 ' + text;
+    fb.appendChild(p);
+  }
+
+  function showHint() {
+    if (!round || round.phase !== 'playing') return;
+    const h = round.hands[round.active];
+    const opts = availableActions();
+    const rec = Strategy.recommend(h.cards, round.dealer[0].rank, { canDouble: opts.D, canSplit: opts.P });
+    const fb = $('feedback');
+    fb.className = 'feedback hint';
+    fb.innerHTML = '<div class="verdict">💡 Conseil : ' + rec.label + '</div>' +
+      '<div class="muted small">' + rec.key + '</div><div>' + rec.reason + '</div>';
+    highlightChart(rec);
+  }
+  function maybeShowHint() { if ($('opt-hint').checked) showHint(); }
+
+  const PATTERN_TIPS = {
+    standStiff: 'Tu restes trop souvent avec 12-16 contre une carte forte (7 à As). Le croupier finira probablement à 17+ : il faut tirer, même si c\'est risqué.',
+    hitStiff: 'Tu tires trop avec 12-16 contre une carte faible (2 à 6). Le croupier saute dans ~40 % des cas : laisse-le prendre le risque.',
+    hitHigh: 'Ne tire jamais sur 17 dur ou plus : plus de 69 % des cartes te feraient sauter.',
+    standLow: 'Avec 11 ou moins tu ne peux pas sauter : il faut toujours prendre une carte (ou doubler).',
+    missedDouble: 'Tu ne doubles pas assez. Avec 10 ou 11, ou une main souple contre un croupier faible, doubler est l\'arme principale du joueur.',
+    badDouble: 'Tu doubles dans de mauvaises situations. Réserve le double aux totaux 9-11 et aux mains souples contre 2-6.',
+    missedSplit: 'Pense à séparer : toujours les As et les 8, et les petites paires (2, 3, 6, 7) contre une carte faible.',
+    badSplit: 'Évite de séparer les 10, les 5 et les petites paires contre une carte forte du croupier.',
+    soft: 'Les mains souples (avec un As compté 11) te posent problème : rappelle-toi qu\'elles ne peuvent pas sauter en tirant une carte, sois plus agressif.',
+  };
+
+  function buildTips() {
+    const tips = [];
+    if (stats.decisions < 5) return ['Joue quelques mains pour recevoir des conseils personnalisés.'];
+
+    const acc = stats.correct / stats.decisions;
+    const recent = stats.recent.length ? stats.recent.reduce((a, b) => a + b, 0) / stats.recent.length : acc;
+
+    // Erreurs récurrentes
+    const pats = Object.entries(stats.patterns).sort((a, b) => b[1] - a[1]);
+    for (const [p, n] of pats.slice(0, 3)) {
+      if (PATTERN_TIPS[p] && n >= 1) tips.push(PATTERN_TIPS[p] + ' (' + n + '×)');
+    }
+
+    // Catégorie la plus faible
+    let worst = null;
+    for (const k of Object.keys(stats.cats)) {
+      const [c, t] = stats.cats[k];
+      if (t >= 4 && c / t < 0.85 && (!worst || c / t < worst.r)) worst = { k, r: c / t };
+    }
+    if (worst) tips.push('Ta catégorie la plus faible : ' + CAT_LABELS[worst.k].toLowerCase() + ' (' + Math.round(worst.r * 100) + ' %). Ouvre le tableau de stratégie et révise cette section.');
+
+    // Progression
+    if (stats.decisions >= 30 && recent > acc + 0.05) tips.push('Tu progresses : ta précision récente (' + Math.round(recent * 100) + ' %) dépasse ta moyenne. Continue !');
+    else if (stats.decisions >= 30 && recent < acc - 0.08) tips.push('Ta précision baisse sur les dernières mains : prends ton temps ou active « Afficher le conseil » quelques mains.');
+
+    // Gestion de la banque
+    if (stats.maxBetRatio > 0.1) tips.push('Gestion de la banque : tu as déjà misé ' + Math.round(stats.maxBetRatio * 100) + ' % de ta banque sur une seule main. Vise plutôt 1 à 5 % pour encaisser les séries perdantes.');
+
+    if (acc >= 0.95 && stats.decisions >= 50) {
+      tips.push('Excellent : ta stratégie de base est quasi parfaite ! Désactive le coach en direct pour te tester, puis intéresse-toi au comptage de cartes (Hi-Lo).');
+    }
+    tips.push('Ne prends jamais l\'assurance : elle a une espérance négative sans comptage de cartes.');
+    return tips;
+  }
+
+  function renderStats() {
+    const acc = stats.decisions ? Math.round((stats.correct / stats.decisions) * 100) + ' %' : '–';
+    $('s-accuracy').textContent = acc;
+    $('s-decisions').textContent = stats.decisions;
+    $('s-hands').textContent = stats.hands;
+    $('s-net').textContent = (stats.net > 0 ? '+' : '') + stats.net + ' €';
+    $('s-net').style.color = stats.net > 0 ? 'var(--good)' : stats.net < 0 ? 'var(--bad)' : '';
+
+    const bars = $('cat-bars');
+    bars.innerHTML = '';
+    for (const k of Object.keys(CAT_LABELS)) {
+      const [c, t] = stats.cats[k];
+      const r = t ? c / t : 0;
+      const row = document.createElement('div');
+      row.className = 'bar-row';
+      const cls = r >= 0.9 ? '' : r >= 0.75 ? 'mid' : 'low';
+      row.innerHTML = '<span>' + CAT_LABELS[k] + '</span><div class="bar"><div class="' + cls + '" style="width:' + (t ? r * 100 : 0) + '%"></div></div>' +
+        '<span class="muted">' + (t ? Math.round(r * 100) + ' %' : '–') + '</span>';
+      bars.appendChild(row);
+    }
+    $('s-wlp').textContent = 'Victoires ' + stats.wins + ' · Défaites ' + stats.losses + ' · Égalités ' + stats.pushes + ' · Blackjacks ' + stats.blackjacks;
+
+    $('tips').innerHTML = buildTips().map((t) => '<li>' + t + '</li>').join('');
+
+    const L = Strategy.ACTION_LABELS;
+    const ms = Object.entries(stats.mistakes).sort((a, b) => b[1].count - a[1].count).slice(0, 5);
+    $('mistakes').innerHTML = ms.length
+      ? ms.map(([k, m]) => '<li><b>' + k + '</b> : tu as fait « ' + L[m.played] + ' », il faut « ' + L[m.optimal] + ' » <span class="muted">(' + m.count + '×)</span></li>').join('')
+      : '<li class="muted">Aucune erreur pour l\'instant.</li>';
+  }
+
+  // ---------- Tableau de stratégie ----------
+  const CHART_LABELS = { H: 'T', S: 'R', D: 'D', Ds: 'Dr', P: 'S' };
+  function renderChart() {
+    const ch = Strategy.chart();
+    const head = '<tr><th></th>' + ch.ups.map((u) => '<th>' + (u === 11 ? 'A' : u) + '</th>').join('') + '</tr>';
+    const table = (title, rows) => '<table><caption>' + title + '</caption>' + head +
+      rows.map((r) => '<tr data-row="' + r.key + '"><th>' + r.label + '</th>' +
+        r.cells.map((c, i) => '<td class="' + c + '" data-col="' + ch.ups[i] + '">' + CHART_LABELS[c] + '</td>').join('') + '</tr>').join('') +
+      '</table>';
+    $('chart').innerHTML = table('Mains dures', ch.hard) + table('Mains souples', ch.soft) + table('Paires', ch.pairs);
+  }
+
+  function highlightChart(rec) {
+    document.querySelectorAll('#chart td.current').forEach((td) => td.classList.remove('current'));
+    if (!round) return;
+    const up = Strategy.cardValue(round.dealer[0].rank);
+    let rowKey;
+    if (rec.category === 'pair') {
+      const h = round.hands[round.active] || round.hands[0];
+      rowKey = 'pair-' + Strategy.cardValue(h.cards[0].rank);
+    } else if (rec.category === 'soft') {
+      if (rec.total < 13 || rec.total > 20) return;
+      rowKey = 'soft-' + rec.total;
+    } else {
+      rowKey = 'hard-' + Math.min(17, Math.max(8, rec.total));
+    }
+    const td = document.querySelector('#chart tr[data-row="' + rowKey + '"] td[data-col="' + up + '"]');
+    if (td) td.classList.add('current');
+  }
+
+  function setMessage(t) { $('message').textContent = t; }
+
+  // ---------- Événements ----------
+  document.querySelectorAll('[data-chip]').forEach((b) => b.addEventListener('click', () => {
+    const v = parseInt(b.dataset.chip, 10);
+    if (bet + v <= stats.bankroll) bet += v;
+    render();
+  }));
+  $('clear-bet').addEventListener('click', () => { bet = 0; render(); });
+  $('deal').addEventListener('click', deal);
+  document.querySelectorAll('[data-action]').forEach((b) => b.addEventListener('click', () => act(b.dataset.action)));
+  $('hint').addEventListener('click', showHint);
+  $('opt-hint').addEventListener('change', maybeShowHint);
+  $('reset').addEventListener('click', () => {
+    if (!confirm('Réinitialiser toutes les statistiques et la banque ?')) return;
+    stats = freshStats();
+    saveStats();
+    round = null;
+    bet = 10;
+    $('feedback').className = 'feedback empty';
+    $('feedback').textContent = 'Tes décisions seront analysées ici.';
+    setMessage('Place ta mise et clique sur « Distribuer ».');
+    render();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT') return;
+    const k = e.key.toLowerCase();
+    if (round && round.phase === 'playing') {
+      const map = { t: 'H', r: 'S', d: 'D', s: 'P' };
+      if (map[k]) act(map[k]);
+      else if (k === 'c') showHint();
+    } else if (k === 'enter' || k === ' ') {
+      e.preventDefault();
+      deal();
+    }
+  });
+
+  buildShoe();
+  renderChart();
+  render();
+})();
