@@ -85,7 +85,7 @@
     let pseudo = '';
     try { pseudo = localStorage.getItem('bj-pseudo') || ''; } catch (e) { /* ignore */ }
     return {
-      pseudo, avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)], wallet: 5000, xp: 0,
+      pseudo, avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)], wallet: 10000, xp: 0,
       totals: { hands: 0, wins: 0, bjHands: 0, bjBlackjacks: 0, pkHands: 0, rlSpins: 0, slSpins: 0, biggestWin: 0, challenges: 0 },
       achievements: {}, daily: null, bonus: { last: null, streak: 0 }, rescueAt: 0, sessions: {}, timebank: null,
       equipped: { felt: 'vert', back: 'bleu' }, settings: { music: false, vibrate: true }, createdAt: Date.now(),
@@ -280,10 +280,11 @@
 
   // ---------- Banque du temps ----------
   const TIME_PACKS = [
-    { id: 'cafe', icon: '☕', name: 'Pause café', minutes: 5, amount: 250 },
-    { id: 'repas', icon: '🍔', name: 'Pause repas', minutes: 30, amount: 1000 },
-    { id: 'soiree', icon: '🌙', name: 'Soirée', minutes: 120, amount: 3000 },
-    { id: 'nuit', icon: '🛌', name: 'Nuit complète', minutes: 480, amount: 8000 },
+    // plus l'attente est longue, plus chaque minute rapporte : enchaîner les petites pauses n'est jamais plus rentable
+    { id: 'cafe', icon: '☕', name: 'Pause café', minutes: 5, amount: 100 },       // 20 €/min
+    { id: 'repas', icon: '🍔', name: 'Pause repas', minutes: 30, amount: 1000 },   // 33 €/min
+    { id: 'soiree', icon: '🌙', name: 'Soirée', minutes: 120, amount: 4500 },      // 37,5 €/min
+    { id: 'nuit', icon: '🛌', name: 'Nuit complète', minutes: 480, amount: 20000 }, // 41,7 €/min
   ];
 
   // ---------- Choix du mode avant une partie solo ----------

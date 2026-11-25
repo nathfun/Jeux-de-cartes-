@@ -202,7 +202,7 @@
 
     <section class="panel" aria-label="Banque du temps">
       <h2>⏳ Banque du temps</h2>
-      <p class="muted small-p">Ici, l'argent ne tombe pas du ciel : il s'achète avec du temps. Lance une attente, reviens quand elle est finie et encaisse. Une seule à la fois, et le compteur tourne même app fermée.</p>
+      <p class="muted small-p">Ici, l'argent ne tombe pas du ciel : il s'achète avec du temps. Lance une attente, reviens quand elle est finie et encaisse. Plus l'attente est longue, plus chaque minute rapporte. Une seule à la fois, et le compteur tourne même app fermée.</p>
       <div id="timebank" class="timebank"></div>
     </section>
 
@@ -422,7 +422,7 @@
             const i = document.createElement('span'); i.className = 'ti'; i.textContent = p.icon;
             const n = document.createElement('b'); n.textContent = p.name;
             const a = document.createElement('span'); a.className = 'ta'; a.textContent = '+' + fmt(p.amount) + ' €';
-            const sm = document.createElement('small'); sm.textContent = 'contre ' + packLen(p) + ' d\'attente';
+            const sm = document.createElement('small'); sm.textContent = 'contre ' + packLen(p) + ' d\'attente · ' + (Math.round(p.amount / p.minutes * 10) / 10).toLocaleString('fr-FR') + ' €/min';
             b.append(i, n, a, sm);
             b.addEventListener('click', () => { Casino.startTime(p.id); Casino.toast('Banque du temps', p.name + ' lancée : reviens dans ' + packLen(p) + ' pour encaisser ' + fmt(p.amount) + ' €.', '⏳'); render(); });
             box.appendChild(b);
