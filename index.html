@@ -57,6 +57,9 @@
     .mini-rocket { margin-top: auto; display: flex; align-items: center; gap: .6rem; }
     .mr-mult { font-weight: 900; font-size: 1.6rem; color: #fff; text-shadow: 0 0 16px rgba(34,211,238,.7); }
     .mr-rocket { font-size: 2rem; transform: rotate(-10deg); }
+    .game.trader { background: radial-gradient(ellipse at 80% 10%, #0f3b4a 0%, #0b1440 55%, #050816 100%); border-color: #0e7490; }
+    .game.trader h2 { background: linear-gradient(90deg, #34d399, #22d3ee, #a78bfa); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .mini-chart { margin-top: auto; height: 34px; max-width: 180px; }
     .game.plinko { background: radial-gradient(ellipse at 30% 10%, #3b1a6e 0%, #0b1440 55%, #050816 100%); border-color: #6d28d9; }
     .game.plinko h2 { background: linear-gradient(90deg, #f472b6, #a78bfa, #22d3ee); -webkit-background-clip: text; background-clip: text; color: transparent; }
     .mini-plinko { margin-top: auto; display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; max-width: 170px; }
@@ -357,6 +360,12 @@
         <div class="tags"><span>Nouveau</span><span>Jusqu'à ×1 000</span><span>RTP 97 %</span></div>
         <div class="mini-plinko" aria-hidden="true"><b></b><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
       </a>
+      <a class="game trader" href="trader/index.html">
+        <h2>Bourse Flash</h2>
+        <p>Trois actions cotent en direct : achète si ça va monter, vends si ça va baisser, et clôture au bon moment. Effet de levier, krachs, envolées… et liquidation !</p>
+        <div class="tags"><span>Nouveau</span><span>Levier ×20</span><span>Achat / Vente</span></div>
+        <svg class="mini-chart" viewBox="0 0 180 34" aria-hidden="true"><defs><linearGradient id="mc" x1="0" x2="1"><stop offset="0" stop-color="#f472b6"/><stop offset="1" stop-color="#34d399"/></linearGradient></defs><polyline fill="none" stroke="url(#mc)" stroke-width="2.5" stroke-linejoin="round" points="0,22 15,18 28,24 42,14 55,17 66,26 78,30 90,21 104,23 118,12 130,15 144,8 158,11 170,4 180,6"/></svg>
+      </a>
       <a class="game slots" href="slots/index.html">
         <h2>Machine à sous</h2>
         <p>5 rouleaux, 10 lignes, jokers, tours gratuits à gains doublés et un jackpot pour cinq 7️⃣. Les aides expliquent chaque gain et le vrai taux de retour.</p>
@@ -547,7 +556,7 @@
         $('bonus').textContent = b.available ? '🎁 Bonus du jour : +' + fmt(b.amount) + ' €' + (b.streak > 1 ? ' (série de ' + b.streak + ' jours)' : '') : '✔ Bonus récupéré · série de ' + b.streak + ' jour' + (b.streak > 1 ? 's' : '') + ' · reviens demain';
         const ses = Casino.sessions();
         const ip = $('in-play'); ip.innerHTML = '';
-        const paths = { blackjack: 'blackjack/index.html', poker: 'poker/index.html', roulette: 'roulette/index.html', slots: 'slots/index.html', crash: 'crash/index.html', plinko: 'plinko/index.html' };
+        const paths = { blackjack: 'blackjack/index.html', poker: 'poker/index.html', roulette: 'roulette/index.html', slots: 'slots/index.html', crash: 'crash/index.html', plinko: 'plinko/index.html', trader: 'trader/index.html' };
         Object.keys(ses).forEach((g) => {
           const a = document.createElement('a'); a.href = paths[g] || '#';
           a.textContent = '🎲 ' + (Casino.GAMES[g] || g) + ' : ' + fmt(ses[g].stack) + ' € sur la table';
@@ -735,7 +744,7 @@
           box.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="Évolution de ta banque"><polyline points="' + pts + '" fill="none" stroke="' + (up ? '#3fb950' : '#f85149') + '" stroke-width="2.5" vector-effect="non-scaling-stroke"/></svg>'
             + '<div class="bc-legend"><span>' + days[0].slice(5).split('-').reverse().join('/') + ' : ' + fmt(vals[0]) + ' €</span><span>min ' + fmt(mn) + ' € · max ' + fmt(mx) + ' €</span><span>aujourd\'hui : <b>' + fmt(vals[vals.length - 1]) + ' €</b></span></div>';
         }
-        const NAMES = { bj: '🂡 Blackjack', pk: '♠ Poker', rl: '🎡 Roulette', sl: '🎰 Machine à sous', cr: '🚀 Rocket Crash', pl: '🔮 Plinko' };
+        const NAMES = { bj: '🂡 Blackjack', pk: '♠ Poker', rl: '🎡 Roulette', sl: '🎰 Machine à sous', cr: '🚀 Rocket Crash', pl: '🔮 Plinko', tr: '📈 Bourse Flash' };
         const nb = (P.totals && P.totals.netBy) || {};
         const g = $('bank-games'); g.innerHTML = '';
         Object.keys(NAMES).forEach((k) => {

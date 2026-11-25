@@ -263,7 +263,7 @@
   // synthwave (Rocket Crash). Mesures de 3 s dans tous les cas.
   const hz = (m) => 440 * Math.pow(2, (m - 69) / 12);
   const chord = (bass, ...ns) => ({ bass: hz(bass), notes: ns.map(hz) });
-  const STYLE = /\/(crash|plinko)\//.test(location.pathname) ? 'synth' : /\/(roulette|slots)\//.test(location.pathname) ? 'vegas' : /\/poker\//.test(location.pathname) ? 'jazz' : 'lounge';
+  const STYLE = /\/(crash|plinko|trader)\//.test(location.pathname) ? 'synth' : /\/(roulette|slots)\//.test(location.pathname) ? 'vegas' : /\/poker\//.test(location.pathname) ? 'jazz' : 'lounge';
   const PROGS = {
     jazz: [chord(38, 65, 69, 72, 76), chord(43, 65, 69, 71, 76), chord(36, 64, 67, 71, 74), chord(45, 61, 67, 70, 73)],      // Dm9 G13 Cmaj9 A7b9
     vegas: [chord(36, 64, 67, 69, 72), chord(45, 64, 67, 69, 72), chord(38, 65, 69, 72, 74), chord(43, 65, 67, 71, 74)],     // C6 Am7 Dm7 G7

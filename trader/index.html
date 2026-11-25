@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Bourse Flash</title>
+  <meta name="theme-color" content="#070a1f">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../icons/icon-192.png">
+  <link rel="stylesheet" href="../crash/style.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="../firebase-config.js"></script>
+  <script src="../gate.js"></script>
+</head>
+<body class="crash-page trader-page">
+  <header class="topbar">
+    <h1><a id="home-link" class="home-link" href="../index.html" hidden aria-label="Retour au casino">←</a> 📈 Bourse Flash</h1>
+    <div class="bank">
+      <span id="bank-label">Banque</span> : <strong id="wallet">–</strong> €
+      <button id="music-toggle" class="ghost icon-btn" type="button">🎵</button><button id="sound-toggle" class="ghost icon-btn" type="button">🔊</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <div class="main-col">
+      <section id="setup" class="glass setup">
+        <h2>📈 Bourse Flash</h2>
+        <p class="muted">Trois actions s'échangent en direct. <b>Achète</b> si tu penses que le cours va monter, <b>vends</b> si tu penses qu'il va baisser, puis clôture au bon moment. Avec l'effet de levier, les gains… et les pertes sont multipliés. Attention aux krachs !</p>
+        <div id="mode-picker"></div>
+      </section>
+
+      <section id="game" class="game" hidden>
+        <div id="mode-badge" class="mode-badge" hidden></div>
+        <div id="assets" class="assets" role="tablist" aria-label="Actions"></div>
+
+        <div id="stage" class="stage tr-stage">
+          <canvas id="scene" aria-hidden="true"></canvas>
+          <div class="tr-hud">
+            <div class="tr-quote"><span id="q-name">–</span><b id="q-price">–</b><em id="q-change">–</em></div>
+            <div id="halt" class="tr-halt" hidden>⏸ COTATION SUSPENDUE</div>
+          </div>
+          <div id="news" class="tr-news" hidden></div>
+          <div id="toast" class="stage-toast" hidden></div>
+        </div>
+
+        <div class="controls glass">
+          <div class="bet-side">
+            <label class="field">
+              <span>Mise</span>
+              <div class="bet-input">
+                <button id="bet-half" type="button" aria-label="Diviser la mise par deux">½</button>
+                <input id="bet" type="number" min="1" max="500" step="1" value="20" inputmode="numeric" aria-label="Montant de la mise">
+                <button id="bet-double" type="button" aria-label="Doubler la mise">×2</button>
+              </div>
+            </label>
+            <div class="quick" id="quick">
+              <button type="button" data-v="5">5 €</button><button type="button" data-v="10">10 €</button><button type="button" data-v="20">20 €</button>
+              <button type="button" data-v="50">50 €</button><button type="button" data-v="100">100 €</button><button type="button" data-v="250">250 €</button>
+            </div>
+            <div class="field"><span>Effet de levier</span>
+              <div class="seg" id="lev" role="radiogroup" aria-label="Effet de levier"></div>
+            </div>
+            <div class="tr-auto">
+              <label class="field"><span>Objectif de gain</span><div class="auto-row"><span class="x">+</span><input id="tp" type="number" min="1" step="5" placeholder="ex. 50" inputmode="numeric" aria-label="Clôturer automatiquement à ce gain en pourcentage"><span class="x">%</span></div></label>
+              <label class="field"><span>Limite de perte</span><div class="auto-row"><span class="x">−</span><input id="sl" type="number" min="1" max="80" step="5" placeholder="ex. 30" inputmode="numeric" aria-label="Clôturer automatiquement à cette perte en pourcentage"><span class="x">%</span></div></label>
+            </div>
+          </div>
+          <div class="action-side">
+            <div class="potential"><span id="move-label">Si le cours bouge de 1 %</span><b id="potential">–</b></div>
+            <div class="tr-buttons">
+              <button id="buy-btn" class="btn-buy" type="button">ACHETER<small>▲ hausse</small></button>
+              <button id="sell-btn" class="btn-sell" type="button">VENDRE<small>▼ baisse</small></button>
+            </div>
+            <div class="balance"><span>Frais d'ouverture</span><b id="fee">–</b></div>
+            <div class="balance"><span id="stack-label">Sur la table</span><b id="stack">–</b></div>
+            <button id="end-btn" class="btn-ghost" type="button">Tout clôturer, encaisser et quitter</button>
+          </div>
+        </div>
+
+        <section class="glass">
+          <div class="tr-pos-head"><h2>Mes positions <small id="pos-count" class="muted"></small></h2><button id="close-all" class="btn-ghost" type="button" hidden>Tout clôturer</button></div>
+          <div id="positions" class="positions"><p class="muted small">Aucune position ouverte. Choisis une action, une mise, un levier, puis achète ou vends.</p></div>
+        </section>
+      </section>
+    </div>
+
+    <aside class="side">
+      <section id="aides" class="glass">
+        <h2>🎓 Aides</h2>
+        <div id="aides-body" class="aides-body"></div>
+      </section>
+      <section class="glass">
+        <h2>Tes statistiques <small id="stats-mode" class="muted"></small></h2>
+        <div class="stats">
+          <div class="stat"><span id="s-rounds">0</span><small>Positions</small></div>
+          <div class="stat"><span id="s-wagered">0 €</span><small>Misé</small></div>
+          <div class="stat"><span id="s-won">0 €</span><small>Récupéré</small></div>
+          <div class="stat"><span id="s-net">0 €</span><small>Bénéfice</small></div>
+        </div>
+        <p class="muted small" id="s-best"></p>
+        <h3>Mes dernières positions</h3>
+        <ol id="my-bets" class="my-bets"><li class="muted">Aucune position pour l'instant.</li></ol>
+      </section>
+      <details class="glass fair">
+        <summary><h2>🔐 Comment le cours est tiré</h2></summary>
+        <p class="small muted">Le cours suit une marche au hasard « équitable » : en moyenne il ne monte ni ne descend (à chaque quart de seconde, prix × e<sup>σ√Δt·Z − σ²Δt/2</sup>), avec de temps en temps un krach ou une envolée de même taille dans les deux sens. Il est tiré avec le générateur cryptographique de ton appareil et <b>ne dépend jamais de tes positions</b>.</p>
+        <p class="small muted">Le casino gagne grâce aux <b>frais</b> (0,3 % de la somme engagée = mise × levier) et à la <b>liquidation</b> (la position est fermée quand il ne reste que 15 % de ta mise). Pendant un krach ou une envolée, la cotation est suspendue 2 secondes : on ne peut ni ouvrir ni clôturer.</p>
+      </details>
+    </aside>
+  </main>
+
+  <script src="../sounds.js"></script>
+  <script src="../casino-rules.js"></script>
+  <script src="../profile.js"></script>
+  <script src="../account.js"></script>
+  <script src="engine.js"></script>
+  <script src="scene.js"></script>
+  <script src="app.js"></script>
+  <script src="../pwa.js"></script>
+</body>
+</html>

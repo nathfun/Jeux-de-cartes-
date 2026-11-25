@@ -1,0 +1,65 @@
+/* ================= Bourse Flash (même direction artistique que Rocket Crash) ================= */
+.assets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
+.asset { display: flex; flex-direction: column; align-items: flex-start; gap: .1rem; text-align: left; background: var(--c-glass); border: 1px solid var(--c-line); border-radius: 14px; padding: .5rem .7rem; color: #fff; min-width: 0; }
+.asset:hover:not(:disabled) { background: rgba(139, 92, 246, .18); border-color: var(--c-violet); }
+.asset.on { border-color: var(--c-cyan); box-shadow: 0 0 0 1px rgba(34, 211, 238, .4), 0 0 18px rgba(34, 211, 238, .2); background: rgba(34, 211, 238, .08); }
+.asset .a-name { font-size: .78rem; font-weight: 700; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.asset .a-price { font-size: 1.05rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+.asset .a-chg { font-size: .78rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.asset.halted { animation: haltBlink .5s ease-in-out infinite alternate; }
+@keyframes haltBlink { to { border-color: var(--c-red); } }
+.up { color: var(--c-green); } .down { color: #ff8fa3; }
+.tr-stage { aspect-ratio: 16 / 8.5; min-height: 260px; }
+.tr-hud { position: absolute; inset: 10px 12px auto 12px; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; gap: .5rem; flex-wrap: wrap; }
+.tr-quote { display: flex; align-items: baseline; gap: .55rem; background: rgba(5, 7, 26, .6); border: 1px solid var(--c-line); border-radius: 12px; padding: .3rem .7rem; backdrop-filter: blur(6px); }
+.tr-quote span { font-size: .78rem; font-weight: 800; color: rgba(203, 213, 255, .8); letter-spacing: .05em; }
+.tr-quote b { font-size: 1.3rem; font-weight: 900; font-variant-numeric: tabular-nums; color: #fff; }
+.tr-quote em { font-style: normal; font-weight: 800; font-size: .85rem; font-variant-numeric: tabular-nums; }
+.tr-halt { background: rgba(255, 77, 109, .2); border: 1px solid rgba(255, 77, 109, .7); color: #fecdd3; font-weight: 900; font-size: .8rem; letter-spacing: .1em; border-radius: 999px; padding: .35rem .8rem; animation: chipIn .3s ease-out both; }
+.tr-halt.up { background: rgba(52, 211, 153, .2); border-color: rgba(52, 211, 153, .7); color: #a7f3d0; }
+.tr-news { position: absolute; left: 12px; right: 12px; bottom: 12px; background: rgba(5, 7, 26, .82); border: 1px solid var(--c-line); border-left: 4px solid var(--c-pink); border-radius: 12px; padding: .45rem .8rem; font-weight: 800; font-size: .9rem; animation: chipIn .35s ease-out both; pointer-events: none; }
+.tr-news.up { border-left-color: var(--c-green); }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: .3rem; }
+.seg button { background: rgba(139, 92, 246, .12); border: 1px solid var(--c-line); color: #ddd6fe; border-radius: 12px; font-weight: 800; padding: .45rem 0; font-size: .85rem; }
+.seg button:hover:not(:disabled) { background: rgba(139, 92, 246, .28); border-color: var(--c-violet); }
+.seg button.on { background: rgba(34, 211, 238, .2); border-color: var(--c-cyan); color: #cffafe; box-shadow: 0 0 12px rgba(34, 211, 238, .25); }
+.bet-side { display: flex; flex-direction: column; gap: .55rem; }
+.bet-side .quick { margin: 0; }
+.tr-auto { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.tr-auto .auto-row input { font-size: 1rem; padding: .45rem .5rem; }
+.tr-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.btn-buy, .btn-sell { border: 0; border-radius: 16px; padding: .9rem .4rem; font-size: 1.15rem; font-weight: 900; letter-spacing: .05em; color: #fff; transition: transform .08s, filter .2s; }
+.btn-buy small, .btn-sell small { display: block; font-size: .78rem; font-weight: 700; letter-spacing: 0; opacity: .9; }
+.btn-buy { background: linear-gradient(135deg, #10b981, var(--c-cyan)); color: #032b2a; box-shadow: 0 8px 24px rgba(16, 185, 129, .35); }
+.btn-sell { background: linear-gradient(135deg, var(--c-pink), var(--c-red)); box-shadow: 0 8px 24px rgba(244, 114, 182, .35); }
+.btn-buy:hover:not(:disabled), .btn-sell:hover:not(:disabled) { filter: brightness(1.1); }
+.btn-buy:hover:not(:disabled) { background: linear-gradient(135deg, #10b981, var(--c-cyan)); }
+.btn-sell:hover:not(:disabled) { background: linear-gradient(135deg, var(--c-pink), var(--c-red)); }
+.btn-buy:active:not(:disabled), .btn-sell:active:not(:disabled) { transform: scale(.97); }
+.tr-pos-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.tr-pos-head h2 { margin: 0; }
+.positions { display: flex; flex-direction: column; gap: .45rem; margin-top: .6rem; }
+.pos { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: .3rem .7rem; align-items: center; background: rgba(5, 7, 26, .55); border: 1px solid var(--c-line); border-radius: 14px; padding: .5rem .7rem; }
+.pos.buy { border-left: 4px solid var(--c-cyan); } .pos.sell { border-left: 4px solid #fb923c; }
+.pos .p-ic { font-size: 1.4rem; }
+.pos .p-main { min-width: 0; font-size: .85rem; }
+.pos .p-main b { display: block; font-size: .92rem; }
+.pos .p-main span { color: var(--muted); font-variant-numeric: tabular-nums; }
+.pos .p-pnl { text-align: right; font-weight: 900; font-variant-numeric: tabular-nums; font-size: 1.05rem; }
+.pos .p-pnl small { display: block; font-size: .75rem; font-weight: 700; }
+.pos .p-close { border-radius: 12px; font-weight: 800; background: rgba(139, 92, 246, .18); border: 1px solid var(--c-line); color: #ede9fe; padding: .5rem .7rem; }
+.pos .p-close:hover:not(:disabled) { background: rgba(139, 92, 246, .35); }
+.pos .p-risk { grid-column: 1 / -1; height: 5px; border-radius: 999px; background: rgba(255, 255, 255, .08); overflow: hidden; }
+.pos .p-risk i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--c-green), #facc15, var(--c-red)); transition: width .2s; }
+.pos .p-risk-label { grid-column: 1 / -1; font-size: .7rem; color: var(--muted); margin-top: -.15rem; }
+.my-bets li { grid-template-columns: 1fr auto; }
+@media (max-width: 640px) {
+  .tr-stage { aspect-ratio: 4 / 3.3; }
+  .assets { gap: .35rem; } .asset { padding: .4rem .5rem; } .asset .a-price { font-size: .92rem; }
+  .bet-side .quick { grid-template-columns: repeat(6, 1fr); }
+  .pos { grid-template-columns: auto minmax(0, 1fr) auto; } .pos .p-close { grid-column: 1 / -1; }
+}
+.trader-page .controls { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+.bet-side, .action-side, .tr-auto .field { min-width: 0; }
+.tr-auto .auto-row input { width: 100%; }
+@media (max-width: 640px) { .trader-page .controls { grid-template-columns: minmax(0, 1fr); } .seg button { font-size: .78rem; } }
