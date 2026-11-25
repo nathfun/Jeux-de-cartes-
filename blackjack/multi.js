@@ -12,7 +12,7 @@
   const DECKS = 6;
   const SEATS = 5;
   const START_BANKROLL = 1000;
-  const TURN_TIMEOUT = 30000; // après 30 s, un autre joueur peut faire rester la main
+  const CARD_MS = 700;        // temps d'animation compté par carte distribuée, ajouté aux minuteurs
   const L = Strategy.ACTION_LABELS;
 
   let net = null;           // couche réseau (voir net.js)
@@ -63,7 +63,17 @@
   function emptySeat() { return { owner: null, bet: 0, pp: 0, t213: 0, hands: [], side: '' }; }
 
   // Réglages choisis par l'hôte à la création de la table
-  function defaultSettings() { return { coach: true, sides: true, bankroll: START_BANKROLL }; }
+  // Une manche est en cours (assurance ou jeu) : mises et places figées
+  const inPlay = (st) => st.phase === 'playing' || st.phase === 'insurance';
+  // La carte cachée du croupier reste face cachée pendant l'assurance et le jeu
+  const holeHidden = inPlay;
+  function defaultSettings() { return { coach: true, sides: true, bankroll: START_BANKROLL, turnTime: 20, betTime: 15 }; }
+  const now = () => Date.now();
+  // Démarre le minuteur des mises s'il ne tourne pas déjà
+  function armBetTimer(st, extraMs) {
+    if (st.phase === 'playing' || st.phase === 'insurance') return;
+    if (!st.betDeadline || extraMs) st.betDeadline = now() + st.settings.betTime * 1000 + (extraMs || 0);
+  }
   const startMoney = (st) => (st.settings && st.settings.bankroll) || START_BANKROLL;
 
   function initialState(name, settings) {
@@ -116,25 +126,45 @@
     st.seats[i] = emptySeat();
     st.seats[i].owner = me;
     st.seats[i].bet = 10;
+    armBetTimer(st);
   }
   function opLeave(st, i) {
     const seat = st.seats[i];
     if (seat.owner !== me) return false;
-    if (st.phase === 'playing' && seatHasHands(seat)) return false;
+    if (inPlay(st) && seatHasHands(seat)) return false;
     st.seats[i] = emptySeat();
   }
   function opBet(st, i, field, amount) {
     const seat = st.seats[i];
-    if (seat.owner !== me || st.phase === 'playing') return false;
+    if (seat.owner !== me || inPlay(st)) return false;
     if (field === 'bet') seat.bet = amount === 0 ? 0 : Math.min(500, seat.bet + amount);
     else if (st.settings.sides) seat[field] = amount;
     else return false;
+    seat.ready = false;
+    if (seat.bet > 0) armBetTimer(st);
+  }
+
+  // « Je mise » : mes places sont prêtes ; quand tous les joueurs ont misé, la donne part tout de suite
+  function opReady(st) {
+    if (st.phase === 'playing' || st.phase === 'insurance') return false;
+    let mine = 0;
+    st.seats.forEach((s) => { if (s.owner === me && s.bet > 0) { s.ready = true; mine++; } });
+    if (!mine) return false;
+    armBetTimer(st);
+    const betting = st.seats.filter((s) => s.owner && s.bet > 0);
+    if (betting.every((s) => s.ready)) opDeal(st);
+  }
+
+  // Fin du minuteur des mises : la donne part avec ceux qui ont une mise
+  function opAutoDeal(st) {
+    if (st.phase === 'playing' || st.phase === 'insurance' || !st.betDeadline || now() < st.betDeadline - 300) return false;
+    if (opDeal(st) === false) st.betDeadline = null; // personne n'a misé : on attend
   }
 
   function tagSum(cards) { return cards.reduce((a, c) => a + HiLo.tag(c.rank), 0); }
 
   function opDeal(st) {
-    if (st.phase === 'playing') return false;
+    if (inPlay(st)) return false;
     // Les cartes de la main précédente passent dans la défausse (et dans le compte)
     let used = tagSum(st.dealer);
     st.seats.forEach((s) => s.hands.forEach((h) => { used += tagSum(h.cards); }));
@@ -146,7 +176,7 @@
 
     const active = [];
     st.seats.forEach((s, i) => {
-      s.hands = []; s.side = '';
+      s.hands = []; s.side = ''; s.ready = false; s.ins = 0; s.insDecided = false;
       if (!s.owner || s.bet <= 0) return;
       const p = player(st, s.owner);
       if (!st.settings.sides) { s.pp = 0; s.t213 = 0; }
@@ -181,31 +211,78 @@
       s.side = parts.join(' · ');
     });
 
+    st.betDeadline = null;
+    st.msg = '';
+    const dealtMs = (active.length + 1) * 2 * CARD_MS;
+    if (up.rank === 'A') {
+      // Le croupier montre un As : chacun décide de prendre l'assurance avant la vérification
+      st.phase = 'insurance';
+      st.insDeadline = now() + dealtMs + 10000;
+      return;
+    }
+    afterPeek(st, dealtMs);
+  }
+
+  function opInsurance(st, take) {
+    if (st.phase !== 'insurance') return false;
+    let any = false;
+    st.seats.forEach((s) => {
+      if (s.owner !== me || !s.hands.length || s.insDecided) return;
+      const p = player(st, s.owner);
+      const cost = Math.floor(s.hands[0].bet / 2);
+      if (take && cost > 0 && p.bankroll >= cost) { p.bankroll -= cost; s.ins = cost; }
+      s.insDecided = true; any = true;
+    });
+    if (!any) return false;
+    if (st.seats.every((s) => !s.hands.length || s.insDecided)) resolveInsurance(st);
+  }
+  function opInsuranceTimeout(st) {
+    if (st.phase !== 'insurance' || now() < st.insDeadline - 300) return false;
+    resolveInsurance(st);
+  }
+  function resolveInsurance(st) {
+    const dBJ = isBJ(st.dealer);
+    st.seats.forEach((s) => {
+      s.insDecided = true;
+      if (!s.ins) return;
+      const p = player(st, s.owner);
+      if (dBJ) { p.bankroll += s.ins * 3; s.side = (s.side ? s.side + ' · ' : '') + '✔ Assurance +' + s.ins * 2 + ' €'; }
+      else s.side = (s.side ? s.side + ' · ' : '') + '✘ Assurance −' + s.ins + ' €';
+    });
+    afterPeek(st, 0);
+  }
+
+  // Vérification du blackjack du croupier, puis début du jeu
+  function afterPeek(st, extraMs) {
     st.phase = 'playing';
-    const upV = Strategy.cardValue(up.rank);
+    const upV = Strategy.cardValue(st.dealer[0].rank);
     if (upV >= 10 && isBJ(st.dealer)) {
       st.msg = 'Le croupier a un blackjack.';
       return finish(st);
     }
+    const active = [];
+    st.seats.forEach((s, i) => { if (s.hands.length) active.push(i); });
     active.forEach((i) => { const h = st.seats[i].hands[0]; if (isBJ(h.cards)) { h.done = true; h.natural = true; } });
     st.turn = { seat: active[0], hand: 0 };
-    advance(st);
+    advance(st, extraMs);
   }
 
-  function advance(st) {
+  function advance(st, extraMs) {
     let { seat, hand } = st.turn;
+    let drawn = 0;
     while (seat < SEATS) {
       const s = st.seats[seat];
       while (s.hands && hand < s.hands.length) {
         const h = s.hands[hand];
         if (!h.done && h.cards.length === 1) {
-          h.cards.push(draw(st));
+          h.cards.push(draw(st)); drawn++;
           if (h.splitAces) h.done = true;
         }
         if (!h.done && value(h.cards).total >= 21) h.done = true;
         if (!h.done) {
           st.turn = { seat, hand };
-          st.turnAt = Date.now();
+          st.turnAt = now();
+          st.turnDeadline = now() + st.settings.turnTime * 1000 + (extraMs || 0) + drawn * CARD_MS;
           st.msg = '';
           return;
         }
@@ -218,7 +295,7 @@
   }
 
   function dealerPlay(st) {
-    const live = st.seats.some((s) => s.hands.some((h) => value(h.cards).total <= 21 && !(h.natural)));
+    const live = st.seats.some((s) => s.hands.some((h) => value(h.cards).total <= 21 && !h.natural && !h.surrendered));
     if (live) {
       while (value(st.dealer).total < 17) st.dealer.push(draw(st));
     }
@@ -228,6 +305,9 @@
   function finish(st) {
     st.phase = 'over';
     st.turn = null;
+    // Minuteur des mises de la manche suivante (après l'animation du croupier)
+    st.betDeadline = now() + st.settings.betTime * 1000 + (st.dealer.length + 2) * CARD_MS + 2500;
+    st.seats.forEach((s) => { s.ready = false; });
     const d = value(st.dealer).total;
     const dBJ = isBJ(st.dealer);
     st.seats.forEach((s) => {
@@ -238,7 +318,8 @@
         const v = value(h.cards).total;
         const pBJ = single && !h.split && isBJ(h.cards);
         let back = 0, txt, cls;
-        if (pBJ && dBJ) { back = h.bet; txt = 'Égalité'; cls = 'push'; }
+        if (h.surrendered) { back = h.bet / 2; txt = 'Abandon −' + h.bet / 2 + ' €'; cls = 'lose'; }
+        else if (pBJ && dBJ) { back = h.bet; txt = 'Égalité'; cls = 'push'; }
         else if (pBJ) { back = h.bet * 2.5; txt = 'Blackjack ! +' + h.bet * 1.5 + ' €'; cls = 'win'; }
         else if (dBJ) { txt = 'Blackjack du croupier'; cls = 'lose'; }
         else if (v > 21) { txt = 'Sauté'; cls = 'lose'; }
@@ -259,7 +340,7 @@
     if (st.phase !== 'playing' || !st.turn) return false;
     const s = st.seats[st.turn.seat];
     if (!force && s.owner !== me) return false;
-    if (force && Date.now() - st.turnAt < TURN_TIMEOUT) return false;
+    if (force && now() < (st.turnDeadline || 0) - 300) return false; // le temps n'est pas écoulé
     const h = s.hands[st.turn.hand];
     const p = player(st, s.owner);
     const two = h.cards.length === 2;
@@ -272,6 +353,9 @@
       if (!two || p.bankroll < h.bet) return false;
       p.bankroll -= h.bet; h.bet *= 2; h.doubled = true;
       h.cards.push(draw(st)); h.done = true;
+    } else if (action === 'R') {
+      if (!two || s.hands.length > 1 || h.split) return false;
+      h.surrendered = true; h.done = true;
     } else if (action === 'P') {
       if (!two || p.bankroll < h.bet || s.hands.length >= 4 ||
         Strategy.cardValue(h.cards[0].rank) !== Strategy.cardValue(h.cards[1].rank)) return false;
@@ -281,7 +365,7 @@
       h.split = true; h.splitAces = aces;
       s.hands.splice(st.turn.hand + 1, 0, second);
     } else return false;
-    advance(st);
+    advance(st, action === 'S' || action === 'R' ? 0 : CARD_MS);
   }
 
   function availableFor(st) {
@@ -295,6 +379,7 @@
       D: two && p.bankroll >= h.bet,
       P: two && p.bankroll >= h.bet && s.hands.length < 4 &&
         Strategy.cardValue(h.cards[0].rank) === Strategy.cardValue(h.cards[1].rank),
+      R: two && s.hands.length === 1 && !h.split,
     };
   }
 
@@ -328,6 +413,7 @@
   }
 
   // ================= Réception et animation =================
+
   function onTable(raw) {
     if (!raw) { state = null; showLobby('Cette table n\'existe pas ou a été supprimée.'); return; }
     const st = normalize(JSON.parse(JSON.stringify(raw)));
@@ -338,7 +424,7 @@
     st.seats.forEach((s) => s.hands.forEach((h) => h.cards.forEach((c) => all.push({ c }))));
     if (firstSnap) {
       all.forEach((x) => revealed.add(x.c.id));
-      holeFlipped = st.phase !== 'playing';
+      holeFlipped = !holeHidden(st);
       firstSnap = false;
       shownRound = st.round;
       queue = [];
@@ -348,7 +434,7 @@
     shownRound = st.round;
     const queued = new Set(queue.filter((e) => e.card).map((e) => e.card.id));
     const fresh = all.filter((x) => !revealed.has(x.c.id) && !queued.has(x.c.id)).sort((a, b) => a.c.id - b.c.id);
-    const needFlip = st.phase !== 'playing' && st.dealer.length >= 2 && !holeFlipped && !queue.some((e) => e.flip);
+    const needFlip = !holeHidden(st) && st.dealer.length >= 2 && !holeFlipped && !queue.some((e) => e.flip);
     let flipInserted = false;
     fresh.forEach((x) => {
       if (needFlip && !flipInserted && x.dealerIdx != null && x.dealerIdx >= 2) { queue.push({ flip: true }); flipInserted = true; }
@@ -467,7 +553,8 @@
       else if (st.phase === 'playing' && st.turn) {
         const owner = st.seats[st.turn.seat].owner;
         msg.textContent = owner === me ? 'À toi de jouer (place ' + (st.turn.seat + 1) + ') !' : 'Au tour de ' + nameOf(owner) + ' (place ' + (st.turn.seat + 1) + ').';
-      } else if (st.phase === 'over') msg.textContent = (st.msg || 'Main terminée.') + (st.note ? ' ' + st.note : '') + ' Changez vos mises puis distribuez.';
+      } else if (st.phase === 'insurance') msg.textContent = 'Le croupier montre un As : assurance ?';
+      else if (st.phase === 'over') msg.textContent = (st.msg || 'Main terminée.') + (st.note ? ' ' + st.note : '') + ' Misez pour la manche suivante.';
       else msg.textContent = (st.msg || '') + (st.note ? ' ' + st.note : '');
     }
 
@@ -480,6 +567,8 @@
     BJ.renderCount();
     resolveNames();
     maybeHint();
+    scheduleTimers();
+    roundSounds();
   }
 
   function seatEl(st, s, i, anim) {
@@ -542,7 +631,7 @@
     }
 
     // Emplacements de mise sur le tapis (mise principale + paris annexes en rouge)
-    const betting = s.owner === me && st.phase !== 'playing' && !working;
+    const betting = s.owner === me && !inPlay(st) && !working;
     const inRound = s.hands.length > 0;
     const shownBet = inRound ? s.hands.reduce((a, h) => a + h.bet, 0) : s.bet;
     el.appendChild(BJ.spotsEl({
@@ -554,7 +643,7 @@
     }));
 
     // Mises (place du joueur, hors main en cours)
-    if (s.owner === me && st.phase !== 'playing') {
+    if (s.owner === me && !inPlay(st)) {
       const bets = document.createElement('div');
       bets.className = 'seat-bets';
       const line = document.createElement('div');
@@ -564,7 +653,7 @@
         b.className = 'mini-chip';
         b.textContent = '+' + v;
         b.disabled = working;
-        b.addEventListener('click', () => mutate((x) => opBet(x, i, 'bet', v)));
+        b.addEventListener('click', () => { if (window.Sfx) Sfx.chips(); mutate((x) => opBet(x, i, 'bet', v)); });
         line.appendChild(b);
       });
       const clr = document.createElement('button');
@@ -597,56 +686,125 @@
       box.appendChild(p);
       return;
     }
-    if (st.phase !== 'playing') {
-      const mine = st.seats.some((s) => s.owner === me);
+    const btn = (label, cls, onClick, disabled) => {
       const b = document.createElement('button');
-      b.className = 'primary';
-      b.textContent = 'Distribuer';
-      b.disabled = working || anim || !mine || !st.seats.some((s) => s.owner && s.bet > 0);
-      b.title = mine ? '' : 'Assieds-toi d\'abord à une place';
-      b.addEventListener('click', () => { BJ.setCountCtx(ctx); mutate(opDeal); });
+      if (cls) b.className = cls;
+      b.textContent = label;
+      b.disabled = !!disabled || working;
+      b.addEventListener('click', onClick);
       box.appendChild(b);
-      if (!mine) {
-        const p = document.createElement('span');
-        p.className = 'muted small';
-        p.textContent = 'Choisis une ou plusieurs places pour jouer.';
-        box.appendChild(p);
-      }
+      return b;
+    };
+    const note = (text) => {
+      const p = document.createElement('span');
+      p.className = 'muted small';
+      p.textContent = text;
+      box.appendChild(p);
+    };
+    const mySeats = st.seats.filter((s) => s.owner === me);
+
+    // Mises : chacun valide sa mise ; la donne part quand tout le monde a misé ou à la fin du minuteur
+    if (st.phase === 'over' || st.phase === 'betting' || !st.phase) {
+      if (!mySeats.length) { note('Choisis une ou plusieurs places pour jouer.'); return; }
+      const betting = mySeats.filter((s) => s.bet > 0);
+      if (!betting.length) { note('Ta mise est à 0 : tu ne joueras pas cette manche.'); return; }
+      if (betting.every((s) => s.ready)) note('Mise validée ✔ — en attente des autres joueurs…');
+      else btn('Miser ' + betting.reduce((a, s) => a + s.bet + (s.pp || 0) + (s.t213 || 0), 0) + ' €', 'primary', () => { BJ.setCountCtx(ctx); if (window.Sfx) Sfx.chips(); mutate(opReady); }, anim);
       return;
     }
+
+    // Assurance
+    if (st.phase === 'insurance') {
+      if (anim) return;
+      const undecided = st.seats.filter((s) => s.owner === me && s.hands.length && !s.insDecided);
+      if (!undecided.length) { note(mySeats.some((s) => s.hands.length) ? 'Décision enregistrée, en attente des autres…' : ''); return; }
+      const cost = undecided.reduce((a, s) => a + Math.floor(s.hands[0].bet / 2), 0);
+      const decide = (take) => mutate((x) => opInsurance(x, take)).then((ok) => { if (ok && coachOn() && BJ.recordInsurance) BJ.recordInsurance(take); });
+      btn('Prendre l\'assurance (' + cost + ' €)', '', () => decide(true));
+      btn('Non merci', 'primary', () => decide(false));
+      if (coachOn() && $('m-opt-hint').checked && BJ.showInsuranceHint) BJ.showInsuranceHint();
+      return;
+    }
+
     if (anim || !st.turn) return;
     const s = st.seats[st.turn.seat];
     if (s.owner === me) {
       const opts = availableFor(st);
-      ['H', 'S', 'D', 'P'].forEach((a) => {
-        const b = document.createElement('button');
-        b.textContent = L[a];
-        b.disabled = working || !opts[a];
-        b.addEventListener('click', () => myAction(a));
-        box.appendChild(b);
-      });
-      if (coachOn()) {
-        const h = document.createElement('button');
-        h.className = 'ghost';
-        h.textContent = '💡 Conseil';
-        h.addEventListener('click', () => showHint(true));
-        box.appendChild(h);
-      }
+      ['H', 'S', 'D', 'P', 'R'].forEach((a) => btn(L[a], '', () => myAction(a), !opts[a]));
+      if (coachOn()) btn('💡 Conseil', 'ghost', () => showHint(true));
     } else {
-      const waited = Date.now() - st.turnAt;
-      const p = document.createElement('span');
-      p.className = 'muted small';
-      p.textContent = 'En attente de ' + nameOf(s.owner) + '…';
-      box.appendChild(p);
-      const b = document.createElement('button');
-      b.className = 'ghost small';
-      b.textContent = 'Passer son tour (rester)';
-      b.disabled = working || waited < TURN_TIMEOUT;
-      b.title = 'Possible après 30 secondes sans action';
-      b.addEventListener('click', () => mutate((x) => opAct(x, 'S', true)));
-      box.appendChild(b);
-      if (waited < TURN_TIMEOUT) setTimeout(renderControls, TURN_TIMEOUT - waited + 100);
+      note('En attente de ' + nameOf(s.owner) + '… (rester automatique à la fin du temps)');
     }
+  }
+
+  // ================= Minuteurs =================
+  // Chaque appareil programme l'expiration ; le premier qui la constate fait l'action (transaction).
+  let timers = [];
+  function scheduleTimers() {
+    timers.forEach(clearTimeout);
+    timers = [];
+    const st = state;
+    if (!st || !canWrite || !tableId) return;
+    const at = (deadline, fn, mineFirst) => {
+      if (!deadline) return;
+      const delay = Math.max(0, deadline - now()) + (mineFirst ? 100 : 1200 + Math.random() * 800);
+      timers.push(setTimeout(() => mutate(fn), delay));
+    };
+    const iPlay = st.seats.some((x) => x.owner === me);
+    if ((st.phase === 'over' || st.phase === 'betting' || !st.phase) && st.betDeadline) at(st.betDeadline, opAutoDeal, iPlay);
+    else if (st.phase === 'insurance') at(st.insDeadline, opInsuranceTimeout, iPlay);
+    else if (st.phase === 'playing' && st.turn && st.turnDeadline) {
+      const owner = st.seats[st.turn.seat].owner;
+      const key = st.round + ':' + st.turn.seat + ':' + st.turn.hand;
+      at(st.turnDeadline, (x) => (x.turn && x.round + ':' + x.turn.seat + ':' + x.turn.hand === key ? opAct(x, 'S', true) : false), owner === me);
+    }
+  }
+
+  // Barre de temps affichée sous le message
+  let lastTickSec = -1;
+  setInterval(() => {
+    const st = state;
+    const box = $('m-timer');
+    if (!st || !tableId || document.body.dataset.mode !== 'multi') { box.hidden = true; return; }
+    let end = 0, total = 0, label = '', mine = false;
+    if ((st.phase === 'over' || st.phase === 'betting' || !st.phase) && st.betDeadline && st.seats.some((x) => x.owner && x.bet > 0)) {
+      end = st.betDeadline; total = st.settings.betTime * 1000; label = 'Mises';
+      mine = st.seats.some((x) => x.owner === me && x.bet > 0 && !x.ready);
+    } else if (st.phase === 'insurance' && !animating()) {
+      end = st.insDeadline; total = 10000; label = 'Assurance';
+      mine = st.seats.some((x) => x.owner === me && x.hands.length && !x.insDecided);
+    } else if (st.phase === 'playing' && st.turn && !animating()) {
+      end = st.turnDeadline; total = st.settings.turnTime * 1000;
+      const owner = st.seats[st.turn.seat].owner;
+      mine = owner === me;
+      label = mine ? 'À toi' : nameOf(owner);
+    }
+    if (!end || animating()) { box.hidden = true; return; }
+    const left = Math.max(0, end - now());
+    box.hidden = false;
+    $('m-timer-bar').style.width = Math.min(100, (left / total) * 100) + '%';
+    $('m-timer-bar').classList.toggle('urgent', left < 5000);
+    $('m-timer-text').textContent = label + ' : ' + Math.ceil(left / 1000) + ' s';
+    const sec = Math.ceil(left / 1000);
+    if (mine && left > 0 && left < 5000 && sec !== lastTickSec && window.Sfx) { lastTickSec = sec; Sfx.tick(); }
+  }, 250);
+
+  // ================= Sons de fin de manche =================
+  let soundedRound = -1;
+  function roundSounds() {
+    const st = state;
+    if (!st || st.phase !== 'over' || animating() || st.round === soundedRound || firstSnap) return;
+    soundedRound = st.round;
+    if (!window.Sfx) return;
+    let net = 0, mineAny = false, anyBJ = false;
+    st.seats.forEach((s) => s.hands.forEach((h) => {
+      if (/^Blackjack !/.test(h.result || '')) anyBJ = true;
+      if (s.owner !== me) return;
+      mineAny = true;
+      if (h.resultClass === 'win') net += 1; else if (h.resultClass === 'lose') net -= 1;
+    }));
+    if (anyBJ) Sfx.blackjack();
+    else if (mineAny) { if (net > 0) Sfx.win(); else if (net < 0) Sfx.lose(); else Sfx.push(); }
   }
 
   function currentSituation() {
@@ -654,7 +812,7 @@
     const s = st.seats[st.turn.seat];
     const h = s.hands[st.turn.hand];
     const o = availableFor(st);
-    return { cards: h.cards, up: st.dealer[0].rank, opts: BJ.withCount({ canDouble: o.D, canSplit: o.P }) };
+    return { cards: h.cards, up: st.dealer[0].rank, opts: BJ.withCount({ canDouble: o.D, canSplit: o.P, canSurrender: o.R }) };
   }
 
   function showHint(force) {
@@ -729,7 +887,7 @@
       await net.transact(id, (st) => {
         let changed = false;
         st.seats.forEach((s, i) => {
-          if (s.owner === me && !(st.phase === 'playing' && s.hands.length)) { st.seats[i] = emptySeat(); changed = true; }
+          if (s.owner === me && !(inPlay(st) && s.hands.length)) { st.seats[i] = emptySeat(); changed = true; }
         });
         return changed ? undefined : false;
       });
@@ -877,6 +1035,8 @@
         coach: $('set-coach').checked,
         sides: $('set-sides').checked,
         bankroll: parseInt($('set-bankroll').value, 10) || START_BANKROLL,
+        turnTime: parseInt($('set-turn').value, 10) || 20,
+        betTime: parseInt($('set-bettime').value, 10) || 15,
       });
       const id = await net.createTable(st);
       $('table-name').value = '';

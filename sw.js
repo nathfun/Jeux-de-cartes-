@@ -1,7 +1,7 @@
 // Service worker : réseau d'abord (pour toujours avoir la dernière version), cache en secours hors ligne.
-const CACHE = 'jeux-de-cartes-v2';
+const CACHE = 'jeux-de-cartes-v3';
 const CORE = [
-  './', './index.html', './manifest.webmanifest', './pwa.js', './firebase-config.js',
+  './', './index.html', './manifest.webmanifest', './pwa.js', './firebase-config.js', './sounds.js',
   './icons/icon-192.png', './icons/icon-512.png',
   './blackjack/', './blackjack/index.html', './blackjack/style.css', './blackjack/strategy.js',
   './blackjack/count.js', './blackjack/sidebets.js', './blackjack/app.js', './blackjack/coach-chat.js',

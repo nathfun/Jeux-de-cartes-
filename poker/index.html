@@ -12,7 +12,7 @@
 <body>
   <header class="topbar">
     <h1><a id="home-link" class="home-link" href="../index.html" hidden aria-label="Retour aux jeux">←</a> ♣ Poker Coach</h1>
-    <div class="bank">Tapis : <strong id="my-stack">–</strong></div>
+    <div class="bank">Tapis : <strong id="my-stack">–</strong> <button id="sound-toggle" class="ghost icon-btn" type="button">🔊</button></div>
   </header>
 
   <main class="layout">
@@ -50,6 +50,13 @@
               <option value="200">200 grosses blindes</option>
             </select>
           </label>
+          <label>Temps de réflexion
+            <select id="set-timer">
+              <option value="0" selected>Illimité</option>
+              <option value="15">15 secondes</option>
+              <option value="30">30 secondes</option>
+            </select>
+          </label>
         </div>
         <label class="check"><input type="checkbox" id="set-coach" checked> Activer le coach (retour après chaque décision)</label>
         <button id="start" class="primary big">Commencer la partie</button>
@@ -68,6 +75,7 @@
           </div>
         </div>
 
+        <div id="timer" class="timer" hidden><div id="timer-bar" class="timer-bar"></div><span id="timer-text"></span></div>
         <div id="actions" class="actions">
           <div class="action-row" id="main-actions">
             <button id="a-fold" class="act fold">Se coucher</button>
@@ -148,6 +156,7 @@
   </main>
 
   <script src="../firebase-config.js"></script>
+  <script src="../sounds.js"></script>
   <script src="eval.js"></script>
   <script src="engine.js"></script>
   <script src="coach.js"></script>

@@ -6,7 +6,12 @@
 (function (root) {
   'use strict';
 
-  const ACTION_LABELS = { H: 'Tirer', S: 'Rester', D: 'Doubler', P: 'Séparer' };
+  const ACTION_LABELS = { H: 'Tirer', S: 'Rester', D: 'Doubler', P: 'Séparer', R: 'Abandonner', I: 'Prendre l\'assurance', N: 'Refuser l\'assurance' };
+
+  // Abandon tardif (sur les 2 premières cartes, après vérification du blackjack du croupier)
+  function surrenderBasic(total, up) {
+    return (total === 16 && up >= 9) || (total === 15 && up === 10);
+  }
 
   function cardValue(rank) {
     if (rank === 'A') return 11;
@@ -131,6 +136,11 @@
     { hard: 12, up: 6, idx: -1, act: 'H', below: true, incl: true },
     { hard: 13, up: 2, idx: -1, act: 'H', below: true, incl: true },
     { hard: 13, up: 3, idx: -2, act: 'H', below: true, incl: true },
+    // « Fab 4 » : écarts d'abandon
+    { hard: 14, up: 10, idx: 3, act: 'R' },
+    { hard: 15, up: 9, idx: 2, act: 'R' },
+    { hard: 15, up: 11, idx: 1, act: 'R' },
+    { hard: 15, up: 10, idx: 0, act: 'H', below: true, surr: true },
   ];
   const signedIdx = (n) => (n > 0 ? '+' + n : String(n));
 
@@ -141,6 +151,8 @@
       if (d.up !== up) continue;
       if (d.pair != null) { if (category !== 'pair' || pairVal !== d.pair || !opts.canSplit) continue; }
       else if (category === 'soft' || action === 'P' || d.hard !== total) continue;
+      if ((d.act === 'R' || d.surr) && !opts.canSurrender) continue;
+      if (action === 'R' && !d.surr) continue; // l'abandon de base prime sur les autres écarts
       const hit = d.below ? (d.incl ? tc <= d.idx : tc < d.idx) : tc >= d.idx;
       if (!hit || d.act === action) continue;
       if (d.act === 'D' && !opts.canDouble) continue;
@@ -156,7 +168,9 @@
       D: 'il reste beaucoup de 10 et d\'As, ta carte unique a plus de chances d\'être forte : double, alors que la stratégie de base dit « ' + ACTION_LABELS[base] + ' ».',
       H: 'il reste surtout des petites cartes. Tu risques moins de sauter et le croupier saute moins souvent : tire, alors que la stratégie de base dit « ' + ACTION_LABELS[base] + ' ».',
       P: 'le croupier va très souvent sauter, séparer les 10 rapporte plus que garder 20. (Au casino, ce coup trahit un compteur !)',
+      R: 'il reste beaucoup de 10 et d\'As : ta main a encore moins de chances. Abandonner et récupérer la moitié de ta mise devient le meilleur choix, alors que la stratégie de base dit « ' + ACTION_LABELS[base] + ' ».',
     };
+    if (d.surr) return t + 'il reste surtout des petites cartes : ta main a plus de chances que d\'habitude, tire au lieu d\'abandonner.';
     return t + why[d.act];
   }
 
@@ -164,7 +178,7 @@
    * Recommande l'action optimale.
    * @param cards  cartes de la main du joueur
    * @param upRank rang de la carte visible du croupier
-   * @param opts   { canDouble, canSplit, trueCount? } — avec trueCount, applique les écarts liés au comptage
+   * @param opts   { canDouble, canSplit, canSurrender, trueCount? } — avec trueCount, applique les écarts liés au comptage
    */
   function recommend(cards, upRank, opts) {
     opts = opts || {};
@@ -193,6 +207,7 @@
 
     if (action === 'Ds') action = opts.canDouble ? 'D' : 'S';
     if (action === 'D' && !opts.canDouble) action = 'H';
+    if (opts.canSurrender && action !== 'P' && !hv.soft && cards.length === 2 && surrenderBasic(hv.total, up)) action = 'R';
 
     let deviation = null, reason;
     const dev = deviationFor(category, hv.total, pairVal, up, action, opts);
@@ -200,6 +215,8 @@
       deviation = { base: action, index: dev.idx };
       reason = deviationReason(dev, opts.trueCount, action);
       action = dev.act;
+    } else if (action === 'R') {
+      reason = 'Dur ' + hv.total + ' contre ' + upLabel(up) + ' : une des pires situations du jeu, tu perds plus de 3 fois sur 4 en restant comme en tirant. Abandonne : tu récupères la moitié de ta mise.';
     } else {
       reason = reasonFor(category, hv.total, up, action, pairVal);
     }
@@ -262,6 +279,8 @@
       out.push('Pourquoi rester avec une main faible ? Contre une carte faible, ta main perd souvent, mais tirer perd encore plus souvent. Tu laisses le croupier prendre le risque de sauter.');
     } else if (rec.action === 'H' && hv.total >= 12 && hv.total <= 16) {
       out.push('Pourquoi tirer malgré le risque ? Contre une carte forte, rester avec ' + hv.total + ' perd environ 3 fois sur 4. Tirer donne une chance de faire 17-21, même si tu sautes parfois.');
+    } else if (rec.action === 'R') {
+      out.push('Pourquoi abandonner ? Tu perds la moitié de ta mise à coup sûr, mais en jouant cette main tu perdrais en moyenne plus de la moitié (environ 54 % de ta mise contre un 10). Abandonner limite la casse.');
     } else if (rec.action === 'P') {
       out.push('Pourquoi séparer ? Tu transformes une mauvaise main (ou une main moyenne) en deux mains qui démarrent mieux, en misant plus quand la situation est favorable.');
     }
@@ -278,12 +297,22 @@
     return { rec, paragraphs: out };
   }
 
+  /** Assurance : à prendre seulement avec un compte vrai de +3 ou plus. */
+  function insuranceAdvice(tc) {
+    const counting = typeof tc === 'number';
+    const take = counting && tc >= 3;
+    let reason;
+    if (take) reason = 'Compte vrai ' + signedIdx(Math.round(tc * 10) / 10) + ' (seuil ≥ +3) : il reste tellement de 10 que le croupier a plus d\'une chance sur trois d\'avoir un blackjack. L\'assurance devient rentable : prends-la.';
+    else reason = 'Ne prends pas l\'assurance : c\'est un pari séparé qui paie 2 contre 1, alors que le croupier n\'a un blackjack qu\'environ 31 % du temps. Elle fait perdre en moyenne 7 % de la somme misée' + (counting ? ' (elle ne devient rentable qu\'à partir d\'un compte vrai de +3).' : '.');
+    return { take, reason, label: take ? 'Prendre l\'assurance' : 'Refuser l\'assurance' };
+  }
+
   // Grille complète pour l'affichage du tableau
   function chart() {
     const ups = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
     const hard = [];
     for (let t = 8; t <= 17; t++) {
-      hard.push({ label: t === 8 ? '≤8' : t === 17 ? '17+' : String(t), key: 'hard-' + t, cells: ups.map(u => hardAction(t, u)) });
+      hard.push({ label: t === 8 ? '≤8' : t === 17 ? '17+' : String(t), key: 'hard-' + t, cells: ups.map(u => (surrenderBasic(t, u) ? 'R' : hardAction(t, u))) });
     }
     const soft = [];
     for (let t = 13; t <= 20; t++) {
@@ -300,7 +329,7 @@
     return { ups, hard, soft, pairs };
   }
 
-  const api = { DEVIATIONS, recommend, details, handValue, cardValue, chart, ACTION_LABELS, hardAction, softAction, pairSplit, DEALER_BUST };
+  const api = { DEVIATIONS, insuranceAdvice, surrenderBasic, recommend, details, handValue, cardValue, chart, ACTION_LABELS, hardAction, softAction, pairSplit, DEALER_BUST };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Strategy = api;
 })(typeof window !== 'undefined' ? window : this);

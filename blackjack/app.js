@@ -89,6 +89,7 @@
     const prev = ctx.shown.get(card.id);
     const anim = !prev ? ' dealt' : (prev === 'hidden' && !hidden ? ' flip' : '');
     ctx.shown.set(card.id, hidden ? 'hidden' : 'shown');
+    if (window.Sfx) { if (anim === ' dealt') Sfx.card(); else if (anim === ' flip') Sfx.flip(); }
     if (hidden) { el.className = 'card back' + anim; return el; }
     ctx.counter.observe(card);
     const red = card.suit === '♥' || card.suit === '♦';
@@ -154,7 +155,7 @@
     const inRound = round && round.phase !== 'over';
     const playing = round && round.phase === 'playing' && !busy;
     $('bet-controls').classList.toggle('hidden', !!inRound);
-    $('play-controls').classList.toggle('hidden', !inRound);
+    $('play-controls').classList.toggle('hidden', !inRound || !!insuranceResolve);
     $('deal').disabled = busy || bet <= 0 || bet + side.pp + side.t213 > stats.bankroll;
 
     if (inRound) {
@@ -204,6 +205,7 @@
         b.title = title + ' — touche pour changer la mise';
         b.addEventListener('click', () => {
           const next = SIDE_STEPS[(SIDE_STEPS.indexOf(amount) + 1) % SIDE_STEPS.length] || 0;
+          if (window.Sfx) Sfx.chips();
           opts.onSide(field, next);
         });
       }
@@ -235,7 +237,8 @@
     const canDouble = two && affordable;
     const canSplit = two && affordable && round.hands.length < MAX_HANDS &&
       Strategy.cardValue(h.cards[0].rank) === Strategy.cardValue(h.cards[1].rank);
-    return { H: true, S: true, D: canDouble, P: canSplit };
+    const canSurrender = two && round.hands.length === 1 && !h.split;
+    return { H: true, S: true, D: canDouble, P: canSplit, R: canSurrender };
   }
 
   // Donne une carte puis laisse le temps de la voir
@@ -275,6 +278,18 @@
     const up = Strategy.cardValue(round.dealer[0].rank);
     const dealerBJ = isBlackjack(round.dealer);
 
+    // Assurance : proposée quand le croupier montre un As
+    if (up === 11) {
+      const cost = Math.floor(bet / 2);
+      const took = cost > 0 && stats.bankroll >= cost ? await askInsurance(cost) : false;
+      recordInsurance(took);
+      if (took) { round.ins = cost; stats.bankroll -= cost; render(); }
+      setMessage('Le croupier vérifie s\'il a un blackjack…');
+      await sleep(1);
+      if (round.ins && dealerBJ) round.insText = 'Assurance gagnée : +' + round.ins * 2 + ' €';
+      else if (round.ins) { round.insText = 'Pas de blackjack : assurance perdue (−' + round.ins + ' €)'; stats.net -= round.ins; }
+    }
+
     if (isBlackjack(player) || (dealerBJ && up >= 10)) {
       if (dealerBJ && up >= 10) {
         setMessage('Le croupier vérifie sa carte cachée…');
@@ -292,14 +307,16 @@
     setMessage('À toi de jouer !');
     render();
     maybeShowHint();
+    startTimer(() => act('S'));
   }
 
   async function act(action) {
     if (busy || !round || round.phase !== 'playing') return;
     const opts = availableActions();
     if (!opts[action]) return;
+    stopTimer();
     const h = round.hands[round.active];
-    const o = withCount({ canDouble: opts.D, canSplit: opts.P });
+    const o = withCount({ canDouble: opts.D, canSplit: opts.P, canSurrender: opts.R });
     const rec = Strategy.recommend(h.cards, round.dealer[0].rank, o);
     setSituation({ cards: h.cards, up: round.dealer[0].rank, opts: o }, action);
     recordDecision(rec, action);
@@ -319,6 +336,11 @@
       setMessage('Tu doubles : une seule carte.');
       await give(h.cards, 1);
       h.done = true;
+    } else if (action === 'R') {
+      h.surrendered = true;
+      h.done = true;
+      setMessage('Tu abandonnes : la moitié de ta mise t\'est rendue.');
+      await sleep(0.6);
     } else if (action === 'P') {
       stats.bankroll -= h.bet;
       const second = { cards: [h.cards.pop()], bet: h.bet, done: false, split: true };
@@ -350,6 +372,7 @@
       else setMessage('À toi de jouer !');
       render();
       maybeShowHint();
+      startTimer(() => act('S'));
       return;
     }
     // Tour du croupier : retourne la carte cachée puis tire une carte à la fois
@@ -386,7 +409,8 @@
       wagered += h.bet;
       stats.hands++;
       let back = 0;
-      if (pBJ && dealerBJ) { back = h.bet; set(h, 'Égalité', 'push'); stats.pushes++; }
+      if (h.surrendered) { back = h.bet / 2; set(h, 'Abandon −' + h.bet / 2 + ' €', 'lose'); stats.losses++; }
+      else if (pBJ && dealerBJ) { back = h.bet; set(h, 'Égalité', 'push'); stats.pushes++; }
       else if (pBJ) { back = h.bet * 2.5; set(h, 'Blackjack ! +' + h.bet * 1.5 + ' €', 'win'); stats.wins++; stats.blackjacks++; }
       else if (dealerBJ) { set(h, 'Blackjack du croupier', 'lose'); stats.losses++; }
       else if (p > 21) { set(h, 'Sauté', 'lose'); stats.losses++; }
@@ -395,12 +419,20 @@
       else { set(h, 'Perdu', 'lose'); stats.losses++; }
       payout += back;
     }
+    if (round.ins && dealerBJ) payout += round.ins * 3; // l'assurance paie 2 contre 1
     stats.bankroll += payout;
-    const net = payout - wagered;
+    const net = payout - wagered - (round.ins && dealerBJ ? round.ins : 0);
     stats.net += net;
 
     let msg = net > 0 ? 'Tu gagnes ' + net + ' € !' : net < 0 ? 'Tu perds ' + (-net) + ' €.' : 'Égalité, mise rendue.';
     if (dealerBJ) msg = 'Le croupier a un blackjack. ' + msg;
+    if (round.insText) msg += ' ' + round.insText + '.';
+    // Sons : blackjack, victoire, défaite
+    if (window.Sfx) {
+      const hasBJ = round.hands.length === 1 && !round.hands[0].split && isBlackjack(round.hands[0].cards);
+      if (hasBJ) Sfx.blackjack();
+      else if (net > 0) Sfx.win(); else if (net < 0) Sfx.lose(); else Sfx.push();
+    }
     if (d > 21) msg = 'Le croupier saute ! ' + msg;
     setMessage(msg);
 
@@ -454,6 +486,8 @@
   // ---------- Coach ----------
   function patternOf(rec, played) {
     const opt = rec.action;
+    if (opt === 'R') return 'missedSurrender';
+    if (played === 'R') return 'badSurrender';
     if (opt === 'P') return 'missedSplit';
     if (played === 'P') return 'badSplit';
     if (opt === 'D') return 'missedDouble';
@@ -488,6 +522,90 @@
     if ($('opt-coach').checked) showFeedback(rec, played, good);
     else showFeedbackHidden();
   }
+
+  // ---------- Assurance ----------
+  let insuranceResolve = null;
+  function askInsurance(cost) {
+    $('ins-cost').textContent = cost;
+    $('ins-controls').classList.remove('hidden');
+    $('play-controls').classList.add('hidden');
+    setMessage('Le croupier montre un As : veux-tu prendre l\'assurance ?');
+    if (coachOnSolo() && $('opt-hint').checked) {
+      const adv = Strategy.insuranceAdvice(insuranceCount());
+      showInsuranceFeedback('hint', '💡 Conseil : ' + adv.label, adv.reason);
+    }
+    return new Promise((resolve) => {
+      insuranceResolve = (took) => {
+        insuranceResolve = null;
+        stopTimer();
+        $('ins-controls').classList.add('hidden');
+        resolve(took);
+      };
+      startTimer(() => insuranceResolve && insuranceResolve(false));
+    });
+  }
+  const coachOnSolo = () => $('opt-coach').checked;
+  function insuranceCount() {
+    return $('opt-dev').checked ? countCtx.counter.trueCount(countCtx.cardsLeft()) : null;
+  }
+  function recordInsurance(took) {
+    const adv = Strategy.insuranceAdvice(insuranceCount());
+    const good = took === adv.take;
+    stats.decisions++;
+    if (good) stats.correct++;
+    stats.recent.push(good ? 1 : 0);
+    if (stats.recent.length > 30) stats.recent.shift();
+    if (!good) {
+      const key = 'Assurance (As du croupier)';
+      const m = stats.mistakes[key] || { count: 0 };
+      m.count++; m.played = took ? 'I' : 'N'; m.optimal = adv.take ? 'I' : 'N';
+      stats.mistakes[key] = m;
+      const p = took ? 'insurance' : 'missedInsurance';
+      stats.patterns[p] = (stats.patterns[p] || 0) + 1;
+    }
+    saveStats();
+    if (coachOnSolo()) {
+      showInsuranceFeedback(good ? 'good' : 'bad', good ? '✔ Bonne décision : ' + (took ? 'assurance prise' : 'assurance refusée')
+        : '✘ Tu as ' + (took ? 'pris' : 'refusé') + ' l\'assurance, il fallait la ' + (adv.take ? 'prendre' : 'refuser'), adv.reason);
+    }
+  }
+  function showInsuranceFeedback(cls, verdict, reason) {
+    const fb = $('feedback');
+    fb.className = 'feedback ' + cls;
+    fb.innerHTML = '';
+    const v = document.createElement('div'); v.className = 'verdict'; v.textContent = verdict;
+    const r = document.createElement('div'); r.textContent = reason;
+    fb.append(v, r);
+  }
+
+  // ---------- Minuteur de décision (facultatif en solo) ----------
+  let timerId = null, timerEnd = 0, timerTotal = 0, lastTick = 0;
+  function startTimer(onExpire) {
+    stopTimer();
+    const secs = parseInt($('opt-timer').value, 10) || 0;
+    if (!secs) return;
+    timerTotal = secs * 1000;
+    timerEnd = Date.now() + timerTotal;
+    $('solo-timer').hidden = false;
+    const tick = () => {
+      const left = timerEnd - Date.now();
+      $('solo-timer-bar').style.width = Math.max(0, (left / timerTotal) * 100) + '%';
+      $('solo-timer-bar').classList.toggle('urgent', left < 5000);
+      $('solo-timer-text').textContent = Math.max(0, Math.ceil(left / 1000)) + ' s';
+      const sec = Math.ceil(left / 1000);
+      if (left < 5000 && sec !== lastTick && window.Sfx) { lastTick = sec; Sfx.tick(); }
+      if (left <= 0) { stopTimer(); onExpire(); }
+    };
+    tick();
+    timerId = setInterval(tick, 200);
+  }
+  function stopTimer() {
+    if (timerId) clearInterval(timerId);
+    timerId = null;
+    const el = $('solo-timer');
+    if (el) el.hidden = true;
+  }
+  window.BJTimer = { start: startTimer, stop: stopTimer };
 
   // situation = { cards, up (rang), opts }
   function setSituation(situation, played) {
@@ -569,7 +687,7 @@
     if (busy || !round || round.phase !== 'playing') return;
     const h = round.hands[round.active];
     const opts = availableActions();
-    const o = withCount({ canDouble: opts.D, canSplit: opts.P });
+    const o = withCount({ canDouble: opts.D, canSplit: opts.P, canSurrender: opts.R });
     const rec = Strategy.recommend(h.cards, round.dealer[0].rank, o);
     setSituation({ cards: h.cards, up: round.dealer[0].rank, opts: o });
     showHintFor(rec);
@@ -583,6 +701,10 @@
     standLow: 'Avec 11 ou moins tu ne peux pas sauter : il faut toujours prendre une carte (ou doubler).',
     missedDouble: 'Tu ne doubles pas assez. Avec 10 ou 11, ou une main souple contre un croupier faible, doubler est l\'arme principale du joueur.',
     badDouble: 'Tu doubles dans de mauvaises situations. Réserve le double aux totaux 9-11 et aux mains souples contre 2-6.',
+    missedSurrender: 'Pense à l\'abandon : avec 16 contre 9, 10 ou As (et 15 contre 10), abandonner te rend la moitié de ta mise et perd moins que jouer la main.',
+    badSurrender: 'Tu abandonnes trop souvent : l\'abandon ne se justifie que dans les pires situations (16 contre 9, 10, As et 15 contre 10).',
+    insurance: 'Tu prends l\'assurance : sans comptage de cartes, c\'est un pari perdant (environ −7 %). Refuse-la, sauf si ton compte vrai atteint +3.',
+    missedInsurance: 'Avec un compte vrai de +3 ou plus, l\'assurance devient rentable : pense à la prendre dans ces moments-là.',
     missedSplit: 'Pense à séparer : toujours les As et les 8, et les petites paires (2, 3, 6, 7) contre une carte faible.',
     badSplit: 'Évite de séparer les 10, les 5 et les petites paires contre une carte forte du croupier.',
     soft: 'Les mains souples (avec un As compté 11) te posent problème : rappelle-toi qu\'elles ne peuvent pas sauter en tirant une carte, sois plus agressif.',
@@ -661,7 +783,7 @@
   }
 
   // ---------- Tableau de stratégie ----------
-  const CHART_LABELS = { H: 'T', S: 'R', D: 'D', Ds: 'Dr', P: 'S' };
+  const CHART_LABELS = { H: 'T', S: 'R', D: 'D', Ds: 'Dr', P: 'S', R: 'Ab' };
   function renderChart() {
     const ch = Strategy.chart();
     const head = '<tr><th></th>' + ch.ups.map((u) => '<th>' + (u === 11 ? 'A' : u) + '</th>').join('') + '</tr>';
@@ -760,7 +882,11 @@
     cardEl, spotsEl, recordDecision, setSituation, showHintFor, highlightChart,
     getContext, render, renderStats,
     getStats: () => stats,
-    withCount,
+    withCount, recordInsurance,
+    showInsuranceHint() {
+      const adv = Strategy.insuranceAdvice(insuranceCount());
+      showInsuranceFeedback('hint', '💡 Conseil : ' + adv.label, adv.reason);
+    },
     setCountCtx(ctx) { countCtx = ctx || soloCtx; renderCount(); },
     renderCount,
   };
@@ -768,13 +894,15 @@
   // ---------- Événements ----------
   document.querySelectorAll('[data-chip]').forEach((b) => b.addEventListener('click', () => {
     const v = parseInt(b.dataset.chip, 10);
-    if (bet + v <= stats.bankroll) bet += v;
+    if (bet + v <= stats.bankroll) { bet += v; if (window.Sfx) Sfx.chips(); }
     render();
   }));
   $('clear-bet').addEventListener('click', () => { bet = 0; render(); });
   $('deal').addEventListener('click', deal);
   document.querySelectorAll('[data-action]').forEach((b) => b.addEventListener('click', () => act(b.dataset.action)));
   $('hint').addEventListener('click', showHint);
+  $('ins-yes').addEventListener('click', () => insuranceResolve && insuranceResolve(true));
+  $('ins-no').addEventListener('click', () => insuranceResolve && insuranceResolve(false));
   $('opt-tags').addEventListener('change', () => { if (window.Multi) window.Multi.rerender(); render(); });
   $('opt-count-hide').addEventListener('change', () => { renderCount(); hideQuiz(); });
   $('quiz-check').addEventListener('click', checkQuiz);
@@ -807,7 +935,7 @@
     if (document.body.dataset.mode === 'multi') return;
     const k = e.key.toLowerCase();
     if (round && round.phase === 'playing') {
-      const map = { t: 'H', r: 'S', d: 'D', s: 'P' };
+      const map = { t: 'H', r: 'S', d: 'D', s: 'P', a: 'R' };
       if (map[k]) act(map[k]);
       else if (k === 'c') showHint();
     } else if (k === 'enter' || k === ' ') {

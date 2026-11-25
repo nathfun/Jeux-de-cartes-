@@ -17,6 +17,7 @@
   let handStartStack = 0;
   let vpipThisHand = false;
   const shown = new Map();  // id carte -> 'hidden' | 'shown' (animations)
+  const prevBets = {};      // mises affichées au dernier rendu (son des jetons)
   let stats = loadStats();
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -39,7 +40,7 @@
     const [sb, bb] = $('set-blinds').value.split('/').map(Number);
     const n = parseInt($('set-opponents').value, 10);
     const styleSel = $('set-style').value;
-    cfg = { sb, bb, stack: bb * parseInt($('set-stack').value, 10), coach: $('set-coach').checked };
+    cfg = { sb, bb, stack: bb * parseInt($('set-stack').value, 10), coach: $('set-coach').checked, timer: parseInt($('set-timer').value, 10) || 0 };
     document.body.classList.toggle('no-coach', !cfg.coach);
     st = P.createTable({ sb, bb });
     P.addSeat(st, { name: 'Toi', stack: cfg.stack, human: true });
@@ -92,6 +93,7 @@
       busy = false;
       pending = null;
       render();
+      startTimer();
       if (coachOn()) {
         await sleep(30); // laisse l'écran se mettre à jour avant le calcul
         pending = C.analyze(st, ME, { iters: 700 });
@@ -108,6 +110,7 @@
   // ---------- Actions du joueur ----------
   function humanAct(action) {
     if (busy || !st || st.toAct !== ME) return;
+    stopTimer();
     const L = P.legal(st, ME);
     if (action.type === 'raise' && action.to >= L.maxTo) action = { type: 'allin' };
     const res = pending || (coachOn() ? C.analyze(st, ME, { iters: 400 }) : null);
@@ -173,6 +176,36 @@
     appendReason(fb, pending);
   }
 
+  // ---------- Minuteur de réflexion ----------
+  let timerId = null, lastTick = -1;
+  function startTimer() {
+    stopTimer();
+    const secs = cfg.timer;
+    if (!secs) return;
+    const end = Date.now() + secs * 1000;
+    $('timer').hidden = false;
+    const tick = () => {
+      const left = end - Date.now();
+      $('timer-bar').style.width = Math.max(0, (left / (secs * 1000)) * 100) + '%';
+      $('timer-bar').classList.toggle('urgent', left < 5000);
+      $('timer-text').textContent = Math.max(0, Math.ceil(left / 1000)) + ' s';
+      const sec = Math.ceil(left / 1000);
+      if (left < 5000 && sec !== lastTick && window.Sfx) { lastTick = sec; Sfx.tick(); }
+      if (left <= 0) {
+        stopTimer();
+        const L = P.legal(st, ME);
+        humanAct({ type: L.canCheck ? 'check' : 'fold' }); // temps écoulé : parole si possible, sinon on se couche
+      }
+    };
+    tick();
+    timerId = setInterval(tick, 200);
+  }
+  function stopTimer() {
+    if (timerId) clearInterval(timerId);
+    timerId = null;
+    $('timer').hidden = true;
+  }
+
   // ---------- Fin de main ----------
   async function endHand() {
     render();
@@ -187,6 +220,7 @@
     if (!r.uncontested && r.pots[0].hand) msg += ' avec ' + r.pots[0].hand.toLowerCase();
     msg += net > 0 ? ' — tu gagnes ' + net + ' !' : net < 0 ? ' — tu perds ' + (-net) + '.' : '.';
     setMessage(msg);
+    if (window.Sfx) { if (net > 0) Sfx.win(); else if (net < 0) Sfx.lose(); }
     if (coachOn() && handLog.length) renderSummary(net);
     $('next-hand').hidden = false;
     render();
@@ -225,6 +259,7 @@
     const prev = shown.get(card.id);
     const anim = !prev ? ' dealt' : (prev === 'hidden' && !hidden ? ' flip' : '');
     shown.set(card.id, hidden ? 'hidden' : 'shown');
+    if (window.Sfx) { if (anim === ' dealt') Sfx.card(); else if (anim === ' flip') Sfx.flip(); }
     if (hidden) { el.className = 'card back' + anim; return el; }
     el.className = 'card' + (card.suit === '♥' || card.suit === '♦' ? ' red' : '') + anim;
     el.innerHTML = '<div class="tl">' + card.rank + '<br>' + card.suit + '</div><div class="mid">' + card.suit + '</div>';
@@ -289,6 +324,8 @@
       if (i === ME) el.append(hole, plate); else el.append(hole, plate);
       seats.appendChild(el);
 
+      if (s.bet > (prevBets[i] || 0) && window.Sfx) Sfx.chips();
+      prevBets[i] = s.bet;
       if (s.bet > 0 && !showdown) {
         const bp = seatPos(i, n, betR);
         const chip = document.createElement('div');
@@ -433,6 +470,7 @@
     quitArmed = false;
     $('quit').textContent = 'Nouvelle partie';
     st = null;
+    stopTimer();
     $('game').hidden = true;
     $('setup').hidden = false;
     $('feedback').className = 'feedback empty';
