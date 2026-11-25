@@ -67,7 +67,7 @@
   const inPlay = (st) => st.phase === 'playing' || st.phase === 'insurance';
   // La carte cachée du croupier reste face cachée pendant l'assurance et le jeu
   const holeHidden = inPlay;
-  function defaultSettings() { return { coach: true, sides: true, bankroll: START_BANKROLL, turnTime: 20, betTime: 15, noHole: true }; }
+  function defaultSettings() { return { coach: true, sides: true, bankroll: START_BANKROLL, turnTime: 20, betTime: 15, noHole: true, hands: 20 }; }
   const now = () => Date.now();
   // Démarre le minuteur des mises s'il ne tourne pas déjà
   function armBetTimer(st, extraMs) {
@@ -120,8 +120,9 @@
 
   function opSit(st, i) {
     const seat = st.seats[i];
-    if (seat.owner) return false;
+    if (seat.owner || st.gameEnd) return false;
     const p = player(st, me);
+    if (p.out) return false; // éliminé : il regarde la fin de la partie
     if (myName()) p.name = myName();
     st.seats[i] = emptySeat();
     st.seats[i].owner = me;
@@ -165,7 +166,7 @@
   function tagSum(cards) { return cards.reduce((a, c) => a + HiLo.tag(c.rank), 0); }
 
   function opDeal(st) {
-    if (inPlay(st)) return false;
+    if (inPlay(st) || st.gameEnd) return false;
     // Les cartes de la main précédente passent dans la défausse (et dans le compte)
     let used = tagSum(st.dealer);
     st.seats.forEach((s) => s.hands.forEach((h) => { used += tagSum(h.cards); }));
@@ -180,10 +181,12 @@
       s.hands = []; s.side = ''; s.ready = false; s.ins = 0; s.insDecided = false;
       if (!s.owner || s.bet <= 0) return;
       const p = player(st, s.owner);
+      if (p.out) return;
       if (!st.settings.sides) { s.pp = 0; s.t213 = 0; }
       const total = s.bet + (s.pp || 0) + (s.t213 || 0);
       if (p.bankroll < total) return;
       p.bankroll -= total;
+      p.played = true;
       s.hands = [{ cards: [], bet: s.bet, done: false }];
       active.push(i);
     });
@@ -339,10 +342,32 @@
         h.result = txt; h.resultClass = cls;
       });
     });
+    // Pas de recave : sous la mise minimale, le joueur est éliminé
     Object.keys(st.players).forEach((uid) => {
-      if (st.players[uid].bankroll < 5) st.players[uid].bankroll = startMoney(st);
+      const p = st.players[uid];
+      if (p.played && !p.out && p.bankroll < 5) { p.out = true; p.outRound = st.round; st.seats.forEach((s) => { if (s.owner === uid) s.bet = 0; }); }
     });
+    checkGameEnd(st);
     if (!st.msg) st.msg = d > 21 ? 'Le croupier saute avec ' + d + ' !' : 'Le croupier a ' + (dBJ ? 'un blackjack' : d) + '.';
+  }
+
+  // Fin de la partie : nombre de mains atteint, ou un seul joueur encore en jeu
+  function checkGameEnd(st) {
+    const parts = Object.keys(st.players).filter((u) => st.players[u].played);
+    const alive = parts.filter((u) => !st.players[u].out);
+    const limit = st.settings.hands && st.round >= st.settings.hands;
+    if (!parts.length || !(limit || !alive.length || (parts.length >= 2 && alive.length === 1))) return;
+    const rows = parts.map((u) => ({ uid: u, name: st.players[u].name || 'Joueur', bankroll: st.players[u].bankroll, out: !!st.players[u].out, outRound: st.players[u].outRound || 0 }));
+    rows.sort((a, b) => (a.out - b.out) || (a.out ? b.outRound - a.outRound : b.bankroll - a.bankroll));
+    st.gameEnd = { at: now(), rows };
+    st.betDeadline = null;
+  }
+  function opRestart(st) {
+    if (!st.gameEnd || inPlay(st)) return false;
+    Object.values(st.players).forEach((p) => { p.bankroll = startMoney(st); p.out = false; p.played = false; p.outRound = 0; });
+    st.gameEnd = null; st.round = 0; st.msg = 'Nouvelle partie ! Choisissez vos places et vos mises.';
+    st.seats.forEach((s) => { s.hands = []; s.side = ''; if (s.owner) s.bet = 10; });
+    st.dealer = [];
   }
 
   function opAct(st, action, force) {
@@ -412,6 +437,24 @@
       working = false;
       if (state) renderAll(); else renderControls();
     }
+  }
+
+  // Classement final + prix versé sur la banque du Casino (une seule fois par partie)
+  let shownEnd = null;
+  function showGameEnd(st) {
+    if (!st.gameEnd || shownEnd === st.gameEnd.at || animating()) return;
+    shownEnd = st.gameEnd.at;
+    const rows = st.gameEnd.rows || [];
+    const place = rows.findIndex((r) => r.uid === me) + 1;
+    let prize = 0;
+    if (place && window.Casino) prize = Casino.multiPrize('bj:' + tableId + ':' + st.gameEnd.at, place, rows.length);
+    const fn = () => window.Casino && Casino.showRanking({
+      title: place === 1 ? 'Tu gagnes la partie !' : (rows[0] ? rows[0].name + ' gagne la partie !' : 'Partie terminée'),
+      subtitle: (place ? 'Tu termines ' + (place === 1 ? '1er' : place + 'e') + '. ' : '') + (prize ? '+' + prize + ' € sur ta banque du Casino.' : 'Les jetons de la table restent sur la table.'),
+      rows: rows.map((r) => ({ name: r.name + (r.out ? ' (éliminé)' : ''), value: r.bankroll + ' €', me: r.uid === me })),
+      againLabel: 'Nouvelle partie', onAgain: () => mutate(opRestart),
+    });
+    setTimeout(fn, 1200);
   }
 
   function toast(text) {
@@ -533,7 +576,8 @@
     $('mtable-name').textContent = st.name || 'Table';
     $('mtable-code').hidden = !net.usesCodes;
     $('mtable-code-value').textContent = tableId;
-    $('mtable-shoe').textContent = 'Sabot : ' + (st.shoe.length / 52).toFixed(1) + ' jeux';
+    $('mtable-shoe').textContent = (st.settings.hands ? 'Main ' + Math.min(st.round, st.settings.hands) + ' / ' + st.settings.hands + ' · ' : '') + 'Sabot : ' + (st.shoe.length / 52).toFixed(1) + ' jeux';
+    showGameEnd(st);
 
     // Croupier
     const dc = $('m-dealer-cards');
@@ -565,6 +609,8 @@
         const owner = st.seats[st.turn.seat].owner;
         msg.textContent = owner === me ? 'À toi de jouer (place ' + (st.turn.seat + 1) + ') !' : 'Au tour de ' + nameOf(owner) + ' (place ' + (st.turn.seat + 1) + ').';
       } else if (st.phase === 'insurance') msg.textContent = 'Le croupier montre un As : assurance ?';
+      else if (st.gameEnd) msg.textContent = (st.msg || '') + ' Partie terminée !';
+      else if (st.players[me] && st.players[me].out) msg.textContent = (st.msg || '') + ' Tu es éliminé : tu regardes la fin de la partie.';
       else if (st.phase === 'over') msg.textContent = (st.msg || 'Main terminée.') + (st.note ? ' ' + st.note : '') + ' Misez pour la manche suivante.';
       else msg.textContent = (st.msg || '') + (st.note ? ' ' + st.note : '');
     }
@@ -1062,6 +1108,7 @@
         turnTime: parseInt($('set-turn').value, 10) || 20,
         betTime: parseInt($('set-bettime').value, 10) || 15,
         noHole: $('set-rule').value !== 'us',
+        hands: parseInt($('set-hands').value, 10) || 20,
       });
       const id = await net.createTable(st);
       $('table-name').value = '';

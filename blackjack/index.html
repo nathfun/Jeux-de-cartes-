@@ -130,7 +130,16 @@
           <form id="create-table" class="create-form">
             <h3>Créer une table</h3>
             <input id="table-name" maxlength="30" placeholder="Nom de la table (ex. Soirée vendredi)" aria-label="Nom de la table">
-            <label>Argent de départ de chaque joueur
+            <label>Durée de la partie
+              <select id="set-hands">
+                <option value="10">10 mains</option>
+                <option value="20" selected>20 mains</option>
+                <option value="30">30 mains</option>
+                <option value="50">50 mains</option>
+              </select>
+            </label>
+            <p class="small muted prize-note">Les jetons de la table ne servent qu'ici. À la fin, le classement rapporte sur la banque du Casino : 1er +500 €, 2e +200 € (à deux joueurs : le gagnant +300 €). Pas de recave : sous 5 €, on est éliminé.</p>
+            <label>Jetons de départ (monnaie de la table)
               <select id="set-bankroll">
                 <option value="500">500 €</option>
                 <option value="1000" selected>1 000 €</option>

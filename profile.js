@@ -348,6 +348,32 @@
     box.append(train, real);
   }
 
+  // Classement de fin de partie (utilisé par le blackjack entre amis)
+  function showRanking(o) {
+    injectStyle();
+    const old = document.querySelector('.casino-rank'); if (old) old.remove();
+    const ov = document.createElement('div'); ov.className = 'casino-rank';
+    const box = document.createElement('div'); box.className = 'cr-box';
+    const t = document.createElement('div'); t.className = 'cr-title'; t.textContent = o.title;
+    const sub = document.createElement('div'); sub.className = 'cr-sub'; sub.textContent = o.subtitle || '';
+    const ol = document.createElement('ol'); ol.className = 'cr-list';
+    o.rows.forEach((r, i) => {
+      const li = document.createElement('li'); if (r.me) li.className = 'me';
+      const n = document.createElement('span'); n.textContent = ['🥇', '🥈', '🥉'][i] ? ['🥇', '🥈', '🥉'][i] + ' ' + r.name : (i + 1) + '. ' + r.name;
+      const v = document.createElement('b'); v.textContent = r.value;
+      const pz = Casino.prizeFor(i + 1, o.rows.length);
+      li.append(n, v);
+      if (pz) { const z = document.createElement('small'); z.textContent = '+' + pz + ' € banque'; li.appendChild(z); }
+      ol.appendChild(li);
+    });
+    const row = document.createElement('div'); row.className = 'cr-btns';
+    if (o.againLabel && o.onAgain) { const a = document.createElement('button'); a.type = 'button'; a.className = 'cm-btn gold'; a.textContent = o.againLabel; a.onclick = () => { ov.remove(); o.onAgain(); }; row.appendChild(a); }
+    const c = document.createElement('button'); c.type = 'button'; c.className = 'cm-btn'; c.textContent = 'Fermer'; c.onclick = () => ov.remove(); row.appendChild(c);
+    box.append(t, sub, ol, row);
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+  }
+
   // ---------- API ----------
   const Casino = {
     AVATARS, FELTS, BACKS, CHALLENGES, ACHIEVEMENTS, need, levelOf, title,
@@ -449,6 +475,35 @@
       return { start: ss.start, end: ss.stack, diff };
     },
     modePicker,
+    // ---------- Parties entre amis : la monnaie de la table ne sort pas ; le classement rapporte ----------
+    prizeFor(place, players) {
+      if (players >= 3) return place === 1 ? 500 : place === 2 ? 200 : 0;
+      if (players === 2) return place === 1 ? 300 : 0;
+      return 0;
+    },
+    prizeText(players) {
+      return players >= 3 ? '1er : +500 €, 2e : +200 € sur ta banque' : players === 2 ? 'Le gagnant : +300 € sur sa banque' : 'Il faut au moins 2 joueurs pour gagner un prix';
+    },
+    // Verse une seule fois le prix d'une partie (clé unique par table et par partie)
+    multiPrize(key, place, players) {
+      load();
+      P.prizes = P.prizes || {};
+      if (P.prizes[key]) return 0;
+      const v = Casino.prizeFor(place, players);
+      P.prizes[key] = Date.now();
+      const keys = Object.keys(P.prizes).sort((a, b) => P.prizes[a] - P.prizes[b]);
+      while (keys.length > 60) delete P.prizes[keys.shift()];
+      if (v > 0) {
+        P.wallet += v;
+        P.totals.multiWins = (P.totals.multiWins || 0) + (place === 1 ? 1 : 0);
+        addXP(place === 1 ? 120 : 50);
+        checkWallet();
+      }
+      save();
+      if (v > 0) setTimeout(() => Casino.bigWin(v, place === 1 ? 'VICTOIRE ENTRE AMIS !' : '2e PLACE !'), 2200);
+      return v;
+    },
+    showRanking,
     // ---------- Banque du temps : on « achète » de l'argent avec du temps d'attente ----------
     TIME_PACKS,
     timebank() {
@@ -531,6 +586,15 @@
 .cm-q { font: inherit; font-size: .82rem; padding: .25rem .55rem; border-radius: 999px; border: 1px solid #f2c14e; background: transparent; color: #f2c14e; cursor: pointer; }
 .cm-note { color: #ffb4a8; font-size: .85rem; min-height: 0; }
 .cm-badge { display: inline-block; font-size: .75rem; font-weight: 700; padding: .15rem .55rem; border-radius: 999px; background: #4fc3f7; color: #06202c; vertical-align: middle; }
+.casino-rank { position: fixed; inset: 0; z-index: 98; display: grid; place-items: center; background: rgba(0,0,0,.75); padding: 16px; }
+.cr-box { background: #1a2129; color: #e8ecef; border: 2px solid #f2c14e; border-radius: 18px; padding: 1.2rem 1.3rem; width: min(440px, 100%); font: 15px system-ui, sans-serif; animation: cb-zoom .5s cubic-bezier(.2,.9,.3,1.3) both; }
+.cr-title { font-size: 1.5rem; font-weight: 900; color: #f2c14e; text-align: center; }
+.cr-sub { text-align: center; opacity: .85; margin: .3rem 0 .8rem; }
+.cr-list { list-style: none; padding: 0; margin: 0 0 1rem; display: flex; flex-direction: column; gap: .35rem; }
+.cr-list li { display: grid; grid-template-columns: 1fr auto; gap: .1rem .6rem; background: #141a21; border-radius: 10px; padding: .45rem .7rem; }
+.cr-list li.me { outline: 2px solid #4fc3f7; }
+.cr-list small { grid-column: 1 / -1; color: #3fb950; font-weight: 700; }
+.cr-btns { display: flex; gap: .5rem; justify-content: center; }
 .cm-badge.real { background: #f2c14e; color: #2a1d00; }`;
     document.head.appendChild(s);
   }

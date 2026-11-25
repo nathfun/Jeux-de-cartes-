@@ -488,10 +488,14 @@
       const g = st.gameOver;
       const won = g.winner === me;
       const myElim = st.tstats.eliminated.find((e) => e.key === me);
+      // Prix sur la banque du Casino (les jetons de la table, eux, restent sur la table)
+      const nPlayers = (st.tstats.eliminated || []).length + 1;
+      const myPlace = won ? 1 : myElim ? myElim.place : 0;
+      const prize = myPlace && window.Casino ? Casino.multiPrize('pk:' + tableId + ':' + g.at, myPlace, nPlayers) : 0;
       setTimeout(() => PokerApp.showRecap({
         won, T: st.tstats, winnerKey: g.winner, winnerName: g.name, meKey: me, blinds: g.blinds,
         title: won ? 'Tu as gagné la partie !' : g.name + ' remporte la partie !',
-        subtitle: won ? 'Tous tes adversaires sont éliminés' : myElim ? 'Tu termines ' + myElim.place + 'e' : '',
+        subtitle: (won ? 'Tous tes adversaires sont éliminés' : myElim ? 'Tu termines ' + myElim.place + 'e' : '') + (prize ? ' · +' + prize + ' € sur ta banque du Casino' : ''),
         againLabel: st.host === me ? 'Nouvelle partie' : 'Fermer',
         onAgain: () => { if (pub && pub.host === me) act(opRestart); },
       }), 1500);
