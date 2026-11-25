@@ -291,7 +291,7 @@
     const key = info.pub ? game + '_' + code : info.lk ? game + '_' + info.lk : null;
     if (!key) return;
     const t = Date.now(), sig = JSON.stringify(info);
-    if (lobbyLast[key] && t - lobbyLast[key].t < 40000 && lobbyLast[key].sig === sig) return;
+    if (lobbyLast[key] && t - lobbyLast[key].t < 25000 && lobbyLast[key].sig === sig) return;
     lobbyLast[key] = { t, sig };
     const b = await backend();
     if (!b || !b.uid) return;
@@ -306,10 +306,12 @@
     if (b && key) b.remove('lobby/' + key).catch(() => {});
   }
   /** Parties ouvertes (signal reçu il y a moins de 2 min 30). */
+  /** Parties ouvertes ; null si la liste est illisible (règles Firebase pas à jour, ou hors ligne). */
   async function lobbyList() {
     const b = await backend();
-    if (!b) return [];
-    const all = (await b.get('lobby').catch(() => null)) || {};
+    if (!b) return null;
+    let all;
+    try { all = (await b.get('lobby')) || {}; } catch (e) { return null; }
     return Object.entries(all).map(([key, v]) => Object.assign({ key }, v)).filter((e) => e && e.game && Date.now() - e.at < 150000)
       .sort((x, y) => (y.pub - x.pub) || (y.at - x.at));
   }

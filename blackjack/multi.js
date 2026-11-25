@@ -569,10 +569,24 @@
     }
   }
 
+  // ---------- Liste des parties ouvertes (onglet Multijoueur de l'accueil) ----------
+  // Signal envoyé par l'hôte à chaque changement ET toutes les 30 s, même si la table attend sans bouger.
+  // Les tables créées avant cette option sont considérées comme publiques.
+  let lobbyLastInfo = null;
+  function lobbyTick() {
+    const st = state;
+    if (!st || !tableId || !window.Social || !Social.lobbyBeat) return;
+    if (!(st.creator === me && !st.gameEnd)) { if (lobbyLastInfo) { Social.lobbyRemove('blackjack', tableId, lobbyLastInfo); lobbyLastInfo = null; } return; }
+    const sets = st.settings || {};
+    lobbyLastInfo = { name: st.name, host: myName(), players: new Set(st.seats.map((x) => x.owner).filter(Boolean)).size, max: 5, pub: sets.public !== false, lk: sets.lk };
+    Social.lobbyBeat('blackjack', tableId, lobbyLastInfo);
+  }
+  setInterval(lobbyTick, 30000);
+
   function renderAll() {
     if (!state || !tableId) return;
     const st = state;
-    if (window.Social && Social.lobbyBeat && st.creator === me && !st.gameEnd) Social.lobbyBeat('blackjack', tableId, { name: st.name, host: myName(), players: new Set(st.seats.map((x) => x.owner).filter(Boolean)).size, max: 5, pub: !!st.settings.public, lk: st.settings.lk });
+    lobbyTick();
     applyCoach();
     const anim = animating();
     $('mtable-name').textContent = st.name || 'Table';
@@ -1177,7 +1191,7 @@
     try { await navigator.clipboard.writeText(text + ' — ' + link); toast('Lien d\'invitation copié !'); }
     catch (e) { toast('Code de la table : ' + tableId); }
   });
-  $('leave-table').addEventListener('click', () => { showLobby(); if (window.Social && Social.hubLink) location.href = Social.hubLink('#multi'); });
+  $('leave-table').addEventListener('click', () => { if (lobbyLastInfo && window.Social) Social.lobbyRemove('blackjack', tableId, lobbyLastInfo); lobbyLastInfo = null; showLobby(); if (window.Social && Social.hubLink) location.href = Social.hubLink('#multi'); });
   // Réactions rapides : envoyées par le chat de la table, elles s'envolent chez tout le monde
   if (window.Social) {
     Social.reactionBar($('table-chat-form').parentNode, (emoji) => {

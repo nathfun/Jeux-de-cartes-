@@ -365,11 +365,25 @@
   }
   const myCards = () => (myHole && pub && myHole.hand === pub.handNo ? myHole.cards : null);
 
+  // ---------- Liste des parties ouvertes (onglet Multijoueur de l'accueil) ----------
+  // Signal envoyé par l'hôte à chaque changement ET toutes les 30 s, même si la table attend sans bouger.
+  // Les tables créées avant cette option sont considérées comme publiques.
+  let lobbyLastInfo = null;
+  function lobbyTick() {
+    const st = pub;
+    if (!st || !tableId || !window.Social || !Social.lobbyBeat) return;
+    if (!(st.host === me && !st.gameOver)) { if (lobbyLastInfo) { Social.lobbyRemove('poker', tableId, lobbyLastInfo); lobbyLastInfo = null; } return; }
+    const sets = st.settings || {};
+    lobbyLastInfo = { name: st.name, host: myName(), players: st.seats.filter((x) => x.owner).length, max: st.seats.length, pub: sets.public !== false, lk: sets.lk };
+    Social.lobbyBeat('poker', tableId, lobbyLastInfo);
+  }
+  setInterval(lobbyTick, 30000);
+
   function render() {
     if (!pub || !tableId) return;
     document.body.classList.toggle('no-coach', !coachOn());
     const st = pub;
-    if (window.Social && Social.lobbyBeat && st.host === me && !st.gameOver) Social.lobbyBeat('poker', tableId, { name: st.name, host: myName(), players: st.seats.filter((x) => x.owner).length, max: st.seats.length, pub: !!st.settings.public, lk: st.settings.lk });
+    lobbyTick();
     $('pm-table-name').textContent = st.name || 'Table';
     $('pm-table-code').textContent = tableId;
     $('pm-host').textContent = st.host === me ? 'Tu es l\'hôte (tu distribues)' : '';
@@ -707,7 +721,7 @@
       openTable(id, true);
     } catch (err) { $('pm-note').textContent = 'Impossible de créer la table. Vérifie ta connexion.'; }
   });
-  $('pm-leave-table').addEventListener('click', () => { showLobby(); if (window.Social && Social.hubLink) location.href = Social.hubLink('#multi'); });
+  $('pm-leave-table').addEventListener('click', () => { if (lobbyLastInfo && window.Social) Social.lobbyRemove('poker', tableId, lobbyLastInfo); lobbyLastInfo = null; showLobby(); if (window.Social && Social.hubLink) location.href = Social.hubLink('#multi'); });
   $('pm-invite').addEventListener('click', async () => {
     if (window.Social && Social.inviteDialog) { Social.inviteDialog('poker', tableId); return; }
     const u = new URL(location.href); u.search = ''; u.searchParams.set('table', tableId);

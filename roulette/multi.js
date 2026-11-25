@@ -236,9 +236,22 @@
     };
   }
 
+  // ---------- Liste des parties ouvertes (onglet Multijoueur de l'accueil) ----------
+  // Signal envoyé par l'hôte à chaque changement ET toutes les 30 s, même si la table attend sans bouger.
+  // Les tables créées avant cette option sont considérées comme publiques.
+  let lobbyLastInfo = null;
+  function lobbyTick() {
+    if (!st || !tableId || !window.Social || !Social.lobbyBeat) return;
+    if (!(st.creator === me && st.phase !== 'over')) { if (lobbyLastInfo) { Social.lobbyRemove('roulette', tableId, lobbyLastInfo); lobbyLastInfo = null; } return; }
+    const sets = st.settings || {};
+    lobbyLastInfo = { name: st.name, host: myName(), players: Object.keys(st.players || {}).length, max: 8, pub: sets.public !== false, lk: sets.lk };
+    Social.lobbyBeat('roulette', tableId, lobbyLastInfo);
+  }
+  setInterval(lobbyTick, 30000);
+
   function render() {
     if (!st || !tableId) return;
-    if (window.Social && Social.lobbyBeat && st.creator === me && st.phase !== 'over') Social.lobbyBeat('roulette', tableId, { name: st.name, host: myName(), players: Object.keys(st.players || {}).length, max: 8, pub: !!st.settings.public, lk: st.settings.lk });
+    lobbyTick();
     document.body.classList.toggle('no-coach', !coachOn());
     $('opt-info').checked = coachOn();
     $('aides-row').hidden = !st.settings.coach; // l'hôte a interdit les aides : pas d'interrupteur
@@ -400,7 +413,7 @@
       openTable(id, true);
     } catch (err) { $('rm-note').textContent = 'Impossible de créer la table. Vérifie ta connexion.'; }
   });
-  $('rm-leave').addEventListener('click', () => { showLobby(); if (window.Social && Social.hubLink) location.href = Social.hubLink('#multi'); });
+  $('rm-leave').addEventListener('click', () => { if (lobbyLastInfo && window.Social) Social.lobbyRemove('roulette', tableId, lobbyLastInfo); lobbyLastInfo = null; showLobby(); if (window.Social && Social.hubLink) location.href = Social.hubLink('#multi'); });
   $('rm-invite').addEventListener('click', async () => {
     if (window.Social && Social.inviteDialog) { Social.inviteDialog('roulette', tableId); return; }
     const u = new URL(location.href); u.search = ''; u.searchParams.set('table', tableId);

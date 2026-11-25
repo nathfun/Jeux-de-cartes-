@@ -592,9 +592,14 @@
       async function refreshLobby() {
         clearTimeout(lobbyTimer);
         if (document.body.dataset.hubtab !== 'multi' || !window.Social) return;
-        const list = await Social.lobbyList().catch(() => []);
+        const list = await Social.lobbyList().catch(() => null);
         const box = $('mp-list'); box.innerHTML = '';
-        if (!list.length) { const p = document.createElement('p'); p.className = 'muted'; p.textContent = 'Aucune partie ouverte pour le moment : crée la tienne !'; box.appendChild(p); }
+        if (!list) {
+          const p = document.createElement('p'); p.className = 'mp-note';
+          p.textContent = '⚠️ Impossible de lire la liste des parties : vérifie ta connexion. Si le problème continue, les règles Firebase ne sont pas à jour (recopie database.rules.json dans la console Firebase).';
+          box.appendChild(p); lobbyTimer = setTimeout(refreshLobby, 15000); return;
+        }
+        if (!list.length) { const p = document.createElement('p'); p.className = 'muted'; p.textContent = 'Aucune partie ouverte pour le moment : crée la tienne ! (Une table apparaît ici tant que son hôte reste dessus.)'; box.appendChild(p); }
         list.forEach((e) => {
           const row = document.createElement('div'); row.className = 'mp-row';
           const ic = document.createElement('span'); ic.className = 'mp-ic'; ic.textContent = GAME_ICON[e.game] || '🎲';
