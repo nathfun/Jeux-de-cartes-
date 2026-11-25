@@ -60,6 +60,11 @@
     .game.trader { background: radial-gradient(ellipse at 80% 10%, #0f3b4a 0%, #0b1440 55%, #050816 100%); border-color: #0e7490; }
     .game.trader h2 { background: linear-gradient(90deg, #34d399, #22d3ee, #a78bfa); -webkit-background-clip: text; background-clip: text; color: transparent; }
     .mini-chart { margin-top: auto; height: 34px; max-width: 180px; }
+    .game.mines { background: radial-gradient(ellipse at 20% 10%, #123a5c 0%, #0b1440 55%, #050816 100%); border-color: #0369a1; }
+    .game.mines h2 { background: linear-gradient(90deg, #38bdf8, #f472b6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .mini-mines { margin-top: auto; display: grid; grid-template-columns: repeat(5, 22px); gap: 4px; }
+    .mini-mines i { height: 22px; border-radius: 6px; background: linear-gradient(160deg, #2a2f6b, #161a44); font-style: normal; font-size: 13px; display: grid; place-items: center; }
+    .mini-mines i.g { background: radial-gradient(circle, rgba(34,211,238,.4), #082f49 70%); box-shadow: 0 0 8px rgba(34,211,238,.5); }
     .game.plinko { background: radial-gradient(ellipse at 30% 10%, #3b1a6e 0%, #0b1440 55%, #050816 100%); border-color: #6d28d9; }
     .game.plinko h2 { background: linear-gradient(90deg, #f472b6, #a78bfa, #22d3ee); -webkit-background-clip: text; background-clip: text; color: transparent; }
     .mini-plinko { margin-top: auto; display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; max-width: 170px; }
@@ -271,6 +276,7 @@
     .leaderboard { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: .35rem; }
     .leaderboard li { display: grid; grid-template-columns: 2.2rem 2rem 1fr auto auto; gap: .5rem; align-items: center; background: #141a21; border-radius: 10px; padding: .45rem .6rem; font-size: .9rem; }
     .leaderboard li.me { border: 1px solid var(--gold); }
+    .leaderboard li.lb-click { cursor: pointer; transition: background .15s, transform .1s; } .leaderboard li.lb-click:hover { background: #1c242d; } .leaderboard li.lb-click:active { transform: scale(.99); }
     .leaderboard .rk { font-weight: 800; text-align: center; }
     .leaderboard .av { font-size: 1.4rem; }
     .leaderboard .val { font-weight: 700; color: var(--gold); font-variant-numeric: tabular-nums; }
@@ -369,6 +375,12 @@
         <div class="tags"><span>Nouveau</span><span>Levier ×20</span><span>Achat / Vente</span></div>
         <svg class="mini-chart" viewBox="0 0 180 34" aria-hidden="true"><defs><linearGradient id="mc" x1="0" x2="1"><stop offset="0" stop-color="#f472b6"/><stop offset="1" stop-color="#34d399"/></linearGradient></defs><polyline fill="none" stroke="url(#mc)" stroke-width="2.5" stroke-linejoin="round" points="0,22 15,18 28,24 42,14 55,17 66,26 78,30 90,21 104,23 118,12 130,15 144,8 158,11 170,4 180,6"/></svg>
       </a>
+      <a class="game mines" href="mines/index.html">
+        <h2>Mines</h2>
+        <p>25 cases, des mines cachées. Chaque diamant fait grimper ton gain : encaisse avant de tomber sur une mine ! Choisis de 1 à 24 mines.</p>
+        <div class="tags"><span>Nouveau</span><span>Jusqu'à ×24 000</span><span>RTP 97 %</span></div>
+        <div class="mini-mines" aria-hidden="true"><i class="g">💎</i><i></i><i class="g">💎</i><i></i><i>💣</i></div>
+      </a>
       <a class="game slots" href="slots/index.html">
         <h2>Machine à sous</h2>
         <p>5 rouleaux, 10 lignes, jokers, tours gratuits à gains doublés et un jackpot pour cinq 7️⃣. Les aides expliquent chaque gain et le vrai taux de retour.</p>
@@ -441,6 +453,7 @@
         <div class="friend-row">
           <span>Ton code ami : <b id="my-code" class="code">…</b></span>
           <button id="share-code" class="icon-btn" type="button">Partager</button>
+          <button id="my-profile" class="icon-btn" type="button">👤 Mon profil public</button>
           <form id="add-friend" class="inline-form">
             <input id="friend-code" maxlength="6" placeholder="Code d'un ami" aria-label="Code d'un ami" autocapitalize="characters">
             <button type="submit" class="icon-btn">Ajouter</button>
@@ -559,7 +572,7 @@
         $('bonus').textContent = b.available ? '🎁 Bonus du jour : +' + fmt(b.amount) + ' €' + (b.streak > 1 ? ' (série de ' + b.streak + ' jours)' : '') : '✔ Bonus récupéré · série de ' + b.streak + ' jour' + (b.streak > 1 ? 's' : '') + ' · reviens demain';
         const ses = Casino.sessions();
         const ip = $('in-play'); ip.innerHTML = '';
-        const paths = { blackjack: 'blackjack/index.html', poker: 'poker/index.html', roulette: 'roulette/index.html', slots: 'slots/index.html', crash: 'crash/index.html', plinko: 'plinko/index.html', trader: 'trader/index.html' };
+        const paths = { blackjack: 'blackjack/index.html', poker: 'poker/index.html', roulette: 'roulette/index.html', slots: 'slots/index.html', crash: 'crash/index.html', plinko: 'plinko/index.html', trader: 'trader/index.html', mines: 'mines/index.html' };
         Object.keys(ses).forEach((g) => {
           const a = document.createElement('a'); a.href = paths[g] || '#';
           a.textContent = '🎲 ' + (Casino.GAMES[g] || g) + ' : ' + fmt(ses[g].stack) + ' € sur la table';
@@ -747,7 +760,7 @@
           box.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="Évolution de ta banque"><polyline points="' + pts + '" fill="none" stroke="' + (up ? '#3fb950' : '#f85149') + '" stroke-width="2.5" vector-effect="non-scaling-stroke"/></svg>'
             + '<div class="bc-legend"><span>' + days[0].slice(5).split('-').reverse().join('/') + ' : ' + fmt(vals[0]) + ' €</span><span>min ' + fmt(mn) + ' € · max ' + fmt(mx) + ' €</span><span>aujourd\'hui : <b>' + fmt(vals[vals.length - 1]) + ' €</b></span></div>';
         }
-        const NAMES = { bj: '🂡 Blackjack', pk: '♠ Poker', rl: '🎡 Roulette', sl: '🎰 Machine à sous', cr: '🚀 Rocket Crash', pl: '🔮 Plinko', tr: '📈 Bourse Flash' };
+        const NAMES = { bj: '🂡 Blackjack', pk: '♠ Poker', rl: '🎡 Roulette', sl: '🎰 Machine à sous', cr: '🚀 Rocket Crash', pl: '🔮 Plinko', tr: '📈 Bourse Flash', mn: '💎 Mines' };
         const nb = (P.totals && P.totals.netBy) || {};
         const g = $('bank-games'); g.innerHTML = '';
         Object.keys(NAMES).forEach((k) => {
@@ -866,7 +879,7 @@
       // (le crédit d'apprentissage repart de 10 000 € à chaque partie ; la banque et la progression ne bougent pas)
       function resetLearning() {
         const ls = (k, fn) => { try { const raw = localStorage.getItem(k); if (raw == null) return; const v = fn(JSON.parse(raw)); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignore */ } };
-        ['crash-v1', 'plinko-v1', 'trader-v1'].forEach((k) => ls(k, (v) => { if (v.stats) v.stats.train = { rounds: 0, wagered: 0, won: 0, best: 0 }; if (v.bets) v.bets.train = []; return v; }));
+        ['crash-v1', 'plinko-v1', 'trader-v1', 'mines-v1'].forEach((k) => ls(k, (v) => { if (v.stats) v.stats.train = { rounds: 0, wagered: 0, won: 0, best: 0 }; if (v.bets) v.bets.train = []; return v; }));
         ls('blackjack-coach-v1', (v) => ({ bankroll: v.bankroll })); // le coach repart de zéro, la somme d'une partie réelle en cours est gardée
         ls('poker-coach-v1', () => null);
       }
@@ -1027,6 +1040,9 @@
           const nm = document.createElement('div'); nm.textContent = r.me ? 'Toi' : r.pseudo; const sm = document.createElement('small'); sm.textContent = r.titleName || Casino.title(r.level || 1); nm.appendChild(sm);
           const v = document.createElement('span'); v.className = 'val'; v.textContent = LABEL[sort](r);
           li.append(rk, av, nm, v);
+          // toucher un joueur : son profil public (stats, vitrine, succès, parties entre amis)
+          li.classList.add('lb-click'); li.title = 'Voir le profil de ' + (r.me ? 'toi' : r.pseudo);
+          li.addEventListener('click', (e) => { if (e.target.closest('.lb-invite, .lb-games')) return; Social.showProfile(r.uid, r.me ? null : r); });
           if (!r.me) {
             // inviter cet ami : on choisit le jeu, la table est créée et l'invitation part toute seule
             const inv = document.createElement('button'); inv.type = 'button'; inv.className = 'lb-invite'; inv.textContent = '📨 Inviter';
@@ -1068,6 +1084,7 @@
         sort = btn.dataset.sort; document.querySelectorAll('.lb-tabs button').forEach((x) => x.classList.toggle('on', x === btn)); draw();
       }));
       $('share-code').addEventListener('click', () => Social.shareLink(location.href.split('?')[0], 'Ajoute-moi au Casino ! Mon code ami : ' + $('my-code').textContent));
+      $('my-profile').addEventListener('click', async () => { const bb = await Social.backend(); if (bb) Social.showProfile(bb.uid); });
       $('add-friend').addEventListener('submit', async (e) => {
         e.preventDefault();
         const r = await Social.addFriendByCode($('friend-code').value);

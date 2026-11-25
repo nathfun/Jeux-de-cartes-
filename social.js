@@ -137,8 +137,132 @@
       frame: Casino.equipped ? Casino.equipped('frame') : 'none',
       pokerWeek: Casino.pokerWeek ? Casino.pokerWeek() : null, pokerWeekPrev: p.pokerWeekPrev || null,
       titleName: (() => { const t = Casino.itemOf && Casino.itemOf('title', Casino.equipped('title')); return t && t.id ? t.name : null; })(),
+      card: publicCard(p),
     });
     return true;
+  }
+
+  // ---------- Profil public ----------
+  // Ce que les amis voient : statistiques, objets équipés, succès récents, parties entre amis
+  function publicCard(p) {
+    const T = p.totals || {};
+    const counts = { blackjack: T.bjHands || 0, poker: T.pkHands || 0, roulette: T.rlSpins || 0, slots: T.slSpins || 0, crash: T.crRounds || 0, plinko: T.plBalls || 0, trader: T.trTrades || 0, mines: T.mnRounds || 0 };
+    const fav = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+    const ach = Object.entries(p.achievements || {}).sort((a, b) => b[1] - a[1]).slice(0, 8).map((x) => x[0]);
+    const eq = {};
+    ['frame', 'rocket', 'ball', 'theme', 'felt', 'back', 'chips', 'effect', 'title'].forEach((k) => { try { eq[k] = Casino.equipped(k); } catch (e) { /* ignore */ } });
+    const owned = Object.keys(p.owned || {}).length;
+    return {
+      since: p.createdAt || null, hands: T.hands || 0, wins: T.wins || 0, biggestWin: Math.round(T.biggestWin || 0), multiWins: T.multiWins || 0,
+      streak: (p.bonus && p.bonus.streak) || 0, fav: counts[fav] ? fav : null, counts, ach, eq, owned,
+      season: p.season ? { id: p.season.id, xp: p.season.xp || 0 } : null,
+      hist: (p.multiHist || []).slice(0, 10),
+    };
+  }
+  const GAME_LABEL = { blackjack: '🂡 Blackjack', poker: '♠ Poker', roulette: '🎡 Roulette', slots: '🎰 Machine à sous', crash: '🚀 Rocket Crash', plinko: '🔮 Plinko', trader: '📈 Bourse Flash', mines: '💎 Mines' };
+  let profStyled = false;
+  function profStyle() {
+    if (profStyled) return; profStyled = true;
+    const s = document.createElement('style');
+    s.textContent = `
+.pp-ov { position: fixed; inset: 0; z-index: 80; background: rgba(3,6,12,.75); backdrop-filter: blur(4px); display: grid; place-items: center; padding: 16px; overflow-y: auto; animation: pp-f .2s ease-out both; }
+.pp { position: relative; width: min(520px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; border-radius: 24px; color: #f3f4f6; font: 15px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: radial-gradient(ellipse at 50% 0%, #3a2c0c 0%, #161a22 55%, #0d1117 100%); border: 1px solid rgba(242,193,78,.45); box-shadow: 0 30px 80px rgba(0,0,0,.6); animation: pp-in .45s cubic-bezier(.2,.9,.3,1.2) both; }
+.pp-close { position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; border-radius: 50%; border: 0; background: rgba(255,255,255,.08); color: #fff; font-size: 1.1rem; cursor: pointer; z-index: 2; }
+.pp-head { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 1.4rem 1rem .8rem; gap: .25rem; }
+.pp-av { width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; font-size: 48px; background: rgba(255,255,255,.06); border: 3px solid #f2c14e; box-shadow: 0 0 30px rgba(242,193,78,.35); animation: pp-float 3s ease-in-out infinite; }
+.pp-name { font-size: 1.5rem; font-weight: 900; margin-top: .3rem; }
+.pp-title { color: #f2c14e; font-weight: 700; font-size: .9rem; }
+.pp-lvl { width: 70%; height: 8px; border-radius: 999px; background: rgba(255,255,255,.1); overflow: hidden; margin-top: .4rem; } .pp-lvl i { display: block; height: 100%; background: linear-gradient(90deg, #f2c14e, #4fc3f7); border-radius: 999px; }
+.pp-sub { font-size: .8rem; opacity: .7; }
+.pp-badges { display: flex; gap: .35rem; flex-wrap: wrap; justify-content: center; margin-top: .4rem; } .pp-badges span { font-size: .75rem; font-weight: 700; padding: .2rem .6rem; border-radius: 999px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); }
+.pp-sec { margin: 0 1rem 1rem; padding: .8rem .9rem; border-radius: 16px; background: rgba(0,0,0,.28); border: 1px solid rgba(255,255,255,.07); }
+.pp-sec h3 { margin: 0 0 .55rem; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: rgba(243,244,246,.65); }
+.pp-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; }
+.pp-stats div { text-align: center; background: rgba(255,255,255,.04); border-radius: 12px; padding: .45rem .2rem; } .pp-stats b { display: block; font-size: 1.1rem; font-variant-numeric: tabular-nums; } .pp-stats small { font-size: .68rem; opacity: .65; }
+.pp-items { display: flex; gap: .4rem; flex-wrap: wrap; } .pp-items span { font-size: .8rem; padding: .3rem .6rem; border-radius: 10px; background: rgba(255,255,255,.06); }
+.pp-ach { display: flex; gap: .4rem; flex-wrap: wrap; } .pp-ach span { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; background: rgba(242,193,78,.1); border: 1px solid rgba(242,193,78,.35); }
+.pp-hist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .3rem; font-size: .85rem; }
+.pp-hist li { display: grid; grid-template-columns: auto 1fr auto; gap: .5rem; align-items: center; background: rgba(255,255,255,.04); border-radius: 10px; padding: .35rem .6rem; } .pp-hist .w { color: #3fb950; font-weight: 800; }
+.pp-games { display: flex; flex-direction: column; gap: .3rem; font-size: .82rem; } .pp-games div { display: grid; grid-template-columns: 9.5em 1fr auto; gap: .5rem; align-items: center; } .pp-games .pp-bar { display: block; background: rgba(255,255,255,.06); border-radius: 999px; } .pp-games i { display: block; height: 7px; border-radius: 999px; background: linear-gradient(90deg, #f2c14e, #4fc3f7); }
+@keyframes pp-f { from { opacity: 0; } } @keyframes pp-in { from { opacity: 0; transform: translateY(24px) scale(.96); } } @keyframes pp-float { 50% { transform: translateY(-5px); } }
+@media (prefers-reduced-motion: reduce) { .pp, .pp-av, .pp-ov { animation: none; } }`;
+    document.head.appendChild(s);
+  }
+  /** Affiche le profil public d'un joueur (uid) ; row = ligne du classement si on l'a déjà. */
+  async function showProfile(uid, row) {
+    profStyle();
+    const b = await backend();
+    let pr = row && row.card ? row : null;
+    if (!pr && b) { pr = await b.get('profiles/' + uid).catch(() => null); if (pr) { const w = await b.get('bank/' + uid + '/wallet').catch(() => null); if (typeof w === 'number') pr.wallet = Math.round(w); } }
+    const me = b && uid === b.uid;
+    if (me) pr = Object.assign({}, pr || {}, { pseudo: P().pseudo || 'Joueur', avatar: P().avatar, xp: P().xp, level: Casino.levelOf(P().xp), card: publicCard(P()), achievements: Object.keys(P().achievements).length, frame: Casino.equipped('frame') });
+    if (!pr) { if (window.Casino) Casino.toast('Profil introuvable', 'Ce joueur n\'a pas encore de profil public.', '👤'); return; }
+    const c = pr.card || {};
+    const fmt = (n) => Math.round(n || 0).toLocaleString('fr-FR');
+    const el = (t, cls, txt) => { const e = document.createElement(t); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+    const ov = el('div', 'pp-ov'); const box = el('div', 'pp'); ov.appendChild(box);
+    const close = () => ov.remove();
+    ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
+    const x = el('button', 'pp-close', '✕'); x.type = 'button'; x.setAttribute('aria-label', 'Fermer'); x.onclick = close; box.appendChild(x);
+    // en-tête
+    const h = el('div', 'pp-head');
+    const av = el('div', 'pp-av fr-' + (pr.frame || 'none'), pr.avatar || '🎩');
+    const lv = pr.level || Casino.levelOf(pr.xp || 0), cur = Casino.need(lv), nxt = Casino.need(lv + 1);
+    const bar = el('div', 'pp-lvl'); const fill = el('i'); fill.style.width = Math.max(4, Math.min(100, Math.round(((pr.xp || 0) - cur) / Math.max(1, nxt - cur) * 100))) + '%'; bar.appendChild(fill);
+    h.append(av, el('div', 'pp-name', (pr.pseudo || 'Joueur') + (me ? ' (toi)' : '')), el('div', 'pp-title', pr.titleName || Casino.title(lv)), bar,
+      el('div', 'pp-sub', 'Niveau ' + lv + ' · ' + fmt(pr.xp) + ' XP' + (c.since ? ' · membre depuis ' + new Date(c.since).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '')));
+    const badges = el('div', 'pp-badges');
+    if (c.season && Casino.seasonTier) { const t = Casino.seasonTier(c.season.xp); if (t) badges.appendChild(el('span', '', (t.icon || '🏅') + ' Saison : ' + t.name)); }
+    if (c.streak > 1) badges.appendChild(el('span', '', '🔥 ' + c.streak + ' jours d\'affilée'));
+    if (pr.pokerWeek && pr.pokerWeek.pts) badges.appendChild(el('span', '', '♚ ' + pr.pokerWeek.pts + ' pts au tournoi de la semaine'));
+    if (c.fav) badges.appendChild(el('span', '', '❤️ ' + (GAME_LABEL[c.fav] || c.fav)));
+    if (badges.children.length) h.appendChild(badges);
+    box.appendChild(h);
+    // statistiques
+    const sec = (title) => { const s = el('div', 'pp-sec'); s.appendChild(el('h3', '', title)); box.appendChild(s); return s; };
+    const st = el('div', 'pp-stats');
+    [[fmt(pr.wallet) + ' €', 'Banque'], [fmt(c.hands || pr.hands), 'Mains et tours'], [(c.hands ? Math.round((c.wins || 0) / c.hands * 100) : 0) + ' %', 'Gagnés'],
+      ['+' + fmt(c.biggestWin || pr.biggestWin) + ' €', 'Plus gros gain'], [(pr.achievements || 0) + ' / ' + Casino.ACHIEVEMENTS.length, 'Succès'], [fmt(c.multiWins), 'Victoires entre amis']]
+      .forEach(([v, l]) => { const d = el('div'); d.append(el('b', '', v), el('small', '', l)); st.appendChild(d); });
+    sec('Statistiques').appendChild(st);
+    // jeux préférés
+    if (c.counts) {
+      const top = Object.entries(c.counts).filter((e) => e[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 4);
+      if (top.length) {
+        const g = el('div', 'pp-games'), max = top[0][1];
+        top.forEach(([k, n]) => { const r = el('div'); const bar2 = el('i'); bar2.style.width = Math.max(6, Math.round(n / max * 100)) + '%'; const wrap = el('span', 'pp-bar'); wrap.appendChild(bar2); r.append(el('span', '', GAME_LABEL[k] || k), wrap, el('small', '', fmt(n))); g.appendChild(r); });
+        sec('Jeux préférés').appendChild(g);
+      }
+    }
+    // vitrine : objets équipés
+    if (c.eq && window.Casino && Casino.itemOf) {
+      const it = el('div', 'pp-items');
+      Object.entries(c.eq).forEach(([k, id]) => { const o = Casino.itemOf(k, id); if (o && (o.price || o.exclusive) && o.name) it.appendChild(el('span', '', (Casino.SHOP_LABELS[k] || k) + ' : ' + o.name)); });
+      if (!it.children.length) it.appendChild(el('span', '', 'Objets de départ'));
+      const s = sec('Vitrine · ' + (c.owned || 0) + ' objet' + ((c.owned || 0) > 1 ? 's' : '') + ' possédé' + ((c.owned || 0) > 1 ? 's' : '')); s.appendChild(it);
+    }
+    // succès récents
+    if (c.ach && c.ach.length) {
+      const a = el('div', 'pp-ach');
+      c.ach.forEach((id) => { const d = Casino.ACHIEVEMENTS.find((q) => q.id === id); if (d) { const s2 = el('span', '', d.icon); s2.title = d.name + ' : ' + d.text; a.appendChild(s2); } });
+      sec('Succès récents').appendChild(a);
+    }
+    // historique entre amis
+    const hs = sec('Parties entre amis');
+    if (c.hist && c.hist.length) {
+      const ul = el('ul', 'pp-hist');
+      c.hist.forEach((m) => {
+        const li = el('li');
+        li.append(el('span', '', m.place === 1 ? '🥇' : m.place === 2 ? '🥈' : m.place === 3 ? '🥉' : m.place + 'e'),
+          el('span', '', (GAME_LABEL[m.game] || m.game) + ' · ' + m.players + ' joueurs · ' + new Date(m.at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })),
+          el('span', m.prize ? 'w' : '', m.prize ? '+' + fmt(m.prize) + ' €' : '–'));
+        ul.appendChild(li);
+      });
+      hs.appendChild(ul);
+    } else hs.appendChild(el('p', 'pp-sub', 'Aucune partie entre amis terminée pour l\'instant.'));
+    document.body.appendChild(ov);
+    document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } });
   }
 
   async function addFriendByCode(c) {
@@ -554,7 +678,7 @@
   window.Social = {
     rng, backend, myCode, publish, lobbyBeat, lobbyRemove, lobbyList, findTable, hubLink, sendInvite, inviteDialog, tableReady, tableLink, wantsTable, listenInvites, friends, addFriendByCode, addFriendUid, removeFriend, leaderboard,
     createChallenge, getChallenge, submitChallenge, challengeLink, showChallengeResult, shareLink,
-    reactionBar, floatReaction, isReaction, EMOJIS, QUICK, waitingRoom, enableNotifications, notify,
+    showProfile, reactionBar, floatReaction, isReaction, EMOJIS, QUICK, waitingRoom, enableNotifications, notify,
   };
   if (window.Casino) setTimeout(() => { listenInvites().catch(() => {}); }, 1200);
 })();

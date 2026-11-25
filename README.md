@@ -1,6 +1,6 @@
 # Casino
 
-App web installable sur téléphone (PWA) : blackjack, poker, roulette, machine à sous, Rocket Crash, Plinko et Bourse Flash, en solo ou entre amis. Tout se joue en argent virtuel.
+App web installable sur téléphone (PWA) : blackjack, poker, roulette, machine à sous, Rocket Crash, Plinko, Bourse Flash et Mines, en solo ou entre amis. Tout se joue en argent virtuel.
 
 | Jeu | Solo | Entre amis |
 | --- | --- | --- |
@@ -10,6 +10,7 @@ App web installable sur téléphone (PWA) : blackjack, poker, roulette, machine 
 | [Rocket Crash](crash/) | Fusée qui décolle, multiplicateur en direct, retrait avant l'explosion (manuel ou automatique) ; RTP 97 % (P(atteindre ×m) = 0,97/m), tirage cryptographique « Provably Fair » | – |
 | [Plinko](plinko/) | Billes qui rebondissent sur 8 à 16 rangées de picots jusqu'aux cases à multiplicateurs (jusqu'à ×1 000) ; 3 niveaux de risque, mode automatique, RTP ≈ 97 %, chemin de chaque bille vérifiable (« Provably Fair ») | – |
 | [Bourse Flash](trader/) | Trois actions fictives cotent en direct (marche aléatoire équitable, krachs et envolées) : achat ou vente, effet de levier ×1 à ×20, objectif de gain / limite de perte, liquidation ; le casino gagne par les frais (0,3 % × levier) et la liquidation | – |
+| [Mines](mines/) | Grille de 25 cases, 1 à 24 mines : chaque diamant fait monter le multiplicateur (0,97 ÷ chance d'en arriver là), on encaisse quand on veut ; positions des mines vérifiables (« Provably Fair ») | – |
 | [Poker](poker/) | Texas Hold'em contre 1 à 5 bots, coach (position, outs, équité, cotes du pot), résumé de chaque main | 6 places avec code d'entrée, cartes privées, minuteur, chat |
 
 ## L'argent du Casino
