@@ -80,7 +80,7 @@
     buildTapis();
     const tapis = $('tapis');
     tapis.classList.toggle('locked', !view.canBet);
-    tapis.querySelectorAll('.chip-on, .dolly').forEach((e) => e.remove());
+    tapis.querySelectorAll('.chip-on, .dolly, .chip-pct').forEach((e) => e.remove());
     tapis.querySelectorAll('.spot.win').forEach((e) => e.classList.remove('win'));
     const showResult = view.phase === 'result' && view.result != null;
     // jetons des autres joueurs (petits jetons de couleur, décalés)
@@ -105,6 +105,16 @@
       el.style.top = c.top + '%';
       el.textContent = amt >= 1000 ? Math.round(amt / 100) / 10 + 'k' : amt;
       tapis.appendChild(el);
+      // Aides : chance de gagner de cette mise, au-dessus du jeton
+      if (!document.body.classList.contains('no-coach') && !showResult) {
+        const pc = document.createElement('div');
+        pc.className = 'chip-pct';
+        pc.style.left = c.left + '%';
+        pc.style.top = c.top + '%';
+        pc.textContent = B.chanceText(key);
+        pc.title = 'Chance de gagner cette mise';
+        tapis.appendChild(pc);
+      }
     });
     if (showResult) {
       B.spots.forEach((s) => {
@@ -154,6 +164,20 @@
   }
   setInterval(tickTimer, 200);
 
+  /** Petite fenêtre après chaque numéro : gain en vert, perte en rouge. */
+  function showOutcome(net, staked) {
+    if (!staked) return;
+    const box = $('outcome');
+    box.className = 'outcome ' + (net > 0 ? 'win' : net < 0 ? 'lose' : 'even');
+    $('outcome-title').textContent = net > 0 ? 'Gagné !' : net < 0 ? 'Perdu' : 'Mise récupérée';
+    $('outcome-amount').textContent = (net > 0 ? '+' : net < 0 ? '−' : '') + fmt(Math.abs(net)) + ' €';
+    $('outcome-detail').textContent = 'Misé ' + fmt(staked) + ' € · récupéré ' + fmt(staked + net) + ' €';
+    box.hidden = false;
+    box.style.animation = 'none'; void box.offsetWidth; box.style.animation = '';
+    clearTimeout(showOutcome.t);
+    showOutcome.t = setTimeout(() => { box.hidden = true; }, 3800);
+  }
+
   function showBadge(n) {
     const b = $('result-badge');
     if (!b.hidden && b.textContent === String(n)) return;
@@ -193,6 +217,11 @@
   function announceResult(n) {
     if (!window.Sfx) return;
     Sfx.say(n === 0 ? 'Zéro' : n + ', ' + (B.RED.has(n) ? 'rouge' : 'noir') + ', ' + (n % 2 ? 'impair' : 'pair') + ' et ' + (n <= 18 ? 'manque' : 'passe'));
+  }
+
+  function limitText(key) {
+    const s = B.byKey[key];
+    return 'Mise maximale sur ' + B.TYPES[s.type].label.toLowerCase() + ' : ' + s.max + ' €.';
   }
 
   // ---------- Aides ----------
@@ -351,7 +380,7 @@
   buildChips();
 
   window.RouletteUI = {
-    render, setHandlers, ensureWheel, rienNeVaPlus, announceResult, coachInfo, coachRound,
+    render, setHandlers, ensureWheel, showOutcome, limitText, rienNeVaPlus, announceResult, coachInfo, coachRound,
     createStats, analyseBets, recordSpin, renderStats, showRecap,
     get chip() { return selected; },
     SPIN_MS, RESULT_MS, fmt,
@@ -397,6 +426,7 @@
   function addBet(key, amount) {
     if (!S || !(S.phase === 'waiting' || S.phase === 'betting')) return false;
     if (S.bankroll < amount) { $('sub-message').textContent = 'Solde insuffisant pour ce jeton.'; return false; }
+    if (B.room(key, S.bets[key]) < amount) { $('sub-message').textContent = limitText(key); return false; }
     S.bets[key] = (S.bets[key] || 0) + amount;
     S.bankroll -= amount;
     S.log.push({ key, amount });
@@ -480,6 +510,7 @@
     S.resultText = r.staked ? (r.net > 0 ? 'Tu gagnes ' + fmt(r.net) + ' € !' : r.net < 0 ? 'Tu perds ' + fmt(-r.net) + ' €.' : 'Mise récupérée.') +
       (n === 0 && Object.keys(S.bets).some((k) => B.byKey[k].type === 'simple') ? ' (partage : la moitié de tes chances simples t\'est rendue)' : '') : '';
     announceResult(n);
+    setTimeout(() => showOutcome(r.net, r.staked), 700);
     if (window.Sfx && r.staked) setTimeout(() => { if (r.net > 0) Sfx.win(); else if (r.net < 0) Sfx.lose(); }, 900);
     if (r.staked) {
       coachRound([

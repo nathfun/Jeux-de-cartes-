@@ -137,7 +137,8 @@
   function opBet(st, i, field, amount) {
     const seat = st.seats[i];
     if (seat.owner !== me || inPlay(st)) return false;
-    if (field === 'bet') seat.bet = amount === 0 ? 0 : Math.min(500, seat.bet + amount);
+    // limites de la table : 5 € minimum, 250 € maximum par place
+    if (field === 'bet') seat.bet = amount === 0 ? 0 : Math.min(250, seat.bet + amount);
     else if (st.settings.sides) seat[field] = amount;
     else return false;
     seat.ready = false;

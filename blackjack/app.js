@@ -6,6 +6,8 @@
   const DECKS = 6;
   const MAX_HANDS = 4;
   const START_BANKROLL = 1000;
+  // Limites de la table, comme au casino (le doublement et la séparation peuvent dépasser le maximum)
+  const MIN_BET = 5, MAX_BET = 250;
   const STORAGE_KEY = 'blackjack-coach-v1';
   const CAT_LABELS = { hard: 'Mains dures', soft: 'Mains souples', pair: 'Paires' };
   const $ = (id) => document.getElementById(id);
@@ -158,7 +160,7 @@
     const playing = round && round.phase === 'playing' && !busy;
     $('bet-controls').classList.toggle('hidden', !!inRound);
     $('play-controls').classList.toggle('hidden', !inRound || !!insuranceResolve);
-    $('deal').disabled = busy || bet <= 0 || bet + side.pp + side.t213 > stats.bankroll;
+    $('deal').disabled = busy || bet < MIN_BET || bet > MAX_BET || bet + side.pp + side.t213 > stats.bankroll;
 
     if (inRound) {
       const opts = playing ? availableActions() : {};
@@ -251,7 +253,7 @@
   }
 
   async function deal() {
-    if (busy || bet <= 0 || bet + side.pp + side.t213 > stats.bankroll) return;
+    if (busy || bet < MIN_BET || bet > MAX_BET || bet + side.pp + side.t213 > stats.bankroll) return;
     if (round && round.phase !== 'over') return;
     busy = true;
     if (shoe.length < DECKS * 52 * 0.25) {
@@ -926,7 +928,8 @@
   // ---------- Événements ----------
   document.querySelectorAll('[data-chip]').forEach((b) => b.addEventListener('click', () => {
     const v = parseInt(b.dataset.chip, 10);
-    if (bet + v <= stats.bankroll) { bet += v; if (window.Sfx) Sfx.chips(); }
+    if (bet + v > MAX_BET) setMessage('Mise maximale : ' + MAX_BET + ' € par main.');
+    else if (bet + v <= stats.bankroll) { bet += v; if (window.Sfx) Sfx.chips(); }
     render();
   }));
   $('clear-bet').addEventListener('click', () => { bet = 0; render(); });

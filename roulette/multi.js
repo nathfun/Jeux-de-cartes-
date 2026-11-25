@@ -49,6 +49,7 @@
     return (x) => {
       const p = x.players[me];
       if (!p || p.out || !canBet(x) || p.bankroll < amount) return false;
+      if (B.room(key, x.bets[me] && x.bets[me][key]) < amount) return false; // limite de table
       x.bets[me] = x.bets[me] || {};
       x.bets[me][key] = (x.bets[me][key] || 0) + amount;
       p.bankroll -= amount;
@@ -176,6 +177,7 @@
         const myBets = (st.bets && st.bets[me]) || {};
         const r = UI.recordSpin(T, myBets, n);
         if (prev) UI.announceResult(n);
+        if (r.staked && prev) setTimeout(() => UI.showOutcome(r.net, r.staked), 700);
         if (r.staked) {
           if (window.Sfx) setTimeout(() => { if (r.net > 0) Sfx.win(); else if (r.net < 0) Sfx.lose(); }, 900);
           if (coachOn()) UI.coachRound([(r.net >= 0 ? '✔ ' : '✘ ') + 'Tour ' + st.round + ' : ' + B.describe(n), 'Tu as misé ' + UI.fmt(r.staked) + ' € et récupéré ' + UI.fmt(r.back) + ' €.', 'L\'avantage du casino sur ces mises : environ ' + UI.fmt(Math.round(r.expected * 100) / 100) + ' € par tour en moyenne.'], r.net > 0 ? 'good' : r.net < 0 ? 'bad' : 'hint');
@@ -247,6 +249,7 @@
     bet(key) {
       const amt = UI.chip;
       if (!st || !st.players[me] || st.players[me].bankroll < amt) { $('sub-message').textContent = 'Solde insuffisant pour ce jeton.'; return; }
+      if (B.room(key, st.bets[me] && st.bets[me][key]) < amt) { $('sub-message').textContent = UI.limitText(key); return; }
       if (window.Sfx) Sfx.chips();
       myLog.push({ key, amount: amt });
       if (coachOn()) UI.coachInfo(key);

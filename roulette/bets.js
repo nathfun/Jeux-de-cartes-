@@ -14,14 +14,15 @@
   const range = (a, b) => Array.from({ length: b - a + 1 }, (_, k) => a + k);
 
   const TYPES = {
-    plein: { label: 'Plein', payout: 35 },
-    cheval: { label: 'Cheval', payout: 17 },
-    trans: { label: 'Transversale', payout: 11 },
-    carre: { label: 'Carré', payout: 8 },
-    sixain: { label: 'Sixain', payout: 5 },
-    douzaine: { label: 'Douzaine', payout: 2 },
-    colonne: { label: 'Colonne', payout: 2 },
-    simple: { label: 'Chance simple', payout: 1 },
+    // max : mise maximale par case, comme les limites d'une table de casino
+    plein: { label: 'Plein', payout: 35, max: 250 },
+    cheval: { label: 'Cheval', payout: 17, max: 500 },
+    trans: { label: 'Transversale', payout: 11, max: 750 },
+    carre: { label: 'Carré', payout: 8, max: 1000 },
+    sixain: { label: 'Sixain', payout: 5, max: 1500 },
+    douzaine: { label: 'Douzaine', payout: 2, max: 2500 },
+    colonne: { label: 'Colonne', payout: 2, max: 2500 },
+    simple: { label: 'Chance simple', payout: 1, max: 5000 },
   };
 
   // Position des numéros (tapis horizontal) : colonne = transversale, ligne 0 en haut (3, 6, … 36)
@@ -30,7 +31,7 @@
   const spots = [];
   const byKey = {};
   function add(key, type, numbers, rect, name, z) {
-    const s = { key, type, numbers, rect, name, z: z || 0, payout: TYPES[type].payout };
+    const s = { key, type, numbers, rect, name, z: z || 0, payout: TYPES[type].payout, max: TYPES[type].max };
     spots.push(s); byKey[key] = s;
   }
   const H = 0.34; // taille des zones de clic entre les cases
@@ -115,7 +116,12 @@
     return n + ' ' + (RED.has(n) ? 'rouge' : 'noir') + ', ' + (n % 2 ? 'impair' : 'pair') + ' et ' + (n <= 18 ? 'manque' : 'passe');
   }
 
-  const api = { RED, WHEEL, color, spots, byKey, TYPES, rectFor, size, payout, info, describe };
+  /** Montant qu'on peut encore ajouter sur une case (limite de table). */
+  function room(key, current) { return Math.max(0, byKey[key].max - (current || 0)); }
+  /** Chance de gagner d'une mise, en pourcentage lisible (« 2,7 % »). */
+  function chanceText(key) { return (byKey[key].numbers.length / 37 * 100).toFixed(1).replace('.', ',') + ' %'; }
+
+  const api = { room, chanceText, RED, WHEEL, color, spots, byKey, TYPES, rectFor, size, payout, info, describe };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.RouletteBets = api;
 })(typeof window !== 'undefined' ? window : this);

@@ -82,6 +82,11 @@
           <div class="wheel-box">
             <canvas id="wheel" aria-label="Roue de la roulette"></canvas>
             <div id="result-badge" class="result-badge" hidden></div>
+            <div id="outcome" class="outcome" hidden role="status">
+              <div id="outcome-title" class="outcome-title"></div>
+              <div id="outcome-amount" class="outcome-amount"></div>
+              <div id="outcome-detail" class="outcome-detail"></div>
+            </div>
           </div>
           <div class="status">
             <div id="announce" class="announce" role="status">Faites vos jeux</div>
@@ -151,15 +156,16 @@
       <details class="panel">
         <summary><h2>Gains par type de mise</h2></summary>
         <table class="pay-table">
-          <tr><td>Plein (1 numéro)</td><td>35 contre 1</td><td>2,7 %</td></tr>
-          <tr><td>Cheval (2)</td><td>17 contre 1</td><td>5,4 %</td></tr>
-          <tr><td>Transversale (3)</td><td>11 contre 1</td><td>8,1 %</td></tr>
-          <tr><td>Carré (4)</td><td>8 contre 1</td><td>10,8 %</td></tr>
-          <tr><td>Sixain (6)</td><td>5 contre 1</td><td>16,2 %</td></tr>
-          <tr><td>Douzaine, colonne (12)</td><td>2 contre 1</td><td>32,4 %</td></tr>
-          <tr><td>Chances simples (18)</td><td>1 contre 1</td><td>48,6 %</td></tr>
+          <tr><th>Mise</th><th>Gain</th><th>Chance</th><th>Maximum</th></tr>
+          <tr><td>Plein (1 numéro)</td><td>35 contre 1</td><td>2,7 %</td><td>250 €</td></tr>
+          <tr><td>Cheval (2)</td><td>17 contre 1</td><td>5,4 %</td><td>500 €</td></tr>
+          <tr><td>Transversale (3)</td><td>11 contre 1</td><td>8,1 %</td><td>750 €</td></tr>
+          <tr><td>Carré (4)</td><td>8 contre 1</td><td>10,8 %</td><td>1 000 €</td></tr>
+          <tr><td>Sixain (6)</td><td>5 contre 1</td><td>16,2 %</td><td>1 500 €</td></tr>
+          <tr><td>Douzaine, colonne (12)</td><td>2 contre 1</td><td>32,4 %</td><td>2 500 €</td></tr>
+          <tr><td>Chances simples (18)</td><td>1 contre 1</td><td>48,6 %</td><td>5 000 €</td></tr>
         </table>
-        <p class="muted small">Dernière colonne : chance de gagner. Pour poser un cheval, un carré, une transversale ou un sixain, touche la ligne ou le coin entre les numéros.</p>
+        <p class="muted small">Mise minimale : 1 € par case. Maximum : limite par case, comme au casino. Pour poser un cheval, un carré, une transversale ou un sixain, touche la ligne ou le coin entre les numéros.</p>
       </details>
     </aside>
   </main>

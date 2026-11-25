@@ -192,3 +192,17 @@ input:not([type]), input[type="text"] { font: inherit; background: #10151c; colo
 .pay-table { width: 100%; border-collapse: collapse; font-size: .85rem; margin-top: .6rem; font-variant-numeric: tabular-nums; }
 .pay-table td { padding: .3rem .2rem; border-bottom: 1px solid var(--panel-border); }
 .pay-table td:not(:first-child) { text-align: right; color: var(--gold); }
+
+/* Chance de gagner au-dessus des jetons (aides) */
+.chip-pct { position: absolute; transform: translate(-50%, -175%); background: rgba(10, 14, 18, .88); color: var(--gold); font-size: .6rem; font-weight: 800; padding: 1px 5px; border-radius: 6px; z-index: 10; pointer-events: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pay-table th { text-align: left; color: var(--muted); font-size: .75rem; padding: .3rem .2rem; border-bottom: 1px solid var(--panel-border); }
+/* Fenêtre gain / perte */
+.outcome { position: absolute; left: 50%; bottom: 6%; transform: translateX(-50%); min-width: 62%; padding: .6rem 1rem; border-radius: 14px; text-align: center; z-index: 30; background: rgba(10, 14, 18, .93); border: 2px solid var(--panel-border); box-shadow: 0 10px 30px rgba(0,0,0,.6); animation: outcome-in .45s cubic-bezier(.2,.9,.3,1.4) both; pointer-events: none; }
+.outcome.win { border-color: var(--good); } .outcome.lose { border-color: var(--bad); }
+.outcome-title { font-weight: 800; font-size: 1rem; }
+.outcome-amount { font-size: clamp(1.6rem, 6vw, 2.2rem); font-weight: 900; font-variant-numeric: tabular-nums; }
+.outcome.win .outcome-amount, .outcome.win .outcome-title { color: #4ade80; }
+.outcome.lose .outcome-amount, .outcome.lose .outcome-title { color: #f87171; }
+.outcome.even .outcome-amount { color: var(--text); }
+.outcome-detail { font-size: .78rem; color: var(--muted); }
+@keyframes outcome-in { from { transform: translateX(-50%) translateY(20px) scale(.7); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
