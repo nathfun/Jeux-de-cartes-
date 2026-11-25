@@ -121,7 +121,9 @@
 
   // ---------- Firebase (app indépendante) ----------
   const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
-  async function firebaseNet() {
+  async function firebaseNet(opts) {
+    const ns = opts.ns || '';
+    const norm = opts.normalize || ((x) => (window.Multi ? window.Multi.normalize(x) : x));
     const cfg = window.FIREBASE_CONFIG;
     if (!cfg || !cfg.apiKey || !cfg.databaseURL) return null;
     const [appMod, authMod, dbMod] = await Promise.all([
@@ -139,20 +141,20 @@
       async createTable(state) {
         for (let t = 0; t < 10; t++) {
           const code = randomCode();
-          const res = await dbMod.runTransaction(R('tables/' + code), (cur) => (cur ? undefined : state));
+          const res = await dbMod.runTransaction(R(ns + 'tables/' + code), (cur) => (cur ? undefined : state));
           if (res.committed) return code;
         }
         throw { code: 'no_code' };
       },
       watchTable(id, cb, onErr) {
-        return dbMod.onValue(R('tables/' + id), (s) => cb(s.exists() ? s.val() : null), onErr);
+        return dbMod.onValue(R(ns + 'tables/' + id), (s) => cb(s.exists() ? s.val() : null), onErr);
       },
       async transact(id, fn) {
         let aborted = false;
-        const res = await dbMod.runTransaction(R('tables/' + id), (cur) => {
+        const res = await dbMod.runTransaction(R(ns + 'tables/' + id), (cur) => {
           if (cur === null) return cur; // valeur pas encore connue : Firebase relance avec la vraie
           const st = JSON.parse(JSON.stringify(cur));
-          if (window.Multi) window.Multi.normalize(st);
+          norm(st);
           if (fn(st) === false) { aborted = true; return undefined; }
           st.updatedAt = Date.now();
           return st;
@@ -161,36 +163,52 @@
         return res.committed;
       },
       watchChat(id, cb) {
-        const q = dbMod.query(R('chats/' + id), dbMod.orderByChild('ts'), dbMod.limitToLast(50));
+        const q = dbMod.query(R(ns + 'chats/' + id), dbMod.orderByChild('ts'), dbMod.limitToLast(50));
         return dbMod.onValue(q, (s) => {
           const list = [];
           s.forEach((c) => { list.push(c.val()); });
           cb(list);
         });
       },
-      async sendChat(id, msg) { await dbMod.push(R('chats/' + id), msg); },
+      async sendChat(id, msg) { await dbMod.push(R(ns + 'chats/' + id), msg); },
       async deleteTable(id) {
-        await dbMod.remove(R('tables/' + id));
-        await dbMod.remove(R('chats/' + id)).catch(() => {});
-        await dbMod.remove(R('presence/' + id)).catch(() => {});
+        await dbMod.remove(R(ns + 'tables/' + id));
+        await dbMod.remove(R(ns + 'chats/' + id)).catch(() => {});
+        await dbMod.remove(R(ns + 'presence/' + id)).catch(() => {});
+        await dbMod.remove(R(ns + 'hands/' + id)).catch(() => {});
+        await dbMod.remove(R(ns + 'deck/' + id)).catch(() => {});
       },
       presenceStart(id) {
-        const ref = R('presence/' + id + '/' + me);
+        const ref = R(ns + 'presence/' + id + '/' + me);
         dbMod.onDisconnect(ref).remove();
         return heartbeat(() => { dbMod.set(ref, Date.now()).catch(() => {}); }, () => dbMod.remove(ref).catch(() => {}));
       },
       async activeCount(id) {
-        const snap = await dbMod.get(R('presence/' + id));
+        const snap = await dbMod.get(R(ns + 'presence/' + id));
         let n = 0;
         snap.forEach((c) => { if ((c.val() || 0) > Date.now() - FRESH) n++; });
         return n;
       },
       async profiles() { return {}; },
+      async presenceList(id) {
+        const snap = await dbMod.get(R(ns + 'presence/' + id));
+        const out = {};
+        snap.forEach((c) => { if ((c.val() || 0) > Date.now() - FRESH) out[c.key] = c.val(); });
+        return out;
+      },
+      // Cartes privées : chaque joueur ne peut lire que les siennes (règles de sécurité)
+      async setPrivate(id, uid, data) { await dbMod.set(R(ns + 'hands/' + id + '/' + uid), data); },
+      watchPrivate(id, cb) { return dbMod.onValue(R(ns + 'hands/' + id + '/' + me), (s) => cb(s.val()), () => cb(null)); },
+      // Paquet de cartes : lisible uniquement par l'hôte de la table
+      async setSecret(id, data) { await dbMod.set(R(ns + 'deck/' + id), data); },
+      async getSecret(id) { const s2 = await dbMod.get(R(ns + 'deck/' + id)); return s2.val(); },
     };
   }
 
   // ---------- Local (onglets du même navigateur) ----------
-  function localNet() {
+  function localNet(opts) {
+    const ns = opts.ns || '';
+    const norm = opts.normalize || ((x) => (window.Multi ? window.Multi.normalize(x) : x));
     let me = null;
     try {
       me = sessionStorage.getItem('bj-local-me');
@@ -214,61 +232,77 @@
       kind: 'local', me, canWrite: true, usesCodes: true,
       async createTable(state) {
         let code = randomCode();
-        while (read('bj-t-' + code)) code = randomCode();
-        write('bj-t-' + code, state);
-        fire('bj-t-' + code);
+        while (read(ns + 'bj-t-' + code)) code = randomCode();
+        write(ns + 'bj-t-' + code, state);
+        fire(ns + 'bj-t-' + code);
         return code;
       },
-      watchTable(id, cb) { return watch('bj-t-' + id, cb); },
+      watchTable(id, cb) { return watch(ns + 'bj-t-' + id, cb); },
       transact(id, fn) {
-        return withLock('bj-t-' + id, async () => {
-          const cur = read('bj-t-' + id);
+        return withLock(ns + 'bj-t-' + id, async () => {
+          const cur = read(ns + 'bj-t-' + id);
           if (!cur) throw { code: 'gone' };
-          if (window.Multi) window.Multi.normalize(cur);
+          norm(cur);
           if (fn(cur) === false) return false;
           cur.updatedAt = Date.now();
-          write('bj-t-' + id, cur);
-          fire('bj-t-' + id);
+          write(ns + 'bj-t-' + id, cur);
+          fire(ns + 'bj-t-' + id);
           return true;
         });
       },
-      watchChat(id, cb) { return watch('bj-c-' + id, (v) => cb(v || [])); },
+      watchChat(id, cb) { return watch(ns + 'bj-c-' + id, (v) => cb(v || [])); },
       async sendChat(id, msg) {
-        const list = (read('bj-c-' + id) || []).concat([msg]).slice(-50);
-        write('bj-c-' + id, list);
-        fire('bj-c-' + id);
+        const list = (read(ns + 'bj-c-' + id) || []).concat([msg]).slice(-50);
+        write(ns + 'bj-c-' + id, list);
+        fire(ns + 'bj-c-' + id);
       },
       async deleteTable(id) {
-        localStorage.removeItem('bj-t-' + id); localStorage.removeItem('bj-c-' + id); localStorage.removeItem('bj-p-' + id);
-        fire('bj-t-' + id);
+        localStorage.removeItem(ns + 'bj-t-' + id); localStorage.removeItem(ns + 'bj-c-' + id); localStorage.removeItem(ns + 'bj-p-' + id);
+        fire(ns + 'bj-t-' + id);
       },
       presenceStart(id) {
-        const key = 'bj-p-' + id;
+        const key = ns + 'bj-p-' + id;
         const upd = (fn) => { const p = read(key) || {}; fn(p); write(key, p); };
         return heartbeat(() => upd((p) => { p[me] = Date.now(); }), async () => upd((p) => { delete p[me]; }));
       },
       async activeCount(id) {
-        const p = read('bj-p-' + id) || {};
+        const p = read(ns + 'bj-p-' + id) || {};
         return Object.values(p).filter((ts) => ts > Date.now() - FRESH).length;
       },
       async profiles() { return {}; },
+      async presenceList(id) {
+        const p = read(ns + 'bj-p-' + id) || {};
+        const out = {};
+        Object.keys(p).forEach((u) => { if (p[u] > Date.now() - FRESH) out[u] = p[u]; });
+        return out;
+      },
+      async setPrivate(id, uid, data) { write(ns + 'bj-h-' + id + '-' + uid, data); fire(ns + 'bj-h-' + id + '-' + uid); },
+      watchPrivate(id, cb) { return watch(ns + 'bj-h-' + id + '-' + me, cb); },
+      async setSecret(id, data) { write(ns + 'bj-d-' + id, data); },
+      async getSecret(id) { return read(ns + 'bj-d-' + id); },
     };
   }
 
-  window.createNet = async function () {
+  /**
+   * opts.ns        : préfixe des chemins (ex. 'p' pour le poker : ptables, pchats…)
+   * opts.normalize : remet en forme l'état lu (Firebase supprime les listes vides)
+   * opts.needPrivate : le jeu a besoin de cartes privées (non disponible sur claude.ai)
+   */
+  window.createNet = async function (opts) {
+    opts = opts || {};
     const forceLocal = /[?&]backend=local\b/.test(location.search);
     if (!forceLocal) {
-      const c = await claudeNet();
+      const c = opts.needPrivate ? null : await claudeNet();
       if (c) return c;
       try {
-        const f = await firebaseNet();
+        const f = await firebaseNet(opts);
         if (f) return f;
       } catch (e) {
         console.error('Firebase indisponible', e);
         return { error: 'firebase' };
       }
     }
-    if (forceLocal) return localNet();
+    if (forceLocal) return localNet(opts);
     return null;
   };
 })();

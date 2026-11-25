@@ -12,11 +12,16 @@
 <body>
   <header class="topbar">
     <h1><a id="home-link" class="home-link" href="../index.html" hidden aria-label="Retour aux jeux">←</a> ♣ Poker Coach</h1>
+    <nav class="tabs" role="tablist">
+      <button id="tab-solo" class="tab active" role="tab" aria-selected="true">Solo</button>
+      <button id="tab-multi" class="tab" role="tab" aria-selected="false">Entre amis</button>
+    </nav>
     <div class="bank">Tapis : <strong id="my-stack">–</strong> <button id="sound-toggle" class="ghost icon-btn" type="button">🔊</button></div>
   </header>
 
   <main class="layout">
     <div class="main-col">
+      <div id="solo-view">
       <!-- Réglages de la partie -->
       <section id="setup" class="panel setup">
         <h2>Partie solo contre des bots</h2>
@@ -108,9 +113,104 @@
           </div>
         </div>
       </section>
+      </div>
+
+      <!-- ================= ENTRE AMIS ================= -->
+      <div id="multi-view" hidden>
+        <div id="pm-loading" class="panel" hidden><p class="muted">Connexion au serveur de jeu…</p></div>
+        <div id="pm-unavailable" class="panel" hidden>
+          <h2>Poker entre amis</h2>
+          <p id="pm-unavailable-detail">Le serveur de jeu n'est pas encore configuré (voir FIREBASE.md).</p>
+        </div>
+        <section id="pm-lobby" class="panel setup" hidden>
+          <h2>Poker entre amis</h2>
+          <p class="muted small">Crée une table ou rejoins celle d'un ami avec son code. Tes cartes ne sont visibles que par toi.</p>
+          <div class="row">
+            <label for="pm-pseudo">Ton pseudo</label>
+            <input id="pm-pseudo" maxlength="16" placeholder="ex. Nathan" autocomplete="nickname">
+          </div>
+          <form id="pm-join" class="row">
+            <input id="pm-code" maxlength="4" placeholder="Code (ex. KQ7P)" aria-label="Code de la table" autocomplete="off" autocapitalize="characters">
+            <button class="primary" type="submit">Rejoindre</button>
+          </form>
+          <form id="pm-create" class="create-form">
+            <h3>Créer une table</h3>
+            <input id="pm-name" maxlength="30" placeholder="Nom de la table (ex. Poker du samedi)" aria-label="Nom de la table">
+            <div class="setup-grid">
+              <label>Blindes
+                <select id="pm-blinds"><option value="10/20" selected>10 / 20</option><option value="25/50">25 / 50</option><option value="50/100">50 / 100</option></select>
+              </label>
+              <label>Tapis de départ
+                <select id="pm-stack"><option value="50">50 grosses blindes</option><option value="100" selected>100 grosses blindes</option><option value="200">200 grosses blindes</option></select>
+              </label>
+              <label>Temps pour jouer
+                <select id="pm-turn"><option value="15">15 s</option><option value="20">20 s</option><option value="30" selected>30 s</option><option value="60">60 s</option></select>
+              </label>
+            </div>
+            <label class="check"><input type="checkbox" id="pm-coach" checked> Autoriser le coach et les conseils</label>
+            <button type="submit" class="primary">Créer la table</button>
+          </form>
+          <p id="pm-note" class="small warn" role="status"></p>
+        </section>
+
+        <section id="pm-table" hidden>
+          <div class="mtable-head">
+            <button id="pm-leave-table" class="ghost small">← Tables</button>
+            <strong id="pm-table-name"></strong>
+            <span class="code-badge">Code <b id="pm-table-code"></b> <button id="pm-invite" class="ghost small" type="button">Inviter</button></span>
+            <span id="pm-host" class="muted small"></span>
+          </div>
+          <div class="felt-wrap">
+            <div class="felt">
+              <div class="center">
+                <div id="pm-board" class="board"></div>
+                <div id="pm-pot" class="pot"></div>
+                <div id="pm-message" class="message" role="status"></div>
+              </div>
+              <div id="pm-seats"></div>
+            </div>
+          </div>
+          <div id="pm-timer" class="timer" hidden><div id="pm-timer-bar" class="timer-bar"></div><span id="pm-timer-text"></span></div>
+          <div class="actions">
+            <div class="action-row" id="pm-main-actions" hidden>
+              <button id="pm-fold" class="act fold">Se coucher</button>
+              <button id="pm-check" class="act">Parler</button>
+              <button id="pm-raise" class="act raise">Relancer</button>
+              <button id="pm-allin" class="act allin">Tapis</button>
+            </div>
+            <div id="pm-raise-box" class="raise-box" hidden>
+              <div class="presets">
+                <button data-pm-preset="0.5">½ pot</button>
+                <button data-pm-preset="0.66">⅔ pot</button>
+                <button data-pm-preset="1">Pot</button>
+                <button data-pm-preset="max">Tapis</button>
+              </div>
+              <div class="slider-row">
+                <input id="pm-slider" type="range" min="0" max="100" step="5" aria-label="Montant de la relance">
+                <button id="pm-confirm" class="primary">Relancer à <span id="pm-value"></span></button>
+              </div>
+            </div>
+            <div class="action-row secondary">
+              <button id="pm-hint" class="ghost coach-only">💡 Conseil</button>
+              <button id="pm-rebuy" hidden>Se recaver</button>
+              <button id="pm-leave-seat" class="ghost small" hidden>Quitter ma place</button>
+              <label id="pm-coach-row" class="small"><input type="checkbox" id="pm-opt-coach"> Aides du coach</label>
+              <label class="small coach-only"><input type="checkbox" id="pm-opt-hint"> Conseil automatique</label>
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
 
     <aside class="side">
+      <section class="panel" id="pm-chat-panel" hidden>
+        <h2>Chat de la table</h2>
+        <div id="pm-chat" class="chat-log"></div>
+        <form id="pm-chat-form" class="row">
+          <input id="pm-chat-input" maxlength="300" placeholder="Écris un message…" aria-label="Message">
+          <button type="submit">Envoyer</button>
+        </form>
+      </section>
       <section class="panel coach-only">
         <h2>Retour du coach</h2>
         <div id="feedback" class="feedback empty">Tes décisions seront analysées ici.</div>
@@ -155,6 +255,15 @@
     </aside>
   </main>
 
+  <dialog id="pm-coach-dialog" class="dialog">
+    <h2>Activer les aides du coach ?</h2>
+    <p>Le coach analyse tes décisions (force de ta main, outs, cotes du pot) et te conseille. Les autres joueurs ne voient pas tes aides.</p>
+    <p class="muted small">Tu pourras changer d'avis avec la case « Aides du coach » sous la table.</p>
+    <div class="row">
+      <button id="pm-coach-yes" class="primary" type="button">Oui, aide-moi</button>
+      <button id="pm-coach-no" type="button">Non, je joue seul</button>
+    </div>
+  </dialog>
   <script src="../firebase-config.js"></script>
   <script src="../sounds.js"></script>
   <script src="eval.js"></script>
@@ -162,6 +271,8 @@
   <script src="coach.js"></script>
   <script src="bots.js"></script>
   <script src="app.js"></script>
+  <script src="../blackjack/net.js"></script>
+  <script src="multi.js"></script>
   <script src="../pwa.js"></script>
 </body>
 </html>

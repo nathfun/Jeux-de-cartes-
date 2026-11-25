@@ -186,21 +186,30 @@
     endBettingRound(st);
   }
 
+  const NEXT = { preflop: 'flop', flop: 'turn', turn: 'river' };
+
   function endBettingRound(st) {
     st.seats.forEach((s) => { s.bet = 0; s.acted = false; });
     st.currentBet = 0;
     st.minRaise = st.bb;
-    const actors = st.seats.filter(canAct).length;
-    const alive = st.seats.filter(inHand).length;
-    const order = ['preflop', 'flop', 'turn', 'river'];
-    const idx = order.indexOf(st.street);
-    if (st.street === 'river') return showdown(st);
-    // Distribution du tour suivant
-    if (st.street === 'preflop') { st.board.push(draw(st), draw(st), draw(st)); }
-    else { st.board.push(draw(st)); }
-    st.street = order[idx + 1];
+    if (st.street === 'river') {
+      if (st.external) { st.pending = 'showdown'; st.toAct = -1; return; }
+      return showdown(st);
+    }
+    // Mode « donneur externe » (entre amis) : l'hôte, seul à connaître le paquet, distribuera le tour suivant
+    if (st.external) { st.pending = NEXT[st.street]; st.toAct = -1; return; }
+    const cards = st.street === 'preflop' ? [draw(st), draw(st), draw(st)] : [draw(st)];
+    dealStreet(st, cards);
+  }
+
+  function dealStreet(st, cards) {
+    st.pending = null;
+    st.board.push(...cards);
+    st.street = NEXT[st.street];
     st.seats.forEach((s) => { if (inHand(s) && !s.allin) s.last = ''; });
     log(st, { flop: 'Flop', turn: 'Turn', river: 'River' }[st.street] + ' : ' + st.board.map((c) => c.rank + c.suit).join(' '));
+    const actors = st.seats.filter(canAct).length;
+    const alive = st.seats.filter(inHand).length;
     if (actors >= 2 && alive >= 2) {
       st.toAct = next(st, st.button, (s) => canAct(s));
     } else {
@@ -209,6 +218,13 @@
       st.runout = true;
       endBettingRound(st);
     }
+  }
+
+  /** Mode externe : l'hôte fournit les cartes du tour attendu (st.pending). */
+  function fulfill(st, cards) {
+    if (!NEXT[st.street] || st.pending !== NEXT[st.street]) return false;
+    dealStreet(st, cards);
+    return true;
   }
 
   function finishUncontested(st, w) {
@@ -222,6 +238,7 @@
   }
 
   function showdown(st) {
+    st.pending = null;
     st.street = 'showdown';
     st.toAct = -1;
     const alive = [];
@@ -268,7 +285,7 @@
     st.results = { pots, uncontested: false };
   }
 
-  const api = { createTable, addSeat, startHand, legal, act, pot, inHand, canAct, next };
+  const api = { createTable, addSeat, startHand, legal, act, pot, inHand, canAct, next, fulfill, showdown };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.PokerEngine = api;
 })(typeof window !== 'undefined' ? window : this);

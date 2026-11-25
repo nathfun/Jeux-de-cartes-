@@ -166,14 +166,17 @@
   function showHint() {
     if (!coachOn() || busy || !st || st.toAct !== ME) return;
     if (!pending) pending = C.analyze(st, ME, { iters: 700 });
+    showHintRes(pending);
+  }
+  function showHintRes(res) {
     const fb = $('feedback');
     fb.className = 'feedback hint';
     fb.innerHTML = '';
     const v = document.createElement('div');
     v.className = 'verdict';
-    v.textContent = '💡 Conseil : ' + pending.rec.label;
+    v.textContent = '💡 Conseil : ' + res.rec.label;
     fb.appendChild(v);
-    appendReason(fb, pending);
+    appendReason(fb, res);
   }
 
   // ---------- Minuteur de réflexion ----------
@@ -485,7 +488,7 @@
   });
   window.addEventListener('resize', () => { if (st) render(); });
   document.addEventListener('keydown', (e) => {
-    if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || !st) return;
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || !st || document.body.dataset.mode === 'multi') return;
     const k = e.key.toLowerCase();
     if (k === 'f' && !$('a-fold').hidden) $('a-fold').click();
     else if (k === 'c') $('a-check').click();
@@ -493,5 +496,12 @@
     else if (k === 'enter' && !$('next-hand').hidden) newHand();
   });
   renderStats();
-  window.PokerApp = { get state() { return st; } }; // pour les tests
+  // Partagé avec le mode « Entre amis » (multi.js) et les tests
+  window.PokerApp = {
+    get state() { return st; },
+    record: (res, action, street) => record(res, action, street),
+    showHintRes,
+    renderStats,
+    cardEl,
+  };
 })();
