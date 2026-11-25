@@ -352,6 +352,7 @@
       try { n = await net.activeCount(id); } catch (e) { n = 1; }
       if (n === 0) { try { await net.deleteTable(id); } catch (e) { /* ignore */ } $('rm-note').textContent = 'Cette table est fermée : tout le monde l\'a quittée.'; return; }
     }
+    if (window.Social && Social.tableReady) Social.tableReady('roulette', id);
     tableId = id; st = null; myLog = []; lastBets = {}; T = UI.createStats(); animatedSpin = null; recordedSpin = null; saidBets = null;
     $('rm-note').textContent = '';
     $('rm-lobby').hidden = true; $('rm-head').hidden = false; $('game').hidden = false; $('mode-badge').hidden = true; $('chat-panel').hidden = false;
@@ -400,6 +401,7 @@
   });
   $('rm-leave').addEventListener('click', () => showLobby());
   $('rm-invite').addEventListener('click', async () => {
+    if (window.Social && Social.inviteDialog) { Social.inviteDialog('roulette', tableId); return; }
     const u = new URL(location.href); u.search = ''; u.searchParams.set('table', tableId);
     const text = 'Rejoins ma table de roulette ! Code : ' + tableId;
     if (navigator.share) { try { await navigator.share({ title: 'Roulette entre amis', text, url: u.toString() }); return; } catch (e) { /* annulé */ } }
@@ -473,7 +475,7 @@
       else { $('rm-code').value = code.toUpperCase(); needPseudo(); }
     }
   }
-  if (new URLSearchParams(location.search).get('table')) setMode('multi');
+  if (new URLSearchParams(location.search).get('table') || (window.Social && Social.wantsTable && Social.wantsTable())) setMode('multi');
 
   window.RouletteMulti = { get state() { return st; }, get me() { return me; }, get net() { return net; }, get tableId() { return tableId; } };
 })();

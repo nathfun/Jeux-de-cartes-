@@ -662,6 +662,7 @@
       }
     }
     tableId = id;
+    if (window.Social && Social.tableReady) Social.tableReady('poker', id);
     pub = null; myHole = null; shownHand = -1; boardShown = 0;
     $('pm-note').textContent = '';
     $('pm-lobby').hidden = true;
@@ -707,6 +708,7 @@
   });
   $('pm-leave-table').addEventListener('click', () => showLobby());
   $('pm-invite').addEventListener('click', async () => {
+    if (window.Social && Social.inviteDialog) { Social.inviteDialog('poker', tableId); return; }
     const u = new URL(location.href); u.search = ''; u.searchParams.set('table', tableId);
     const text = 'Rejoins ma table de poker ! Code : ' + tableId;
     if (navigator.share) { try { await navigator.share({ title: 'Poker entre amis', text, url: u.toString() }); return; } catch (e) { /* annulé */ } }
@@ -801,7 +803,7 @@
       else { $('pm-code').value = code.toUpperCase(); needPseudo(); }
     }
   }
-  if (new URLSearchParams(location.search).get('table')) setMode('multi');
+  if (new URLSearchParams(location.search).get('table') || (window.Social && Social.wantsTable && Social.wantsTable())) setMode('multi');
 
   window.PokerMulti = { get pub() { return pub; }, get hole() { return myHole; }, get net() { return net; }, get me() { return me; }, get tableId() { return tableId; } };
 })();

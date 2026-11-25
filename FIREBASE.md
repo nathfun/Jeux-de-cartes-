@@ -117,6 +117,8 @@ puis `window.CASINO_SERVER = true`.
 
 ## Amis, classement et défis
 
+- `invites/<uid>` : les invitations reçues (« Léa t'invite à sa table de Blackjack »), lisibles par le seul destinataire.
+
 - `profiles` : le profil public de chaque joueur (pseudo, avatar, niveau, portefeuille…), modifiable par lui seul.
 - `friendcodes` : les codes amis (6 caractères).
 - `challenges` : les défis entre amis et leurs résultats (chacun n'écrit que son propre score).

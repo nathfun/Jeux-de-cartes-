@@ -1076,6 +1076,7 @@
       $('lobby-note').textContent = '';
     }
     tableId = id;
+    if (window.Social && Social.tableReady) Social.tableReady('blackjack', id);
     stopPresence = net.presenceStart(id);
     firstSnap = true;
     queue = [];
@@ -1138,6 +1139,7 @@
     $('lobby-note').textContent = '';
   });
   $('invite').addEventListener('click', async () => {
+    if (window.Social && Social.inviteDialog) { Social.inviteDialog('blackjack', tableId); return; }
     const link = inviteLink();
     const text = 'Rejoins ma table de blackjack ! Code : ' + tableId;
     if (navigator.share) {
@@ -1233,5 +1235,5 @@
   window.Multi = { rerender: () => { if (tableId) renderAll(); }, normalize };
 
   // Lien d'invitation : ouvre directement l'onglet « Entre amis »
-  if (new URLSearchParams(location.search).get('table')) setMode('multi');
+  if (new URLSearchParams(location.search).get('table') || (window.Social && Social.wantsTable && Social.wantsTable())) setMode('multi');
 })();

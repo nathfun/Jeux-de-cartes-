@@ -191,6 +191,15 @@
           ".validate": false
         }
       }
+    },
+    "invites": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$id": {
+          ".write": "auth != null && (auth.uid === $uid || (!data.exists() && newData.child('from').val() === auth.uid))",
+          ".validate": "newData.hasChildren(['from', 'game', 'code', 'at']) && newData.child('game').val().matches(/^(blackjack|poker|roulette)$/) && newData.child('code').val().matches(/^[A-Z0-9]{4,6}$/) && newData.child('name').isString() && newData.child('name').val().length <= 20"
+        }
+      }
     }
   }
 }

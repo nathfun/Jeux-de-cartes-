@@ -1,5 +1,0 @@
-Picked up _JAVA_OPTIONS: -XX:+UnlockDiagnosticVMOptions -XX:DisableIntrinsic=_base64_encodeBlock,_base64_decodeBlock
-13:36:58.980 [NamespaceSystem-akka.actor.default-dispatcher-5] INFO akka.event.slf4j.Slf4jLogger - Slf4jLogger started
-13:36:59.146 [main] INFO com.firebase.server.forge.App$ - Listening at 127.0.0.1:9000
-13:36:59.871 [NamespaceSystem-akka.actor.default-dispatcher-5] INFO com.firebase.core.namespace.NamespaceActor - demo-casino-default-rtdb successfully activated FBKV (SurveyIdle(0)) wait: 101ms, init: 0ms
-13:37:00.034 [NamespaceSystem-blocking-namespace-operation-dispatcher-7] INFO com.firebase.core.namespace.StateManager - Namespace demo-casino-default-rtdb status Active to Active

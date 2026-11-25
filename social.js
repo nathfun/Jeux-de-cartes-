@@ -43,6 +43,8 @@
       get uid() { return auth.currentUser ? auth.currentUser.uid : null; }, // suit la connexion au compte
       get: async (p) => (await dbMod.get(R(p))).val(),
       set: (p, v) => dbMod.set(R(p), v),
+      remove: (p) => dbMod.remove(R(p)),
+      on: (p, cb) => dbMod.onValue(R(p), (snap) => cb(snap.val()), () => {}),
       createOnce: async (p, v) => {
         try {
           if ((await dbMod.get(R(p))).exists()) return false; // déjà pris (les règles refuseraient l'écriture)
@@ -70,6 +72,16 @@
         return any ? out : null;
       },
       set: async (p, v) => { localStorage.setItem(k(p), JSON.stringify(v)); },
+      remove: async (p) => {
+        const pre = k(p);
+        for (let i = localStorage.length - 1; i >= 0; i--) { const key = localStorage.key(i); if (key === pre || key.startsWith(pre + '/')) localStorage.removeItem(key); }
+      },
+      on(p, cb) { // pas de temps réel en local : on relit régulièrement
+        let last = null;
+        const tick = async () => { const v = await this.get(p); const j = JSON.stringify(v); if (j !== last) { last = j; cb(v); } };
+        tick(); const t = setInterval(tick, 1500);
+        return () => clearInterval(t);
+      },
       createOnce: async (p, v) => { if (read(p)) return false; localStorage.setItem(k(p), JSON.stringify(v)); return true; },
     };
   }
@@ -268,8 +280,121 @@
   }
   const isReaction = (m) => m && m.reaction && EMOJIS.includes(m.text);
 
+
+  // ---------- Invitations à une table ----------
+  const GAME_NAMES = { blackjack: 'Blackjack', poker: 'Poker', roulette: 'Roulette' };
+  function tableLink(game, code) {
+    const m = /^(.*\/)(blackjack|poker|roulette|slots)\/[^/]*$/.exec(location.pathname);
+    const root = m ? m[1] : location.pathname.replace(/[^/]*$/, '');
+    const u = new URL(root + game + '/index.html', location.href);
+    if (code) u.searchParams.set('table', code);
+    if (/[?&]backend=local\b/.test(location.search)) u.searchParams.set('backend', 'local');
+    return u.toString();
+  }
+  /** Envoie une invitation à un ami (elle apparaît sur son écran, où qu'il soit dans le Casino). */
+  async function sendInvite(toUid, game, code) {
+    const b = await backend();
+    if (!b || !toUid || !code) return false;
+    const id = Date.now().toString(36) + code;
+    await b.set('invites/' + toUid + '/' + id, { from: b.uid, name: (P().pseudo || 'Un ami').slice(0, 20), avatar: P().avatar || '🎩', game, code, at: Date.now() });
+    return true;
+  }
+  /** Fenêtre « Inviter » d'une table : chaque ami en un clic, ou le lien à partager. */
+  async function inviteDialog(game, code) {
+    const old = document.querySelector('.invite-dlg'); if (old) old.remove();
+    const ov = document.createElement('div'); ov.className = 'invite-dlg';
+    const box = document.createElement('div'); box.className = 'id-box';
+    const h = document.createElement('h3'); h.textContent = 'Inviter à ta table de ' + GAME_NAMES[game];
+    const c = document.createElement('p'); c.className = 'id-code'; c.innerHTML = 'Code de la table : <b></b>'; c.querySelector('b').textContent = code;
+    const list = document.createElement('div'); list.className = 'id-list'; list.textContent = 'Chargement de tes amis…';
+    const share = document.createElement('button'); share.type = 'button'; share.className = 'id-share'; share.textContent = '🔗 Partager le lien (WhatsApp, SMS…)';
+    share.onclick = () => shareLink(tableLink(game, code), 'Rejoins ma table de ' + GAME_NAMES[game] + ' au Casino ! Code : ' + code);
+    const close = document.createElement('button'); close.type = 'button'; close.className = 'id-close'; close.textContent = 'Fermer';
+    close.onclick = () => ov.remove();
+    ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
+    box.append(h, c, list, share, close);
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+    const rows = ((await leaderboard().catch(() => null)) || []).filter((r) => !r.me);
+    list.innerHTML = '';
+    if (!rows.length) { list.textContent = 'Tu n\'as pas encore d\'amis dans le Casino : ajoute-les avec leur code ami sur l\'accueil, ou partage le lien.'; return; }
+    rows.forEach((r) => {
+      const row = document.createElement('div'); row.className = 'id-row';
+      const n = document.createElement('span'); n.textContent = (r.avatar || '🎩') + ' ' + (r.pseudo || 'Joueur');
+      const bt = document.createElement('button'); bt.type = 'button'; bt.textContent = 'Inviter';
+      bt.onclick = async () => { bt.disabled = true; bt.textContent = '…'; const ok = await sendInvite(r.uid, game, code).catch(() => false); bt.textContent = ok ? 'Invité ✔' : 'Échec'; };
+      row.append(n, bt); list.appendChild(row);
+    });
+  }
+  // Invitation demandée depuis l'accueil (?invite=<uid>) : envoyée dès que la table est créée
+  let pendingInvite = null;
+  try {
+    const q = new URLSearchParams(location.search).get('invite');
+    if (q) sessionStorage.setItem('casino-invite-to', q);
+    pendingInvite = sessionStorage.getItem('casino-invite-to');
+  } catch (e) { /* ignore */ }
+  async function tableReady(game, code) {
+    if (!pendingInvite || !code) return;
+    const to = pendingInvite; pendingInvite = null;
+    try { sessionStorage.removeItem('casino-invite-to'); } catch (e) { /* ignore */ }
+    const b = await backend();
+    const prof = b ? await b.get('profiles/' + to).catch(() => null) : null;
+    if (await sendInvite(to, game, code).catch(() => false) && window.Casino) Casino.toast('Invitation envoyée', (prof && prof.pseudo ? prof.pseudo : 'Ton ami') + ' est invité à ta table (code ' + code + ').', '📨');
+  }
+  const wantsTable = () => !!pendingInvite;
+  // Réception : une carte s'affiche, où qu'on soit dans le Casino
+  const shownInv = new Set();
+  async function listenInvites() {
+    const b = await backend();
+    if (!b || !b.uid || !b.on) return;
+    let current = b.uid, stop = null;
+    const start = () => {
+      if (stop) stop();
+      current = b.uid;
+      stop = b.on('invites/' + current, (all) => {
+        Object.entries(all || {}).forEach(([id, inv]) => {
+          if (!inv || shownInv.has(id)) return;
+          shownInv.add(id);
+          if (Date.now() - inv.at > 15 * 60000) { b.remove('invites/' + current + '/' + id).catch(() => {}); return; }
+          inviteCard(b, current, id, inv);
+        });
+      });
+    };
+    start();
+    setInterval(() => { if (b.uid && b.uid !== current) start(); }, 3000); // connexion à un autre compte
+  }
+  function inviteCard(b, uid, id, inv) {
+    const el = document.createElement('div'); el.className = 'invite-card';
+    const t = document.createElement('div');
+    const strong = document.createElement('b'); strong.textContent = (inv.avatar || '🎩') + ' ' + (inv.name || 'Un ami');
+    t.append(strong, ' t\'invite à sa table de ' + (GAME_NAMES[inv.game] || 'jeu') + ' !');
+    const go = document.createElement('button'); go.type = 'button'; go.className = 'ic-go'; go.textContent = 'Rejoindre';
+    const no = document.createElement('button'); no.type = 'button'; no.textContent = 'Plus tard';
+    const done = () => { el.remove(); b.remove('invites/' + uid + '/' + id).catch(() => {}); };
+    go.onclick = () => { done(); location.href = tableLink(inv.game, inv.code); };
+    no.onclick = done;
+    const row = document.createElement('div'); row.className = 'ic-btns'; row.append(go, no);
+    el.append(t, row);
+    document.body.appendChild(el);
+    if (window.Sfx) Sfx.chips();
+    if (window.Casino) Casino.vibrate([40, 30, 40]);
+  }
+
   const style = document.createElement('style');
   style.textContent = `
+.invite-dlg { position: fixed; inset: 0; z-index: 97; background: rgba(0,0,0,.7); display: grid; place-items: center; padding: 16px; }
+.id-box { background: #1a2129; color: #e8ecef; border: 2px solid #f2c14e; border-radius: 16px; padding: 1rem 1.1rem; width: min(420px, 100%); max-height: 85vh; overflow: auto; font: 15px system-ui, sans-serif; display: flex; flex-direction: column; gap: .6rem; }
+.id-box h3 { margin: 0; color: #f2c14e; }
+.id-code { margin: 0; } .id-code b { letter-spacing: .15em; color: #f2c14e; font-size: 1.15rem; }
+.id-list { display: flex; flex-direction: column; gap: .35rem; font-size: .92rem; }
+.id-row { display: flex; justify-content: space-between; align-items: center; gap: .5rem; background: #141a21; border-radius: 10px; padding: .4rem .6rem; }
+.id-box button { font: inherit; border-radius: 10px; border: 1px solid #3a4652; background: #2b3540; color: #e8ecef; padding: .45rem .8rem; cursor: pointer; }
+.id-box .id-share { background: #f2c14e; color: #222; border: 0; font-weight: 700; }
+.invite-card { position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 96; width: min(420px, calc(100vw - 24px));
+  background: #1a2129; color: #e8ecef; border: 2px solid #3fb950; border-radius: 14px; padding: .7rem .9rem; box-shadow: 0 10px 30px rgba(0,0,0,.6); font: 15px system-ui, sans-serif; animation: ct-in .45s cubic-bezier(.2,.9,.3,1.3) both; }
+.ic-btns { display: flex; gap: .5rem; margin-top: .5rem; }
+.ic-btns button { font: inherit; flex: 1; border-radius: 10px; border: 1px solid #3a4652; background: #2b3540; color: #e8ecef; padding: .45rem; cursor: pointer; }
+.ic-btns .ic-go { background: #3fb950; border-color: #3fb950; color: #06210d; font-weight: 700; }
 .reaction-bar { display: flex; gap: .25rem; flex-wrap: wrap; margin-top: .5rem; }
 .reaction-bar button { font-size: 1.25rem; background: #141a21; border: 1px solid #2a333d; border-radius: 10px; padding: .15rem .35rem; cursor: pointer; }
 .reaction-bar button:active { transform: scale(1.2); }
@@ -289,8 +414,9 @@
   document.head.appendChild(style);
 
   window.Social = {
-    rng, backend, myCode, publish, friends, addFriendByCode, addFriendUid, removeFriend, leaderboard,
+    rng, backend, myCode, publish, sendInvite, inviteDialog, tableReady, tableLink, wantsTable, listenInvites, friends, addFriendByCode, addFriendUid, removeFriend, leaderboard,
     createChallenge, getChallenge, submitChallenge, challengeLink, showChallengeResult, shareLink,
     reactionBar, floatReaction, isReaction, EMOJIS,
   };
+  if (window.Casino) setTimeout(() => { listenInvites().catch(() => {}); }, 1200);
 })();
