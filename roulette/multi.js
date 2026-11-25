@@ -418,6 +418,7 @@
       const id = await net.createTable(initial($('rm-name').value.trim().slice(0, 30) || 'Roulette de ' + myName(), settings));
       $('rm-name').value = '';
       openTable(id, true);
+      if (window.Casino && Casino.launchFx) Casino.launchFx('roulette', 'Table créée !', 'Code ' + id + ' · invite tes amis');
     } catch (err) { $('rm-note').textContent = 'Impossible de créer la table. Vérifie ta connexion.'; }
   });
   $('rm-leave').addEventListener('click', () => { if (lobbyLastInfo && window.Social) Social.lobbyRemove('roulette', tableId, lobbyLastInfo); lobbyLastInfo = null; showLobby(); if (window.Social && Social.hubLink) location.href = Social.hubLink('#multi'); });
@@ -499,4 +500,6 @@
   if (new URLSearchParams(location.search).get('table') || new URLSearchParams(location.search).get('multi') || (window.Social && Social.wantsTable && Social.wantsTable())) { document.body.classList.add('multi-entry'); setMode('multi'); }
 
   window.RouletteMulti = { get state() { return st; }, get me() { return me; }, get net() { return net; }, get tableId() { return tableId; } };
+  // écran « Entre amis » dans le style de l'écran de lancement
+  if (window.Casino && Casino.styleLobby) Casino.styleLobby(document.getElementById('rm-lobby'), 'roulette', { join: '#rm-join', pseudo: '#rm-pseudo' });
 })();

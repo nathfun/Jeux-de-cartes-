@@ -743,6 +743,7 @@
       const id = await net.createTable(initialPub($('pm-name').value.trim().slice(0, 30) || 'Poker de ' + myName(), settings));
       $('pm-name').value = '';
       openTable(id, true);
+      if (window.Casino && Casino.launchFx) Casino.launchFx('poker', 'Table créée !', 'Code ' + id + ' · invite tes amis');
     } catch (err) { $('pm-note').textContent = 'Impossible de créer la table. Vérifie ta connexion.'; }
   });
   $('pm-leave-table').addEventListener('click', () => { if (lobbyLastInfo && window.Social) Social.lobbyRemove('poker', tableId, lobbyLastInfo); lobbyLastInfo = null; showLobby(); if (window.Social && Social.hubLink) location.href = Social.hubLink('#multi'); });
@@ -845,4 +846,6 @@
   if (new URLSearchParams(location.search).get('table') || new URLSearchParams(location.search).get('multi') || (window.Social && Social.wantsTable && Social.wantsTable())) { document.body.classList.add('multi-entry'); setMode('multi'); }
 
   window.PokerMulti = { get pub() { return pub; }, get hole() { return myHole; }, get net() { return net; }, get me() { return me; }, get tableId() { return tableId; } };
+  // écran « Entre amis » dans le style de l'écran de lancement
+  if (window.Casino && Casino.styleLobby) Casino.styleLobby(document.getElementById('pm-lobby'), 'poker', { join: '#pm-join', pseudo: '#pm-pseudo' });
 })();

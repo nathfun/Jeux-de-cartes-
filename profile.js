@@ -300,9 +300,9 @@
   const reducedMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /** En-tête animé du jeu (icône flottante, titre, accroche, points forts). */
-  function gameHero(game) {
+  function gameHero(game, over) {
     injectStyle();
-    const t = themeOf(game);
+    const t = Object.assign({}, themeOf(game), over || {});
     const h = mk('div', 'cm-hero');
     const art = mk('div', 'cm-art');
     t.deco.forEach((d, i) => { const x = mk('span', 'cm-deco d' + i, d); art.appendChild(x); });
@@ -314,6 +314,29 @@
   function applyTheme(el, game) {
     const t = themeOf(game);
     el.style.setProperty('--cm-a', t.a); el.style.setProperty('--cm-b', t.b); el.style.setProperty('--cm-bg', t.bg);
+  }
+
+  // Écran « Entre amis » (créer / rejoindre une table) avec la même ambiance que l'écran de lancement
+  const MULTI_PILLS = { blackjack: ['Jusqu\'à 5 places', 'Classement final', '+500 € au 1er'], poker: ['Cartes secrètes', 'Spectateurs', '+500 € au 1er'], roulette: ['Même roue pour tous', 'Chacun mise', '+500 € au 1er'] };
+  function styleLobby(el, game, o) {
+    if (!el || el.dataset.cmStyled) return;
+    injectStyle();
+    el.dataset.cmStyled = '1';
+    el.classList.add('cm-mlobby');
+    applyTheme(el, game);
+    el.querySelectorAll(':scope > h2, :scope > p.muted').forEach((x) => { x.classList.add('cm-hide'); });
+    el.prepend(gameHero(game, { name: themeOf(game).name.replace(/ (européenne|Texas Hold'em)$/, '') + ' entre amis', tag: 'Crée ta table ou rejoins celle de tes amis avec son code.', pills: MULTI_PILLS[game] || [] }));
+    // carte « Rejoindre » : pseudo + code
+    const join = el.querySelector(o.join), pseudo = o.pseudo && el.querySelector(o.pseudo);
+    const card = mk('div', 'cm-joincard');
+    card.appendChild(mk('h3', '', 'Rejoindre une table'));
+    const pr = pseudo && pseudo.closest('.row');
+    if (join) join.parentNode.insertBefore(card, join);
+    if (pr) card.appendChild(pr);
+    if (join) { card.appendChild(join); const ci = join.querySelector('input'); if (ci) ci.placeholder = 'CODE'; }
+    card.appendChild(mk('p', 'cm-join-tip', 'Demande le code à 4 lettres à ton ami, ou choisis une partie dans l\'onglet Multijoueur de l\'accueil.'));
+    const create = el.querySelector('.create-form');
+    if (create) { const h = create.querySelector('h3'); if (h) h.textContent = 'Créer une table'; const sb = create.querySelector('button[type="submit"]'); if (sb) { sb.classList.remove('primary'); sb.classList.add('cm-cta'); sb.textContent = '▶ Créer la table'; } }
   }
 
   /** Animation de lancement d'une partie, par-dessus le jeu (n'attend rien : le jeu démarre en dessous). */
@@ -638,6 +661,7 @@
     },
     modePicker,
     gameHero,
+    styleLobby,
     launchFx,
     // ---------- Entre amis ----------
     prizeFor: R.prizeFor,
@@ -841,6 +865,42 @@
   background: radial-gradient(circle, var(--cm-a), transparent 70%); animation: cm-fly .9s cubic-bezier(.1,.8,.3,1) both; }
 .cm-burst i:nth-child(even) { background: radial-gradient(circle, var(--cm-b), transparent 70%); }
 .cm-burst i:not(:empty) { background: none; color: var(--cm-a); }
+
+/* ---------- Écran « Entre amis » ---------- */
+.cm-mlobby { --cm-a: #f2c14e; --cm-b: #4fc3f7; position: relative; overflow: hidden; display: grid !important; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 1rem; align-items: start;
+  background: var(--cm-bg) !important; border: 1px solid color-mix(in srgb, var(--cm-a) 45%, transparent) !important; border-radius: 24px !important; padding: 0 1rem 1rem !important; max-width: 980px !important; margin: 0 auto;
+  box-shadow: 0 24px 60px rgba(0,0,0,.45); color: #f3f4f6; animation: cm-in .6s cubic-bezier(.2,.9,.3,1.15) both; }
+.cm-mlobby[hidden] { display: none !important; }
+.cm-mlobby::before { content: ''; position: absolute; inset: -40%; background: conic-gradient(from 0deg, transparent, color-mix(in srgb, var(--cm-a) 16%, transparent), transparent 30%, color-mix(in srgb, var(--cm-b) 12%, transparent), transparent 60%); animation: cm-spin 16s linear infinite; pointer-events: none; }
+.cm-mlobby > * { position: relative; grid-column: 1; min-width: 0; }
+.cm-mlobby > .cm-hero { grid-column: 1 / -1; padding-bottom: .4rem; }
+.cm-mlobby > .create-form { grid-column: 2; grid-row: 2 / span 8; }
+.cm-mlobby .cm-hide { display: none !important; }
+@media (max-width: 760px) { .cm-mlobby { grid-template-columns: minmax(0, 1fr); } .cm-mlobby > .create-form { grid-column: 1; grid-row: auto; } }
+.cm-joincard, .cm-mlobby .create-form { background: rgba(5,8,16,.55) !important; border: 1px solid rgba(255,255,255,.09); border-radius: 18px !important; padding: 1rem 1.1rem !important; backdrop-filter: blur(8px); display: flex; flex-direction: column; gap: .7rem; }
+.cm-joincard h3, .cm-mlobby .create-form h3 { margin: 0; font-size: .78rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: rgba(243,244,246,.72); }
+.cm-joincard .row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+.cm-joincard label { font-size: .85rem; color: rgba(243,244,246,.8); }
+.cm-mlobby input:not([type]), .cm-mlobby input[type="text"], .cm-mlobby select { font: inherit; color: #fff; background: rgba(0,0,0,.35) !important; border: 1px solid rgba(255,255,255,.14) !important; border-radius: 12px !important; padding: .6rem .75rem !important; transition: border-color .15s, box-shadow .15s; min-width: 0; }
+.cm-mlobby input:focus, .cm-mlobby select:focus { outline: none; border-color: var(--cm-a) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--cm-a) 30%, transparent); }
+.cm-joincard form { display: flex; gap: .5rem; }
+.cm-joincard form input { flex: 1; font-size: 1.2rem !important; font-weight: 900; letter-spacing: .3em; text-transform: uppercase; text-align: center; }
+.cm-joincard form button { border: 0; border-radius: 12px; padding: .6rem 1.1rem; font-weight: 900; color: #0b0b14; background: linear-gradient(135deg, var(--cm-b), var(--cm-a)); cursor: pointer; }
+.cm-join-tip { margin: 0; font-size: .78rem; opacity: .6; line-height: 1.4; }
+.cm-mlobby .setup-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .6rem; }
+.cm-mlobby .create-form label { display: flex; flex-direction: column; gap: .3rem; font-size: .82rem; color: rgba(243,244,246,.78); }
+.cm-mlobby .create-form label:has(> input[type="checkbox"]) { flex-direction: row; align-items: center; gap: .6rem; cursor: pointer; }
+.cm-mlobby input[type="checkbox"] { -webkit-appearance: none; appearance: none; flex: none; width: 40px; height: 22px; border-radius: 999px; background: rgba(255,255,255,.15); position: relative; cursor: pointer; transition: background .2s; margin: 0; }
+.cm-mlobby input[type="checkbox"]::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .2s cubic-bezier(.2,.9,.3,1.4); box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+.cm-mlobby input[type="checkbox"]:checked { background: linear-gradient(90deg, var(--cm-a), var(--cm-b)); }
+.cm-mlobby input[type="checkbox"]:checked::after { transform: translateX(18px); }
+.cm-mlobby .prize-note { margin: 0; font-size: .78rem !important; line-height: 1.45; padding: .55rem .7rem; border-radius: 12px; background: color-mix(in srgb, var(--cm-a) 10%, transparent); border: 1px solid color-mix(in srgb, var(--cm-a) 30%, transparent); color: rgba(243,244,246,.85) !important; }
+.cm-mlobby .create-form .cm-cta { margin-top: .2rem; width: 100%; }
+.cm-mlobby .create-form label:not(:has(> input[type="checkbox"])) { align-items: stretch; text-align: left; }
+.cm-mlobby .create-form select { width: 100%; }
+.cm-joincard form input::placeholder { letter-spacing: .2em; font-weight: 700; color: rgba(255,255,255,.35); }
+.cm-mlobby .warn { color: #fecaca !important; margin: 0; } .cm-mlobby .warn:empty { display: none; }
+.cm-mlobby .table-list { list-style: none; padding: 0; margin: 0; }
 @keyframes cm-in { from { opacity: 0; transform: translateY(18px) scale(.97); } }
 @keyframes cm-spin { to { transform: rotate(360deg); } }
 @keyframes cm-float { 50% { transform: translateY(-10px) rotate(-4deg); } }

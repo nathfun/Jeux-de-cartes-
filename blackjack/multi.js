@@ -1171,6 +1171,7 @@
       const id = await net.createTable(st);
       $('table-name').value = '';
       openTable(id, true);
+      if (window.Casino && Casino.launchFx) Casino.launchFx('blackjack', 'Table créée !', 'Code ' + id + ' · invite tes amis');
     } catch (err) {
       const code = err && err.code;
       if (code === 'invalid_argument' || code === 'PERMISSION_DENIED') { canWrite = false; $('lobby-note').textContent = 'Tu n\'as pas le droit de créer une table.'; }
@@ -1288,4 +1289,6 @@
 
   // Lien d'invitation : ouvre directement l'onglet « Entre amis »
   if (new URLSearchParams(location.search).get('table') || new URLSearchParams(location.search).get('multi') || (window.Social && Social.wantsTable && Social.wantsTable())) { document.body.classList.add('multi-entry'); setMode('multi'); }
+  // écran « Entre amis » dans le style de l'écran de lancement
+  if (window.Casino && Casino.styleLobby) Casino.styleLobby(document.getElementById('lobby'), 'blackjack', { join: '#join-code', pseudo: '#pseudo' });
 })();
