@@ -134,6 +134,8 @@
       pseudo: p.pseudo || 'Joueur', avatar: p.avatar, xp: p.xp, level: Casino.levelOf(p.xp), wallet: Math.round(p.wallet),
       biggestWin: Math.round(p.totals.biggestWin || 0), hands: p.totals.hands, achievements: Object.keys(p.achievements).length,
       code: p.friendCode || null, updatedAt: Date.now(),
+      frame: Casino.equipped ? Casino.equipped('frame') : 'none',
+      titleName: (() => { const t = Casino.itemOf && Casino.itemOf('title', Casino.equipped('title')); return t && t.id ? t.name : null; })(),
     });
     return true;
   }

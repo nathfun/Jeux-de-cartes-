@@ -12,19 +12,127 @@
   function title(lv) {
     return lv >= 35 ? 'Légende' : lv >= 20 ? 'High Roller' : lv >= 10 ? 'Joueur confirmé' : lv >= 5 ? 'Habitué' : 'Débutant';
   }
+  // ---------- Boutique et déblocages ----------
+  // Chaque objet : level = niveau minimum ; price = prix en € de la banque (0 = offert dès ce niveau).
   const FELTS = [
-    { id: 'vert', name: 'Vert classique', level: 1, a: '#0f5132', b: '#0a3a24' },
-    { id: 'bleu', name: 'Bleu nuit', level: 3, a: '#123a6b', b: '#0b2546' },
-    { id: 'rouge', name: 'Rouge velours', level: 6, a: '#6b1220', b: '#460a14' },
-    { id: 'violet', name: 'Violet royal', level: 10, a: '#43206b', b: '#2b1446' },
-    { id: 'noir', name: 'Noir et or', level: 20, a: '#1c1c1c', b: '#0b0b0b' },
+    { id: 'vert', name: 'Vert classique', level: 1, price: 0, a: '#0f5132', b: '#0a3a24' },
+    { id: 'turquoise', name: 'Lagon', level: 2, price: 2000, a: '#0e7c7b', b: '#08504f' },
+    { id: 'bleu', name: 'Bleu nuit', level: 3, price: 0, a: '#123a6b', b: '#0b2546' },
+    { id: 'bordeaux', name: 'Bordeaux', level: 4, price: 3000, a: '#5c1a2e', b: '#3a0f1d' },
+    { id: 'ocean', name: 'Océan profond', level: 5, price: 4000, a: '#0b4a6f', b: '#06283d' },
+    { id: 'rouge', name: 'Rouge velours', level: 6, price: 0, a: '#6b1220', b: '#460a14' },
+    { id: 'carbone', name: 'Carbone', level: 8, price: 6000, a: '#2b2f36', b: '#121417' },
+    { id: 'violet', name: 'Violet royal', level: 10, price: 0, a: '#43206b', b: '#2b1446' },
+    { id: 'etoile', name: 'Nuit étoilée', level: 12, price: 10000, a: '#1b2a5e', b: '#070b24' },
+    { id: 'or', name: 'Or royal', level: 15, price: 15000, a: '#6b5214', b: '#3d2e08' },
+    { id: 'noir', name: 'Noir et or', level: 20, price: 0, a: '#1c1c1c', b: '#0b0b0b' },
+    { id: 'neon', name: 'Néon', level: 25, price: 30000, a: '#3b0a6b', b: '#0a2a4a' },
+    { id: 'cosmos', name: 'Cosmos', level: 30, price: 50000, a: '#2a0f4f', b: '#050816' },
   ];
   const BACKS = [
-    { id: 'bleu', name: 'Bleu', level: 1, a: '#1c3d7a', b: '#24519e' },
-    { id: 'rouge', name: 'Rouge', level: 4, a: '#7a1c24', b: '#9e2430' },
-    { id: 'vert', name: 'Émeraude', level: 8, a: '#145c3a', b: '#1d7a4e' },
-    { id: 'or', name: 'Or', level: 15, a: '#8a6a1c', b: '#c9a24a' },
+    { id: 'bleu', name: 'Bleu', level: 1, price: 0, a: '#1c3d7a', b: '#24519e' },
+    { id: 'violet', name: 'Améthyste', level: 2, price: 2000, a: '#4c1d95', b: '#6d28d9' },
+    { id: 'rouge', name: 'Rouge', level: 4, price: 0, a: '#7a1c24', b: '#9e2430' },
+    { id: 'noir', name: 'Onyx', level: 5, price: 3000, a: '#111827', b: '#374151' },
+    { id: 'turquoise', name: 'Turquoise', level: 7, price: 5000, a: '#0e7490', b: '#14b8a6' },
+    { id: 'vert', name: 'Émeraude', level: 8, price: 0, a: '#145c3a', b: '#1d7a4e' },
+    { id: 'rose', name: 'Flamant', level: 10, price: 8000, a: '#9d174d', b: '#db2777' },
+    { id: 'damier', name: 'Damier', level: 12, price: 10000, a: '#7f1d1d', b: '#0b0b0b' },
+    { id: 'or', name: 'Or', level: 15, price: 0, a: '#8a6a1c', b: '#c9a24a' },
+    { id: 'royal', name: 'Royal', level: 18, price: 20000, a: '#1e3a8a', b: '#d4a017' },
+    { id: 'diamant', name: 'Diamant', level: 25, price: 35000, a: '#a5f3fc', b: '#e0f2fe' },
   ];
+  // Avatars à débloquer (en plus des 16 de départ)
+  const AVATAR_ITEMS = [
+    { id: '👻', name: 'Fantôme', level: 2, price: 1000 },
+    { id: '🐉', name: 'Dragon', level: 3, price: 1500 },
+    { id: '🦈', name: 'Requin', level: 4, price: 2000 },
+    { id: '👽', name: 'Alien', level: 5, price: 2500 },
+    { id: '🎰', name: 'Jackpot', level: 5, price: 0 },
+    { id: '🤖', name: 'Robot', level: 6, price: 3000 },
+    { id: '🦩', name: 'Flamant', level: 7, price: 3500 },
+    { id: '🦖', name: 'T-Rex', level: 8, price: 4000 },
+    { id: '🃏', name: 'Joker', level: 10, price: 0 },
+    { id: '🧛', name: 'Vampire', level: 10, price: 6000 },
+    { id: '🧞', name: 'Génie', level: 12, price: 8000 },
+    { id: '🚀', name: 'Fusée', level: 15, price: 0 },
+    { id: '🐲', name: 'Dragon d\'or', level: 15, price: 12000 },
+    { id: '🦹', name: 'Super-vilain', level: 18, price: 15000 },
+    { id: '🏆', name: 'Trophée', level: 20, price: 0 },
+    { id: '💎', name: 'Diamant', level: 22, price: 25000 },
+    { id: '🔥', name: 'En feu', level: 28, price: 40000 },
+    { id: '🌌', name: 'Galaxie', level: 35, price: 60000 },
+  ];
+  // Cadres autour de l'avatar (accueil et classement)
+  const FRAMES = [
+    { id: 'none', name: 'Simple', level: 1, price: 0 },
+    { id: 'or', name: 'Or', level: 5, price: 0 },
+    { id: 'neon', name: 'Néon', level: 8, price: 4000 },
+    { id: 'glace', name: 'Glace', level: 10, price: 6000 },
+    { id: 'feu', name: 'Feu', level: 14, price: 10000 },
+    { id: 'arcenciel', name: 'Arc-en-ciel', level: 18, price: 15000 },
+    { id: 'diamant', name: 'Diamant', level: 25, price: 30000 },
+    { id: 'legende', name: 'Légende', level: 35, price: 0 },
+  ];
+  // Fusées de Rocket Crash : corps, nez, ailerons, flamme
+  const ROCKETS = [
+    { id: 'classique', name: 'Classique', level: 1, price: 0, body: ['#cbd5e1', '#ffffff', '#94a3b8'], nose: '#ec4899', fin: '#7c3aed', flame: ['#ffd166', '#ff7a00'] },
+    { id: 'furtive', name: 'Furtive', level: 3, price: 2000, body: ['#1f2937', '#4b5563', '#111827'], nose: '#ef4444', fin: '#111827', flame: ['#93c5fd', '#3b82f6'] },
+    { id: 'doree', name: 'Dorée', level: 6, price: 5000, body: ['#b7791f', '#fde68a', '#92400e'], nose: '#fbbf24', fin: '#b45309', flame: ['#fff7ad', '#f59e0b'] },
+    { id: 'neon', name: 'Néon', level: 9, price: 7000, body: ['#0f172a', '#22d3ee', '#0f172a'], nose: '#f472b6', fin: '#a855f7', flame: ['#a5f3fc', '#22d3ee'] },
+    { id: 'lave', name: 'Lave', level: 12, price: 9000, body: ['#450a0a', '#dc2626', '#1c1917'], nose: '#f97316', fin: '#7f1d1d', flame: ['#fde047', '#ef4444'] },
+    { id: 'glace', name: 'Glace', level: 16, price: 12000, body: ['#bae6fd', '#f0f9ff', '#7dd3fc'], nose: '#38bdf8', fin: '#0284c7', flame: ['#e0f2fe', '#38bdf8'] },
+    { id: 'arcenciel', name: 'Arc-en-ciel', level: 20, price: 20000, body: ['#f472b6', '#facc15', '#22d3ee'], nose: '#a855f7', fin: '#22c55e', flame: ['#fef08a', '#f472b6'] },
+    { id: 'galactique', name: 'Galactique', level: 30, price: 40000, body: ['#1e1b4b', '#7c3aed', '#020617'], nose: '#22d3ee', fin: '#f0abfc', flame: ['#f5d0fe', '#a855f7'] },
+  ];
+  // Titres affichés sous le pseudo (et dans le classement)
+  const TITLES = [
+    { id: '', name: 'Titre du niveau', level: 1, price: 0 },
+    { id: 'croupier', name: 'Croupier en herbe', level: 2, price: 0 },
+    { id: 'flambeur', name: 'Flambeur', level: 3, price: 1500 },
+    { id: 'chanceux', name: 'Chanceux', level: 4, price: 2500 },
+    { id: 'requin', name: 'Requin des tables', level: 5, price: 3000 },
+    { id: 'astronaute', name: 'Astronaute', level: 6, price: 4000 },
+    { id: 'bluff', name: 'Roi du bluff', level: 7, price: 5000 },
+    { id: 'compteur', name: 'Compteur de cartes', level: 9, price: 6000 },
+    { id: 'highroller', name: 'High Roller', level: 12, price: 12000 },
+    { id: 'millionnaire', name: 'Millionnaire', level: 20, price: 30000 },
+    { id: 'legende', name: 'Légende du Casino', level: 35, price: 0 },
+  ];
+  const SHOP = { felt: FELTS, back: BACKS, avatar: AVATAR_ITEMS, frame: FRAMES, rocket: ROCKETS, title: TITLES };
+  const SHOP_LABELS = { felt: 'Tapis', back: 'Dos de cartes', avatar: 'Avatars', frame: 'Cadres', rocket: 'Fusées', title: 'Titres' };
+  const DEFAULT_EQUIP = { felt: 'vert', back: 'bleu', frame: 'none', rocket: 'classique', title: '' };
+  const itemOf = (kind, id) => (SHOP[kind] || []).find((x) => x.id === id) || null;
+  const ownKey = (kind, id) => kind + ':' + id;
+  /** L'objet est-il utilisable : niveau atteint, et offert ou acheté. */
+  function canUse(P, kind, id) {
+    const it = itemOf(kind, id);
+    if (!it) return false;
+    if (levelOf(P.xp) < it.level) return false;
+    return !it.price || !!(P.owned && P.owned[ownKey(kind, id)]);
+  }
+  /** Achat : vérifie le niveau, le prix et la banque. Renvoie le prix payé, ou un message d'erreur. */
+  function buyItem(P, kind, id, N) {
+    const it = itemOf(kind, id);
+    if (!it || !it.price) return { error: 'Objet introuvable.' };
+    P.owned = P.owned || {};
+    if (P.owned[ownKey(kind, id)]) return { error: 'Tu l\'as déjà.' };
+    if (levelOf(P.xp) < it.level) return { error: 'Débloqué au niveau ' + it.level + '.' };
+    if (P.wallet < it.price) return { error: 'Il te manque ' + Math.ceil(it.price - P.wallet).toLocaleString('fr-FR') + ' €.' };
+    P.wallet -= it.price;
+    P.owned[ownKey(kind, id)] = Date.now();
+    const n = Object.keys(P.owned).length;
+    if (n >= 1) unlock(P, 'shop1', N);
+    if (n >= 10) unlock(P, 'shop10', N);
+    if (n >= 25) unlock(P, 'shop25', N);
+    return { price: it.price };
+  }
+  /** Ce que chaque niveau débloque (offert ou disponible à l'achat). */
+  function unlocksAt(level) {
+    const out = [];
+    Object.keys(SHOP).forEach((k) => SHOP[k].forEach((it) => { if (it.level === level && level > 1) out.push(Object.assign({ kind: k }, it)); }));
+    return out;
+  }
 
   const CHALLENGES = [
     { id: 'bj_wins3', game: 'Blackjack', text: 'Gagne 3 mains de blackjack', target: 3, reward: 400, xp: 60, on: (t, d) => (t === 'bj' && d.net > 0 ? 1 : 0) },
@@ -59,6 +167,10 @@
     { id: 'rl_zero', icon: '0️⃣', name: 'Ami du zéro', text: 'Gagner une mise sur le 0' },
     { id: 'rl_cashout', icon: '💰', name: 'Savoir s\'arrêter', text: 'Encaisser à la roulette avec +1 000 €' },
     { id: 'big_win', icon: '🤑', name: 'Gros gain', text: 'Gagner 10 fois sa mise en un coup' },
+    { id: 'shop1', icon: '🛍️', name: 'Premier achat', text: 'Acheter un objet à la boutique' },
+    { id: 'shop10', icon: '🎨', name: 'Collectionneur', text: 'Posséder 10 objets de la boutique' },
+    { id: 'shop25', icon: '👑', name: 'Grand collectionneur', text: 'Posséder 25 objets de la boutique' },
+    { id: 'lvl30', icon: '🌟', name: 'Vétéran', text: 'Atteindre le niveau 30' },
     { id: 'rocket10', icon: '🚀', name: 'Dans les étoiles', text: 'Retirer à ×10 ou plus à Rocket Crash' },
     { id: 'jackpot', icon: '🎰', name: 'Jackpot', text: 'Décrocher le jackpot à la machine à sous' },
     { id: 'friends', icon: '🤝', name: 'Entre potes', text: 'Jouer une partie entre amis' },
@@ -95,7 +207,7 @@
     return {
       pseudo: '', avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)], wallet: START_WALLET, xp: 0,
       totals: { hands: 0, wins: 0, bjHands: 0, bjBlackjacks: 0, pkHands: 0, rlSpins: 0, slSpins: 0, biggestWin: 0, challenges: 0 },
-      achievements: {}, daily: null, bonus: { last: null, streak: 0 }, sessions: {}, timebank: null, prizes: {}, createdAt: now || Date.now(),
+      achievements: {}, owned: {}, daily: null, bonus: { last: null, streak: 0 }, sessions: {}, timebank: null, prizes: {}, createdAt: now || Date.now(),
     };
   }
   function normalize(P, now) {
@@ -114,10 +226,12 @@
     P.xp += Math.round(n);
     const after = levelOf(P.xp);
     if (after > before) {
-      const unlocked = FELTS.concat(BACKS).filter((c) => c.level > before && c.level <= after).map((c) => c.name);
-      N.push({ kind: 'level', title: 'Niveau ' + after + ' !', text: title(after) + (unlocked.length ? ' — débloqué : ' + unlocked.join(', ') : ''), icon: '⬆️' });
+      const unlocked = [];
+      for (let l = before + 1; l <= after; l++) unlocksAt(l).forEach((it) => unlocked.push(it.name + (it.price ? ' (boutique)' : '')));
+      N.push({ kind: 'level', title: 'Niveau ' + after + ' !', text: title(after) + (unlocked.length ? ' — nouveau : ' + unlocked.slice(0, 4).join(', ') + (unlocked.length > 4 ? '…' : '') : ''), icon: '⬆️' });
       if (after >= 10) unlock(P, 'lvl10', N);
       if (after >= 20) unlock(P, 'lvl20', N);
+      if (after >= 30) unlock(P, 'lvl30', N);
     }
   }
   function unlock(P, id, N) {
@@ -309,7 +423,7 @@
   }
 
   const api = {
-    AVATARS, FELTS, BACKS, CHALLENGES, ACHIEVEMENTS, TIME_PACKS, START_WALLET, GAMES,
+    AVATARS, FELTS, BACKS, SHOP, SHOP_LABELS, DEFAULT_EQUIP, itemOf, canUse, buyItem, unlocksAt, CHALLENGES, ACHIEVEMENTS, TIME_PACKS, START_WALLET, GAMES,
     need, levelOf, title, today, fresh, normalize, addXP, unlock, checkWallet, ensureDaily, track,
     bonusInfo, claimBonus, claimChallenge, timeInfo, startTime, claimTime, startSession, cashOut,
     prizeFor, prizeText, applyPrize, publicProfile,

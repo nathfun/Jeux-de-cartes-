@@ -124,6 +124,50 @@
       .ls-seg button { font-size: .9rem; padding: .5rem .3rem; }
       main > header p { font-size: .9rem; }
     }
+
+    body[data-hubtab="play"] [data-tab="shop"], body[data-hubtab="multi"] [data-tab="shop"] { display: none !important; }
+    body[data-hubtab="shop"] main > section:not([data-tab="shop"]) { display: none !important; }
+    .hub-tabs button { font-size: .95rem; padding: .6rem .3rem; white-space: nowrap; }
+    @media (max-width: 420px) { .hub-tabs button { font-size: .82rem; padding: .55rem .15rem; } }
+    .shop-head { display: flex; justify-content: space-between; align-items: center; gap: .6rem; flex-wrap: wrap; background: rgba(0,0,0,.25); border-radius: 12px; padding: .6rem .8rem; margin-bottom: .6rem; }
+    .sh-wallet b { color: var(--gold); font-size: 1.25rem; } .sh-lvl { color: var(--muted); } .sh-lvl b { color: #fff; }
+    .shop h2 { margin: 1rem 0 .3rem; }
+    .level-track { display: flex; gap: .5rem; overflow-x: auto; padding: .3rem .1rem .6rem; scroll-behavior: smooth; }
+    .lt-node { flex: none; width: 112px; background: #141a21; border: 2px solid var(--border); border-radius: 12px; padding: .5rem; display: flex; flex-direction: column; gap: .3rem; opacity: .6; }
+    .lt-node.done { opacity: 1; border-color: #3fb950; } .lt-node.next { opacity: 1; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(242,193,78,.2); }
+    .lt-node b { font-size: .85rem; } .lt-node small { font-size: .68rem; color: var(--muted); line-height: 1.3; }
+    .lt-items { display: flex; flex-wrap: wrap; gap: .2rem; font-size: 1.05rem; }
+    .lt-items span.free { filter: drop-shadow(0 0 4px rgba(242,193,78,.8)); }
+    .shop-cats { display: flex; gap: .35rem; overflow-x: auto; padding-bottom: .3rem; }
+    .shop-cats button { flex: none; font: inherit; font-size: .85rem; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--muted); padding: .35rem .8rem; cursor: pointer; }
+    .shop-cats button.on { background: var(--gold); color: #222; border-color: var(--gold); font-weight: 700; }
+    .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(138px, 1fr)); gap: .6rem; margin-top: .6rem; }
+    .sh-item { background: #141a21; border: 2px solid var(--border); border-radius: 14px; padding: .6rem; display: flex; flex-direction: column; align-items: center; gap: .3rem; text-align: center; transition: transform .15s, border-color .15s; }
+    .sh-item:hover { transform: translateY(-2px); border-color: #4b5563; }
+    .sh-item.equipped { border-color: #3fb950; box-shadow: 0 0 0 3px rgba(63,185,80,.18); }
+    .sh-item.locked { opacity: .55; }
+    .sh-item b { font-size: .9rem; } .sh-item small { color: var(--muted); font-size: .75rem; }
+    .sh-item button { font: inherit; font-size: .8rem; font-weight: 700; width: 100%; border-radius: 10px; border: 1px solid var(--border); background: #2b3540; color: inherit; padding: .4rem; cursor: pointer; }
+    .sh-item button.buy { background: var(--gold); color: #222; border-color: var(--gold); }
+    .sh-item button:disabled { cursor: default; opacity: .7; }
+    .pv { width: 84px; height: 64px; border-radius: 10px; display: grid; place-items: center; }
+    .pv-felt { border: 3px solid #5b3a1e; } .pv-back { width: 46px; height: 64px; border: 3px solid #fff; border-radius: 7px; }
+    .pv-avatar { font-size: 2.4rem; } .pv-title { font-size: .8rem; font-weight: 700; color: var(--gold); padding: 0 .2rem; text-align: center; }
+    .pv-ring { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-size: 1.7rem; background: #0d1117; border: 3px solid #3a4652; }
+    /* cadres d'avatar */
+    .fr-none { }
+    .fr-or { border-color: #f2c14e !important; box-shadow: 0 0 10px rgba(242,193,78,.6); }
+    .fr-neon { border-color: #22d3ee !important; box-shadow: 0 0 12px #22d3ee, inset 0 0 8px rgba(34,211,238,.6); animation: frPulse 1.6s ease-in-out infinite; }
+    .fr-glace { border-color: #bae6fd !important; box-shadow: 0 0 14px rgba(186,230,253,.9), inset 0 0 10px rgba(125,211,252,.5); }
+    .fr-feu { border-color: #f97316 !important; box-shadow: 0 0 14px #ef4444, 0 -4px 16px #f59e0b; animation: frFire 1s ease-in-out infinite alternate; }
+    .fr-arcenciel { border-color: transparent !important; background: linear-gradient(#0d1117, #0d1117) padding-box, conic-gradient(#f472b6, #facc15, #22c55e, #22d3ee, #a855f7, #f472b6) border-box !important; animation: frSpin 4s linear infinite; }
+    .fr-diamant { border-color: #e0f2fe !important; box-shadow: 0 0 6px #fff, 0 0 18px #7dd3fc, 0 0 30px rgba(165,180,252,.6); }
+    .fr-legende { border-color: transparent !important; background: linear-gradient(#0d1117, #0d1117) padding-box, conic-gradient(#f2c14e, #fff7ad, #b45309, #f2c14e) border-box !important; box-shadow: 0 0 20px rgba(242,193,78,.8); }
+    @keyframes frPulse { 50% { box-shadow: 0 0 20px #22d3ee, inset 0 0 12px rgba(34,211,238,.8); } }
+    @keyframes frFire { to { box-shadow: 0 0 20px #ef4444, 0 -8px 22px #fbbf24; } }
+    @keyframes frSpin { to { filter: hue-rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .fr-neon, .fr-feu, .fr-arcenciel { animation: none; } }
+    .leaderboard .av { border-radius: 50%; border: 2px solid transparent; display: inline-grid; place-items: center; width: 2rem; height: 2rem; }
     .acc-welcome { display: none; text-align: center; }
     .acc-welcome .aw-logo { font-size: 3rem; }
     .acc-welcome h2 { font-size: 1.5rem; margin: .2rem 0 .4rem; }
@@ -218,6 +262,7 @@
     <nav class="hub-tabs" role="tablist" aria-label="Sections">
       <button id="tab-play" class="on" type="button" role="tab" aria-selected="true">🎰 Jeux</button>
       <button id="tab-multi" type="button" role="tab" aria-selected="false">👥 Multijoueur</button>
+      <button id="tab-shop" type="button" role="tab" aria-selected="false">🛍️ Boutique</button>
     </nav>
 
     <section class="panel profile" aria-label="Mon profil">
@@ -349,12 +394,25 @@
       <div id="achievements" class="achievements"></div>
     </section>
 
+    <section class="panel shop" data-tab="shop" aria-label="Boutique">
+      <div class="shop-head">
+        <div class="sh-wallet">🏦 <b id="shop-wallet">0</b> €</div>
+        <div class="sh-lvl">Niveau <b id="shop-lvl">1</b> · <span id="shop-owned"></span></div>
+      </div>
+      <h2>🏅 Parcours des niveaux</h2>
+      <p class="muted small-p">Chaque niveau débloque de nouveaux objets : certains sont offerts, d'autres arrivent en boutique. Gagne de l'XP en partie réelle, avec les défis du jour et entre amis.</p>
+      <div id="level-track" class="level-track" aria-label="Déblocages par niveau"></div>
+      <h2>🛍️ Boutique</h2>
+      <div id="shop-cats" class="shop-cats" role="tablist"></div>
+      <div id="shop-grid" class="shop-grid"></div>
+      <p class="muted small-p">Les objets s'achètent avec l'argent virtuel de ta banque (aucun argent réel). Un objet acheté est à toi pour toujours.</p>
+    </section>
+
     <section class="panel" aria-label="Personnalisation">
       <h2>Personnalisation</h2>
-      <div class="muted" style="font-size:.85rem">Tapis (débloqués avec les niveaux)</div>
-      <div id="felts" class="swatches"></div>
-      <div class="muted" style="font-size:.85rem">Dos des cartes</div>
-      <div id="backs" class="swatches"></div>
+      <div id="felts" class="swatches" hidden></div>
+      <div id="backs" class="swatches" hidden></div>
+      <p style="margin:.2rem 0 .6rem"><button id="open-shop" type="button" class="bonus-btn">🛍️ Tapis, cartes, avatars, cadres, fusées, titres : ouvrir la boutique</button></p>
       <label style="font-size:.9rem"><input type="checkbox" id="opt-vibrate"> Vibrations sur téléphone</label>
       <p class="muted" style="font-size:.78rem;margin:.6rem 0 0">Tout se joue avec des jetons virtuels : aucun argent réel, rien à acheter.</p>
     </section>
@@ -412,7 +470,9 @@
         $('avatar').textContent = P.avatar;
         if (document.activeElement !== $('pseudo')) $('pseudo').value = P.pseudo || '';
         $('lvl').textContent = 'Niv. ' + lv;
-        $('lvl-title').textContent = Casino.title(lv);
+        const tt = Casino.itemOf('title', Casino.equipped('title'));
+        $('lvl-title').textContent = tt && tt.id ? '« ' + tt.name + ' »' : Casino.title(lv);
+        $('avatar').className = 'avatar fr-' + Casino.equipped('frame');
         $('xpfill').style.width = Math.round(((P.xp - cur) / (nxt - cur)) * 100) + '%';
         $('xp-text').textContent = fmt(P.xp - cur) + ' / ' + fmt(nxt - cur) + ' XP jusqu\'au niveau ' + (lv + 1);
         $('wallet').textContent = fmt(P.wallet);
@@ -489,7 +549,8 @@
       $('avatar').addEventListener('click', () => {
         const box = $('avatars');
         box.hidden = !box.hidden;
-        if (!box.hidden && !box.children.length) Casino.AVATARS.forEach((a) => {
+        box.innerHTML = '';
+        if (!box.hidden) Casino.AVATARS.concat(Casino.SHOP.avatar.filter((it) => Casino.canUse('avatar', it.id)).map((it) => it.id)).forEach((a) => {
           const b = document.createElement('button'); b.type = 'button'; b.textContent = a; b.setAttribute('aria-label', 'Avatar ' + a);
           b.addEventListener('click', () => { Casino.setAvatar(a); box.hidden = true; render(); });
           box.appendChild(b);
@@ -564,13 +625,106 @@
       // ---------- Onglets de l'accueil ----------
       function setHubTab(t) {
         document.body.dataset.hubtab = t;
-        $('tab-play').classList.toggle('on', t === 'play'); $('tab-multi').classList.toggle('on', t === 'multi');
-        $('tab-play').setAttribute('aria-selected', t === 'play'); $('tab-multi').setAttribute('aria-selected', t === 'multi');
-        if (location.hash !== (t === 'multi' ? '#multi' : '')) history.replaceState(null, '', location.pathname + location.search + (t === 'multi' ? '#multi' : ''));
+        ['play', 'multi', 'shop'].forEach((k) => { $('tab-' + k).classList.toggle('on', t === k); $('tab-' + k).setAttribute('aria-selected', t === k); });
+        const h = t === 'play' ? '' : '#' + t;
+        if (location.hash !== h) history.replaceState(null, '', location.pathname + location.search + h);
         if (t === 'multi') refreshLobby();
+        if (t === 'shop') renderShop();
+        window.scrollTo({ top: 0 });
       }
       $('tab-play').addEventListener('click', () => setHubTab('play'));
       $('tab-multi').addEventListener('click', () => setHubTab('multi'));
+      $('tab-shop').addEventListener('click', () => setHubTab('shop'));
+      $('open-shop').addEventListener('click', () => setHubTab('shop'));
+
+      // ---------- Boutique ----------
+      let shopCat = 'felt', armedBuy = null, armedTimer = null;
+      const KIND_ICON = { felt: '🟩', back: '🂠', avatar: '😀', frame: '⭕', rocket: '🚀', title: '🏷️' };
+      function rocketSvg(it) {
+        const b = it.body, f = it.flame;
+        return '<svg viewBox="0 0 40 70" width="34" height="60" aria-hidden="true"><defs><linearGradient id="rb-' + it.id + '" x1="0" x2="1"><stop offset="0" stop-color="' + b[0] + '"/><stop offset=".5" stop-color="' + b[1] + '"/><stop offset="1" stop-color="' + b[2] + '"/></linearGradient>'
+          + '<linearGradient id="rf-' + it.id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".3" stop-color="' + f[0] + '"/><stop offset="1" stop-color="' + f[1] + '" stop-opacity="0"/></linearGradient></defs>'
+          + '<path d="M14 50 Q20 70 26 50Z" fill="url(#rf-' + it.id + ')"/>'
+          + '<path d="M12 34 L4 50 L12 46Z M28 34 L36 50 L28 46Z" fill="' + it.fin + '"/>'
+          + '<path d="M20 2 C30 12 30 34 28 48 L12 48 C10 34 10 12 20 2Z" fill="url(#rb-' + it.id + ')"/>'
+          + '<path d="M20 2 C26 7 27.5 12 27.8 15 L12.2 15 C12.5 12 14 7 20 2Z" fill="' + it.nose + '"/>'
+          + '<circle cx="20" cy="26" r="4.5" fill="#0e7490"/><circle cx="20" cy="26" r="3" fill="#67e8f9"/></svg>';
+      }
+      function preview(kind, it) {
+        const d = document.createElement('div'); d.className = 'pv pv-' + kind;
+        if (kind === 'felt') d.style.background = 'radial-gradient(ellipse at 30% 25%, ' + it.a + ', ' + it.b + ')';
+        else if (kind === 'back') d.style.background = 'repeating-linear-gradient(45deg, ' + it.a + ', ' + it.a + ' 6px, ' + it.b + ' 6px, ' + it.b + ' 12px)';
+        else if (kind === 'avatar') d.textContent = it.id;
+        else if (kind === 'frame') { const a = document.createElement('span'); a.className = 'pv-ring fr-' + it.id; a.textContent = Casino.profile.avatar; d.appendChild(a); }
+        else if (kind === 'rocket') d.innerHTML = rocketSvg(it);
+        else if (kind === 'title') d.textContent = it.id ? '« ' + it.name + ' »' : 'Titre de ton niveau';
+        return d;
+      }
+      function isEquipped(kind, it) { return kind === 'avatar' ? Casino.profile.avatar === it.id : Casino.equipped(kind) === it.id; }
+      function renderShop() {
+        if (document.body.dataset.hubtab !== 'shop') return;
+        const P = Casino.profile, lv = Casino.levelOf(P.xp);
+        $('shop-wallet').textContent = fmt(P.wallet);
+        $('shop-lvl').textContent = lv;
+        const totalPaid = Object.values(Casino.SHOP).reduce((a, l) => a + l.filter((x) => x.price).length, 0);
+        $('shop-owned').textContent = Object.keys(P.owned || {}).length + ' / ' + totalPaid + ' objets achetés';
+        // parcours des niveaux
+        const tr = $('level-track'); tr.innerHTML = '';
+        let cur = null;
+        for (let l = 2; l <= 35; l++) {
+          const items = Casino.unlocksAt(l);
+          if (!items.length) continue;
+          const n = document.createElement('div'); n.className = 'lt-node' + (lv >= l ? ' done' : '') + (l === lv || (!cur && l > lv) ? ' next' : '');
+          if (!cur && l > lv) cur = n;
+          const h = document.createElement('b'); h.textContent = 'Niv. ' + l;
+          const ic = document.createElement('div'); ic.className = 'lt-items';
+          items.forEach((it) => { const sp = document.createElement('span'); sp.title = Casino.SHOP_LABELS[it.kind] + ' : ' + it.name + (it.price ? ' (boutique, ' + fmt(it.price) + ' €)' : ' (offert)'); sp.textContent = it.kind === 'avatar' ? it.id : KIND_ICON[it.kind]; if (!it.price) sp.className = 'free'; ic.appendChild(sp); });
+          const sm = document.createElement('small'); sm.textContent = items.filter((x) => !x.price).length ? '🎁 ' + items.filter((x) => !x.price).map((x) => x.name).join(', ') : items.length + ' en boutique';
+          n.append(h, ic, sm); tr.appendChild(n);
+        }
+        if (cur) setTimeout(() => { tr.scrollLeft = Math.max(0, cur.offsetLeft - tr.clientWidth / 2 + cur.clientWidth / 2); }, 0);
+        // catégories
+        const cats = $('shop-cats'); cats.innerHTML = '';
+        Object.keys(Casino.SHOP).forEach((k) => {
+          const b = document.createElement('button'); b.type = 'button'; b.className = k === shopCat ? 'on' : ''; b.textContent = KIND_ICON[k] + ' ' + Casino.SHOP_LABELS[k];
+          b.addEventListener('click', () => { shopCat = k; renderShop(); }); cats.appendChild(b);
+        });
+        // objets
+        const grid = $('shop-grid'); grid.innerHTML = '';
+        Casino.SHOP[shopCat].forEach((it) => {
+          const owned = Casino.owns(shopCat, it.id), unlocked = lv >= it.level, usable = Casino.canUse(shopCat, it.id) || (shopCat === 'avatar' && false);
+          const card = document.createElement('div'); card.className = 'sh-item' + (isEquipped(shopCat, it) ? ' equipped' : '') + (!unlocked ? ' locked' : '');
+          card.appendChild(preview(shopCat, it));
+          const nm = document.createElement('b'); nm.textContent = it.name; card.appendChild(nm);
+          const info = document.createElement('small');
+          info.textContent = !unlocked ? '🔒 Niveau ' + it.level + (it.price ? ' · ' + fmt(it.price) + ' €' : ' · offert') : it.price ? (owned ? 'Acheté' : fmt(it.price) + ' €') : 'Offert';
+          card.appendChild(info);
+          const btn = document.createElement('button'); btn.type = 'button';
+          if (isEquipped(shopCat, it)) { btn.textContent = 'Équipé ✓'; btn.disabled = true; }
+          else if (usable) { btn.textContent = 'Équiper'; btn.addEventListener('click', () => { Casino.equip(shopCat, it.id); if (window.Sfx) Sfx.chips(); render(); renderShop(); }); }
+          else if (!unlocked) { btn.textContent = '🔒 Niv. ' + it.level; btn.disabled = true; }
+          else {
+            const key = shopCat + ':' + it.id;
+            btn.className = 'buy'; btn.textContent = armedBuy === key ? 'Confirmer ' + fmt(it.price) + ' € ?' : 'Acheter ' + fmt(it.price) + ' €';
+            if (P.wallet < it.price) { btn.disabled = true; btn.textContent = 'Il manque ' + fmt(it.price - P.wallet) + ' €'; }
+            btn.addEventListener('click', async () => {
+              // deux appuis pour acheter (la confirmation survit à un rafraîchissement de la boutique)
+              if (armedBuy !== key) { armedBuy = key; clearTimeout(armedTimer); armedTimer = setTimeout(() => { armedBuy = null; renderShop(); }, 4000); renderShop(); return; }
+              armedBuy = null; clearTimeout(armedTimer);
+              btn.disabled = true; btn.textContent = '…';
+              const r = await Casino.buy(shopCat, it.id);
+              if (r.error) { Casino.toast('Achat impossible', r.error, '⚠️'); renderShop(); return; }
+              Casino.equip(shopCat, it.id);
+              Casino.toast('Acheté !', it.name + ' est à toi (−' + fmt(it.price) + ' €).', '🛍️', 'gold');
+              if (window.Sfx) Sfx.win();
+              render(); renderShop();
+            });
+          }
+          card.appendChild(btn);
+          grid.appendChild(card);
+        });
+      }
+      Casino.onChange(() => renderShop());
       // ---------- Partie réelle / Apprentissage ----------
       function renderLearn() {
         const on = Casino.learn;
@@ -633,7 +787,7 @@
         if (!g) { $('mp-note').textContent = 'Aucune table ouverte avec ce code. Vérifie-le auprès de ton ami.'; return; }
         location.href = Social.tableLink(g, c);
       });
-      setHubTab(location.hash === '#multi' ? 'multi' : 'play');
+      setHubTab(location.hash === '#multi' ? 'multi' : location.hash === '#shop' ? 'shop' : 'play');
       // mode test : les liens gardent ?backend=local
       if (/[?&]backend=local\b/.test(location.search)) document.querySelectorAll('a.game').forEach((a) => { const u = new URL(a.href); u.searchParams.set('backend', 'local'); a.href = u.toString(); });
 
@@ -707,8 +861,8 @@
         rows.slice().sort((x, y) => (y[sort] || 0) - (x[sort] || 0)).forEach((r, k) => {
           const li = document.createElement('li'); if (r.me) li.className = 'me';
           const rk = document.createElement('span'); rk.className = 'rk'; rk.textContent = k === 0 ? '🥇' : k === 1 ? '🥈' : k === 2 ? '🥉' : (k + 1);
-          const av = document.createElement('span'); av.className = 'av'; av.textContent = r.avatar || '🎩';
-          const nm = document.createElement('div'); nm.textContent = r.me ? 'Toi' : r.pseudo; const sm = document.createElement('small'); sm.textContent = Casino.title(r.level || 1); nm.appendChild(sm);
+          const av = document.createElement('span'); av.className = 'av fr-' + (r.frame || 'none'); av.textContent = r.avatar || '🎩';
+          const nm = document.createElement('div'); nm.textContent = r.me ? 'Toi' : r.pseudo; const sm = document.createElement('small'); sm.textContent = r.titleName || Casino.title(r.level || 1); nm.appendChild(sm);
           const v = document.createElement('span'); v.className = 'val'; v.textContent = LABEL[sort](r);
           li.append(rk, av, nm, v);
           if (!r.me) {

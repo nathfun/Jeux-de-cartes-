@@ -27,7 +27,7 @@
 
   // ---------- Stockage ----------
   let P = null;
-  function localDefaults() { return { equipped: { felt: 'vert', back: 'bleu' }, settings: { music: false, vibrate: true } }; }
+  function localDefaults() { return { equipped: Object.assign({}, R.DEFAULT_EQUIP), settings: { music: false, vibrate: true } }; }
   function load() {
     if (P) return P;
     let raw = null;
@@ -410,7 +410,7 @@
       save();
       if (SERVER) call('profile.set', { pseudo: P.pseudo });
     },
-    setAvatar(a) { load(); if (AVATARS.includes(a)) { P.avatar = a; save(); if (SERVER) call('profile.set', { avatar: a }); } },
+    setAvatar(a) { load(); if (AVATARS.includes(a) || R.canUse(P, 'avatar', a)) { P.avatar = a; save(); if (SERVER) call('profile.set', { avatar: a }); } },
     setFriendCode(code) { if (SERVER) call('profile.set', { code }); },
     setSetting(k, v) { load(); P.settings[k] = v; save(); },
     save() { load(); save(); },
@@ -441,15 +441,31 @@
       }
       return local((N) => R.claimChallenge(P, id, Date.now(), N));
     },
+    // ---------- Boutique et cosmétiques ----------
+    SHOP: R.SHOP, SHOP_LABELS: R.SHOP_LABELS, unlocksAt: R.unlocksAt, itemOf: R.itemOf,
+    canUse(kind, id) { return R.canUse(load(), kind, id); },
+    owns(kind, id) { const it = R.itemOf(kind, id); return !!it && (!it.price || !!(load().owned || {})[kind + ':' + id]); },
+    equipped(kind) { load(); P.equipped = Object.assign({}, R.DEFAULT_EQUIP, P.equipped); const id = P.equipped[kind]; return R.canUse(P, kind, id) ? id : R.DEFAULT_EQUIP[kind]; },
     equip(kind, id) {
       load();
-      const list = kind === 'felt' ? FELTS : BACKS;
-      const item = list.find((x) => x.id === id);
-      if (!item || levelOf(P.xp) < item.level) return false;
-      P.equipped[kind] = id;
+      if (kind === 'avatar') { Casino.setAvatar(id); return true; }
+      if (!R.canUse(P, kind, id)) return false;
+      P.equipped = Object.assign({}, R.DEFAULT_EQUIP, P.equipped, { [kind]: id });
       save();
       applyCosmetics();
       return true;
+    },
+    /** Achat à la boutique, payé avec la banque. { ok, price } ou { error } */
+    async buy(kind, id) {
+      load();
+      const it = R.itemOf(kind, id);
+      if (!it) return { error: 'Objet introuvable.' };
+      if (SERVER) { const r = await call('shop.buy', { kind, id }); return r.error ? r : { ok: true, price: it.price }; }
+      const chk = R.buyItem(JSON.parse(JSON.stringify(P)), kind, id, []);
+      if (chk.error) return chk;
+      if (BANK) { const r = await bankOp('spend', -it.price, null, (N) => R.buyItem(P, kind, id, N)); return r.error ? r : { ok: true, price: it.price }; }
+      const r = local((N) => R.buyItem(P, kind, id, N));
+      return r.error ? r : { ok: true, price: it.price };
     },
     // ---------- Parties réelles ----------
     training: false,
@@ -583,8 +599,8 @@
   // Couleurs du tapis et du dos des cartes choisies par le joueur
   function applyCosmetics() {
     load();
-    const f = FELTS.find((x) => x.id === P.equipped.felt) || FELTS[0];
-    const b = BACKS.find((x) => x.id === P.equipped.back) || BACKS[0];
+    const f = R.itemOf('felt', Casino.equipped('felt')) || FELTS[0];
+    const b = R.itemOf('back', Casino.equipped('back')) || BACKS[0];
     const r = document.documentElement.style;
     r.setProperty('--felt', f.a); r.setProperty('--felt-dark', f.b);
     r.setProperty('--back1', b.a); r.setProperty('--back2', b.b);

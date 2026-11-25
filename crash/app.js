@@ -357,6 +357,10 @@
 
   // Boucle d'affichage : la scène lit l'état, le texte suit
   const scene = new window.CrashScene($('scene'), E);
+  // fusée équipée à la boutique
+  const applySkin = () => { if (window.Casino && Casino.itemOf) scene.skin = Casino.itemOf('rocket', Casino.equipped('rocket')); };
+  applySkin();
+  if (window.Casino) Casino.onChange(applySkin);
   scene.start(() => {
     if (!S.mode) return { phase: 'countdown' };
     const t = G.phase === 'flight' ? now() - G.flightStart : G.phase === 'crashed' ? E.timeFor(G.crash || 1) : 0;

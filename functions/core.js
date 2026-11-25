@@ -282,6 +282,12 @@ function handle(state, ctx) {
       if (ctx.codeOk) P.friendCode = d.code;
       break;
     }
+    case 'shop.buy': {
+      const r = R.buyItem(P, String(d.kind), String(d.id), N);
+      if (r.error) fail(r.error);
+      result.price = r.price;
+      break;
+    }
     case 'bonus.claim': result.amount = R.claimBonus(P, now, N); break;
     case 'challenge.claim': result.amount = R.claimChallenge(P, String(d.id), now, N); break;
     case 'time.start': if (!R.startTime(P, String(d.pack), now)) fail('Une attente est déjà en cours.'); break;

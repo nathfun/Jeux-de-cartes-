@@ -230,29 +230,31 @@
 
     drawRocket(x, y, ang, s, flame, now) {
       const c = this.cx;
+      // apparence choisie à la boutique (fusée « Classique » par défaut)
+      const k = this.skin || { body: ['#cbd5e1', '#ffffff', '#94a3b8'], nose: '#ec4899', fin: '#7c3aed', flame: ['#ffd166', '#ff7a00'] };
       c.save();
       c.translate(x, y); c.rotate(ang + Math.PI / 2); c.scale(s, s);
       // flamme (vers l'arrière, axe +y)
       if (flame > 0) {
         const fl = 18 + flame * 26 + Math.sin(now / 35) * 4 + rand(-2, 2);
         const fg = c.createLinearGradient(0, 14, 0, 14 + fl);
-        fg.addColorStop(0, 'rgba(255,255,255,.95)'); fg.addColorStop(0.25, 'rgba(255,209,102,.95)'); fg.addColorStop(0.6, 'rgba(255,122,0,.75)'); fg.addColorStop(1, 'rgba(244,63,94,0)');
+        fg.addColorStop(0, 'rgba(255,255,255,.95)'); fg.addColorStop(0.25, k.flame[0]); fg.addColorStop(0.6, k.flame[1]); fg.addColorStop(1, 'rgba(0,0,0,0)');
         c.fillStyle = fg; c.shadowColor = '#ff9f1c'; c.shadowBlur = 25;
         c.beginPath(); c.moveTo(-7, 14); c.quadraticCurveTo(0, 14 + fl * 1.15, 7, 14); c.closePath(); c.fill();
         c.fillStyle = 'rgba(165,243,252,.9)'; c.beginPath(); c.moveTo(-3.5, 14); c.quadraticCurveTo(0, 14 + fl * 0.45, 3.5, 14); c.fill();
         c.shadowBlur = 0;
       }
       // ailerons
-      c.fillStyle = '#7c3aed';
+      c.fillStyle = k.fin;
       c.beginPath(); c.moveTo(-8, 4); c.lineTo(-17, 18); c.lineTo(-8, 14); c.closePath(); c.fill();
       c.beginPath(); c.moveTo(8, 4); c.lineTo(17, 18); c.lineTo(8, 14); c.closePath(); c.fill();
       // corps
       const bg = c.createLinearGradient(-9, 0, 9, 0);
-      bg.addColorStop(0, '#cbd5e1'); bg.addColorStop(0.45, '#ffffff'); bg.addColorStop(1, '#94a3b8');
+      bg.addColorStop(0, k.body[0]); bg.addColorStop(0.45, k.body[1]); bg.addColorStop(1, k.body[2]);
       c.fillStyle = bg;
       c.beginPath(); c.moveTo(0, -26); c.bezierCurveTo(10, -16, 10, 6, 8, 15); c.lineTo(-8, 15); c.bezierCurveTo(-10, 6, -10, -16, 0, -26); c.closePath(); c.fill();
       // nez
-      c.fillStyle = '#ec4899';
+      c.fillStyle = k.nose;
       c.beginPath(); c.moveTo(0, -26); c.bezierCurveTo(6, -21, 7.5, -16, 7.8, -13); c.lineTo(-7.8, -13); c.bezierCurveTo(-7.5, -16, -6, -21, 0, -26); c.fill();
       // hublot
       c.fillStyle = '#0e7490'; c.beginPath(); c.arc(0, -4, 4.6, 0, TAU); c.fill();
