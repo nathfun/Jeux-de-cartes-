@@ -129,7 +129,7 @@
     const [appMod, authMod, dbMod] = await Promise.all([
       import(FB + 'firebase-app.js'), import(FB + 'firebase-auth.js'), import(FB + 'firebase-database.js'),
     ]);
-    const app = appMod.initializeApp(cfg);
+    const app = appMod.getApps().length ? appMod.getApp() : appMod.initializeApp(cfg); // une seule app Firebase par page
     const auth = authMod.getAuth(app);
     await authMod.signInAnonymously(auth);
     const me = auth.currentUser.uid;

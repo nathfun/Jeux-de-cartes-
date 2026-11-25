@@ -212,3 +212,7 @@ input:not([type]), input[type="text"] { font: inherit; background: #10151c; colo
 .recap-stats { grid-template-columns: repeat(3, 1fr); }
 
 .aides-toggle { display: inline-flex; gap: .4rem; align-items: center; background: rgba(242,193,78,.12); border: 1px solid rgba(242,193,78,.35); padding: .25rem .6rem; border-radius: 999px; cursor: pointer; }
+
+.defi-banner { border-color: var(--gold); margin-bottom: 1rem; }
+.defi-banner b { color: var(--gold); }
+.defi-banner p { margin: .3rem 0 0; }

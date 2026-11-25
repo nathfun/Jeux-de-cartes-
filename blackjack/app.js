@@ -43,17 +43,20 @@
   }
   function saveStats() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(stats)); } catch (e) { /* ignore */ }
-    if (window.Casino) Casino.setWallet(stats.bankroll); // le solde du blackjack solo est le portefeuille du Casino
+    if (window.Casino && !defi) Casino.setWallet(stats.bankroll); // le solde du blackjack solo est le portefeuille du Casino
   }
 
   // ---------- Sabot ----------
-  function buildShoe() {
+  // Défi entre amis : { code, meta, hands } ; le sabot est mélangé avec la graine du défi
+  let defi = null;
+  function buildShoe(random) {
+    random = random || Math.random;
     soloCtx.counter.reset();
     shoe = [];
     for (let d = 0; d < DECKS; d++)
       for (const s of SUITS) for (const r of RANKS) shoe.push({ rank: r, suit: s });
     for (let i = shoe.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(random() * (i + 1));
       [shoe[i], shoe[j]] = [shoe[j], shoe[i]];
     }
   }
@@ -506,6 +509,11 @@
     saveStats();
     render();
     maybeQuiz();
+    if (defi) {
+      defi.hands++;
+      $('defi-count').textContent = 'Main ' + Math.min(defi.hands + 1, defi.meta.rounds) + ' / ' + defi.meta.rounds + ' · solde de défi : ' + stats.bankroll + ' €';
+      if (defi.hands >= defi.meta.rounds || stats.bankroll < MIN_BET) endDefi();
+    }
   }
 
   function set(h, text, cls) { h.result = text; h.resultClass = cls; }
@@ -571,6 +579,21 @@
 
     if ($('opt-coach').checked) showFeedback(rec, played, good);
     else showFeedbackHidden();
+  }
+
+  async function endDefi() {
+    const d = defi, score = stats.bankroll;
+    defi = null;
+    $('defi-count').textContent = 'Défi terminé ! Envoi de ton score…';
+    await Social.submitChallenge(d.code, score);
+    const ch = await Social.getChallenge(d.code);
+    Social.showChallengeResult(ch || { code: d.code, meta: d.meta, results: {}, uid: null }, score);
+    // retour au jeu normal, avec le portefeuille
+    stats.bankroll = window.Casino ? Casino.wallet() : stats.bankroll;
+    buildShoe();
+    $('defi-banner').hidden = true;
+    history.replaceState(null, '', location.pathname);
+    render();
   }
 
   // ---------- Assurance ----------
@@ -1004,6 +1027,21 @@
 
   buildShoe();
   applySpeed();
+  // Lien de défi (?defi=CODE) : 10 mains, jetons de défi, même sabot pour tous
+  const defiCode = new URLSearchParams(location.search).get('defi');
+  if (defiCode && window.Social) {
+    Social.getChallenge(defiCode).then((ch) => {
+      if (!ch || ch.meta.game !== 'blackjack') return;
+      defi = { code: defiCode, meta: ch.meta, hands: 0 };
+      stats.bankroll = ch.meta.bank;
+      bet = 10;
+      buildShoe(Social.rng(ch.meta.seed));
+      $('defi-banner').hidden = false;
+      $('defi-text').textContent = 'Défi de ' + ch.meta.by + ' : ' + ch.meta.rounds + ' mains avec ' + ch.meta.bank + ' € de jetons de défi. Tout le monde a le même sabot : fais le meilleur solde final ! (Ton portefeuille n\'est pas touché.)';
+      $('defi-count').textContent = 'Main 1 / ' + ch.meta.rounds;
+      render();
+    });
+  }
   renderChart();
   render();
 })();

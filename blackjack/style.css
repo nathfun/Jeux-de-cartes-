@@ -357,3 +357,7 @@ button.spot.side:hover { background: rgba(198, 40, 40, .45); }
 .seat-timer { height: 5px; border-radius: 3px; background: rgba(0,0,0,.35); overflow: hidden; }
 .seat-timer > div { height: 100%; background: var(--gold); transition: width .2s linear; }
 .seat-timer > div.urgent { background: var(--bad); }
+
+.defi-banner { border-color: var(--gold); }
+.defi-banner b { color: var(--gold); }
+.defi-banner p { margin: .3rem 0 0; }

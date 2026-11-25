@@ -424,6 +424,7 @@
   // ================= Réception et animation =================
 
   function onTable(raw) {
+    setTimeout(befriend, 0);
     if (!raw) { state = null; showLobby('Cette table n\'existe pas ou a été supprimée.'); return; }
     const st = normalize(JSON.parse(JSON.stringify(raw)));
     state = st;
@@ -875,6 +876,7 @@
       log.appendChild(p);
     }
     const unknown = [];
+    list.forEach((m) => { if (window.Social && Social.isReaction(m)) Social.floatReaction(m); });
     list.forEach((m) => {
       const el = document.createElement('div');
       el.className = 'msg ' + (m.uid === me ? 'me' : 'other');
@@ -1093,6 +1095,18 @@
     catch (e) { toast('Code de la table : ' + tableId); }
   });
   $('leave-table').addEventListener('click', () => showLobby());
+  // Réactions rapides : envoyées par le chat de la table, elles s'envolent chez tout le monde
+  if (window.Social) {
+    Social.reactionBar($('table-chat-form').parentNode, (emoji) => {
+      if (!net || !tableId) return;
+      net.sendChat(tableId, { uid: me, name: (myName() || ''), text: emoji, ts: Date.now(), reaction: true }).catch(() => {});
+    });
+  }
+  // Les joueurs croisés à une table deviennent des amis (classement de l'accueil)
+  function befriend() {
+    if (!window.Social) return;
+    (state ? state.seats.map((x) => x.owner) : []).forEach((u) => { if (u && u !== me) Social.addFriendUid(u); });
+  }
   $('table-chat-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const v = $('table-chat-input').value;

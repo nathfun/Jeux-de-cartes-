@@ -454,14 +454,15 @@
   let S = null; // état de la partie solo
   let soloTimer = null;
 
+  let defi = null; // défi entre amis en cours : { code, meta, rng }
   function startSolo() {
-    // Avec le profil du Casino, on joue avec le portefeuille commun
-    const bank = window.Casino ? Casino.wallet() : parseInt($('set-bank').value, 10);
+    // Avec le profil du Casino, on joue avec le portefeuille commun (sauf en défi : jetons de défi)
+    const bank = defi ? defi.meta.bank : window.Casino ? Casino.wallet() : parseInt($('set-bank').value, 10);
     if (bank < 1) { $('wallet-note').textContent = 'Ton portefeuille est vide : récupère ton bonus du jour ou la recharge de secours sur l\'accueil.'; return; }
     S = {
       bankroll: bank, start: bank, betTime: parseInt($('set-bettime').value, 10), coach: $('set-coach').checked,
       bets: {}, log: [], lastBets: {}, history: [], phase: 'waiting', deadline: null, result: null,
-      T: createStats(), startedAt: now(), maxBank: bank,
+      T: createStats(), startedAt: now(), maxBank: bank, defi,
     };
     applyAides(S.coach);
     $('aides-row').hidden = false;
@@ -479,6 +480,7 @@
     let announce = 'Faites vos jeux', sub = '';
     if (s.phase === 'waiting') sub = 'Pose tes jetons : le compte à rebours démarre à ta première mise.';
     if (s.phase === 'betting') sub = 'Touche les cases du tapis pour miser. « Lancer la bille » pour ne pas attendre.';
+    if (s.defi && (s.phase === 'waiting' || s.phase === 'betting')) sub = '🎯 Défi · tour ' + (s.T.spins + 1) + ' / ' + s.defi.meta.rounds + ' · ' + sub;
     if (s.phase === 'spinning') { announce = 'Rien ne va plus'; sub = 'La bille tourne…'; }
     if (s.phase === 'result') { announce = B.describe(s.result); sub = s.resultText || ''; }
     return {
@@ -490,7 +492,7 @@
   }
   function soloRender() {
     if (!S) return;
-    if (window.Casino && S.phase !== 'over') Casino.setWallet(S.bankroll); // le solde suit le portefeuille commun
+    if (window.Casino && S.phase !== 'over' && !S.defi) Casino.setWallet(S.bankroll); // le solde suit le portefeuille commun
     render(soloView());
   }
 
@@ -560,6 +562,7 @@
       S.log.forEach((l) => { S.bankroll += l.amount; });
       S.bets = {}; S.log = [];
       soloRender();
+      if (S.defi) { endDefi(); return; }
       if (window.Casino) Casino.track('rl-cashout', { diff: S.bankroll - S.start });
       soloRecap(false, true);
     },
@@ -572,9 +575,13 @@
     analyseBets(S.T, S.bets, before, S.history);
     rienNeVaPlus();
     soloRender();
-    const arr = new Uint32Array(1);
-    (window.crypto || window.msCrypto).getRandomValues(arr);
-    const n = arr[0] % 37;
+    let n;
+    if (S.defi) n = Math.floor(S.defi.rng() * 37); // défi : la même suite de numéros pour tous les amis
+    else {
+      const arr = new Uint32Array(1);
+      (window.crypto || window.msCrypto).getRandomValues(arr);
+      n = arr[0] % 37;
+    }
     await sleep(700);
     await ensureWheel().spin(n, { duration: SPIN_MS });
     resolveSolo(n);
@@ -613,9 +620,24 @@
     S.bets = {}; S.log = [];
     S.phase = 'waiting'; S.deadline = null; S.result = null;
     ensureWheel().clear();
+    if (S.defi && (S.T.spins >= S.defi.meta.rounds || S.bankroll < 1)) { endDefi(); return; }
     if (S.bankroll < 1) { soloRender(); soloRecap(true); return; }
     if (window.Sfx) Sfx.say('Faites vos jeux');
     soloRender();
+  }
+
+  async function endDefi() {
+    const d = S.defi, score = S.bankroll;
+    S.phase = 'over';
+    soloRender();
+    $('sub-message').textContent = 'Défi terminé ! Envoi de ton score…';
+    await Social.submitChallenge(d.code, score);
+    const ch = await Social.getChallenge(d.code);
+    Social.showChallengeResult(ch || { code: d.code, meta: d.meta, results: {}, uid: null }, score);
+    defi = null;
+    S = null;
+    $('game').hidden = true; $('setup').hidden = false; $('defi-banner').hidden = true;
+    history.replaceState(null, '', location.pathname);
   }
 
   function soloRecap(broke, cashout) {
@@ -638,6 +660,17 @@
   }
 
   $('start').addEventListener('click', startSolo);
+  // Lien de défi (?defi=CODE)
+  const defiCode = new URLSearchParams(location.search).get('defi');
+  if (defiCode && window.Social) {
+    Social.getChallenge(defiCode).then((ch) => {
+      if (!ch || ch.meta.game !== 'roulette') { $('wallet-note').textContent = 'Défi introuvable.'; return; }
+      defi = { code: defiCode, meta: ch.meta, rng: Social.rng(ch.meta.seed) };
+      $('defi-banner').hidden = false;
+      $('defi-text').textContent = 'Défi de ' + ch.meta.by + ' : ' + ch.meta.rounds + ' tours avec ' + ch.meta.bank + ' € de jetons de défi. Tout le monde reçoit les mêmes numéros : fais le meilleur solde final ! (Ton portefeuille n\'est pas touché.)';
+      $('start').textContent = 'Relever le défi';
+    });
+  }
   // Portefeuille commun : on remplace le choix du solde de départ
   if (window.Casino) {
     $('set-bank-row').hidden = true;

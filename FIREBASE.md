@@ -77,6 +77,12 @@ elle est supprimée et son code ne fonctionne plus.
   le paquet. Un joueur qui fouillerait dans les outils développeur de son navigateur pendant qu'il est
   hôte pourrait le lire. Entre amis, c'est un compromis raisonnable.
 
+## Amis, classement et défis
+
+- `profiles` : le profil public de chaque joueur (pseudo, avatar, niveau, portefeuille…), modifiable par lui seul.
+- `friendcodes` : les codes amis (6 caractères).
+- `challenges` : les défis entre amis et leurs résultats (chacun n'écrit que son propre score).
+
 ## Limites de l'offre gratuite
 
 Largement suffisantes entre amis : 100 joueurs connectés en même temps, 1 Go de données stockées.

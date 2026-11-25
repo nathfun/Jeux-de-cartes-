@@ -286,6 +286,7 @@
     },
     setAvatar(a) { load(); if (AVATARS.includes(a)) { P.avatar = a; save(); } },
     setSetting(k, v) { load(); P.settings[k] = v; save(); },
+    save() { load(); save(); },
     // Recharge de secours quand le portefeuille est vide (une fois par heure)
     rescue() {
       load();

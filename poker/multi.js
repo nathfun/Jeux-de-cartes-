@@ -320,6 +320,7 @@
 
   // ---------- Réception ----------
   function onPub(raw) {
+    setTimeout(befriend, 0);
     if (!raw) { showLobby('Cette table n\'existe pas ou a été fermée.'); return; }
     const st = normalize(JSON.parse(JSON.stringify(raw)));
     if (pub && st.handNo !== pub.handNo) { boardShown = 0; }
@@ -600,6 +601,7 @@
     const log = $('pm-chat');
     log.innerHTML = '';
     if (!list.length) { const p = document.createElement('div'); p.className = 'muted small'; p.textContent = 'Aucun message.'; log.appendChild(p); }
+    list.forEach((m) => { if (window.Social && Social.isReaction(m)) Social.floatReaction(m); });
     list.forEach((m) => {
       const el = document.createElement('div');
       el.className = 'msg' + (m.uid === me ? ' me' : '');
@@ -705,6 +707,18 @@
     if (navigator.share) { try { await navigator.share({ title: 'Poker entre amis', text, url: u.toString() }); return; } catch (e) { /* annulé */ } }
     try { await navigator.clipboard.writeText(text + ' — ' + u.toString()); toast('Lien d\'invitation copié !'); } catch (e) { toast('Code de la table : ' + tableId); }
   });
+  // Réactions rapides : envoyées par le chat de la table, elles s'envolent chez tout le monde
+  if (window.Social) {
+    Social.reactionBar($('pm-chat-form').parentNode, (emoji) => {
+      if (!net || !tableId) return;
+      net.sendChat(tableId, { uid: me, name: myName(), text: emoji, ts: Date.now(), reaction: true }).catch(() => {});
+    });
+  }
+  // Les joueurs croisés à une table deviennent des amis (classement de l'accueil)
+  function befriend() {
+    if (!window.Social) return;
+    (pub ? pub.seats.map((x) => x.owner) : []).forEach((u) => { if (u && u !== me) Social.addFriendUid(u); });
+  }
   $('pm-chat-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const t = $('pm-chat-input').value.trim();

@@ -156,6 +156,7 @@
 
   // ---------- Réception et affichage ----------
   function onState(raw) {
+    setTimeout(befriend, 0);
     if (!raw) { showLobby('Cette table n\'existe pas ou a été fermée.'); return; }
     const prev = st;
     st = normalize(JSON.parse(JSON.stringify(raw)));
@@ -362,6 +363,7 @@
   function renderChat(list) {
     const log = $('chat');
     log.innerHTML = '';
+    list.forEach((m) => { if (window.Social && Social.isReaction(m)) Social.floatReaction(m); });
     list.forEach((m) => {
       const el = document.createElement('div'); el.className = 'msg' + (m.uid === me ? ' me' : '');
       const b = document.createElement('b'); b.textContent = (m.uid === me ? 'Toi' : m.name || 'Joueur') + ' ';
@@ -401,6 +403,18 @@
     if (navigator.share) { try { await navigator.share({ title: 'Roulette entre amis', text, url: u.toString() }); return; } catch (e) { /* annulé */ } }
     try { await navigator.clipboard.writeText(text + ' — ' + u.toString()); $('sub-message').textContent = 'Lien d\'invitation copié !'; } catch (e) { $('sub-message').textContent = 'Code de la table : ' + tableId; }
   });
+  // Réactions rapides : envoyées par le chat de la table, elles s'envolent chez tout le monde
+  if (window.Social) {
+    Social.reactionBar($('chat-form').parentNode, (emoji) => {
+      if (!net || !tableId) return;
+      net.sendChat(tableId, { uid: me, name: myName(), text: emoji, ts: Date.now(), reaction: true }).catch(() => {});
+    });
+  }
+  // Les joueurs croisés à une table deviennent des amis (classement de l'accueil)
+  function befriend() {
+    if (!window.Social) return;
+    (st ? Object.keys(st.players) : []).forEach((u) => { if (u && u !== me) Social.addFriendUid(u); });
+  }
   $('chat-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const t = $('chat-input').value.trim(); $('chat-input').value = '';
