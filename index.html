@@ -26,7 +26,7 @@
     header img { width: 54px; height: 54px; border-radius: 12px; }
     h1 { margin: 0; font-size: 1.7rem; text-wrap: balance; }
     header p { margin: .15rem 0 0; color: var(--muted); }
-    .games { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+    .games { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
     .game {
       position: relative; display: flex; flex-direction: column; gap: .7rem;
       background: radial-gradient(ellipse at 30% 20%, var(--felt) 0%, var(--felt-dark) 100%);
@@ -77,6 +77,19 @@
     .wallet-row { display: flex; gap: .7rem; align-items: center; flex-wrap: wrap; }
     .wallet { font-size: 1.4rem; font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
     .bonus-btn { font: inherit; font-weight: 700; background: linear-gradient(135deg, #f2c14e, #e89a2c); color: #222; border: 0; border-radius: 10px; padding: .5rem .9rem; cursor: pointer; animation: glow 1.6s ease-in-out infinite; }
+    .in-play { margin-top: .5rem; font-size: .9rem; display: flex; gap: .4rem; flex-wrap: wrap; }
+    .in-play a { color: inherit; text-decoration: none; background: rgba(242,193,78,.12); border: 1px solid var(--gold); border-radius: 999px; padding: .2rem .6rem; }
+    .small-p { font-size: .9rem; margin: .2rem 0 .7rem; }
+    .timebank { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .6rem; }
+    .tpack { font: inherit; color: inherit; text-align: left; background: rgba(0,0,0,.25); border: 2px solid var(--border); border-radius: 12px; padding: .7rem .8rem; cursor: pointer; display: flex; flex-direction: column; gap: .2rem; }
+    .tpack:hover { border-color: var(--gold); }
+    .tpack .ti { font-size: 1.6rem; } .tpack b { font-size: 1.05rem; } .tpack .ta { color: var(--gold); font-weight: 800; font-size: 1.15rem; }
+    .tpack small { color: var(--muted); }
+    .tactive { grid-column: 1 / -1; display: flex; flex-direction: column; gap: .5rem; }
+    .tactive .bar { height: 12px; background: #2b3540; border-radius: 999px; overflow: hidden; }
+    .tactive .bar div { height: 100%; background: linear-gradient(90deg, #f2c14e, #3fb950); transition: width 1s linear; }
+    .tactive .row2 { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+    .tleft { font-variant-numeric: tabular-nums; font-weight: 700; }
     .bonus-btn:disabled { animation: none; background: #2b3540; color: var(--muted); cursor: default; }
     @keyframes glow { 50% { box-shadow: 0 0 18px rgba(242,193,78,.75); } }
     .avatars { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .4rem; }
@@ -149,13 +162,19 @@
         <div class="xpbar" aria-hidden="true"><div id="xpfill"></div></div>
         <div id="xp-text" class="xp-text"></div>
         <div class="wallet-row">
-          <span class="wallet">💰 <span id="wallet">0</span> €</span>
+          <span class="wallet" title="Ta banque">🏦 <span id="wallet">0</span> €</span>
           <button id="bonus" class="bonus-btn" type="button">🎁 Bonus du jour</button>
-          <button id="rescue" class="icon-btn" type="button" hidden>🆘 Recharge de secours</button>
         </div>
+        <div id="in-play" class="in-play" hidden></div>
         <div id="avatars" class="avatars" hidden></div>
         <div id="lifetime" class="stats-row"></div>
       </div>
+    </section>
+
+    <section class="panel" aria-label="Banque du temps">
+      <h2>⏳ Banque du temps</h2>
+      <p class="muted small-p">Ici, l'argent ne tombe pas du ciel : il s'achète avec du temps. Lance une attente, reviens quand elle est finie et encaisse. Une seule à la fois, et le compteur tourne même app fermée.</p>
+      <div id="timebank" class="timebank"></div>
     </section>
 
     <section class="panel" aria-label="Défis du jour">
@@ -205,7 +224,7 @@
         <p class="muted" style="font-size:.8rem;margin:.3rem 0 .6rem">Les joueurs croisés à une table entre amis sont ajoutés automatiquement.</p>
         <div class="lb-tabs" role="tablist">
           <button data-sort="xp" class="on" type="button">Niveau</button>
-          <button data-sort="wallet" type="button">Portefeuille</button>
+          <button data-sort="wallet" type="button">Banque</button>
           <button data-sort="biggestWin" type="button">Plus gros gain</button>
           <button data-sort="achievements" type="button">Succès</button>
         </div>
@@ -215,7 +234,7 @@
 
     <section class="panel" aria-label="Défis entre amis">
       <h2>Défis entre amis</h2>
-      <p class="muted" style="font-size:.88rem;margin:0 0 .6rem">10 tours avec 1 000 € de jetons de défi (ton portefeuille n'est pas touché). Tout le monde reçoit exactement les mêmes numéros à la roulette, ou le même sabot au blackjack : le meilleur solde final gagne.</p>
+      <p class="muted" style="font-size:.88rem;margin:0 0 .6rem">10 tours avec 1 000 € de jetons de défi (ta banque n'est pas touchée). Tout le monde reçoit exactement les mêmes numéros à la roulette, ou le même sabot au blackjack : le meilleur solde final gagne.</p>
       <div class="row-btns">
         <button id="defi-roulette" class="icon-btn" type="button">🎡 Lancer un défi roulette</button>
         <button id="defi-blackjack" class="icon-btn" type="button">🃏 Lancer un défi blackjack</button>
@@ -267,7 +286,17 @@
         const b = Casino.bonusInfo();
         $('bonus').disabled = !b.available;
         $('bonus').textContent = b.available ? '🎁 Bonus du jour : +' + fmt(b.amount) + ' €' + (b.streak > 1 ? ' (série de ' + b.streak + ' jours)' : '') : '✔ Bonus récupéré · série de ' + b.streak + ' jour' + (b.streak > 1 ? 's' : '') + ' · reviens demain';
-        $('rescue').hidden = P.wallet >= 50;
+        const ses = Casino.sessions();
+        const ip = $('in-play'); ip.innerHTML = '';
+        const paths = { blackjack: 'blackjack/index.html', poker: 'poker/index.html', roulette: 'roulette/index.html', slots: 'slots/index.html' };
+        Object.keys(ses).forEach((g) => {
+          const a = document.createElement('a'); a.href = paths[g] || '#';
+          a.textContent = '🎲 ' + (Casino.GAMES[g] || g) + ' : ' + fmt(ses[g].stack) + ' € sur la table';
+          ip.appendChild(a);
+        });
+        if (ip.children.length) ip.prepend('Parties en cours (encaisse-les pour récupérer l\'argent) : ');
+        ip.hidden = !ip.children.length;
+        renderTime();
         const T = P.totals;
         $('lifetime').innerHTML = '';
         [['Mains et tours joués', T.hands], ['Gagnés', T.wins], ['Plus gros gain', fmt(T.biggestWin) + ' €'], ['Défis réussis', T.challenges]].forEach(([k, v]) => {
@@ -287,7 +316,7 @@
           if (c.claimed) { const k = document.createElement('div'); k.className = 'claimed'; k.textContent = '✔ Récompense récupérée'; el.appendChild(k); }
           else if (c.done) {
             const btn = document.createElement('button'); btn.type = 'button'; btn.textContent = 'Récupérer +' + fmt(def.reward) + ' €';
-            btn.addEventListener('click', () => { const v = Casino.claimChallenge(c.id); if (v) Casino.toast('Récompense', '+' + fmt(v) + ' € dans ton portefeuille', '🎉', 'challenge'); render(); });
+            btn.addEventListener('click', () => { const v = Casino.claimChallenge(c.id); if (v) Casino.toast('Récompense', '+' + fmt(v) + ' € dans ta banque', '🎉', 'challenge'); render(); });
             el.appendChild(btn);
           }
           box.appendChild(el);
@@ -338,11 +367,63 @@
         if (v) { Casino.bigWin(v, 'BONUS DU JOUR'); }
         render();
       });
-      $('rescue').addEventListener('click', () => {
-        const v = Casino.rescue();
-        if (v < 0) Casino.toast('Recharge de secours', 'Disponible dans ' + Math.ceil(-v / 60000) + ' min', '⏳');
-        render();
-      });
+      // ---------- Banque du temps ----------
+      function dur(ms) {
+        const t = Math.ceil(ms / 1000), h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), sec = t % 60;
+        return h ? h + ' h ' + String(m).padStart(2, '0') + ' min' : m + ' min ' + String(sec).padStart(2, '0') + ' s';
+      }
+      function packLen(p) { return p.minutes >= 60 ? (p.minutes / 60) + ' h' : p.minutes + ' min'; }
+      let lastTimeKey = '';
+      function renderTime() {
+        const box = $('timebank');
+        const t = Casino.timebank();
+        const key = t ? t.pack.id + (t.ready ? 'r' : 'w') : 'none';
+        if (t && !t.ready && key === lastTimeKey) {
+          const bar = box.querySelector('.bar div'), left = box.querySelector('.tleft');
+          if (bar) bar.style.width = Math.min(100, (1 - t.left / (t.end - t.start)) * 100) + '%';
+          if (left) left.textContent = 'Encore ' + dur(t.left);
+          return;
+        }
+        lastTimeKey = key;
+        box.innerHTML = '';
+        if (!t) {
+          Casino.TIME_PACKS.forEach((p) => {
+            const b = document.createElement('button'); b.type = 'button'; b.className = 'tpack';
+            const i = document.createElement('span'); i.className = 'ti'; i.textContent = p.icon;
+            const n = document.createElement('b'); n.textContent = p.name;
+            const a = document.createElement('span'); a.className = 'ta'; a.textContent = '+' + fmt(p.amount) + ' €';
+            const sm = document.createElement('small'); sm.textContent = 'contre ' + packLen(p) + ' d\'attente';
+            b.append(i, n, a, sm);
+            b.addEventListener('click', () => { Casino.startTime(p.id); Casino.toast('Banque du temps', p.name + ' lancée : reviens dans ' + packLen(p) + ' pour encaisser ' + fmt(p.amount) + ' €.', '⏳'); render(); });
+            box.appendChild(b);
+          });
+          return;
+        }
+        const w = document.createElement('div'); w.className = 'tactive';
+        const title = document.createElement('div');
+        title.textContent = t.pack.icon + ' ' + t.pack.name + ' : +' + fmt(t.pack.amount) + ' €';
+        title.style.fontWeight = '700';
+        const bar = document.createElement('div'); bar.className = 'bar'; const f = document.createElement('div');
+        f.style.width = (t.ready ? 100 : Math.min(100, (1 - t.left / (t.end - t.start)) * 100)) + '%'; bar.appendChild(f);
+        const row = document.createElement('div'); row.className = 'row2';
+        if (t.ready) {
+          const c = document.createElement('button'); c.type = 'button'; c.className = 'bonus-btn'; c.textContent = '💰 Encaisser +' + fmt(t.pack.amount) + ' €';
+          c.addEventListener('click', () => { const v = Casino.claimTime(); if (v) Casino.bigWin(v, 'TEMPS ENCAISSÉ'); render(); });
+          row.appendChild(c);
+        } else {
+          const l = document.createElement('span'); l.className = 'tleft'; l.textContent = 'Encore ' + dur(t.left);
+          const x = document.createElement('button'); x.type = 'button'; x.className = 'icon-btn'; x.textContent = 'Abandonner';
+          let armed = false;
+          x.addEventListener('click', () => {
+            if (!armed) { armed = true; x.textContent = 'Sûr ? Le temps passé sera perdu'; setTimeout(() => { armed = false; x.textContent = 'Abandonner'; }, 3000); return; }
+            Casino.cancelTime(); render();
+          });
+          row.append(l, x);
+        }
+        w.append(title, bar, row);
+        box.appendChild(w);
+      }
+      setInterval(renderTime, 1000);
       $('opt-vibrate').addEventListener('change', (e) => { Casino.setSetting('vibrate', e.target.checked); if (e.target.checked) Casino.vibrate(40); });
       Casino.onChange(render);
       render();

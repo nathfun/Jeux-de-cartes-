@@ -1,6 +1,6 @@
 /*
  * Profil du joueur, commun à tous les jeux du Casino (enregistré sur l'appareil) :
- *  - portefeuille unique (solo : blackjack, roulette, droits d'entrée des tournois de poker) ;
+ *  - banque unique ; parties réelles (somme apportée puis encaissée) et mode Entraînement (rien ne compte) ;
  *  - expérience et niveaux, avec un titre ;
  *  - bonus quotidien (plus fort si on revient plusieurs jours de suite) ;
  *  - 3 défis du jour, renouvelés à minuit ;
@@ -75,8 +75,8 @@
     { id: 'challenges10', icon: '✅', name: 'Relevé !', text: 'Terminer 10 défis du jour' },
     { id: 'lvl10', icon: '⭐', name: 'Joueur confirmé', text: 'Atteindre le niveau 10' },
     { id: 'lvl20', icon: '💎', name: 'High Roller', text: 'Atteindre le niveau 20' },
-    { id: 'rich25', icon: '🏦', name: 'Gros portefeuille', text: 'Avoir 25 000 € dans son portefeuille' },
-    { id: 'rich100', icon: '👑', name: 'Millionnaire en herbe', text: 'Avoir 100 000 € dans son portefeuille' },
+    { id: 'rich25', icon: '🏦', name: 'Grosse banque', text: 'Avoir 25 000 € en banque' },
+    { id: 'rich100', icon: '👑', name: 'Millionnaire en herbe', text: 'Avoir 100 000 € en banque' },
   ];
 
   // ---------- Stockage ----------
@@ -364,18 +364,6 @@
     setAvatar(a) { load(); if (AVATARS.includes(a)) { P.avatar = a; save(); } },
     setSetting(k, v) { load(); P.settings[k] = v; save(); },
     save() { load(); save(); },
-    // Recharge de secours quand le portefeuille est vide (une fois par heure)
-    rescue() {
-      load();
-      if (P.wallet >= 50) return 0;
-      const wait = P.rescueAt + 3600000 - Date.now();
-      if (wait > 0) return -wait;
-      P.rescueAt = Date.now();
-      P.wallet += 1000;
-      save();
-      toast('Recharge de secours', '+1 000 € dans ton portefeuille', '🆘');
-      return 1000;
-    },
     // Bonus quotidien : 500 €, +250 € par jour consécutif (jusqu'à 2 000 €)
     bonusInfo() {
       load();
