@@ -127,3 +127,12 @@ puis `window.CASINO_SERVER = true`.
 ## Limites de l'offre gratuite
 
 Largement suffisantes entre amis : 100 joueurs connectés en même temps, 1 Go de données stockées.
+
+## Page d'administration
+
+1. Ouvre `admin/index.html` (bouton 🛠️ sur l'accueil une fois admin) : la page affiche l'identifiant de ton compte.
+2. Console Firebase → Realtime Database → Données → ajoute `admins` → `<ton identifiant>` : `true`.
+3. Recolle `database.rules.json` (règles) si ce n'est pas fait, puis recharge la page.
+
+Tu peux alors voir tous les comptes, changer leur banque (immédiat), leur pseudo, leur niveau, leurs objets de boutique et leurs succès
+(appliqués au prochain chargement de l'app du joueur, et prioritaires sur sa sauvegarde).

@@ -23,7 +23,7 @@
   // n'acceptent que les mouvements d'argent plausibles (voir database.rules.json)
   const BANK = ONLINE && !SERVER;
   // Réglages propres à l'appareil (jamais envoyés au serveur comme argent)
-  const LOCAL_KEYS = ['equipped', 'settings', 'friends', 'friendCode', 'friendCodeUid', 'myChallenges', 'savedAt'];
+  const LOCAL_KEYS = ['equipped', 'settings', 'friends', 'friendCode', 'friendCodeUid', 'myChallenges', 'savedAt', 'adminSeen'];
 
   // ---------- Stockage ----------
   let P = null;

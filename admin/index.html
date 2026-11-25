@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Casino · Administration</title>
+  <meta name="robots" content="noindex">
+  <script src="../firebase-config.js"></script>
+  <script src="../gate.js"></script>
+  <style>
+    :root { --bg: #10151c; --panel: #1a2129; --border: #2a333d; --text: #e8ecef; --muted: #9aa5b1; --gold: #f2c14e; --good: #3fb950; --bad: #f85149; color-scheme: dark; }
+    * { box-sizing: border-box; } [hidden] { display: none !important; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 15px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    header { display: flex; justify-content: space-between; align-items: center; padding: .8rem 1rem; border-bottom: 1px solid var(--border); }
+    header a { color: var(--gold); text-decoration: none; }
+    main { max-width: 1200px; margin: 0 auto; padding: 1rem; display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 1rem; }
+    @media (max-width: 900px) { main { grid-template-columns: minmax(0, 1fr); } }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 1rem; }
+    h2 { margin: 0 0 .6rem; font-size: 1.1rem; } h3 { margin: 1rem 0 .4rem; font-size: .95rem; color: var(--muted); }
+    input, select, button { font: inherit; color: inherit; background: #0d1117; border: 1px solid var(--border); border-radius: 8px; padding: .45rem .6rem; }
+    button { background: #2b3540; cursor: pointer; } button.gold { background: var(--gold); color: #222; border-color: var(--gold); font-weight: 700; }
+    button:disabled { opacity: .5; cursor: default; }
+    table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+    th, td { text-align: left; padding: .45rem .4rem; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-size: .78rem; cursor: pointer; user-select: none; }
+    tr.row { cursor: pointer; } tr.row:hover { background: #222b35; } tr.row.sel { background: rgba(242,193,78,.12); }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .muted { color: var(--muted); } .small { font-size: .82rem; }
+    .row2 { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .25rem .6rem; font-size: .85rem; max-height: 260px; overflow: auto; padding: .3rem; background: #0d1117; border-radius: 8px; }
+    .grid label { display: flex; gap: .35rem; align-items: center; }
+    .msg { min-height: 1.2em; margin: .5rem 0 0; font-size: .9rem; } .msg.ok { color: var(--good); } .msg.err { color: var(--bad); }
+    code { background: #0d1117; padding: .15rem .4rem; border-radius: 6px; word-break: break-all; }
+    .stats { display: flex; gap: .8rem; flex-wrap: wrap; margin-bottom: .6rem; font-size: .9rem; } .stats b { color: var(--gold); }
+  </style>
+</head>
+<body>
+  <header><h1 style="margin:0;font-size:1.2rem">🛠️ Administration du Casino</h1><a href="../index.html">← Retour au Casino</a></header>
+  <main>
+    <section id="denied" class="panel" hidden style="grid-column:1/-1">
+      <h2>Accès réservé</h2>
+      <p>Ton identifiant de compte : <code id="my-uid">…</code></p>
+      <p class="muted">Pour devenir administrateur (à faire une seule fois) : console Firebase → <b>Realtime Database</b> → onglet <b>Données</b> →
+        survole la racine, clique sur <b>+</b> → nom <code>admins</code>, puis dedans une clé avec l'identifiant ci-dessus et la valeur <code>true</code> → <b>Ajouter</b>.
+        Recharge ensuite cette page. Les règles de la base (database.rules.json) doivent être à jour.</p>
+    </section>
+    <section id="list-panel" class="panel" hidden>
+      <h2>Comptes</h2>
+      <div class="stats" id="stats"></div>
+      <div class="row2"><input id="search" placeholder="Rechercher un pseudo…" style="flex:1"><button id="reload" type="button">↻ Actualiser</button></div>
+      <table><thead><tr><th data-k="pseudo">Joueur</th><th data-k="level">Niv.</th><th data-k="wallet" class="num">Banque</th><th data-k="updatedAt">Vu</th></tr></thead><tbody id="rows"></tbody></table>
+    </section>
+    <section id="edit-panel" class="panel" hidden>
+      <h2 id="ed-title">Joueur</h2>
+      <p class="small muted">Identifiant : <code id="ed-uid"></code></p>
+      <h3>Banque</h3>
+      <div class="row2"><input id="ed-wallet" type="number" min="0" step="1" style="width:9em"> €
+        <button type="button" data-add="1000">+1 000</button><button type="button" data-add="10000">+10 000</button><button type="button" data-add="-1000">−1 000</button>
+        <button id="save-wallet" class="gold" type="button">Enregistrer la banque</button></div>
+      <p class="small muted" id="ed-sessions"></p>
+      <div id="save-zone">
+        <h3>Profil</h3>
+        <div class="row2"><label>Pseudo <input id="ed-pseudo" maxlength="16" style="width:10em"></label>
+          <label>Niveau <input id="ed-level" type="number" min="1" max="99" style="width:5em"></label> <span class="small muted" id="ed-xp"></span></div>
+        <h3>Objets de la boutique</h3>
+        <div class="row2 small"><button type="button" id="own-all">Tout donner</button><button type="button" id="own-none">Tout retirer</button></div>
+        <div id="ed-owned" class="grid"></div>
+        <h3>Succès</h3>
+        <div id="ed-ach" class="grid"></div>
+        <p><button id="save-profile" class="gold" type="button">Enregistrer le profil</button></p>
+        <p class="small muted">Le joueur voit les changements de profil au prochain chargement de l'app (la banque, elle, change tout de suite).</p>
+      </div>
+      <p id="no-save" class="small muted" hidden>Ce joueur n'a pas de sauvegarde de compte : seule sa banque est modifiable.</p>
+      <p id="ed-msg" class="msg" role="status"></p>
+    </section>
+  </main>
+  <script src="../casino-rules.js"></script>
+  <script src="../profile.js"></script>
+  <script src="../account.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -254,6 +254,7 @@
         <p>Joue avec ta banque, apprends sans risque, défie tes amis.</p>
       </div>
       <div class="head-btns">
+        <a id="admin-link" class="icon-btn" href="admin/index.html" hidden title="Administration">🛠️</a>
         <button id="music-toggle" class="icon-btn" type="button">🎵</button>
         <button id="sound-toggle" class="icon-btn" type="button">🔊</button>
       </div>
@@ -787,6 +788,8 @@
         if (!g) { $('mp-note').textContent = 'Aucune table ouverte avec ce code. Vérifie-le auprès de ton ami.'; return; }
         location.href = Social.tableLink(g, c);
       });
+      // lien vers l'administration, visible seulement par les comptes admins
+      if (Casino.bank && Casino.firebase) Casino.firebase().then(async (f) => { if (!f || !f.auth.currentUser) return; const v = (await f.dbMod.get(f.dbMod.ref(f.db, 'admins/' + f.auth.currentUser.uid)).catch(() => null)); if (v && v.val() === true) $('admin-link').hidden = false; }).catch(() => {});
       setHubTab(location.hash === '#multi' ? 'multi' : location.hash === '#shop' ? 'shop' : 'play');
       // mode test : les liens gardent ?backend=local
       if (/[?&]backend=local\b/.test(location.search)) document.querySelectorAll('a.game').forEach((a) => { const u = new URL(a.href); u.searchParams.set('backend', 'local'); a.href = u.toString(); });

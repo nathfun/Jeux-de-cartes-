@@ -56,6 +56,9 @@
     const f = await fb();
     if (!a || !f || !f.auth.currentUser || f.auth.currentUser.uid !== a.uid || !window.Casino) return false;
     const data = Casino.exportSave();
+    // ne jamais écraser une modification de l'administrateur que cet appareil n'a pas encore reçue
+    const cur = (await f.dbMod.get(f.ref('saves/' + a.uid))).val();
+    if (cur && cur.adminAt && cur.adminAt > (data.adminSeen || 0)) { await pull(true); return false; }
     await f.dbMod.set(f.ref('saves/' + a.uid), { data: JSON.stringify(data), at: data.savedAt || Date.now() });
     a.syncedAt = Date.now();
     setInfo(a);
@@ -69,8 +72,12 @@
     const snap = (await f.dbMod.get(f.ref('saves/' + a.uid))).val();
     if (!snap || !snap.data) return false;
     const local = Casino.exportSave();
-    if (!force && (local.savedAt || 0) >= (snap.at || 0)) return false;
-    Casino.importSave(JSON.parse(snap.data));
+    // une modification faite par l'administrateur passe toujours devant la sauvegarde de l'appareil
+    const forced = snap.adminAt && snap.adminAt > (local.adminSeen || 0);
+    if (!force && !forced && (local.savedAt || 0) >= (snap.at || 0)) return false;
+    const data = JSON.parse(snap.data);
+    if (snap.adminAt) data.adminSeen = snap.adminAt;
+    Casino.importSave(data);
     return true;
   }
 
