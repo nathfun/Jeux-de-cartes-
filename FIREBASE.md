@@ -1,4 +1,4 @@
-# Mettre en ligne « Jeux de cartes » (une seule fois, environ 10 minutes)
+# Mettre en ligne « Casino » (une seule fois, environ 10 minutes)
 
 Tu es le seul à faire ces étapes. Tes amis, eux, ouvrent juste le lien : pas de compte,
 pas d'installation obligatoire (ils peuvent ajouter l'app à leur écran d'accueil s'ils veulent).
@@ -55,7 +55,7 @@ la protection vient des règles de l'étape 2.5 et de la connexion anonyme.
 
 ## Jouer entre amis
 
-1. Ouvre le site → **Blackjack** ou **Poker** → onglet **Entre amis** → choisis un pseudo → **Créer une table**.
+1. Ouvre le site → **Blackjack**, **Poker** ou **Roulette** → onglet **Entre amis** → choisis un pseudo → **Créer une table**.
 2. Un **code** de 4 caractères s'affiche (ex. `KQ7P`). Le bouton **Inviter** envoie le lien
    (WhatsApp, SMS…) ; tes amis peuvent aussi taper le code dans **Rejoindre**.
 3. Chacun choisit une ou plusieurs places, mise, et c'est parti.

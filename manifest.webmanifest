@@ -1,7 +1,7 @@
 {
-  "name": "Jeux de cartes",
-  "short_name": "Jeux de cartes",
-  "description": "Blackjack (et bientôt poker) en solo avec un coach, ou entre amis avec un code de table.",
+  "name": "Casino",
+  "short_name": "Casino",
+  "description": "Blackjack, poker et roulette : en solo avec des aides, ou entre amis avec un code de table.",
   "lang": "fr",
   "start_url": "./index.html",
   "scope": "./",
@@ -10,7 +10,17 @@
   "background_color": "#10151c",
   "theme_color": "#0f5132",
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ]
 }

@@ -112,6 +112,35 @@
       if (!ac()) return;
       tone(ctx.currentTime, 1500, 'square', 0.06, 0.001, 0.03);
     },
+    // Roulette : roulement de la bille sur la piste (bruit filtré qui ralentit), rebonds, annonces
+    rouletteRoll(seconds) {
+      if (!ac() || !(seconds > 0)) return;
+      const t = ctx.currentTime;
+      const src = ctx.createBufferSource();
+      src.buffer = noise; src.loop = true;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass'; bp.Q.value = 2.5;
+      bp.frequency.setValueAtTime(1800, t); bp.frequency.exponentialRampToValueAtTime(700, t + seconds);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.22, t + 0.3);
+      g.gain.setValueAtTime(0.22, t + seconds * 0.7);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + seconds);
+      // petites irrégularités du roulement
+      const lfo = ctx.createOscillator(); const lg = ctx.createGain();
+      lfo.frequency.setValueAtTime(14, t); lfo.frequency.linearRampToValueAtTime(5, t + seconds);
+      lg.gain.value = 0.08; lfo.connect(lg); lg.connect(g.gain);
+      src.connect(bp); bp.connect(g); g.connect(master);
+      src.start(t); src.stop(t + seconds + 0.1); lfo.start(t); lfo.stop(t + seconds + 0.1);
+    },
+    clack(vol) {
+      if (!ac()) return;
+      const t = ctx.currentTime, v = Math.max(0.05, vol || 0.6);
+      noiseBurst(t, 3800, 2, 0.45 * v, 0.025);
+      tone(t, 2200 + Math.random() * 600, 'triangle', 0.12 * v, 0.001, 0.04);
+    },
+    /** Annonce vocale (voix féminine française par défaut). */
+    say(text, lang) { if (enabled) speak(text, lang || 'fr-FR'); },
     blackjack() {
       if (!enabled) return;
       if (ac()) { // petite fanfare
@@ -131,20 +160,21 @@
 
   // Voix féminine : on cherche une voix anglaise de femme, sinon n'importe quelle voix plus aiguë
   const FEMALE = /(female|femme|samantha|victoria|karen|moira|tessa|serena|fiona|zira|susan|allison|ava|kate|amélie|amelie|audrey|aurélie|marie|julie|hortense|google uk english female|google us english)/i;
-  function pickVoice() {
+  function pickVoice(lang) {
     const vs = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
     if (!vs.length) return null;
-    return vs.find((v) => /^en/i.test(v.lang) && FEMALE.test(v.name))
+    const pre = new RegExp('^' + (lang || 'en').slice(0, 2), 'i');
+    return vs.find((v) => pre.test(v.lang) && FEMALE.test(v.name))
+      || vs.find((v) => pre.test(v.lang))
       || vs.find((v) => FEMALE.test(v.name))
-      || vs.find((v) => /^en/i.test(v.lang))
       || vs[0];
   }
-  function speak(text) {
+  function speak(text, lang) {
     if (!window.speechSynthesis || typeof SpeechSynthesisUtterance === 'undefined') return;
     try {
       const u = new SpeechSynthesisUtterance(text);
-      const v = pickVoice();
-      if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'en-US';
+      const v = pickVoice(lang || 'en');
+      if (v) { u.voice = v; u.lang = v.lang; } else u.lang = lang || 'en-US';
       u.pitch = v && FEMALE.test(v.name) ? 1.15 : 1.5; // plus aigu si la voix n'est pas féminine
       u.rate = 0.92;
       u.volume = 1;

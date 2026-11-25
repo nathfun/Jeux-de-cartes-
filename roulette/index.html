@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Roulette</title>
+  <meta name="theme-color" content="#0f5132">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-mode="solo">
+  <header class="topbar">
+    <h1><a id="home-link" class="home-link" href="../index.html" hidden aria-label="Retour au casino">←</a> 🎡 Roulette</h1>
+    <nav class="tabs" role="tablist">
+      <button id="tab-solo" class="tab active" role="tab" aria-selected="true">Solo</button>
+      <button id="tab-multi" class="tab" role="tab" aria-selected="false">Entre amis</button>
+    </nav>
+    <div class="bank">Solde : <strong id="bankroll">–</strong> <button id="sound-toggle" class="ghost icon-btn" type="button">🔊</button></div>
+  </header>
+
+  <main class="layout">
+    <div class="main-col">
+      <!-- Réglages solo -->
+      <section id="setup" class="panel setup">
+        <h2>Roulette européenne</h2>
+        <p class="muted">Un seul zéro, règles françaises : si le 0 sort, les chances simples (rouge, noir, pair, impair, manque, passe) ne perdent que la moitié de la mise. Pose tes jetons, le compte à rebours démarre, puis « Rien ne va plus » !</p>
+        <div class="setup-grid">
+          <label>Solde de départ
+            <select id="set-bank"><option value="500">500 €</option><option value="1000" selected>1 000 €</option><option value="5000">5 000 €</option></select>
+          </label>
+          <label>Temps pour miser
+            <select id="set-bettime"><option value="15">15 secondes</option><option value="25" selected>25 secondes</option><option value="40">40 secondes</option></select>
+          </label>
+        </div>
+        <label class="check"><input type="checkbox" id="set-coach" checked> Activer les aides (probabilités, gains, conseils)</label>
+        <button id="start" class="primary big">Ouvrir la table</button>
+      </section>
+
+      <!-- Entre amis : accueil -->
+      <div id="multi-view" hidden>
+        <div id="rm-loading" class="panel" hidden><p class="muted">Connexion au serveur de jeu…</p></div>
+        <div id="rm-unavailable" class="panel" hidden><h2>Roulette entre amis</h2><p id="rm-unavailable-detail">Le serveur de jeu n'est pas encore configuré (voir FIREBASE.md).</p></div>
+        <section id="rm-lobby" class="panel setup" hidden>
+          <h2>Roulette entre amis</h2>
+          <p class="muted small">Crée une table ou rejoins celle d'un ami avec son code. Chacun mise de son côté, la roue est la même pour tous.</p>
+          <div class="row"><label for="rm-pseudo">Ton pseudo</label><input id="rm-pseudo" maxlength="16" placeholder="ex. Nathan" autocomplete="nickname"></div>
+          <form id="rm-join" class="row">
+            <input id="rm-code" maxlength="4" placeholder="Code (ex. KQ7P)" aria-label="Code de la table" autocomplete="off" autocapitalize="characters">
+            <button class="primary" type="submit">Rejoindre</button>
+          </form>
+          <form id="rm-create" class="create-form">
+            <h3>Créer une table</h3>
+            <input id="rm-name" maxlength="30" placeholder="Nom de la table (ex. Soirée roulette)" aria-label="Nom de la table">
+            <div class="setup-grid">
+              <label>Solde de départ
+                <select id="rm-bank"><option value="500">500 €</option><option value="1000" selected>1 000 €</option><option value="5000">5 000 €</option></select>
+              </label>
+              <label>Temps pour miser
+                <select id="rm-bettime"><option value="15">15 s</option><option value="25" selected>25 s</option><option value="40">40 s</option></select>
+              </label>
+              <label>Nombre de tours
+                <select id="rm-rounds"><option value="10">10 tours</option><option value="20" selected>20 tours</option><option value="30">30 tours</option><option value="0">Sans limite</option></select>
+              </label>
+            </div>
+            <label class="check"><input type="checkbox" id="rm-coach" checked> Autoriser les aides</label>
+            <button type="submit" class="primary">Créer la table</button>
+          </form>
+          <p id="rm-note" class="small warn" role="status"></p>
+        </section>
+        <div id="rm-head" class="mtable-head" hidden>
+          <button id="rm-leave" class="ghost small">← Tables</button>
+          <strong id="rm-table-name"></strong>
+          <span class="code-badge">Code <b id="rm-table-code"></b> <button id="rm-invite" class="ghost small" type="button">Inviter</button></span>
+          <span id="rm-round" class="muted small"></span>
+        </div>
+      </div>
+
+      <!-- Table de jeu (solo et entre amis) -->
+      <section id="game" hidden>
+        <div class="stage">
+          <div class="wheel-box">
+            <canvas id="wheel" aria-label="Roue de la roulette"></canvas>
+            <div id="result-badge" class="result-badge" hidden></div>
+          </div>
+          <div class="status">
+            <div id="announce" class="announce" role="status">Faites vos jeux</div>
+            <div id="timer" class="timer" hidden><div id="timer-bar" class="timer-bar"></div><span id="timer-text"></span></div>
+            <div id="sub-message" class="sub-message"></div>
+            <div class="history-box">
+              <span class="muted small">Derniers numéros</span>
+              <div id="history" class="history"></div>
+            </div>
+            <div id="players" class="players"></div>
+          </div>
+        </div>
+
+        <div id="tapis-wrap" class="tapis-wrap">
+          <div id="tapis" class="tapis"></div>
+          <div id="rien" class="rien" hidden>Rien ne va plus</div>
+        </div>
+
+        <div class="controls">
+          <div id="chips" class="chips" role="radiogroup" aria-label="Valeur du jeton"></div>
+          <div class="row ctrl-row">
+            <button id="b-undo" class="ghost">↶ Annuler</button>
+            <button id="b-clear" class="ghost">Effacer</button>
+            <button id="b-rebet">Remiser</button>
+            <button id="b-double">Doubler</button>
+            <button id="b-ready" class="primary">Lancer la bille</button>
+          </div>
+          <div class="row ctrl-row small">
+            <span>Mise en cours : <b id="total-bet">0</b> €</span>
+            <label class="coach-only"><input type="checkbox" id="opt-info" checked> Afficher les infos de chaque mise</label>
+            <button id="b-end" class="ghost small">Terminer la partie</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="side">
+      <section class="panel" id="chat-panel" hidden>
+        <h2>Chat de la table</h2>
+        <div id="chat" class="chat-log"></div>
+        <form id="chat-form" class="row">
+          <input id="chat-input" maxlength="300" placeholder="Écris un message…" aria-label="Message">
+          <button type="submit">Envoyer</button>
+        </form>
+      </section>
+      <section class="panel coach-only">
+        <h2>Aides</h2>
+        <div id="feedback" class="feedback empty">Touche une case du tapis : les aides t'expliquent ce que tu joues, tes chances et ce que ça rapporte.</div>
+      </section>
+      <section class="panel">
+        <h2>Statistiques de la partie</h2>
+        <div class="stats">
+          <div class="stat"><span id="s-spins">0</span><small>Tours</small></div>
+          <div class="stat"><span id="s-wagered">0</span><small>Misé</small></div>
+          <div class="stat"><span id="s-net">0</span><small>Gain net</small></div>
+          <div class="stat coach-only"><span id="s-luck">0</span><small>Chance</small></div>
+        </div>
+        <p class="muted small coach-only" id="s-luck-text">« Chance » : ton résultat comparé à ce que tu aurais perdu en moyenne (le casino garde 2,7 % des mises).</p>
+        <div id="freq" class="freq"></div>
+      </section>
+      <section class="panel coach-only">
+        <h2>Conseils</h2>
+        <ul id="tips" class="tips">
+          <li>Aucune méthode ne bat la roulette : chaque tour est indépendant, et le 0 donne l'avantage au casino.</li>
+        </ul>
+      </section>
+      <details class="panel">
+        <summary><h2>Gains par type de mise</h2></summary>
+        <table class="pay-table">
+          <tr><td>Plein (1 numéro)</td><td>35 contre 1</td><td>2,7 %</td></tr>
+          <tr><td>Cheval (2)</td><td>17 contre 1</td><td>5,4 %</td></tr>
+          <tr><td>Transversale (3)</td><td>11 contre 1</td><td>8,1 %</td></tr>
+          <tr><td>Carré (4)</td><td>8 contre 1</td><td>10,8 %</td></tr>
+          <tr><td>Sixain (6)</td><td>5 contre 1</td><td>16,2 %</td></tr>
+          <tr><td>Douzaine, colonne (12)</td><td>2 contre 1</td><td>32,4 %</td></tr>
+          <tr><td>Chances simples (18)</td><td>1 contre 1</td><td>48,6 %</td></tr>
+        </table>
+        <p class="muted small">Dernière colonne : chance de gagner. Pour poser un cheval, un carré, une transversale ou un sixain, touche la ligne ou le coin entre les numéros.</p>
+      </details>
+    </aside>
+  </main>
+
+  <div id="recap" class="recap" hidden role="dialog" aria-modal="true" aria-labelledby="recap-title">
+    <canvas id="confetti" aria-hidden="true"></canvas>
+    <div class="recap-card">
+      <div id="recap-icon" class="recap-icon">🏆</div>
+      <h2 id="recap-title"></h2>
+      <p id="recap-sub" class="recap-sub"></p>
+      <div class="recap-details">
+        <div id="recap-stats" class="stats recap-stats"></div>
+        <h3 id="recap-rank-title">Classement</h3>
+        <div class="table-wrap">
+          <table class="recap-table">
+            <thead><tr><th>Place</th><th>Joueur</th><th>Solde final</th><th>Plus gros gain</th><th>Total misé</th></tr></thead>
+            <tbody id="recap-ranking"></tbody>
+          </table>
+        </div>
+        <div class="row recap-actions">
+          <button id="recap-again" class="primary" type="button">Nouvelle partie</button>
+          <button id="recap-close" class="ghost" type="button">Fermer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <dialog id="coach-dialog" class="dialog">
+    <h2>Activer les aides ?</h2>
+    <p>Les aides t'expliquent chaque mise (chances, gains) et repèrent les pièges classiques (martingale, « le rouge va forcément sortir »…). Les autres joueurs ne les voient pas.</p>
+    <div class="row">
+      <button id="coach-yes" class="primary" type="button">Oui</button>
+      <button id="coach-no" type="button">Non merci</button>
+    </div>
+  </dialog>
+
+  <script src="../firebase-config.js"></script>
+  <script src="../sounds.js"></script>
+  <script src="bets.js"></script>
+  <script src="wheel.js"></script>
+  <script src="app.js"></script>
+  <script src="../blackjack/net.js"></script>
+  <script src="multi.js"></script>
+  <script src="../pwa.js"></script>
+</body>
+</html>
