@@ -54,7 +54,7 @@ button.small { font-size: .85rem; padding: .35rem .7rem; margin-top: .8rem; }
   max-width: 1300px;
   margin: 0 auto;
 }
-@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); } }
 
 .table {
   background: radial-gradient(ellipse at center, var(--felt) 0%, var(--felt-dark) 100%);
@@ -364,3 +364,72 @@ button.spot.side:hover { background: rgba(198, 40, 40, .45); }
 .mode-line { display: block; width: fit-content; margin: 0 auto .6rem; }
 .setup-panel h2 { margin-top: 0; }
 .end-msg { grid-column: 1 / -1; margin: 0; padding: .6rem .8rem; border-radius: 10px; background: rgba(0,0,0,.3); border: 1px solid #f2c14e; }
+
+/* ---------- v7 : téléphone ---------- */
+.options label { display: flex; align-items: center; flex-wrap: wrap; gap: .3rem; }
+.options select { max-width: 100%; min-width: 0; }
+.table, .main-col > * { min-width: 0; }
+.mode-line { white-space: normal; text-align: center; max-width: 100%; }
+@media (max-width: 600px) {
+  .topbar { padding: .45rem .7rem; gap: .4rem; }
+  .topbar h1 { font-size: 1.05rem; }
+  .tabs .tab { padding: .3rem .8rem; font-size: .9rem; }
+  .bank { font-size: .9rem; }
+  .bank .icon-btn { padding: .2rem .45rem; }
+  .layout { padding: .5rem; gap: .6rem; }
+  .table { padding: .55rem; border-width: 4px; border-radius: 14px; min-height: 0; gap: .5rem; overflow: clip; }
+  .shoe, .kbd-hint { display: none; }
+  .mode-line { font-size: .72rem; padding: .15rem .5rem; margin-bottom: 0; }
+  .card { width: 50px; height: 72px; border-radius: 6px; }
+  .card .mid { font-size: 1.35rem; }
+  .card .tl, .card .br { font-size: .8rem; top: 3px; left: 4px; }
+  .card .br { top: auto; left: auto; bottom: 3px; right: 4px; }
+  .cards { min-height: 74px; gap: .25rem; }
+  .zone-title { margin-bottom: .25rem; font-size: .95rem; }
+  .message { padding: .45rem .6rem; font-size: .95rem; }
+  .hands { gap: .5rem; }
+  .hand { padding: .3rem; }
+  .hand .hand-info { font-size: .82rem; }
+  /* la main du croupier reste visible en haut pendant qu'on joue */
+  .dealer-zone { position: sticky; top: 0; z-index: 6; margin: -.55rem -.55rem 0; padding: .45rem .55rem .35rem;
+    background: linear-gradient(var(--felt-dark), var(--felt) 85%, transparent); border-radius: 10px 10px 0 0; }
+  /* et les boutons de jeu en bas de l'écran */
+  #play-controls, #ins-controls, #m-controls { position: sticky; bottom: 0; z-index: 6; margin: 0 -.55rem -.55rem; padding: .55rem;
+    background: linear-gradient(transparent, var(--felt-dark) 30%); }
+  #play-controls button, #ins-controls button, #m-controls button { min-height: 44px; padding: .45rem .7rem; font-size: .95rem; }
+  .spot { width: 60px; height: 60px; }
+  .chip { width: 46px; height: 46px; font-size: .9rem; }
+  .bet-line { flex-wrap: wrap; justify-content: center; gap: .4rem; }
+  .options { font-size: .82rem; }
+  .seat.mine .small-cards .card { width: 50px; height: 72px; }
+  .seat.mine .small-cards .card .mid { font-size: 1.35rem; }
+  .seat.mine .small-cards { min-height: 74px; }
+}
+@media (max-width: 600px) {
+  .side-line { flex-wrap: wrap; justify-content: center; }
+  .side-help p { max-width: calc(100vw - 40px); }
+  .side-help:not([open]) p { display: none; }
+}
+@media (max-width: 600px) { .options select { width: 100%; } }
+.coach-bubble { display: flex; flex-direction: column; gap: .15rem; text-align: left; width: 100%; font: inherit; font-size: .85rem; color: var(--text);
+  background: rgba(0,0,0,.45); border: 2px solid; border-radius: 10px; padding: .45rem .6rem; cursor: pointer; }
+.coach-bubble.good { border-color: #3fb950; } .coach-bubble.bad { border-color: #ff7b72; }
+.coach-bubble.good b { color: #7ee787; } .coach-bubble.bad b { color: #ffa198; }
+.coach-bubble small { opacity: .7; }
+.coach-bubble[hidden] { display: none; }
+body.no-coach .coach-bubble { display: none; }
+@media (max-width: 600px) {
+  /* entre amis : ta place juste sous le croupier, les autres joueurs ensuite */
+  #mtable > * { order: 8; }
+  #mtable > .mtable-head { order: 0; }
+  #mtable > .dealer-zone { order: 1; }
+  #mtable > #m-message { order: 2; }
+  #mtable > #m-timer { order: 3; }
+  #mtable > #seats-mine { order: 4; border-top: 0; padding-top: 0; }
+  #mtable > #m-controls { order: 5; }
+  #mtable > #seats-others { order: 6; padding-top: .4rem; border-top: 1px dashed rgba(255,255,255,.18); }
+  .mtable-head { gap: .35rem; font-size: .85rem; }
+  .seats.others .seat.empty, .seats.others .seat:not(.mine):not([data-owner]) { padding: .35rem; }
+  .seat.compact .spots { gap: .3rem; }
+  .seat.compact .spot { width: 34px; height: 34px; }
+}

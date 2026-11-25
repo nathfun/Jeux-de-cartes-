@@ -441,6 +441,7 @@
 
   // Classement final + prix versé sur la banque du Casino (une seule fois par partie)
   let shownEnd = null;
+  let lastTurnKey = null;
   function showGameEnd(st) {
     if (!st.gameEnd || shownEnd === st.gameEnd.at || animating()) return;
     shownEnd = st.gameEnd.at;
@@ -608,6 +609,10 @@
       else if (st.phase === 'playing' && st.turn) {
         const owner = st.seats[st.turn.seat].owner;
         msg.textContent = owner === me ? 'À toi de jouer (place ' + (st.turn.seat + 1) + ') !' : 'Au tour de ' + nameOf(owner) + ' (place ' + (st.turn.seat + 1) + ').';
+        // téléphone : à mon tour, la table revient en haut de l'écran (croupier + ma place + boutons)
+        const turnKey = st.round + ':' + st.turn.seat + ':' + st.turn.hand;
+        if (owner === me && lastTurnKey !== turnKey && window.matchMedia('(max-width: 600px)').matches) $('mtable').scrollIntoView({ block: 'start', behavior: 'smooth' });
+        lastTurnKey = turnKey;
       } else if (st.phase === 'insurance') msg.textContent = 'Le croupier montre un As : assurance ?';
       else if (st.gameEnd) msg.textContent = (st.msg || '') + ' Partie terminée !';
       else if (st.players[me] && st.players[me].out) msg.textContent = (st.msg || '') + ' Tu es éliminé : tu regardes la fin de la partie.';

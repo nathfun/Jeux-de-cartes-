@@ -264,6 +264,7 @@
   }
 
   async function deal() {
+    if ($('coach-bubble')) $('coach-bubble').hidden = true;
     if (busy || bet < MIN_BET || bet > MAX_BET || bet + side.pp + side.t213 > stats.bankroll) return;
     if (round && round.phase !== 'over') return;
     busy = true;
@@ -280,6 +281,8 @@
       setMessage('Distribution…');
     }
     hideQuiz();
+    // téléphone : la table entière (croupier compris) revient à l'écran pour jouer
+    if (window.matchMedia('(max-width: 600px)').matches) $('solo-view').scrollIntoView({ block: 'start', behavior: 'smooth' });
     stats.bankroll -= bet + side.pp + side.t213;
     stats.maxBetRatio = Math.max(stats.maxBetRatio, bet / (stats.bankroll + bet));
     round = {
@@ -746,6 +749,25 @@
       '<div>' + rec.reason + '</div>';
     fb.appendChild(detailsBlock());
     highlightChart(rec);
+    coachBubble(good, good ? '✔ Bonne décision : ' + L[played] : '✘ Il fallait « ' + L[rec.action] + ' »', rec.reason);
+  }
+  // Téléphone : le retour du coach s'affiche sur la table (le panneau complet est plus bas)
+  function coachBubble(good, title, text) {
+    if (!window.matchMedia('(max-width: 900px)').matches) return;
+    let b = $('coach-bubble');
+    if (!b) {
+      b = document.createElement('button');
+      b.id = 'coach-bubble'; b.type = 'button';
+      b.addEventListener('click', () => { $('feedback-panel').scrollIntoView({ behavior: 'smooth' }); });
+      $('play-controls').before(b);
+    }
+    b.className = 'coach-bubble ' + (good ? 'good' : 'bad');
+    b.innerHTML = '';
+    const t = document.createElement('b'); t.textContent = title;
+    const d = document.createElement('span'); d.textContent = text.length > 140 ? text.slice(0, 137) + '…' : text;
+    const m = document.createElement('small'); m.textContent = 'Touche pour le détail';
+    b.append(t, d, m);
+    b.hidden = false;
   }
 
   function showHintFor(rec) {

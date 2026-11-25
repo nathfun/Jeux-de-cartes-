@@ -31,7 +31,7 @@
       <section id="solo-view" class="table" aria-label="Table de jeu" hidden>
         <div id="mode-badge" class="cm-badge mode-line" hidden></div>
         <div class="shoe" aria-hidden="true"><div class="shoe-cards"></div><span>Sabot</span></div>
-        <div class="zone">
+        <div class="zone dealer-zone">
           <div class="zone-title">Croupier <span id="dealer-total" class="total"></span></div>
           <div id="dealer-cards" class="cards"></div>
         </div>
@@ -74,7 +74,7 @@
           <button data-action="P">Séparer</button>
           <button data-action="R">Abandonner</button>
           <button id="hint" class="ghost coach-only">💡 Conseil</button>
-          <div class="muted small" style="width:100%;text-align:center">Clavier : T tirer · R rester · D doubler · S séparer · A abandonner · C conseil · Entrée distribuer</div>
+          <div class="muted small kbd-hint" style="width:100%;text-align:center">Clavier : T tirer · R rester · D doubler · S séparer · A abandonner · C conseil · Entrée distribuer</div>
         </div>
 
         <div id="ins-controls" class="controls hidden">
@@ -173,7 +173,7 @@
               <button id="invite" class="ghost small" type="button">Inviter</button></span>
             <span id="mtable-shoe" class="muted small"></span>
           </div>
-          <div class="zone">
+          <div class="zone dealer-zone">
             <div class="zone-title">Croupier <span id="m-dealer-total" class="total"></span></div>
             <div id="m-dealer-cards" class="cards"></div>
           </div>
