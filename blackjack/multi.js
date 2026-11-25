@@ -24,6 +24,7 @@
   let state = null;         // dernier état reçu
   let unsubTable = null, unsubChat = null, unsubLobby = null;
   let working = false;      // une action est en cours d'envoi
+  let stopPresence = null;  // arrête le signal de présence à la table
 
   // ----- Animation : les cartes reçues sont révélées une par une -----
   const ctx = { shown: new Map(), counter: HiLo.create(), cardsLeft: () => (state ? state.shoe.length : DECKS * 52) };
@@ -61,13 +62,18 @@
   }
   function emptySeat() { return { owner: null, bet: 0, pp: 0, t213: 0, hands: [], side: '' }; }
 
-  function initialState(name) {
+  // Réglages choisis par l'hôte à la création de la table
+  function defaultSettings() { return { coach: true, sides: true, bankroll: START_BANKROLL }; }
+  const startMoney = (st) => (st.settings && st.settings.bankroll) || START_BANKROLL;
+
+  function initialState(name, settings) {
     const seats = [];
     for (let i = 0; i < SEATS; i++) seats.push(emptySeat());
     return {
       name, creator: me, createdAt: Date.now(), updatedAt: Date.now(),
       phase: 'betting', shoe: newShoe(), cardSeq: 0, rcBase: 0, shuffles: 0,
       seats, dealer: [], turn: null, turnAt: 0, players: {}, round: 0,
+      settings: Object.assign(defaultSettings(), settings || {}),
       msg: 'Choisissez vos places et vos mises.',
     };
   }
@@ -86,6 +92,7 @@
       st.seats[i] = s;
     }
     st.turn = st.turn || null;
+    st.settings = Object.assign(defaultSettings(), st.settings || {});
     return st;
   }
 
@@ -95,7 +102,7 @@
   }
 
   function player(st, uid) {
-    if (!st.players[uid]) st.players[uid] = { bankroll: START_BANKROLL };
+    if (!st.players[uid]) st.players[uid] = { bankroll: startMoney(st) };
     return st.players[uid];
   }
 
@@ -120,7 +127,8 @@
     const seat = st.seats[i];
     if (seat.owner !== me || st.phase === 'playing') return false;
     if (field === 'bet') seat.bet = amount === 0 ? 0 : Math.min(500, seat.bet + amount);
-    else seat[field] = amount;
+    else if (st.settings.sides) seat[field] = amount;
+    else return false;
   }
 
   function tagSum(cards) { return cards.reduce((a, c) => a + HiLo.tag(c.rank), 0); }
@@ -141,6 +149,7 @@
       s.hands = []; s.side = '';
       if (!s.owner || s.bet <= 0) return;
       const p = player(st, s.owner);
+      if (!st.settings.sides) { s.pp = 0; s.t213 = 0; }
       const total = s.bet + (s.pp || 0) + (s.t213 || 0);
       if (p.bankroll < total) return;
       p.bankroll -= total;
@@ -241,7 +250,7 @@
       });
     });
     Object.keys(st.players).forEach((uid) => {
-      if (st.players[uid].bankroll < 5) st.players[uid].bankroll = START_BANKROLL;
+      if (st.players[uid].bankroll < 5) st.players[uid].bankroll = startMoney(st);
     });
     if (!st.msg) st.msg = d > 21 ? 'Le croupier saute avec ' + d + ' !' : 'Le croupier a ' + (dBJ ? 'un blackjack' : d) + '.';
   }
@@ -391,9 +400,38 @@
     return (v.soft && v.total < 21 ? (v.total - 10) + ' / ' : '') + v.total;
   }
 
+  // ----- Aides du coach -----
+  function coachChoiceKey() { return 'bj-coach-' + tableId + '-' + me; }
+  function coachChoice() {
+    try { const v = localStorage.getItem(coachChoiceKey()); return v === null ? null : v === '1'; } catch (e) { return null; }
+  }
+  function setCoachChoice(on) {
+    try { localStorage.setItem(coachChoiceKey(), on ? '1' : '0'); } catch (e) { /* ignore */ }
+    applyCoach();
+    renderAll();
+  }
+  function coachOn() {
+    return !!(state && state.settings.coach && coachChoice() !== false);
+  }
+  function applyCoach() {
+    const inTable = document.body.dataset.mode === 'multi' && tableId && state;
+    document.body.classList.toggle('no-coach', !!(inTable && !coachOn()));
+    if (!inTable) return;
+    const allowed = state.settings.coach;
+    $('m-coach-row').hidden = !allowed;
+    $('m-coach-off-note').hidden = allowed;
+    $('m-opt-coach').checked = coachOn();
+    $('m-sides-off-note').hidden = state.settings.sides;
+    // Première arrivée sur la table : on demande au joueur s'il veut les aides
+    if (allowed && coachChoice() === null && !$('coach-dialog').open) {
+      try { $('coach-dialog').showModal(); } catch (e) { $('coach-dialog').setAttribute('open', ''); }
+    }
+  }
+
   function renderAll() {
     if (!state || !tableId) return;
     const st = state;
+    applyCoach();
     const anim = animating();
     $('mtable-name').textContent = st.name || 'Table';
     $('mtable-code').hidden = !net.usesCodes;
@@ -436,7 +474,7 @@
     // Banque du joueur sur cette table
     if (document.body.dataset.mode === 'multi') {
       const p = st.players[me];
-      $('bankroll').textContent = p && !anim ? p.bankroll : (p ? p.bankroll : START_BANKROLL);
+      $('bankroll').textContent = p ? p.bankroll : startMoney(st);
     }
     renderControls();
     BJ.renderCount();
@@ -503,15 +541,24 @@
       el.appendChild(sd);
     }
 
+    // Emplacements de mise sur le tapis (mise principale + paris annexes en rouge)
+    const betting = s.owner === me && st.phase !== 'playing' && !working;
+    const inRound = s.hands.length > 0;
+    const shownBet = inRound ? s.hands.reduce((a, h) => a + h.bet, 0) : s.bet;
+    el.appendChild(BJ.spotsEl({
+      main: shownBet, pp: s.pp || 0, t213: s.t213 || 0,
+      sides: st.settings.sides,
+      editable: betting,
+      compact: s.owner !== me,
+      onSide: (f, v) => mutate((x) => opBet(x, i, f, v)),
+    }));
+
     // Mises (place du joueur, hors main en cours)
     if (s.owner === me && st.phase !== 'playing') {
       const bets = document.createElement('div');
       bets.className = 'seat-bets';
       const line = document.createElement('div');
       line.className = 'row';
-      const lab = document.createElement('span');
-      lab.textContent = 'Mise : ' + s.bet + ' €';
-      line.appendChild(lab);
       [5, 10, 25, 100].forEach((v) => {
         const b = document.createElement('button');
         b.className = 'mini-chip';
@@ -527,23 +574,6 @@
       clr.addEventListener('click', () => mutate((x) => opBet(x, i, 'bet', 0)));
       line.appendChild(clr);
       bets.appendChild(line);
-      const sides = document.createElement('div');
-      sides.className = 'row small';
-      [['pp', 'Paire parfaite'], ['t213', '21+3']].forEach(([f, label]) => {
-        const l = document.createElement('label');
-        l.textContent = label + ' ';
-        const sel = document.createElement('select');
-        [0, 5, 10, 25].forEach((v) => {
-          const o = document.createElement('option');
-          o.value = v; o.textContent = v ? v + ' €' : '—';
-          if ((s[f] || 0) === v) o.selected = true;
-          sel.appendChild(o);
-        });
-        sel.addEventListener('change', () => mutate((x) => opBet(x, i, f, parseInt(sel.value, 10))));
-        l.appendChild(sel);
-        sides.appendChild(l);
-      });
-      bets.appendChild(sides);
       const leave = document.createElement('button');
       leave.className = 'ghost small';
       leave.textContent = 'Quitter la place';
@@ -595,11 +625,13 @@
         b.addEventListener('click', () => myAction(a));
         box.appendChild(b);
       });
-      const h = document.createElement('button');
-      h.className = 'ghost';
-      h.textContent = '💡 Conseil';
-      h.addEventListener('click', () => showHint(true));
-      box.appendChild(h);
+      if (coachOn()) {
+        const h = document.createElement('button');
+        h.className = 'ghost';
+        h.textContent = '💡 Conseil';
+        h.addEventListener('click', () => showHint(true));
+        box.appendChild(h);
+      }
     } else {
       const waited = Date.now() - st.turnAt;
       const p = document.createElement('span');
@@ -626,7 +658,7 @@
   }
 
   function showHint(force) {
-    if (!state || state.phase !== 'playing' || !state.turn || animating()) return;
+    if (!state || state.phase !== 'playing' || !state.turn || animating() || !coachOn()) return;
     if (state.seats[state.turn.seat].owner !== me) return;
     const sit = currentSituation();
     const key = state.round + ':' + state.turn.seat + ':' + state.turn.hand + ':' + sit.cards.length;
@@ -646,7 +678,7 @@
       if (JSON.stringify(x.turn) + x.round !== turnBefore) return false;
       return opAct(x, a, false);
     }).then((ok) => {
-      if (ok) { BJ.setSituation(sit, a); BJ.recordDecision(rec, a); }
+      if (ok && coachOn()) { BJ.setSituation(sit, a); BJ.recordDecision(rec, a); }
     });
   }
 
@@ -688,7 +720,28 @@
   }
 
   // ================= Accueil des tables =================
+  // Quitter la table : libère mes places (hors main en cours) et ferme la table si plus personne n'y est
+  async function leaveTable(id) {
+    if (!id || !stopPresence) return;
+    const stop = stopPresence;
+    stopPresence = null;
+    try {
+      await net.transact(id, (st) => {
+        let changed = false;
+        st.seats.forEach((s, i) => {
+          if (s.owner === me && !(st.phase === 'playing' && s.hands.length)) { st.seats[i] = emptySeat(); changed = true; }
+        });
+        return changed ? undefined : false;
+      });
+    } catch (e) { /* table déjà fermée */ }
+    await stop();
+    try {
+      if ((await net.activeCount(id)) === 0) await net.deleteTable(id);
+    } catch (e) { /* ignore */ }
+  }
+
   function showLobby(note) {
+    if (tableId) leaveTable(tableId);
     if (unsubTable) { unsubTable(); unsubTable = null; }
     if (unsubChat) { unsubChat(); unsubChat = null; }
     tableId = null; state = null;
@@ -697,6 +750,7 @@
     $('table-chat-panel').hidden = true;
     $('lobby-note').textContent = note || '';
     BJ.setCountCtx(null);
+    document.body.classList.remove('no-coach');
     setUrlCode(null);
     const codes = net.usesCodes;
     $('join-code').hidden = !codes;
@@ -709,8 +763,12 @@
     }
   }
 
-  function renderLobby(tables) {
+  async function renderLobby(all) {
     const list = $('table-list');
+    // On n'affiche que les tables où quelqu'un est présent ; les autres sont fermées et supprimées
+    const counts = await Promise.all(all.map((t) => net.activeCount(t.id).catch(() => 1)));
+    const tables = all.filter((t, i) => counts[i] > 0 || Date.now() - (t.createdAt || 0) < 60000);
+    all.forEach((t, i) => { if (counts[i] === 0 && Date.now() - (t.createdAt || 0) >= 60000 && canWrite) net.deleteTable(t.id).catch(() => {}); });
     list.innerHTML = '';
     if (!tables.length) {
       list.innerHTML = '<li class="muted">Aucune table pour l\'instant : crée la première !</li>';
@@ -768,10 +826,24 @@
     return u.toString();
   }
 
-  function openTable(id) {
+  async function openTable(id, justCreated) {
+    if (tableId && tableId !== id) leaveTable(tableId);
     if (unsubTable) unsubTable();
     if (unsubChat) unsubChat();
+    // Une table sans aucun joueur présent est fermée : on la supprime et on refuse d'y entrer
+    if (!justCreated) {
+      $('lobby-note').textContent = 'Recherche de la table…';
+      let n = 1;
+      try { n = await net.activeCount(id); } catch (e) { n = 1; }
+      if (n === 0) {
+        try { await net.deleteTable(id); } catch (e) { /* ignore */ }
+        $('lobby-note').textContent = 'Cette table est fermée : tout le monde l\'a quittée. Crée une nouvelle table.';
+        return;
+      }
+      $('lobby-note').textContent = '';
+    }
     tableId = id;
+    stopPresence = net.presenceStart(id);
     firstSnap = true;
     queue = [];
     revealed.clear();
@@ -801,10 +873,14 @@
     if (!net || !canWrite || needPseudo()) return;
     const name = $('table-name').value.trim().slice(0, 30) || 'Table de ' + (myName() || names[me] || 'blackjack');
     try {
-      const st = initialState(name);
+      const st = initialState(name, {
+        coach: $('set-coach').checked,
+        sides: $('set-sides').checked,
+        bankroll: parseInt($('set-bankroll').value, 10) || START_BANKROLL,
+      });
       const id = await net.createTable(st);
       $('table-name').value = '';
-      openTable(id);
+      openTable(id, true);
     } catch (err) {
       const code = err && err.code;
       if (code === 'invalid_argument' || code === 'PERMISSION_DENIED') { canWrite = false; $('lobby-note').textContent = 'Tu n\'as pas le droit de créer une table.'; }
@@ -841,6 +917,10 @@
     sendChat(v);
   });
   $('m-opt-hint').addEventListener('change', () => maybeHint());
+  $('m-opt-coach').addEventListener('change', (e) => setCoachChoice(e.target.checked));
+  $('coach-yes').addEventListener('click', () => { $('coach-dialog').close(); setCoachChoice(true); });
+  $('coach-no').addEventListener('click', () => { $('coach-dialog').close(); setCoachChoice(false); });
+  $('coach-dialog').addEventListener('cancel', (e) => e.preventDefault()); // il faut choisir
   // Un seul réglage de vitesse, affiché dans les deux vues
   $('m-opt-speed').addEventListener('change', (e) => { $('opt-speed').value = e.target.value; $('opt-speed').dispatchEvent(new Event('change')); });
   $('opt-speed').addEventListener('change', (e) => { $('m-opt-speed').value = e.target.value; });
@@ -855,6 +935,7 @@
     $('solo-view').hidden = mode !== 'solo';
     $('multi-view').hidden = mode !== 'multi';
     if (mode === 'solo') {
+      document.body.classList.remove('no-coach');
       $('table-chat-panel').hidden = true;
       BJ.setCountCtx(null);
       BJ.render();

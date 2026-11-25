@@ -96,7 +96,7 @@
     el.innerHTML = '<div class="tl">' + card.rank + '<br>' + card.suit + '</div>' +
       '<div class="mid">' + card.suit + '</div>' +
       '<div class="br">' + card.rank + '<br>' + card.suit + '</div>';
-    if ($('opt-tags').checked) {
+    if ($('opt-tags').checked && !document.body.classList.contains('no-coach')) {
       const t = HiLo.tag(card.rank);
       const b = document.createElement('span');
       b.className = 'tag ' + (t > 0 ? 'plus' : t < 0 ? 'minus' : 'zero');
@@ -164,8 +164,67 @@
       });
       $('hint').disabled = !playing;
     }
+    // Emplacements de mise sur le tapis
+    const roundOn = round && round.phase !== 'over';
+    const spots = $('solo-spots');
+    spots.innerHTML = '';
+    spots.appendChild(spotsEl({
+      main: roundOn ? round.hands.reduce((a, h) => a + h.bet, 0) : bet,
+      pp: roundOn ? round.pp : side.pp,
+      t213: roundOn ? round.t213 : side.t213,
+      sides: true,
+      editable: !roundOn && !busy,
+      onSide: (f, v) => { side[f] = v; render(); },
+    }));
     renderStats();
     renderCount();
+  }
+
+  // ---------- Emplacements de mise (mise principale + paris annexes rouges) ----------
+  const SIDE_STEPS = [0, 5, 10, 25, 50];
+  function chipStack(amount) {
+    const c = document.createElement('span');
+    c.className = 'spot-chip' + (amount ? '' : ' empty');
+    c.textContent = amount ? amount : '';
+    return c;
+  }
+  /**
+   * opts : { main, pp, t213, sides, editable, compact, onSide(field, montant) }
+   * Un toucher sur un emplacement rouge fait défiler 0 → 5 → 10 → 25 → 50 → 0.
+   */
+  function spotsEl(opts) {
+    const wrap = document.createElement('div');
+    wrap.className = 'spots' + (opts.compact ? ' compact' : '');
+    const side = (field, label, title) => {
+      const amount = opts[field] || 0;
+      const b = document.createElement(opts.editable ? 'button' : 'div');
+      b.className = 'spot side' + (amount ? ' filled' : '');
+      if (opts.editable) {
+        b.type = 'button';
+        b.title = title + ' — touche pour changer la mise';
+        b.addEventListener('click', () => {
+          const next = SIDE_STEPS[(SIDE_STEPS.indexOf(amount) + 1) % SIDE_STEPS.length] || 0;
+          opts.onSide(field, next);
+        });
+      }
+      b.appendChild(chipStack(amount));
+      const l = document.createElement('span');
+      l.className = 'spot-label';
+      l.textContent = label;
+      b.appendChild(l);
+      return b;
+    };
+    if (opts.sides) wrap.appendChild(side('t213', '21+3', '21+3 : tes 2 cartes + la carte visible du croupier'));
+    const main = document.createElement('div');
+    main.className = 'spot main' + (opts.main ? ' filled' : '');
+    main.appendChild(chipStack(opts.main));
+    const ml = document.createElement('span');
+    ml.className = 'spot-label';
+    ml.textContent = 'Mise';
+    main.appendChild(ml);
+    wrap.appendChild(main);
+    if (opts.sides) wrap.appendChild(side('pp', 'Paire', 'Paire parfaite : tes 2 premières cartes forment une paire'));
+    return wrap;
   }
 
   // ---------- Déroulement ----------
@@ -698,7 +757,7 @@
 
   // API partagée avec la table entre amis et le chat du coach
   window.BJ = {
-    cardEl, recordDecision, setSituation, showHintFor, highlightChart,
+    cardEl, spotsEl, recordDecision, setSituation, showHintFor, highlightChart,
     getContext, render, renderStats,
     getStats: () => stats,
     withCount,
@@ -716,8 +775,6 @@
   $('deal').addEventListener('click', deal);
   document.querySelectorAll('[data-action]').forEach((b) => b.addEventListener('click', () => act(b.dataset.action)));
   $('hint').addEventListener('click', showHint);
-  $('side-pp').addEventListener('change', (e) => { side.pp = parseInt(e.target.value, 10) || 0; render(); });
-  $('side-t213').addEventListener('change', (e) => { side.t213 = parseInt(e.target.value, 10) || 0; render(); });
   $('opt-tags').addEventListener('change', () => { if (window.Multi) window.Multi.rerender(); render(); });
   $('opt-count-hide').addEventListener('change', () => { renderCount(); hideQuiz(); });
   $('quiz-check').addEventListener('click', checkQuiz);

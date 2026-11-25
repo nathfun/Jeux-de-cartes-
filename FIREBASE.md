@@ -60,6 +60,12 @@ la protection vient des règles de l'étape 2.5 et de la connexion anonyme.
    (WhatsApp, SMS…) ; tes amis peuvent aussi taper le code dans **Rejoindre**.
 3. Chacun choisit une ou plusieurs places, mise, et c'est parti.
 
+## Fermeture automatique des tables
+
+Chaque joueur présent envoie un petit signal toutes les 45 secondes. Quand plus personne n'est
+présent depuis 2 minutes (tout le monde a quitté la table ou fermé l'app), la table est fermée :
+elle est supprimée et son code ne fonctionne plus.
+
 ## Limites de l'offre gratuite
 
 Largement suffisantes entre amis : 100 joueurs connectés en même temps, 1 Go de données stockées.

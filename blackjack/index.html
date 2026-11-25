@@ -34,6 +34,7 @@
         <div class="zone">
           <div class="zone-title">Toi</div>
           <div id="player-hands" class="hands"></div>
+          <div id="solo-spots" class="spots-holder"></div>
         </div>
 
         <div id="bet-controls" class="controls">
@@ -49,12 +50,7 @@
             <button id="deal" class="primary">Distribuer</button>
           </div>
           <div class="side-line">
-            <label>Paire parfaite
-              <select id="side-pp"><option value="0">—</option><option value="5">5 €</option><option value="10">10 €</option><option value="25">25 €</option></select>
-            </label>
-            <label>21+3
-              <select id="side-t213"><option value="0">—</option><option value="5">5 €</option><option value="10">10 €</option><option value="25">25 €</option></select>
-            </label>
+            <span class="muted small">Paris annexes : touche les cercles rouges sur le tapis.</span>
             <details class="side-help"><summary>?</summary>
               <p><b>Paire parfaite</b> (tes 2 premières cartes) : paire mixte 5:1, paire de même couleur 12:1, paire parfaite 25:1.</p>
               <p><b>21+3</b> (tes 2 cartes + carte visible du croupier) : couleur 5:1, suite 10:1, brelan 30:1, quinte flush 40:1, brelan de même couleur 100:1.</p>
@@ -103,9 +99,21 @@
             <input id="code-input" maxlength="4" placeholder="Code (ex. KQ7P)" aria-label="Code de la table" autocomplete="off" autocapitalize="characters">
             <button class="primary" type="submit">Rejoindre</button>
           </form>
-          <form id="create-table" class="row">
+          <form id="create-table" class="create-form">
+            <h3>Créer une table</h3>
             <input id="table-name" maxlength="30" placeholder="Nom de la table (ex. Soirée vendredi)" aria-label="Nom de la table">
-            <button type="submit">Créer une table</button>
+            <label>Argent de départ de chaque joueur
+              <select id="set-bankroll">
+                <option value="500">500 €</option>
+                <option value="1000" selected>1 000 €</option>
+                <option value="2500">2 500 €</option>
+                <option value="5000">5 000 €</option>
+                <option value="10000">10 000 €</option>
+              </select>
+            </label>
+            <label><input type="checkbox" id="set-coach" checked> Autoriser le coach et les conseils</label>
+            <label><input type="checkbox" id="set-sides" checked> Autoriser les paris annexes (Paire parfaite, 21+3)</label>
+            <button type="submit" class="primary">Créer la table</button>
           </form>
           <p id="lobby-note" class="small warn" role="status"></p>
           <ul id="table-list" class="table-list"><li class="muted">Chargement des tables…</li></ul>
@@ -128,7 +136,10 @@
           <div id="seats-mine" class="seats mine-area" hidden></div>
           <div id="m-controls" class="controls"></div>
           <div class="options">
-            <label><input type="checkbox" id="m-opt-hint"> Afficher le conseil avant de jouer</label>
+            <label id="m-coach-row"><input type="checkbox" id="m-opt-coach"> Aides du coach (retours, conseils, comptage)</label>
+            <p id="m-coach-off-note" class="muted small" hidden>L'hôte a désactivé le coach à cette table.</p>
+            <p id="m-sides-off-note" class="muted small" hidden>L'hôte a désactivé les paris annexes à cette table.</p>
+            <label class="coach-only"><input type="checkbox" id="m-opt-hint"> Afficher le conseil avant de jouer</label>
             <label>Vitesse de distribution
               <select id="m-opt-speed">
                 <option value="0.6">Lente</option>
@@ -142,7 +153,7 @@
     </div>
 
     <aside class="side">
-      <section class="panel" id="feedback-panel">
+      <section class="panel coach-only" id="feedback-panel">
         <h2>Retour du coach</h2>
         <div id="feedback" class="feedback empty">Tes décisions seront analysées ici.</div>
       </section>
@@ -168,7 +179,7 @@
         <p id="coach-chat-off" class="muted small" hidden>Le chat du coach est disponible sur la version en ligne (claude.ai) du jeu.</p>
       </section>
 
-      <section class="panel" id="count-panel">
+      <section class="panel coach-only" id="count-panel">
         <h2>Comptage des cartes (Hi-Lo)</h2>
         <div class="stats count-stats">
           <div class="stat"><span id="c-running">0</span><small>Compte courant</small></div>
@@ -209,7 +220,7 @@
         <div class="wlp" id="s-wlp"></div>
       </section>
 
-      <section class="panel">
+      <section class="panel coach-only">
         <h2>Conseils pour progresser</h2>
         <ul id="tips" class="tips"><li>Joue quelques mains pour recevoir des conseils personnalisés.</li></ul>
         <h3>Tes erreurs les plus fréquentes</h3>
@@ -217,7 +228,7 @@
         <button id="reset" class="ghost small">Réinitialiser les statistiques</button>
       </section>
 
-      <details class="panel">
+      <details class="panel coach-only">
         <summary><h2>Tableau de stratégie de base</h2></summary>
         <p class="muted small">6 jeux, croupier reste sur 17 souple, double après séparation autorisé.
           T = tirer, R = rester, D = doubler, S = séparer, Dr = doubler sinon rester.</p>
@@ -225,6 +236,16 @@
       </details>
     </aside>
   </main>
+
+  <dialog id="coach-dialog" class="dialog">
+    <h2>Activer les aides du coach ?</h2>
+    <p>Le coach analyse chacune de tes décisions, te donne des conseils et t'aide à compter les cartes. Les autres joueurs ne voient pas tes aides.</p>
+    <p class="muted small">Tu pourras changer d'avis à tout moment avec la case « Aides du coach » sous la table.</p>
+    <div class="row">
+      <button id="coach-yes" class="primary" type="button">Oui, aide-moi</button>
+      <button id="coach-no" type="button">Non, je joue seul</button>
+    </div>
+  </dialog>
 
   <script src="../firebase-config.js"></script>
   <script src="strategy.js"></script>

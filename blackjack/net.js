@@ -14,10 +14,24 @@
  *   sendChat(id, {uid, name, text, ts})
  *   deleteTable(id)
  *   profiles(ids) -> {id: nom}           (noms connus de la plateforme)
+ *   presenceStart(id) -> stop()          signal de présence régulier tant qu'on est à la table
+ *   activeCount(id) -> nombre de joueurs présents (signal de moins de 2 minutes)
+ *
+ * Une table où plus personne n'est présent est fermée : elle est supprimée et ne peut plus être rejointe.
  */
 (function () {
   'use strict';
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const BEAT = 45000;     // un signal de présence toutes les 45 s
+  const FRESH = 120000;   // présent si le dernier signal date de moins de 2 min
+  // Démarre un battement régulier ; renvoie la fonction d'arrêt
+  function heartbeat(beat, stop) {
+    beat();
+    const t = setInterval(beat, BEAT);
+    const onHide = () => { stop(); };
+    window.addEventListener('pagehide', onHide);
+    return () => { clearInterval(t); window.removeEventListener('pagehide', onHide); return stop(); };
+  }
   const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sans 0/O ni 1/I
   function randomCode() {
     let c = '';
@@ -79,7 +93,21 @@
         const old = await col.where('ts', '<', Date.now() - 3 * 864e5).limit(20).get();
         for (const d of old.docs) await col.doc(d.id).delete();
       },
-      async deleteTable(id) { await db.doc('tables/' + id).delete(); },
+      async deleteTable(id) {
+        await db.doc('tables/' + id).delete();
+        try {
+          const ps = await db.collection('tables/' + id + '/presence').get();
+          for (const d of ps.docs) await db.doc('tables/' + id + '/presence/' + d.id).delete().catch(() => {});
+        } catch (e) { /* ignore */ }
+      },
+      presenceStart(id) {
+        const ref = db.doc('tables/' + id + '/presence/' + me);
+        return heartbeat(() => { ref.set({ ts: Date.now() }).catch(() => {}); }, () => ref.delete().catch(() => {}));
+      },
+      async activeCount(id) {
+        const ps = await db.collection('tables/' + id + '/presence').get();
+        return ps.docs.filter((d) => (d.data().ts || 0) > Date.now() - FRESH).length;
+      },
       async profiles(ids) {
         const out = {};
         try {
@@ -141,7 +169,22 @@
         });
       },
       async sendChat(id, msg) { await dbMod.push(R('chats/' + id), msg); },
-      async deleteTable(id) { await dbMod.remove(R('tables/' + id)); await dbMod.remove(R('chats/' + id)); },
+      async deleteTable(id) {
+        await dbMod.remove(R('tables/' + id));
+        await dbMod.remove(R('chats/' + id)).catch(() => {});
+        await dbMod.remove(R('presence/' + id)).catch(() => {});
+      },
+      presenceStart(id) {
+        const ref = R('presence/' + id + '/' + me);
+        dbMod.onDisconnect(ref).remove();
+        return heartbeat(() => { dbMod.set(ref, Date.now()).catch(() => {}); }, () => dbMod.remove(ref).catch(() => {}));
+      },
+      async activeCount(id) {
+        const snap = await dbMod.get(R('presence/' + id));
+        let n = 0;
+        snap.forEach((c) => { if ((c.val() || 0) > Date.now() - FRESH) n++; });
+        return n;
+      },
       async profiles() { return {}; },
     };
   }
@@ -195,7 +238,19 @@
         write('bj-c-' + id, list);
         fire('bj-c-' + id);
       },
-      async deleteTable(id) { localStorage.removeItem('bj-t-' + id); fire('bj-t-' + id); },
+      async deleteTable(id) {
+        localStorage.removeItem('bj-t-' + id); localStorage.removeItem('bj-c-' + id); localStorage.removeItem('bj-p-' + id);
+        fire('bj-t-' + id);
+      },
+      presenceStart(id) {
+        const key = 'bj-p-' + id;
+        const upd = (fn) => { const p = read(key) || {}; fn(p); write(key, p); };
+        return heartbeat(() => upd((p) => { p[me] = Date.now(); }), async () => upd((p) => { delete p[me]; }));
+      },
+      async activeCount(id) {
+        const p = read('bj-p-' + id) || {};
+        return Object.values(p).filter((ts) => ts > Date.now() - FRESH).length;
+      },
       async profiles() { return {}; },
     };
   }

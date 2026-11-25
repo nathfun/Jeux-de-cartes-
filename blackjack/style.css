@@ -301,3 +301,48 @@ select { font: inherit; background: #2b3540; color: var(--text); border: 1px sol
   .seat.spotlight { grid-column: span 2; }
   .seats.mine-area { grid-template-columns: 1fr; }
 }
+
+/* ---------- v5 : emplacements de mise, réglages de table, aides du coach ---------- */
+body.no-coach .coach-only { display: none !important; }
+.spots-holder { margin-top: .6rem; }
+.spots { display: flex; gap: .9rem; align-items: flex-end; justify-content: center; flex-wrap: wrap; }
+.spot {
+  width: 74px; height: 74px; border-radius: 50%; padding: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border: 2px solid rgba(255,255,255,.55); background: rgba(0,0,0,.12); color: #fff; font: inherit;
+}
+.spot.main { width: 86px; height: 86px; border-color: var(--gold); }
+.spot.side { border-color: #ff6b6b; background: rgba(198, 40, 40, .28); }
+button.spot.side { cursor: pointer; }
+button.spot.side:hover { background: rgba(198, 40, 40, .45); }
+.spot.side.filled { background: rgba(198, 40, 40, .55); box-shadow: 0 0 0 3px rgba(255,107,107,.25); }
+.spot-label { font-size: .66rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 700; opacity: .9; }
+.spot-chip {
+  min-width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+  background: #1565c0; border: 3px dashed #fff; font-size: .78rem; font-weight: 700; padding: 0 2px;
+}
+.spot.side .spot-chip { background: #b71c1c; }
+.spot-chip.empty { background: transparent; border-color: rgba(255,255,255,.25); }
+.spots.compact { gap: .35rem; justify-content: flex-start; }
+.spots.compact .spot { width: 38px; height: 38px; border-width: 1px; }
+.spots.compact .spot.main { width: 44px; height: 44px; }
+.spots.compact .spot-chip { min-width: 20px; height: 20px; font-size: .58rem; border-width: 2px; }
+.spots.compact .spot-label { display: none; }
+.create-form { display: flex; flex-direction: column; gap: .55rem; background: #141a21; border-radius: 10px; padding: .8rem; }
+.create-form h3 { margin: 0; font-size: .95rem; }
+.create-form label { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+.create-form .primary { align-self: flex-start; }
+.dialog {
+  background: var(--panel); color: var(--text); border: 1px solid var(--panel-border); border-radius: 14px;
+  padding: 1.2rem; max-width: min(420px, calc(100vw - 32px));
+}
+.dialog::backdrop { background: rgba(0,0,0,.6); }
+.dialog h2 { margin: 0 0 .6rem; font-size: 1.15rem; }
+.dialog p { margin: .4rem 0; line-height: 1.45; }
+.dialog .row { margin-top: .9rem; }
+.spot .spot-chip.empty { background: transparent; border: 2px dashed rgba(255,255,255,.35); }
+.spots.compact { gap: .25rem; flex-wrap: nowrap; }
+.spots.compact .spot { width: 30px; height: 30px; }
+.spots.compact .spot.main { width: 36px; height: 36px; }
+.spots.compact .spot-chip { min-width: 18px; height: 18px; font-size: .55rem; }
+.spots.compact .spot-chip.empty { display: none; }
