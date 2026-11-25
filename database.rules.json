@@ -69,6 +69,12 @@
         ".write": "auth != null && (root.child('ptables').child($code).child('host').val() === auth.uid || !newData.exists())"
       }
     },
+    "pspec": {
+      "$code": {
+        ".read": "auth != null && (root.child('ptables').child($code).child('seats/0/owner').val() !== auth.uid || root.child('ptables').child($code).child('seats/0/stack').val() <= 0) && (root.child('ptables').child($code).child('seats/1/owner').val() !== auth.uid || root.child('ptables').child($code).child('seats/1/stack').val() <= 0) && (root.child('ptables').child($code).child('seats/2/owner').val() !== auth.uid || root.child('ptables').child($code).child('seats/2/stack').val() <= 0) && (root.child('ptables').child($code).child('seats/3/owner').val() !== auth.uid || root.child('ptables').child($code).child('seats/3/stack').val() <= 0) && (root.child('ptables').child($code).child('seats/4/owner').val() !== auth.uid || root.child('ptables').child($code).child('seats/4/stack').val() <= 0) && (root.child('ptables').child($code).child('seats/5/owner').val() !== auth.uid || root.child('ptables').child($code).child('seats/5/stack').val() <= 0)",
+        ".write": "auth != null && (root.child('ptables').child($code).child('host').val() === auth.uid || !newData.exists())"
+      }
+    },
     "rtables": {
       "$code": {
         ".read": "auth != null",

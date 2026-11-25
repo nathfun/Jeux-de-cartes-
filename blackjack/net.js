@@ -179,6 +179,7 @@
         await dbMod.remove(R(ns + 'presence/' + id)).catch(() => {});
         await dbMod.remove(R(ns + 'hands/' + id)).catch(() => {});
         await dbMod.remove(R(ns + 'deck/' + id)).catch(() => {});
+        await dbMod.remove(R(ns + 'spec/' + id)).catch(() => {});
       },
       presenceStart(id) {
         const ref = R(ns + 'presence/' + id + '/' + me);
@@ -204,6 +205,9 @@
       // Paquet de cartes : lisible uniquement par l'hôte de la table
       async setSecret(id, data) { await dbMod.set(R(ns + 'deck/' + id), data); },
       async getSecret(id) { const s2 = await dbMod.get(R(ns + 'deck/' + id)); return s2.val(); },
+      // Cartes de tous les joueurs pour les spectateurs : lisibles seulement par ceux qui ne jouent pas (règles)
+      async setSpectator(id, data) { await dbMod.set(R(ns + 'spec/' + id), data); },
+      watchSpectator(id, cb) { return dbMod.onValue(R(ns + 'spec/' + id), (s) => cb(s.val()), () => cb(null)); },
     };
   }
 
@@ -295,6 +299,8 @@
       watchPrivate(id, cb) { return watch(ns + 'bj-h-' + id + '-' + me, cb); },
       async setSecret(id, data) { write(ns + 'bj-d-' + id, data); },
       async getSecret(id) { return read(ns + 'bj-d-' + id); },
+      async setSpectator(id, data) { write(ns + 'bj-s-' + id, data); fire(ns + 'bj-s-' + id); },
+      watchSpectator(id, cb) { return watch(ns + 'bj-s-' + id, cb); },
     };
   }
 

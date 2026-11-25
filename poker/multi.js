@@ -20,6 +20,8 @@
   let tableId = null;
   let pub = null;              // état public de la table
   let myHole = null;           // { hand, seat, cards } : mes cartes privées
+  let specHoles = null;        // spectateur : { hand, holes: { siège: cartes } }
+  let specUnsub = null;
   let unsub = [], stopPresence = null;
   let working = false, hostBusy = false;
   let boardShown = 0, shownHand = -1, revealTimer = null;
@@ -240,6 +242,7 @@
           const sec = lastSecret;
           await net.setSecret(tableId, sec);
           await Promise.all(Object.keys(sec.holes).map((i) => net.setPrivate(tableId, sec.owners[i], { hand: sec.hand, seat: +i, cards: sec.holes[i] })));
+          if (net.setSpectator) net.setSpectator(tableId, { hand: sec.hand, holes: sec.holes }).catch(() => {});
         }
       }
     } catch (e) { /* on réessaiera au prochain changement */ } finally { hostBusy = false; }
@@ -364,6 +367,14 @@
     return { left: 50 + r[0] * Math.cos(a), top: 50 + r[1] * Math.sin(a) };
   }
   const myCards = () => (myHole && pub && myHole.hand === pub.handNo ? myHole.cards : null);
+  // Spectateur (pas assis, ou éliminé) : il voit les cartes de tout le monde
+  const isSpectator = (st) => { const i = mySeatIn(st); return i < 0 || (st.seats[i].stack <= 0 && !handLive(st)) || (st.seats[i].stack <= 0 && st.seats[i].out); };
+  const specCards = (i) => (specHoles && pub && specHoles.hand === pub.handNo && specHoles.holes ? specHoles.holes[i] : null);
+  function syncSpectator() {
+    const want = !!(pub && tableId && net && net.watchSpectator && isSpectator(pub));
+    if (want && !specUnsub) specUnsub = net.watchSpectator(tableId, (v) => { specHoles = v; render(); });
+    if (!want && specUnsub) { try { specUnsub(); } catch (e) { /* ignore */ } specUnsub = null; specHoles = null; }
+  }
 
   // ---------- Liste des parties ouvertes (onglet Multijoueur de l'accueil) ----------
   // Signal envoyé par l'hôte à chaque changement ET toutes les 30 s, même si la table attend sans bouger.
@@ -374,7 +385,7 @@
     if (!st || !tableId || !window.Social || !Social.lobbyBeat) return;
     if (!(st.host === me && !st.gameOver)) { if (lobbyLastInfo) { Social.lobbyRemove('poker', tableId, lobbyLastInfo); lobbyLastInfo = null; } return; }
     const sets = st.settings || {};
-    lobbyLastInfo = { name: st.name, host: myName(), players: st.seats.filter((x) => x.owner).length, max: st.seats.length, pub: sets.public !== false, lk: sets.lk };
+    lobbyLastInfo = { name: st.name, host: myName(), players: st.seats.filter((x) => x.owner).length, max: st.seats.length, pub: sets.public !== false, lk: sets.lk, live: gameRunning(st) };
     Social.lobbyBeat('poker', tableId, lobbyLastInfo);
   }
   setInterval(lobbyTick, 30000);
@@ -395,6 +406,10 @@
     $('pm-host').textContent = st.host === me ? 'Tu es l\'hôte (tu distribues)' : '';
     const mySeat = mySeatIn(st);
     const base = mySeat >= 0 ? mySeat : 0;
+    syncSpectator();
+    const spect = isSpectator(st);
+    const sb = $('pm-spec');
+    if (sb) { sb.hidden = !spect || !(st.started !== false && (handLive(st) || gameRunning(st))); }
     const narrow = window.matchMedia('(max-width: 640px)').matches;
     const seatR = narrow ? [40, 42] : [44, 40];
     const betR = narrow ? [24, 26] : [27, 25];
@@ -417,11 +432,12 @@
       el.style.top = isMe ? 'calc(100% - 6px)' : pos.top + '%';
       const hole = document.createElement('div');
       hole.className = 'hole';
-      if (s.cards.length && (!s.folded || isMe || s.showedByChoice) && !(s.mucked && !isMe && !s.shown)) {
-        const mine = isMe ? myCards() : null;
+      const seen = spect && i !== mySeat ? specCards(i) : null;
+      if (s.cards.length && (!s.folded || isMe || s.showedByChoice || seen) && !(s.mucked && !isMe && !s.shown && !seen)) {
+        const mine = isMe ? myCards() : seen;
         s.cards.forEach((c, j) => {
           const real = mine ? mine[j] : c;
-          const faceUp = !!(real && real.rank) && (isMe || st.runoutShown || (showdown && boardDone) || s.showedByChoice);
+          const faceUp = !!(real && real.rank) && (isMe || !!seen || st.runoutShown || (showdown && boardDone) || s.showedByChoice);
           const ce = cardEl(real || c, faceUp);
           if (winCards.has(c.id)) ce.classList.add('win');
           if (s.folded) ce.classList.add('dim');
@@ -641,6 +657,7 @@
 
   // ---------- Accueil et tables ----------
   function cleanup() {
+    if (specUnsub) { try { specUnsub(); } catch (e) { /* ignore */ } specUnsub = null; specHoles = null; }
     unsub.forEach((u) => { try { u(); } catch (e) { /* ignore */ } });
     unsub = [];
     timers.forEach(clearTimeout);

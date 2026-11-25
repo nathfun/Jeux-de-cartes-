@@ -106,6 +106,8 @@
     .hub-tabs button.on { background: var(--gold); color: #222; }
     body[data-hubtab="play"] [data-tab="multi"] { display: none !important; }
     body[data-hubtab="multi"] main > section:not([data-tab="multi"]) { display: none !important; }
+    .ls-reset { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+    .ls-reset button.armed { background: #c62828; border-color: #c62828; color: #fff; }
     .learn-switch { display: flex; flex-direction: column; gap: .5rem; }
     .ls-seg { display: flex; background: #0d1117; border-radius: 12px; padding: .25rem; gap: .25rem; }
     .ls-seg button { flex: 1; font: inherit; font-weight: 700; padding: .55rem; border: 0; border-radius: 9px; background: transparent; color: var(--muted); cursor: pointer; }
@@ -327,6 +329,7 @@
         <button id="ls-learn" type="button" role="radio">🎓 Apprentissage</button>
       </div>
       <p id="ls-text" class="ls-text"></p>
+      <div class="ls-reset" id="ls-reset-row" hidden><button id="ls-reset" type="button" class="small">♻️ Remettre l'apprentissage à zéro</button><span id="ls-reset-msg" class="muted small"></span></div>
     </section>
 
     <section class="games" aria-label="Jeux">
@@ -854,10 +857,28 @@
         document.body.classList.toggle('learning', on);
         $('ls-real').classList.toggle('on', !on); $('ls-learn').classList.toggle('on', on);
         $('ls-real').setAttribute('aria-checked', !on); $('ls-learn').setAttribute('aria-checked', on);
+        $('ls-reset-row').hidden = !on;
         $('ls-text').textContent = on
           ? '🎓 Apprentissage : dans tous les jeux, crédit illimité, aides et conseils du coach. Rien ne compte pour la banque, les niveaux et les défis.'
           : '💰 Partie réelle : en touchant un jeu, tu joues avec ta banque, sans aides. Gains, niveaux, défis et succès comptent.';
       }
+      // Remise à zéro de l'apprentissage : statistiques, coach et historiques d'entraînement de tous les jeux
+      // (le crédit d'apprentissage repart de 10 000 € à chaque partie ; la banque et la progression ne bougent pas)
+      function resetLearning() {
+        const ls = (k, fn) => { try { const raw = localStorage.getItem(k); if (raw == null) return; const v = fn(JSON.parse(raw)); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignore */ } };
+        ['crash-v1', 'plinko-v1', 'trader-v1'].forEach((k) => ls(k, (v) => { if (v.stats) v.stats.train = { rounds: 0, wagered: 0, won: 0, best: 0 }; if (v.bets) v.bets.train = []; return v; }));
+        ls('blackjack-coach-v1', (v) => ({ bankroll: v.bankroll })); // le coach repart de zéro, la somme d'une partie réelle en cours est gardée
+        ls('poker-coach-v1', () => null);
+      }
+      let resetArmed = null;
+      $('ls-reset').addEventListener('click', () => {
+        const b = $('ls-reset');
+        if (!resetArmed) { b.classList.add('armed'); b.textContent = 'Sûr ? Toutes les stats d\'apprentissage seront effacées'; resetArmed = setTimeout(() => { resetArmed = null; b.classList.remove('armed'); b.textContent = '♻️ Remettre l\'apprentissage à zéro'; }, 4000); return; }
+        clearTimeout(resetArmed); resetArmed = null; resetLearning();
+        b.classList.remove('armed'); b.textContent = '♻️ Remettre l\'apprentissage à zéro';
+        $('ls-reset-msg').textContent = '✔ Apprentissage remis à zéro : statistiques et coach effacés, crédit à 10 000 €.';
+        if (window.Sfx) Sfx.chips();
+      });
       $('ls-real').addEventListener('click', () => { Casino.setLearn(false); renderLearn(); });
       $('ls-learn').addEventListener('click', () => { Casino.setLearn(true); renderLearn(); });
       renderLearn();
@@ -882,16 +903,16 @@
           const ic = document.createElement('span'); ic.className = 'mp-ic'; ic.textContent = GAME_ICON[e.game] || '🎲';
           const tx = document.createElement('div');
           const b = document.createElement('b'); b.textContent = (e.pub ? '🌐 ' : '🔒 ') + e.name;
-          const sm = document.createElement('small'); sm.textContent = GAME_NAME[e.game] + ' · par ' + (e.host || '?') + ' · ' + e.players + (e.max ? ' / ' + e.max : '') + ' joueur' + (e.players > 1 ? 's' : '');
+          const sm = document.createElement('small'); sm.textContent = (e.live ? '🔴 En cours · ' : '') + GAME_NAME[e.game] + ' · par ' + (e.host || '?') + ' · ' + e.players + (e.max ? ' / ' + e.max : '') + ' joueur' + (e.players > 1 ? 's' : '');
           tx.append(b, sm);
           row.append(ic, tx);
           if (e.pub && e.code) {
-            const a = document.createElement('a'); a.className = 'mp-go'; a.textContent = 'Rejoindre'; a.href = Social.tableLink(e.game, e.code); row.appendChild(a);
+            const a = document.createElement('a'); a.className = 'mp-go'; a.textContent = e.live ? '👁 Regarder' : 'Rejoindre'; a.href = Social.tableLink(e.game, e.code); row.appendChild(a);
           } else {
             const lock = document.createElement('small'); lock.textContent = 'Code requis'; row.appendChild(lock);
             const f = document.createElement('form');
             const inp = document.createElement('input'); inp.maxLength = 6; inp.placeholder = 'Code de la table'; inp.setAttribute('aria-label', 'Code de ' + e.name);
-            const go = document.createElement('button'); go.type = 'submit'; go.textContent = 'Rejoindre';
+            const go = document.createElement('button'); go.type = 'submit'; go.textContent = e.live ? '👁 Regarder' : 'Rejoindre';
             f.append(inp, go);
             f.addEventListener('submit', (ev) => { ev.preventDefault(); const c = inp.value.trim().toUpperCase(); if (c.length >= 4) location.href = Social.tableLink(e.game, c); });
             row.appendChild(f);

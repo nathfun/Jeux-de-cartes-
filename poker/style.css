@@ -214,3 +214,6 @@ input:not([type]), input[type="text"] { font: inherit; background: #10151c; colo
 /* v9 : on choisit Apprentissage / Multijoueur sur l'accueil */
 .topbar .tabs { display: none !important; }
 .pk-modes { display: none !important; }
+
+/* Spectateur d'une partie en cours */
+.spec-badge { background: rgba(79, 195, 247, .14); border: 1px solid rgba(79, 195, 247, .5); color: #b3e5fc; border-radius: 999px; padding: .2rem .7rem; font-size: .8rem; font-weight: 600; }
