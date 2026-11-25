@@ -18,7 +18,7 @@
   let T = UI.createStats();             // mes statistiques (aides)
   let animatedSpin = null, recordedSpin = null, shownOver = null, saidBets = null;
 
-  function myName() { try { return (localStorage.getItem('bj-pseudo') || '').trim().slice(0, 16); } catch (e) { return ''; } }
+  function myName() { try { return (localStorage.getItem('bj-pseudo') || (window.Casino && Casino.profile.pseudo) || '').trim().slice(0, 16); } catch (e) { return ''; } }
   function coachKey() { return 'rl-coach-' + tableId + '-' + me; }
   function coachChoice() { try { const v = localStorage.getItem(coachKey()); return v === null ? null : v === '1'; } catch (e) { return null; } }
   const coachOn = () => !!(st && st.settings.coach && coachChoice() !== false);
@@ -238,6 +238,7 @@
 
   function render() {
     if (!st || !tableId) return;
+    if (window.Social && Social.lobbyBeat && st.creator === me && st.phase !== 'over') Social.lobbyBeat('roulette', tableId, { name: st.name, host: myName(), players: Object.keys(st.players || {}).length, max: 8, pub: !!st.settings.public, lk: st.settings.lk });
     document.body.classList.toggle('no-coach', !coachOn());
     $('opt-info').checked = coachOn();
     $('aides-row').hidden = !st.settings.coach; // l'hôte a interdit les aides : pas d'interrupteur
@@ -392,14 +393,14 @@
   $('rm-create').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (needPseudo()) return;
-    const settings = { bank: +$('rm-bank').value, betTime: +$('rm-bettime').value, rounds: +$('rm-rounds').value, coach: $('rm-coach').checked };
+    const settings = { bank: +$('rm-bank').value, betTime: +$('rm-bettime').value, rounds: +$('rm-rounds').value, coach: $('rm-coach').checked, public: $('rm-public').checked, lk: Math.random().toString(36).slice(2, 10) };
     try {
       const id = await net.createTable(initial($('rm-name').value.trim().slice(0, 30) || 'Roulette de ' + myName(), settings));
       $('rm-name').value = '';
       openTable(id, true);
     } catch (err) { $('rm-note').textContent = 'Impossible de créer la table. Vérifie ta connexion.'; }
   });
-  $('rm-leave').addEventListener('click', () => showLobby());
+  $('rm-leave').addEventListener('click', () => { showLobby(); if (window.Social && Social.hubLink) location.href = Social.hubLink('#multi'); });
   $('rm-invite').addEventListener('click', async () => {
     if (window.Social && Social.inviteDialog) { Social.inviteDialog('roulette', tableId); return; }
     const u = new URL(location.href); u.search = ''; u.searchParams.set('table', tableId);
@@ -475,7 +476,7 @@
       else { $('rm-code').value = code.toUpperCase(); needPseudo(); }
     }
   }
-  if (new URLSearchParams(location.search).get('table') || (window.Social && Social.wantsTable && Social.wantsTable())) setMode('multi');
+  if (new URLSearchParams(location.search).get('table') || new URLSearchParams(location.search).get('multi') || (window.Social && Social.wantsTable && Social.wantsTable())) { document.body.classList.add('multi-entry'); setMode('multi'); }
 
   window.RouletteMulti = { get state() { return st; }, get me() { return me; }, get net() { return net; }, get tableId() { return tableId; } };
 })();

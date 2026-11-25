@@ -1097,9 +1097,9 @@
     const badge = $('mode-badge');
     badge.hidden = !playing || mode === 'defi';
     badge.className = 'cm-badge mode-line' + (mode === 'real' ? ' real' : '');
-    badge.textContent = mode === 'real' ? '💰 Partie réelle · sans aides · « Encaisser » ramène tes jetons à la banque' : '🎓 Entraînement · crédit illimité · ne compte pas pour la progression';
-    $('cashout').hidden = mode === 'defi';
-    $('bank-label').textContent = mode === 'real' ? 'Sur la table' : mode === 'train' ? 'Crédit d\'entraînement' : mode === 'defi' ? 'Jetons de défi' : 'Banque';
+    badge.textContent = mode === 'real' ? '💰 Partie réelle · sans aides · « Encaisser » ramène tes jetons à la banque' : '🎓 Apprentissage · crédit illimité, aides et conseils · ne compte pas';
+    $('cashout').hidden = mode === 'defi' || mode === 'train';
+    $('bank-label').textContent = mode === 'real' ? 'Sur la table' : mode === 'train' ? 'Crédit d\'apprentissage' : mode === 'defi' ? 'Jetons de défi' : 'Banque';
     if (!mode && window.Casino) { $('bankroll').textContent = Casino.wallet(); }
     $('cashout').textContent = mode === 'train' ? 'Terminer' : 'Encaisser';
     if (!playing) { renderPicker(); return; }

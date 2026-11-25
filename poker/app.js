@@ -665,11 +665,13 @@
 
   // ---------- Événements ----------
   $('start').addEventListener('click', start);
-  function pkMode() { const r = document.querySelector('input[name="pk-mode"]:checked'); return r ? r.value : 'train'; }
+  // Le mode vient de l'accueil : Apprentissage (gratuit, coach) ou partie réelle (droit d'entrée)
+  function pkMode() { return window.Casino && !Casino.learn ? 'real' : 'train'; }
   // Droit d'entrée et cagnotte (avec le portefeuille du Casino)
   if (window.Casino) {
     const info = () => {
       const real = pkMode() === 'real';
+      $('setup').querySelector('h2').textContent = real ? '💰 Tournoi réel contre des bots' : '🎓 Apprentissage : partie contre des bots (gratuite, avec le coach)';
       $('buyin-row').hidden = !real;
       $('buyin-info').hidden = !real;
       $('start').textContent = real ? (Casino.session('poker') && Casino.server ? 'Reprendre le tournoi en cours' : 'Payer et commencer le tournoi') : 'Commencer l\'entraînement';

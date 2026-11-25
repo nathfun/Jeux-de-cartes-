@@ -81,6 +81,42 @@
     .lb-invite { font: inherit; font-size: .8rem; margin-left: .4rem; background: transparent; color: var(--gold); border: 1px solid var(--gold); border-radius: 999px; padding: .15rem .55rem; cursor: pointer; }
     .lb-games { grid-column: 1 / -1; display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; font-size: .85rem; color: var(--muted); margin-top: .35rem; }
     .lb-games a { color: #222; background: var(--gold); border-radius: 8px; padding: .25rem .6rem; text-decoration: none; font-weight: 700; }
+
+    .hub-tabs { display: flex; gap: .4rem; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: .3rem; position: sticky; top: 0; z-index: 20; }
+    .hub-tabs button { flex: 1; font: inherit; font-weight: 700; padding: .6rem; border: 0; border-radius: 10px; background: transparent; color: var(--muted); cursor: pointer; }
+    .hub-tabs button.on { background: var(--gold); color: #222; }
+    body[data-hubtab="play"] [data-tab="multi"] { display: none !important; }
+    body[data-hubtab="multi"] main > section:not([data-tab="multi"]) { display: none !important; }
+    .learn-switch { display: flex; flex-direction: column; gap: .5rem; }
+    .ls-seg { display: flex; background: #0d1117; border-radius: 12px; padding: .25rem; gap: .25rem; }
+    .ls-seg button { flex: 1; font: inherit; font-weight: 700; padding: .55rem; border: 0; border-radius: 9px; background: transparent; color: var(--muted); cursor: pointer; }
+    .ls-seg button.on { background: var(--gold); color: #222; }
+    body.learning .ls-seg button.on { background: #4fc3f7; color: #06202c; }
+    .ls-text { margin: 0; font-size: .9rem; color: var(--muted); line-height: 1.4; }
+    body.learning .games .game { border-color: #4fc3f7; }
+    .mp h2 { display: flex; align-items: center; gap: .5rem; margin-top: 1rem; }
+    .mp h2:first-child { margin-top: 0; }
+    .mp-games { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
+    .mp-games a { display: flex; flex-direction: column; align-items: center; gap: .2rem; padding: .8rem .4rem; border-radius: 12px; text-decoration: none; color: inherit; font-size: 1.8rem;
+      background: radial-gradient(ellipse at 30% 20%, var(--felt) 0%, var(--felt-dark) 100%); border: 2px solid #5b3a1e; }
+    .mp-games a span { font-size: .9rem; font-weight: 700; }
+    .mp-join { display: flex; gap: .5rem; }
+    .mp-join input { flex: 1; min-width: 0; font: inherit; text-transform: uppercase; letter-spacing: .15em; padding: .5rem .7rem; border-radius: 10px; border: 1px solid var(--border); background: #0d1117; color: inherit; }
+    .mp-join button, .mp-row button, .mp-row a.mp-go { font: inherit; font-weight: 700; border: 0; border-radius: 10px; padding: .5rem .9rem; background: var(--gold); color: #222; cursor: pointer; text-decoration: none; }
+    .mp-note { margin: .3rem 0 0; font-size: .88rem; color: #ffb4a8; min-height: 0; }
+    .mp-list { display: flex; flex-direction: column; gap: .4rem; }
+    .mp-row { display: grid; grid-template-columns: 2rem 1fr auto; gap: .2rem .6rem; align-items: center; background: #141a21; border-radius: 12px; padding: .55rem .7rem; }
+    .mp-row .mp-ic { font-size: 1.4rem; }
+    .mp-row b { display: block; } .mp-row small { color: var(--muted); }
+    .mp-row form { grid-column: 1 / -1; display: flex; gap: .4rem; }
+    .mp-row form input { flex: 1; min-width: 0; font: inherit; text-transform: uppercase; letter-spacing: .12em; padding: .4rem .6rem; border-radius: 8px; border: 1px solid var(--border); background: #0d1117; color: inherit; }
+    .ls-seg button { white-space: nowrap; }
+    @media (max-width: 600px) {
+      #lifetime { display: none; }
+      .profile .avatar { width: 64px; height: 64px; font-size: 2.2rem; }
+      .ls-seg button { font-size: .9rem; padding: .5rem .3rem; }
+      main > header p { font-size: .9rem; }
+    }
     .acc-welcome { display: none; text-align: center; }
     .acc-welcome .aw-logo { font-size: 3rem; }
     .acc-welcome h2 { font-size: 1.5rem; margin: .2rem 0 .4rem; }
@@ -164,13 +200,18 @@
       <img src="icons/icon-192.png" alt="">
       <div>
         <h1>Casino</h1>
-        <p>Blackjack, poker, roulette et machine à sous : apprends en Entraînement, prouve-le en partie réelle, puis affronte tes amis.</p>
+        <p>Joue avec ta banque, apprends sans risque, défie tes amis.</p>
       </div>
       <div class="head-btns">
         <button id="music-toggle" class="icon-btn" type="button">🎵</button>
         <button id="sound-toggle" class="icon-btn" type="button">🔊</button>
       </div>
     </header>
+
+    <nav class="hub-tabs" role="tablist" aria-label="Sections">
+      <button id="tab-play" class="on" type="button" role="tab" aria-selected="true">🎰 Jeux</button>
+      <button id="tab-multi" type="button" role="tab" aria-selected="false">👥 Multijoueur</button>
+    </nav>
 
     <section class="panel profile" aria-label="Mon profil">
       <button id="avatar" class="avatar" type="button" aria-label="Changer d'avatar">🎩</button>
@@ -192,43 +233,12 @@
       </div>
     </section>
 
-    <section class="panel account" aria-label="Mon compte">
-      <div id="acc-welcome" class="acc-welcome">
-        <div class="aw-logo">🎰</div>
-        <h2>Bienvenue au Casino</h2>
-        <p>Pour jouer, crée ton compte ou connecte-toi : ta banque, ton niveau et tes amis te suivent sur tous tes appareils.
-          Tout se joue en argent virtuel (aucun argent réel).</p>
+    <section class="panel learn-switch" aria-label="Mode de jeu">
+      <div class="ls-seg" role="radiogroup" aria-label="Mode de jeu">
+        <button id="ls-real" type="button" role="radio">💰 Partie réelle</button>
+        <button id="ls-learn" type="button" role="radio">🎓 Apprentissage</button>
       </div>
-      <h2 class="acc-title">🔐 Mon compte</h2>
-      <div id="acc-out">
-        <p class="muted small-p">Crée ton compte (un pseudo et un mot de passe, pas besoin d'e-mail) pour garder ta banque, ton niveau, tes succès et tes amis, et les retrouver sur ton téléphone comme sur ton ordinateur.</p>
-        <div class="acc-tabs" role="tablist">
-          <button id="acc-tab-create" class="on" type="button">Créer un compte</button>
-          <button id="acc-tab-login" type="button">J'ai déjà un compte</button>
-        </div>
-        <form id="acc-form" class="acc-form" autocomplete="on">
-          <input id="acc-pseudo" maxlength="16" placeholder="Pseudo" autocomplete="username" aria-label="Pseudo">
-          <input id="acc-pwd" type="password" minlength="6" placeholder="Mot de passe (6 caractères min.)" autocomplete="new-password" aria-label="Mot de passe">
-          <button id="acc-go" type="submit" class="bonus-btn">Créer mon compte</button>
-        </form>
-        <p id="acc-login-warn" class="muted small-p" hidden>En te connectant, la progression de cet appareil est remplacée par celle de ton compte.</p>
-      </div>
-      <div id="acc-in" hidden>
-        <p>Connecté en tant que <b id="acc-name"></b> ✔ <span class="muted">· sauvegarde automatique <span id="acc-sync"></span></span></p>
-        <button id="acc-logout" class="icon-btn" type="button">Se déconnecter</button>
-      </div>
-      <p id="acc-msg" class="acc-msg" role="status"></p>
-    </section>
-
-    <section class="panel" aria-label="Banque du temps">
-      <h2>⏳ Banque du temps</h2>
-      <p class="muted small-p">Ici, l'argent ne tombe pas du ciel : il s'achète avec du temps. Lance une attente, reviens quand elle est finie et encaisse. Plus l'attente est longue, plus chaque minute rapporte. Une seule à la fois, et le compteur tourne même app fermée.</p>
-      <div id="timebank" class="timebank"></div>
-    </section>
-
-    <section class="panel" aria-label="Défis du jour">
-      <h2>Défis du jour <span id="chal-reset" class="muted" style="font-size:.8rem;font-weight:400"></span></h2>
-      <div id="challenges" class="challenges"></div>
+      <p id="ls-text" class="ls-text"></p>
     </section>
 
     <section class="games" aria-label="Jeux">
@@ -258,7 +268,37 @@
       </a>
     </section>
 
-    <section class="panel" aria-label="Amis">
+    <section class="panel" aria-label="Défis du jour">
+      <h2>Défis du jour <span id="chal-reset" class="muted" style="font-size:.8rem;font-weight:400"></span></h2>
+      <div id="challenges" class="challenges"></div>
+    </section>
+
+    <section class="panel" aria-label="Banque du temps">
+      <h2>⏳ Banque du temps</h2>
+      <p class="muted small-p">Ici, l'argent ne tombe pas du ciel : il s'achète avec du temps. Lance une attente, reviens quand elle est finie et encaisse. Plus l'attente est longue, plus chaque minute rapporte. Une seule à la fois, et le compteur tourne même app fermée.</p>
+      <div id="timebank" class="timebank"></div>
+    </section>
+
+    <section class="panel mp" data-tab="multi" aria-label="Multijoueur">
+      <h2>Créer une partie</h2>
+      <p class="muted small-p">Choisis le jeu : tu règles la table (jetons de départ, aides, publique ou privée) puis tu invites tes amis.</p>
+      <div class="mp-games">
+        <a id="mp-new-blackjack" href="blackjack/index.html?multi=create">🂡<span>Blackjack</span></a>
+        <a id="mp-new-poker" href="poker/index.html?multi=create">♠<span>Poker</span></a>
+        <a id="mp-new-roulette" href="roulette/index.html?multi=create">🎡<span>Roulette</span></a>
+      </div>
+      <h2>Rejoindre avec un code</h2>
+      <form id="mp-join" class="mp-join">
+        <input id="mp-code" maxlength="6" placeholder="Code de la table (ex. KQ7P)" aria-label="Code de la table" autocapitalize="characters" autocomplete="off">
+        <button type="submit">Rejoindre</button>
+      </form>
+      <p id="mp-note" class="mp-note" role="status"></p>
+      <h2>Parties ouvertes <button id="mp-refresh" class="icon-btn" type="button" aria-label="Actualiser">↻</button></h2>
+      <div id="mp-list" class="mp-list"><p class="muted">Chargement…</p></div>
+      <p class="muted small-p">🌐 Publique : on rejoint d'un clic. 🔒 Privée : il faut le code donné par l'hôte. Les jetons d'une table ne servent qu'à elle ; à la fin, le classement rapporte sur ta banque (1er +500 €, 2e +200 € ; à deux : +300 € au gagnant).</p>
+    </section>
+
+    <section class="panel" data-tab="multi" aria-label="Amis">
       <h2>Amis et classement</h2>
       <div id="social-off" class="muted" style="font-size:.9rem" hidden>Le classement entre amis a besoin du serveur de jeu (voir FIREBASE.md).</div>
       <div id="social-on">
@@ -281,7 +321,7 @@
       </div>
     </section>
 
-    <section class="panel" aria-label="Défis entre amis">
+    <section class="panel" data-tab="multi" aria-label="Défis entre amis">
       <h2>Défis entre amis</h2>
       <p class="muted" style="font-size:.88rem;margin:0 0 .6rem">10 tours avec 1 000 € de jetons de défi (ta banque n'est pas touchée). Tout le monde reçoit exactement les mêmes numéros à la roulette, ou le même sabot au blackjack : le meilleur solde final gagne.</p>
       <div class="row-btns">
@@ -304,6 +344,34 @@
       <div id="backs" class="swatches"></div>
       <label style="font-size:.9rem"><input type="checkbox" id="opt-vibrate"> Vibrations sur téléphone</label>
       <p class="muted" style="font-size:.78rem;margin:.6rem 0 0">Tout se joue avec des jetons virtuels : aucun argent réel, rien à acheter.</p>
+    </section>
+
+    <section class="panel account" aria-label="Mon compte">
+      <div id="acc-welcome" class="acc-welcome">
+        <div class="aw-logo">🎰</div>
+        <h2>Bienvenue au Casino</h2>
+        <p>Pour jouer, crée ton compte ou connecte-toi : ta banque, ton niveau et tes amis te suivent sur tous tes appareils.
+          Tout se joue en argent virtuel (aucun argent réel).</p>
+      </div>
+      <h2 class="acc-title">🔐 Mon compte</h2>
+      <div id="acc-out">
+        <p class="muted small-p">Crée ton compte (un pseudo et un mot de passe, pas besoin d'e-mail) pour garder ta banque, ton niveau, tes succès et tes amis, et les retrouver sur ton téléphone comme sur ton ordinateur.</p>
+        <div class="acc-tabs" role="tablist">
+          <button id="acc-tab-create" class="on" type="button">Créer un compte</button>
+          <button id="acc-tab-login" type="button">J'ai déjà un compte</button>
+        </div>
+        <form id="acc-form" class="acc-form" autocomplete="on">
+          <input id="acc-pseudo" maxlength="16" placeholder="Pseudo" autocomplete="username" aria-label="Pseudo">
+          <input id="acc-pwd" type="password" minlength="6" placeholder="Mot de passe (6 caractères min.)" autocomplete="new-password" aria-label="Mot de passe">
+          <button id="acc-go" type="submit" class="bonus-btn">Créer mon compte</button>
+        </form>
+        <p id="acc-login-warn" class="muted small-p" hidden>En te connectant, la progression de cet appareil est remplacée par celle de ton compte.</p>
+      </div>
+      <div id="acc-in" hidden>
+        <p>Connecté en tant que <b id="acc-name"></b> ✔ <span class="muted">· sauvegarde automatique <span id="acc-sync"></span></span></p>
+        <button id="acc-logout" class="icon-btn" type="button">Se déconnecter</button>
+      </div>
+      <p id="acc-msg" class="acc-msg" role="status"></p>
     </section>
 
     <section class="install" id="install">
@@ -478,6 +546,78 @@
         box.appendChild(w);
       }
       setInterval(renderTime, 1000);
+
+
+      // ---------- Onglets de l'accueil ----------
+      function setHubTab(t) {
+        document.body.dataset.hubtab = t;
+        $('tab-play').classList.toggle('on', t === 'play'); $('tab-multi').classList.toggle('on', t === 'multi');
+        $('tab-play').setAttribute('aria-selected', t === 'play'); $('tab-multi').setAttribute('aria-selected', t === 'multi');
+        if (location.hash !== (t === 'multi' ? '#multi' : '')) history.replaceState(null, '', location.pathname + location.search + (t === 'multi' ? '#multi' : ''));
+        if (t === 'multi') refreshLobby();
+      }
+      $('tab-play').addEventListener('click', () => setHubTab('play'));
+      $('tab-multi').addEventListener('click', () => setHubTab('multi'));
+      // ---------- Partie réelle / Apprentissage ----------
+      function renderLearn() {
+        const on = Casino.learn;
+        document.body.classList.toggle('learning', on);
+        $('ls-real').classList.toggle('on', !on); $('ls-learn').classList.toggle('on', on);
+        $('ls-real').setAttribute('aria-checked', !on); $('ls-learn').setAttribute('aria-checked', on);
+        $('ls-text').textContent = on
+          ? '🎓 Apprentissage : dans tous les jeux, crédit illimité, aides et conseils du coach. Rien ne compte pour la banque, les niveaux et les défis.'
+          : '💰 Partie réelle : en touchant un jeu, tu joues avec ta banque, sans aides. Gains, niveaux, défis et succès comptent.';
+      }
+      $('ls-real').addEventListener('click', () => { Casino.setLearn(false); renderLearn(); });
+      $('ls-learn').addEventListener('click', () => { Casino.setLearn(true); renderLearn(); });
+      renderLearn();
+      // ---------- Multijoueur ----------
+      const GAME_ICON = { blackjack: '🂡', poker: '♠', roulette: '🎡' };
+      const GAME_NAME = { blackjack: 'Blackjack', poker: 'Poker', roulette: 'Roulette' };
+      ['blackjack', 'poker', 'roulette'].forEach((g) => { if (window.Social) { const u = new URL(Social.tableLink(g)); u.searchParams.set('multi', 'create'); $('mp-new-' + g).href = u.toString(); } });
+      let lobbyTimer = null;
+      async function refreshLobby() {
+        clearTimeout(lobbyTimer);
+        if (document.body.dataset.hubtab !== 'multi' || !window.Social) return;
+        const list = await Social.lobbyList().catch(() => []);
+        const box = $('mp-list'); box.innerHTML = '';
+        if (!list.length) { const p = document.createElement('p'); p.className = 'muted'; p.textContent = 'Aucune partie ouverte pour le moment : crée la tienne !'; box.appendChild(p); }
+        list.forEach((e) => {
+          const row = document.createElement('div'); row.className = 'mp-row';
+          const ic = document.createElement('span'); ic.className = 'mp-ic'; ic.textContent = GAME_ICON[e.game] || '🎲';
+          const tx = document.createElement('div');
+          const b = document.createElement('b'); b.textContent = (e.pub ? '🌐 ' : '🔒 ') + e.name;
+          const sm = document.createElement('small'); sm.textContent = GAME_NAME[e.game] + ' · par ' + (e.host || '?') + ' · ' + e.players + (e.max ? ' / ' + e.max : '') + ' joueur' + (e.players > 1 ? 's' : '');
+          tx.append(b, sm);
+          row.append(ic, tx);
+          if (e.pub && e.code) {
+            const a = document.createElement('a'); a.className = 'mp-go'; a.textContent = 'Rejoindre'; a.href = Social.tableLink(e.game, e.code); row.appendChild(a);
+          } else {
+            const lock = document.createElement('small'); lock.textContent = 'Code requis'; row.appendChild(lock);
+            const f = document.createElement('form');
+            const inp = document.createElement('input'); inp.maxLength = 6; inp.placeholder = 'Code de la table'; inp.setAttribute('aria-label', 'Code de ' + e.name);
+            const go = document.createElement('button'); go.type = 'submit'; go.textContent = 'Rejoindre';
+            f.append(inp, go);
+            f.addEventListener('submit', (ev) => { ev.preventDefault(); const c = inp.value.trim().toUpperCase(); if (c.length >= 4) location.href = Social.tableLink(e.game, c); });
+            row.appendChild(f);
+          }
+          box.appendChild(row);
+        });
+        lobbyTimer = setTimeout(refreshLobby, 15000);
+      }
+      $('mp-refresh').addEventListener('click', refreshLobby);
+      $('mp-join').addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const c = $('mp-code').value.trim().toUpperCase();
+        $('mp-note').textContent = '';
+        if (c.length < 4) { $('mp-note').textContent = 'Le code fait 4 caractères (ex. KQ7P).'; return; }
+        const g = window.Social ? await Social.findTable(c) : null;
+        if (!g) { $('mp-note').textContent = 'Aucune table ouverte avec ce code. Vérifie-le auprès de ton ami.'; return; }
+        location.href = Social.tableLink(g, c);
+      });
+      setHubTab(location.hash === '#multi' ? 'multi' : 'play');
+      // mode test : les liens gardent ?backend=local
+      if (/[?&]backend=local\b/.test(location.search)) document.querySelectorAll('a.game').forEach((a) => { const u = new URL(a.href); u.searchParams.set('backend', 'local'); a.href = u.toString(); });
 
       // ---------- Compte ----------
       let accMode = 'create';

@@ -178,3 +178,6 @@ body.no-aides #aides { display: none; }
 .mode-line { display: block; width: fit-content; margin: 0 auto .6rem; }
 .setup h2 { margin-top: 0; }
 .end-msg { grid-column: 1 / -1; margin: 0; padding: .6rem .8rem; border-radius: 10px; background: #141a21; border: 1px solid #f2c14e; }
+
+/* v9 : on choisit Apprentissage / Multijoueur sur l'accueil */
+.topbar .tabs { display: none !important; }

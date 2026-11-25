@@ -200,6 +200,13 @@
           ".validate": "newData.hasChildren(['from', 'game', 'code', 'at']) && newData.child('game').val().matches(/^(blackjack|poker|roulette)$/) && newData.child('code').val().matches(/^[A-Z0-9]{4,6}$/) && newData.child('name').isString() && newData.child('name').val().length <= 20"
         }
       }
+    },
+    "lobby": {
+      ".read": "auth != null",
+      "$id": {
+        ".write": "auth != null && (!newData.exists() || newData.child('uid').val() === auth.uid)",
+        ".validate": "$id.matches(/^(blackjack|poker|roulette)_[A-Za-z0-9]{4,12}$/) && newData.hasChildren(['uid', 'game', 'name', 'players', 'at', 'pub']) && newData.child('name').isString() && newData.child('name').val().length <= 30 && newData.child('host').isString() && newData.child('host').val().length <= 20 && newData.child('players').isNumber() && newData.child('pub').isBoolean() && (!newData.child('code').exists() || newData.child('code').val().matches(/^[A-Z0-9]{4,6}$/))"
+      }
     }
   }
 }

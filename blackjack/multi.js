@@ -108,7 +108,7 @@
 
   // Pseudo choisi par le joueur (app indépendante, sans compte)
   function myName() {
-    try { return (localStorage.getItem('bj-pseudo') || '').trim().slice(0, 16); } catch (e) { return ''; }
+    try { return (localStorage.getItem('bj-pseudo') || (window.Casino && Casino.profile.pseudo) || '').trim().slice(0, 16); } catch (e) { return ''; }
   }
 
   function player(st, uid) {
@@ -572,6 +572,7 @@
   function renderAll() {
     if (!state || !tableId) return;
     const st = state;
+    if (window.Social && Social.lobbyBeat && st.creator === me && !st.gameEnd) Social.lobbyBeat('blackjack', tableId, { name: st.name, host: myName(), players: new Set(st.seats.map((x) => x.owner).filter(Boolean)).size, max: 5, pub: !!st.settings.public, lk: st.settings.lk });
     applyCoach();
     const anim = animating();
     $('mtable-name').textContent = st.name || 'Table';
@@ -1141,6 +1142,7 @@
         turnTime: parseInt($('set-turn').value, 10) || 20,
         betTime: parseInt($('set-bettime').value, 10) || 15,
         noHole: $('set-rule').value !== 'us',
+        public: $('set-public').checked, lk: Math.random().toString(36).slice(2, 10),
         hands: parseInt($('set-hands').value, 10) || 20,
       });
       const id = await net.createTable(st);
@@ -1175,7 +1177,7 @@
     try { await navigator.clipboard.writeText(text + ' — ' + link); toast('Lien d\'invitation copié !'); }
     catch (e) { toast('Code de la table : ' + tableId); }
   });
-  $('leave-table').addEventListener('click', () => showLobby());
+  $('leave-table').addEventListener('click', () => { showLobby(); if (window.Social && Social.hubLink) location.href = Social.hubLink('#multi'); });
   // Réactions rapides : envoyées par le chat de la table, elles s'envolent chez tout le monde
   if (window.Social) {
     Social.reactionBar($('table-chat-form').parentNode, (emoji) => {
@@ -1262,5 +1264,5 @@
   window.Multi = { rerender: () => { if (tableId) renderAll(); }, normalize };
 
   // Lien d'invitation : ouvre directement l'onglet « Entre amis »
-  if (new URLSearchParams(location.search).get('table') || (window.Social && Social.wantsTable && Social.wantsTable())) setMode('multi');
+  if (new URLSearchParams(location.search).get('table') || new URLSearchParams(location.search).get('multi') || (window.Social && Social.wantsTable && Social.wantsTable())) { document.body.classList.add('multi-entry'); setMode('multi'); }
 })();

@@ -12,7 +12,8 @@ App web installable sur téléphone (PWA) : blackjack, poker, roulette et machin
 ## L'argent du Casino
 
 - **Banque** : 10 000 € au départ, une seule banque pour tous les jeux, gardée par le **compte** (pseudo + mot de passe, sur l'accueil) et retrouvée sur n'importe quel appareil.
-- **Entraînement** : crédit illimité et toutes les aides ; rien ne compte pour les niveaux, défis et succès.
+- **Accueil** : onglet **Jeux** (toucher un jeu lance une partie réelle avec sa banque) et onglet **Multijoueur** (créer une table, rejoindre avec un code, liste des parties ouvertes publiques 🌐 ou privées 🔒).
+- **Apprentissage** (interrupteur sur l'accueil) : tous les jeux en crédit illimité avec les aides et conseils ; rien ne compte pour les niveaux, défis et succès.
 - **Partie réelle** : on apporte une somme de sa banque, sans aides. « Encaisser » ramène ce qui reste sur la table ; si on perd tout, c'est perdu. Au poker : tournoi avec droit d'entrée et cagnotte.
 - **Gagner de l'argent** : bonus du jour, défis du jour, **banque du temps** (100 € contre 5 min d'attente… 20 000 € contre 8 h : plus c'est long, plus chaque minute rapporte), et les parties entre amis.
 - **Protection** : la banque est rangée en ligne et les règles de la base refusent les montants impossibles (voir FIREBASE.md).

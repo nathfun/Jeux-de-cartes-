@@ -470,7 +470,7 @@
     const badge = $('mode-badge');
     badge.hidden = mode === 'defi';
     badge.className = 'cm-badge mode-line' + (mode === 'real' ? ' real' : '');
-    badge.textContent = mode === 'real' ? '💰 Partie réelle · sans aides · « Encaisser » ramène tes jetons à la banque' : '🎓 Entraînement · crédit illimité · ne compte pas pour la progression';
+    badge.textContent = mode === 'real' ? '💰 Partie réelle · sans aides · « Encaisser » ramène tes jetons à la banque' : '🎓 Apprentissage · crédit illimité, aides et conseils · ne compte pas';
     $('aides-row').hidden = mode !== 'train'; // en partie réelle : pas d'aides, on teste ce qu'on a appris
     $('setup').hidden = true;
     $('game').hidden = false;

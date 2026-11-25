@@ -210,3 +210,7 @@ input:not([type]), input[type="text"] { font: inherit; background: #10151c; colo
 .pk-mode.real:has(input:checked) { border-color: #f2c14e; background: rgba(242,193,78,.08); }
 .pk-mode span { display: flex; flex-direction: column; gap: .2rem; }
 .pk-mode small { opacity: .85; line-height: 1.4; }
+
+/* v9 : on choisit Apprentissage / Multijoueur sur l'accueil */
+.topbar .tabs { display: none !important; }
+.pk-modes { display: none !important; }

@@ -275,6 +275,24 @@
   function modePicker(box, opts) {
     injectStyle();
     load();
+    // Mode Apprentissage (choisi sur l'accueil) : on joue tout de suite, crédit illimité et aides
+    if (Casino.learn) {
+      box.innerHTML = '';
+      Casino.training = true;
+      setTimeout(() => opts.onStart('train', Casino.TRAIN_BANK, false), 0);
+      return;
+    }
+    // Partie réelle déjà en cours dans ce jeu : on la reprend directement
+    if (P.sessions[opts.game] && !opts.noAutoResume) {
+      box.innerHTML = '';
+      const p0 = document.createElement('p'); p0.className = 'muted'; p0.textContent = 'Reprise de ta partie…'; box.appendChild(p0);
+      Casino.startSession(opts.game, P.sessions[opts.game].stack).then((r) => {
+        if (!r || r.error) { opts.noAutoResume = true; modePicker(box, opts); return; }
+        Casino.training = false;
+        opts.onStart('real', r.session.stack, true, r);
+      });
+      return;
+    }
     const fmtE = (n) => Math.round(n).toLocaleString('fr-FR') + ' €';
     box.innerHTML = '';
     box.className = 'cm-picker';
@@ -337,7 +355,9 @@
       if (wal < min) { go.disabled = true; note.textContent = 'Ta banque est trop basse (' + fmtE(wal) + '). Récupère ton bonus du jour ou passe par la banque du temps sur l\'accueil.'; }
       real.append(row, quick, go, note);
     }
-    box.append(train, real);
+    const learnTip = mk('p', 'cm-learn-tip', 'Envie d\'apprendre d\'abord ? Active le mode 🎓 Apprentissage sur l\'accueil : crédit illimité, aides et conseils.');
+    real.appendChild(learnTip);
+    box.append(real);
   }
 
   // Classement de fin de partie (utilisé par le blackjack entre amis)
@@ -433,6 +453,9 @@
     },
     // ---------- Parties réelles ----------
     training: false,
+    // Mode Apprentissage choisi sur l'accueil : tous les jeux en crédit illimité avec les aides
+    get learn() { try { return localStorage.getItem('casino-learn') === '1'; } catch (e) { return false; } },
+    setLearn(on) { try { localStorage.setItem('casino-learn', on ? '1' : '0'); } catch (e) { /* ignore */ } listeners.forEach((f) => { try { f(load()); } catch (e) { /* ignore */ } }); },
     TRAIN_BANK: 10000,
     session(game) { return load().sessions[game] || null; },
     sessions() { return Object.assign({}, load().sessions); },
@@ -593,7 +616,8 @@
 @keyframes cb-pulse { 50% { transform: scale(1.06); } }
 @keyframes cb-fall { to { transform: translateY(110vh) rotate(540deg); } }
 @media (prefers-reduced-motion: reduce) { .cb-coin { display: none; } .cb-title { animation: none; } }
-.cm-picker { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: .8rem; margin: .8rem 0; }
+.cm-learn-tip { font-size: .8rem !important; opacity: .7 !important; margin-top: .3rem !important; }
+.cm-picker { display: grid; grid-template-columns: minmax(0, 520px); justify-content: center; gap: .8rem; margin: .8rem 0; }
 .cm-card { background: rgba(0,0,0,.25); border: 2px solid #3a4652; border-radius: 14px; padding: .9rem 1rem; display: flex; flex-direction: column; gap: .5rem; }
 .cm-card p { margin: 0; font-size: .9rem; line-height: 1.45; opacity: .9; }
 .cm-real { border-color: #f2c14e; }

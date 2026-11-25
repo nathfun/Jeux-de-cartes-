@@ -117,6 +117,7 @@ puis `window.CASINO_SERVER = true`.
 
 ## Amis, classement et défis
 
+- `lobby/` : la liste des parties ouvertes de l'onglet Multijoueur (le code n'y figure que pour les parties publiques).
 - `invites/<uid>` : les invitations reçues (« Léa t'invite à sa table de Blackjack »), lisibles par le seul destinataire.
 
 - `profiles` : le profil public de chaque joueur (pseudo, avatar, niveau, portefeuille…), modifiable par lui seul.

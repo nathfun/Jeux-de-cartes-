@@ -281,6 +281,61 @@
   const isReaction = (m) => m && m.reaction && EMOJIS.includes(m.text);
 
 
+
+  // ---------- Multijoueur : parties ouvertes ----------
+  // lobby/<jeu>_<code> (partie publique, code visible) ou lobby/<jeu>_<clé> (privée : le code reste secret)
+  const TABLE_PATHS = { blackjack: 'tables/', poker: 'ptables/', roulette: 'rtables/' };
+  const LOCAL_NS = { blackjack: '', poker: 'p', roulette: 'r' };
+  const lobbyLast = {};
+  async function lobbyBeat(game, code, info) {
+    const key = info.pub ? game + '_' + code : info.lk ? game + '_' + info.lk : null;
+    if (!key) return;
+    const t = Date.now(), sig = JSON.stringify(info);
+    if (lobbyLast[key] && t - lobbyLast[key].t < 40000 && lobbyLast[key].sig === sig) return;
+    lobbyLast[key] = { t, sig };
+    const b = await backend();
+    if (!b || !b.uid) return;
+    const e = { uid: b.uid, game, name: String(info.name || 'Table').slice(0, 30), host: String(info.host || P().pseudo || 'Joueur').slice(0, 20),
+      players: info.players | 0, max: info.max | 0, pub: !!info.pub, at: t };
+    if (info.pub) e.code = code;
+    b.set('lobby/' + key, e).catch(() => {});
+  }
+  async function lobbyRemove(game, code, info) {
+    const key = info && info.pub ? game + '_' + code : info && info.lk ? game + '_' + info.lk : null;
+    const b = await backend();
+    if (b && key) b.remove('lobby/' + key).catch(() => {});
+  }
+  /** Parties ouvertes (signal reçu il y a moins de 2 min 30). */
+  async function lobbyList() {
+    const b = await backend();
+    if (!b) return [];
+    const all = (await b.get('lobby').catch(() => null)) || {};
+    return Object.entries(all).map(([key, v]) => Object.assign({ key }, v)).filter((e) => e && e.game && Date.now() - e.at < 150000)
+      .sort((x, y) => (y.pub - x.pub) || (y.at - x.at));
+  }
+  /** Trouve le jeu d'une table à partir de son code. */
+  async function findTable(code) {
+    code = String(code || '').trim().toUpperCase();
+    if (!/^[A-Z0-9]{4,6}$/.test(code)) return null;
+    if (/[?&]backend=local\b/.test(location.search)) {
+      for (const g of Object.keys(LOCAL_NS)) { if (localStorage.getItem(LOCAL_NS[g] + 'bj-t-' + code)) return g; }
+      return null;
+    }
+    const b = await backend();
+    if (!b) return null;
+    for (const g of Object.keys(TABLE_PATHS)) { if (await b.get(TABLE_PATHS[g] + code).catch(() => null)) return g; }
+    return null;
+  }
+  // Adresse de l'accueil, onglet Multijoueur (retour depuis une table)
+  function hubLink(tab) {
+    const m = /^(.*\/)(blackjack|poker|roulette|slots)\/[^/]*$/.exec(location.pathname);
+    const root = m ? m[1] : location.pathname.replace(/[^/]*$/, '');
+    const u = new URL(root + 'index.html', location.href);
+    if (/[?&]backend=local\b/.test(location.search)) u.searchParams.set('backend', 'local');
+    if (tab) u.hash = tab;
+    return u.toString();
+  }
+
   // ---------- Invitations à une table ----------
   const GAME_NAMES = { blackjack: 'Blackjack', poker: 'Poker', roulette: 'Roulette' };
   function tableLink(game, code) {
@@ -414,7 +469,7 @@
   document.head.appendChild(style);
 
   window.Social = {
-    rng, backend, myCode, publish, sendInvite, inviteDialog, tableReady, tableLink, wantsTable, listenInvites, friends, addFriendByCode, addFriendUid, removeFriend, leaderboard,
+    rng, backend, myCode, publish, lobbyBeat, lobbyRemove, lobbyList, findTable, hubLink, sendInvite, inviteDialog, tableReady, tableLink, wantsTable, listenInvites, friends, addFriendByCode, addFriendUid, removeFriend, leaderboard,
     createChallenge, getChallenge, submitChallenge, challengeLink, showChallengeResult, shareLink,
     reactionBar, floatReaction, isReaction, EMOJIS,
   };

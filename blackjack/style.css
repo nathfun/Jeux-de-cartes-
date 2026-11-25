@@ -459,3 +459,6 @@ body.no-coach .coach-bubble { display: none; }
   #mtable.others-first > #m-controls { order: 5; }
   .seats.others .seat.spotlight { grid-column: 1 / -1; }
 }
+
+/* v9 : on choisit Apprentissage / Multijoueur sur l'accueil */
+.topbar .tabs { display: none !important; }

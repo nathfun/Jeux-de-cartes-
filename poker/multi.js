@@ -31,7 +31,7 @@
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   // ---------- Pseudo et aides du coach ----------
-  function myName() { try { return (localStorage.getItem('bj-pseudo') || '').trim().slice(0, 16); } catch (e) { return ''; } }
+  function myName() { try { return (localStorage.getItem('bj-pseudo') || (window.Casino && Casino.profile.pseudo) || '').trim().slice(0, 16); } catch (e) { return ''; } }
   function coachKey() { return 'pk-coach-' + tableId + '-' + me; }
   function coachChoice() { try { const v = localStorage.getItem(coachKey()); return v === null ? null : v === '1'; } catch (e) { return null; } }
   function coachOn() { return !!(pub && pub.settings.coach && coachChoice() !== false); }
@@ -369,6 +369,7 @@
     if (!pub || !tableId) return;
     document.body.classList.toggle('no-coach', !coachOn());
     const st = pub;
+    if (window.Social && Social.lobbyBeat && st.host === me && !st.gameOver) Social.lobbyBeat('poker', tableId, { name: st.name, host: myName(), players: st.seats.filter((x) => x.owner).length, max: st.seats.length, pub: !!st.settings.public, lk: st.settings.lk });
     $('pm-table-name').textContent = st.name || 'Table';
     $('pm-table-code').textContent = tableId;
     $('pm-host').textContent = st.host === me ? 'Tu es l\'hôte (tu distribues)' : '';
@@ -699,14 +700,14 @@
     if (needPseudo()) return;
     const [sb, bb] = $('pm-blinds').value.split('/').map(Number);
     const settings = { sb, bb, stack: bb * parseInt($('pm-stack').value, 10), turnTime: parseInt($('pm-turn').value, 10), coach: $('pm-coach').checked,
-      blindRule: $('pm-blindup').value };
+      blindRule: $('pm-blindup').value, public: $('pm-public').checked, lk: Math.random().toString(36).slice(2, 10) };
     try {
       const id = await net.createTable(initialPub($('pm-name').value.trim().slice(0, 30) || 'Poker de ' + myName(), settings));
       $('pm-name').value = '';
       openTable(id, true);
     } catch (err) { $('pm-note').textContent = 'Impossible de créer la table. Vérifie ta connexion.'; }
   });
-  $('pm-leave-table').addEventListener('click', () => showLobby());
+  $('pm-leave-table').addEventListener('click', () => { showLobby(); if (window.Social && Social.hubLink) location.href = Social.hubLink('#multi'); });
   $('pm-invite').addEventListener('click', async () => {
     if (window.Social && Social.inviteDialog) { Social.inviteDialog('poker', tableId); return; }
     const u = new URL(location.href); u.search = ''; u.searchParams.set('table', tableId);
@@ -803,7 +804,7 @@
       else { $('pm-code').value = code.toUpperCase(); needPseudo(); }
     }
   }
-  if (new URLSearchParams(location.search).get('table') || (window.Social && Social.wantsTable && Social.wantsTable())) setMode('multi');
+  if (new URLSearchParams(location.search).get('table') || new URLSearchParams(location.search).get('multi') || (window.Social && Social.wantsTable && Social.wantsTable())) { document.body.classList.add('multi-entry'); setMode('multi'); }
 
   window.PokerMulti = { get pub() { return pub; }, get hole() { return myHole; }, get net() { return net; }, get me() { return me; }, get tableId() { return tableId; } };
 })();

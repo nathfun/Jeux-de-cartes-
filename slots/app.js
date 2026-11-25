@@ -17,7 +17,7 @@
   };
   function showWallet() {
     if (!S.mode) { $('bank-label').textContent = 'Banque'; $('wallet').textContent = window.Casino ? fmt(Casino.wallet()) : '–'; return; }
-    $('bank-label').textContent = S.mode === 'train' ? 'Crédit d\'entraînement' : 'Sur la table';
+    $('bank-label').textContent = S.mode === 'train' ? 'Crédit d\'apprentissage' : 'Sur la table';
     $('wallet').textContent = fmt(S.stack);
   }
 
@@ -220,6 +220,7 @@
     $('spin').disabled = locked;
     $('cashout').disabled = locked || S.auto > 0;
     $('cashout').textContent = S.mode === 'train' ? 'Terminer' : 'Encaisser';
+    $('cashout').hidden = S.mode === 'train';
     $('bet-minus').disabled = locked || S.auto > 0 || S.betIndex === 0;
     $('bet-plus').disabled = locked || S.auto > 0 || S.betIndex === BETS.length - 1;
     $('bet').textContent = S.free > 0 ? S.freeBet : bet();
@@ -287,7 +288,7 @@
     const badge = $('mode-badge');
     badge.hidden = false;
     badge.className = 'cm-badge mode-line' + (mode === 'real' ? ' real' : '');
-    badge.textContent = mode === 'real' ? '💰 Partie réelle · sans aides · « Encaisser » ramène tes gains à la banque' : '🎓 Entraînement · crédit illimité · ne compte pas pour la progression';
+    badge.textContent = mode === 'real' ? '💰 Partie réelle · sans aides · « Encaisser » ramène tes gains à la banque' : '🎓 Apprentissage · crédit illimité, aides et conseils · ne compte pas';
     $('aides-panel').hidden = mode !== 'train';
     document.body.classList.toggle('no-aides', mode !== 'train' || !aides.checked);
     $('win-text').textContent = resumed ? 'Partie reprise : ' + fmt(S.stack) + ' € sur la table.' : 'Bonne chance !';
