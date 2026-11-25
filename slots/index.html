@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Machine à sous</title>
+  <meta name="theme-color" content="#0f5132">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1><a id="home-link" class="home-link" href="../index.html" hidden aria-label="Retour au casino">←</a> 🎰 Machine à sous</h1>
+    <div class="bank">Portefeuille : <strong id="wallet">–</strong> € <button id="music-toggle" class="ghost icon-btn" type="button">🎵</button><button id="sound-toggle" class="ghost icon-btn" type="button">🔊</button></div>
+  </header>
+
+  <main class="layout">
+    <div class="main-col">
+      <section class="cabinet" aria-label="Machine à sous">
+        <div class="marquee">
+          <div class="bulbs" aria-hidden="true"></div>
+          <div class="brand">CASINO ROYAL</div>
+          <div class="jackpot">JACKPOT 5 × 7️⃣ : <b id="jackpot-value"></b></div>
+        </div>
+        <div class="window">
+          <div id="reels" class="reels"></div>
+          <svg id="lines" class="lines" viewBox="0 0 500 300" preserveAspectRatio="none" aria-hidden="true"></svg>
+          <div id="free-badge" class="free-badge" hidden></div>
+        </div>
+        <div class="win-bar">
+          <div id="win-text" class="win-text" role="status">Bonne chance !</div>
+        </div>
+        <div class="controls">
+          <div class="bet-box">
+            <button id="bet-minus" class="round" aria-label="Baisser la mise">−</button>
+            <div class="bet-val"><small>Mise</small><b id="bet">20</b> €</div>
+            <button id="bet-plus" class="round" aria-label="Augmenter la mise">+</button>
+          </div>
+          <button id="spin" class="spin" aria-label="Lancer">JOUER</button>
+          <div class="toggles">
+            <button id="auto" class="small-btn" type="button">Auto ×10</button>
+            <label class="small"><input type="checkbox" id="turbo"> Turbo</label>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="side">
+      <section class="panel">
+        <h2>Aides <label class="small aides-toggle"><input type="checkbox" id="opt-aides" checked> activées</label></h2>
+        <div id="aides" class="aides">
+          <p>Cette machine rend en moyenne environ <b>94 %</b> des mises : sur 100 € joués, elle en garde à peu près 6. Les gains arrivent par séries au hasard ; aucun tour n'est « dû ».</p>
+          <div id="explain" class="explain"></div>
+        </div>
+      </section>
+      <section class="panel">
+        <h2>Ta session</h2>
+        <div class="stats">
+          <div class="stat"><span id="s-spins">0</span><small>Tours</small></div>
+          <div class="stat"><span id="s-bet">0</span><small>Misé</small></div>
+          <div class="stat"><span id="s-won">0</span><small>Gagné</small></div>
+          <div class="stat"><span id="s-rtp">–</span><small>Retour réel</small></div>
+        </div>
+        <p class="muted small" id="s-best"></p>
+      </section>
+      <details class="panel" open>
+        <summary><h2>Table des gains</h2></summary>
+        <p class="muted small">Gains pour 3, 4 ou 5 symboles alignés de gauche à droite, en multiple de la mise par ligne (mise ÷ 10 lignes).</p>
+        <table id="paytable" class="pay-table"></table>
+        <p class="small">🃏 <b>Joker</b> : remplace tous les symboles sauf 🎰 (rouleaux 2 à 4).<br>🎰 <b>Bonus</b> n'importe où : 3 → 2 × la mise + 8 tours gratuits, 4 → 10 × + 12 tours, 5 → 50 × + 20 tours. Pendant les tours gratuits, tous les gains sont doublés.</p>
+      </details>
+    </aside>
+  </main>
+
+  <script src="../firebase-config.js"></script>
+  <script src="../sounds.js"></script>
+  <script src="../profile.js"></script>
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+  <script src="../pwa.js"></script>
+</body>
+</html>

@@ -51,6 +51,8 @@
     { id: 'rl_win200', game: 'Roulette', text: 'Gagne au moins 200 € en un seul tour', target: 1, reward: 500, xp: 70, on: (t, d) => (t === 'rl' && d.net >= 200 ? 1 : 0) },
     { id: 'any_win1000', game: 'Tous les jeux', text: 'Gagne 1 000 € au total aujourd\'hui', target: 1000, reward: 600, xp: 80, on: (t, d) => (['bj', 'rl', 'sl'].includes(t) && d.net > 0 ? d.net : 0) },
     { id: 'sl_spins20', game: 'Machine à sous', text: 'Fais 20 tours de machine à sous', target: 20, reward: 300, xp: 50, on: (t) => (t === 'sl' ? 1 : 0) },
+    { id: 'sl_free', game: 'Machine à sous', text: 'Déclenche des tours gratuits', target: 1, reward: 600, xp: 80, on: (t, d) => (t === 'sl' && d.freeTrigger ? 1 : 0) },
+    { id: 'sl_x10', game: 'Machine à sous', text: 'Gagne au moins 10 fois ta mise en un tour', target: 1, reward: 600, xp: 80, on: (t, d) => (t === 'sl' && d.bet > 0 && d.net + d.bet >= 10 * d.bet ? 1 : 0) },
   ];
 
   // ---------- Succès ----------
@@ -111,7 +113,8 @@
     let h = 0;
     for (const c of d) h = (h * 31 + c.charCodeAt(0)) >>> 0;
     const pick = (game) => { const list = CHALLENGES.filter((c) => c.game === game); return list[h % list.length]; };
-    const games = ['Blackjack', 'Poker', 'Roulette'];
+    const all = ['Blackjack', 'Poker', 'Roulette', 'Machine à sous'];
+    const games = all.filter((g, i) => i !== (h >>> 3) % all.length); // 3 jeux sur 4, qui tournent
     const ids = games.map((g) => pick(g).id);
     if (h % 3 === 0) ids[h % 3] = 'any_win1000';
     P.daily = { date: d, list: ids.map((id) => ({ id, progress: 0, done: false, claimed: false })), wonToday: 0 };

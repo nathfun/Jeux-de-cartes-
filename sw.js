@@ -1,5 +1,5 @@
 // Service worker : réseau d'abord (pour toujours avoir la dernière version), cache en secours hors ligne.
-const CACHE = 'casino-v9';
+const CACHE = 'casino-v10';
 const CORE = [
   './', './index.html', './manifest.webmanifest', './pwa.js', './firebase-config.js', './sounds.js', './profile.js', './social.js',
   './icons/icon-192.png', './icons/icon-512.png',
@@ -10,6 +10,7 @@ const CORE = [
   './poker/coach.js', './poker/bots.js', './poker/app.js', './poker/multi.js', './poker/tourney.js',
   './roulette/', './roulette/index.html', './roulette/style.css', './roulette/bets.js', './roulette/wheel.js',
   './roulette/app.js', './roulette/multi.js',
+  './slots/', './slots/index.html', './slots/style.css', './slots/engine.js', './slots/app.js',
 ];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)).then(() => self.skipWaiting()));
