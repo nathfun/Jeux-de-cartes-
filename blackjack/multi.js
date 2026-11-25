@@ -81,7 +81,7 @@
     for (let i = 0; i < SEATS; i++) seats.push(emptySeat());
     return {
       name, creator: me, createdAt: Date.now(), updatedAt: Date.now(),
-      phase: 'betting', shoe: newShoe(), cardSeq: 0, rcBase: 0, shuffles: 0,
+      phase: 'betting', shoe: newShoe(), cardSeq: 0, rcBase: 0, shuffles: 0, started: false,
       seats, dealer: [], turn: null, turnAt: 0, players: {}, round: 0,
       settings: Object.assign(defaultSettings(), settings || {}),
       msg: 'Choisissez vos places et vos mises.',
@@ -166,7 +166,7 @@
   function tagSum(cards) { return cards.reduce((a, c) => a + HiLo.tag(c.rank), 0); }
 
   function opDeal(st) {
-    if (inPlay(st) || st.gameEnd) return false;
+    if (inPlay(st) || st.gameEnd || st.started === false) return false; // salle d'attente : l'hôte n'a pas lancé
     // Les cartes de la main précédente passent dans la défausse (et dans le compte)
     let used = tagSum(st.dealer);
     st.seats.forEach((s) => s.hands.forEach((h) => { used += tagSum(h.cards); }));
@@ -586,6 +586,15 @@
   function renderAll() {
     if (!state || !tableId) return;
     const st = state;
+    if (window.Social && Social.waitingRoom) {
+      const uids = [...new Set([st.creator].concat(Object.keys(st.players || {})))].filter(Boolean);
+      Social.waitingRoom({
+        container: $('mtable'), started: st.started !== false, me, hostUid: st.creator, minPlayers: 1,
+        players: uids.map((u) => ({ uid: u, name: nameOf(u), ready: !!(st.wait && st.wait[u]) })),
+        onReady: (on) => mutate((x) => { x.wait = x.wait || {}; x.wait[me] = on; }),
+        onStart: () => mutate((x) => { if (x.creator !== me) return false; x.started = true; x.betDeadline = null; x.msg = 'C\'est parti ! Misez.'; }),
+      });
+    }
     lobbyTick();
     applyCoach();
     const anim = animating();

@@ -183,6 +183,9 @@
     .ach.secret.locked { border-style: dashed; }
     .pv-chip { width: 22px; height: 22px; border-radius: 50%; border: 3px dashed #fff; display: inline-block; margin: 0 1px; }
     .pv-effect { font-size: 1.3rem; letter-spacing: .1em; }
+    .week-rank { list-style: none; margin: .4rem 0; padding: 0; display: flex; flex-direction: column; gap: .3rem; }
+    .week-rank li { display: flex; justify-content: space-between; background: #141a21; border-radius: 10px; padding: .45rem .7rem; font-size: .9rem; }
+    .week-rank li.me { outline: 1px solid var(--gold); } .week-rank b { color: var(--gold); white-space: nowrap; margin-left: .5rem; }
     .acc-welcome { display: none; text-align: center; }
     .acc-welcome .aw-logo { font-size: 3rem; }
     .acc-welcome h2 { font-size: 1.5rem; margin: .2rem 0 .4rem; }
@@ -383,6 +386,20 @@
       <h2>Parties ouvertes <button id="mp-refresh" class="icon-btn" type="button" aria-label="Actualiser">↻</button></h2>
       <div id="mp-list" class="mp-list"><p class="muted">Chargement…</p></div>
       <p class="muted small-p">🌐 Publique : on rejoint d'un clic. 🔒 Privée : il faut le code donné par l'hôte. Les jetons d'une table ne servent qu'à elle ; à la fin, le classement rapporte sur ta banque (1er +500 €, 2e +200 € ; à deux : +300 € au gagnant).</p>
+    </section>
+
+    <section class="panel" data-tab="multi" aria-label="Tournoi de poker de la semaine">
+      <h2>♚ Tournoi de poker de la semaine <small id="week-end" class="muted" style="font-weight:400;font-size:.8rem"></small></h2>
+      <p class="muted small-p">Chaque partie de poker entre amis rapporte des points : 1er 10 pts, 2e 6 pts, 3e 3 pts, sinon 1 pt. Lundi, le 1er de tes amis reçoit le titre exclusif « Roi du poker de la semaine ».</p>
+      <ol id="week-rank" class="week-rank"></ol>
+      <p><a id="week-play" class="mp-go" href="poker/index.html?multi=create">♠ Créer une table de poker</a></p>
+    </section>
+
+    <section class="panel" data-tab="multi" aria-label="Notifications">
+      <h2>🔔 Notifications</h2>
+      <p class="muted small-p">Reçois une notification quand un ami t'invite, même si l'app est en arrière-plan sur ton téléphone ou ton ordinateur (il faut qu'elle soit restée ouverte : sans serveur payant, une app complètement fermée ne peut pas être réveillée).</p>
+      <button id="notif-btn" type="button" class="bonus-btn">Activer les notifications</button>
+      <p id="notif-state" class="muted small-p"></p>
     </section>
 
     <section class="panel" data-tab="multi" aria-label="Amis">
@@ -854,6 +871,12 @@
         lobbyTimer = setTimeout(refreshLobby, 15000);
       }
       $('mp-refresh').addEventListener('click', refreshLobby);
+      // notifications
+      const notifState = () => { const p = 'Notification' in window ? Notification.permission : 'unsupported';
+        $('notif-state').textContent = p === 'granted' ? '✔ Notifications activées sur cet appareil.' : p === 'denied' ? 'Refusées : réautorise-les dans les réglages du navigateur pour ce site.' : p === 'unsupported' ? 'Ton navigateur ne gère pas les notifications (sur iPhone : ajoute d\'abord l\'app à l\'écran d\'accueil).' : '';
+        $('notif-btn').hidden = p === 'granted' || p === 'unsupported'; };
+      $('notif-btn').addEventListener('click', async () => { if (window.Social) await Social.enableNotifications(); notifState(); });
+      notifState();
       $('mp-join').addEventListener('submit', async (ev) => {
         ev.preventDefault();
         const c = $('mp-code').value.trim().toUpperCase();
@@ -964,7 +987,22 @@
         });
         if (rows.length < 2) { const li = document.createElement('li'); li.className = 'muted'; li.style.display = 'block'; li.textContent = 'Ajoute des amis avec leur code pour vous comparer.'; ol.appendChild(li); }
       }
-      async function refresh() { rows = (await Social.leaderboard()) || []; draw(); }
+      async function refresh() { rows = (await Social.leaderboard()) || []; draw(); renderWeek(rows); if (Casino.checkWeek) Casino.checkWeek(rows); }
+      function renderWeek(list) {
+        const wk = Casino.weekOf(Date.now());
+        const next = new Date(wk + 'T00:00:00'); next.setDate(next.getDate() + 7);
+        $('week-end').textContent = '· fin dans ' + Math.max(1, Math.ceil((next - new Date()) / 864e5)) + ' j';
+        const ol = $('week-rank'); ol.innerHTML = '';
+        const pts = (r) => (r.me ? Casino.pokerWeek().pts : r.pokerWeek && r.pokerWeek.id === wk ? r.pokerWeek.pts : 0);
+        const games = (r) => (r.me ? Casino.pokerWeek().games : r.pokerWeek && r.pokerWeek.id === wk ? r.pokerWeek.games : 0);
+        list.slice().sort((a, b) => pts(b) - pts(a)).forEach((r, k) => {
+          const li = document.createElement('li'); if (r.me) li.className = 'me';
+          li.textContent = (['🥇', '🥈', '🥉'][k] || (k + 1) + '.') + ' ' + (r.avatar || '🎩') + ' ' + (r.me ? 'Toi' : r.pseudo);
+          const b = document.createElement('b'); b.textContent = pts(r) + ' pts · ' + games(r) + ' partie' + (games(r) > 1 ? 's' : ''); li.appendChild(b);
+          ol.appendChild(li);
+        });
+        if (!list.length) { const li = document.createElement('li'); li.className = 'muted'; li.textContent = 'Ajoute des amis pour jouer le tournoi.'; ol.appendChild(li); }
+      }
       document.querySelectorAll('.lb-tabs button').forEach((btn) => btn.addEventListener('click', () => {
         sort = btn.dataset.sort; document.querySelectorAll('.lb-tabs button').forEach((x) => x.classList.toggle('on', x === btn)); draw();
       }));

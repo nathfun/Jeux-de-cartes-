@@ -23,7 +23,7 @@
   // n'acceptent que les mouvements d'argent plausibles (voir database.rules.json)
   const BANK = ONLINE && !SERVER;
   // Réglages propres à l'appareil (jamais envoyés au serveur comme argent)
-  const LOCAL_KEYS = ['equipped', 'settings', 'friends', 'friendCode', 'friendCodeUid', 'myChallenges', 'savedAt', 'adminSeen'];
+  const LOCAL_KEYS = ['equipped', 'settings', 'friends', 'friendCode', 'friendCodeUid', 'myChallenges', 'savedAt', 'adminSeen', 'pokerWeek', 'pokerWeekPrev', 'weekAwarded'];
 
   // ---------- Stockage ----------
   let P = null;
@@ -451,6 +451,34 @@
     },
     // ---------- Boutique et cosmétiques ----------
     SHOP: R.SHOP, SHOP_LABELS: R.SHOP_LABELS, unlocksAt: R.unlocksAt, itemOf: R.itemOf,
+    weekOf: R.weekOf,
+    /** Tournoi de poker de la semaine : points selon la place d'une partie de poker entre amis. */
+    pokerWeekAdd(place, players) {
+      if (SERVER || !(players >= 2)) return 0;
+      load();
+      const w = R.ensureWeek(P, Date.now()), pts = R.weekPoints(place);
+      w.pts += pts; w.games++;
+      save();
+      return pts;
+    },
+    pokerWeek() { load(); return R.ensureWeek(P, Date.now()); },
+    /** Fin de semaine : le 1er des amis (points de la semaine passée) reçoit le titre exclusif, une seule fois. */
+    checkWeek(rows) {
+      load(); R.ensureWeek(P, Date.now());
+      const prev = P.pokerWeekPrev;
+      if (!prev || !prev.pts || (P.weekAwarded || {})[prev.id]) return false;
+      if (R.weekOf(Date.now()) === prev.id) return false;
+      const others = (rows || []).filter((r) => !r.me).map((r) => (r.pokerWeek && r.pokerWeek.id === prev.id ? r.pokerWeek.pts : r.pokerWeekPrev && r.pokerWeekPrev.id === prev.id ? r.pokerWeekPrev.pts : 0));
+      P.weekAwarded = Object.assign({}, P.weekAwarded, { [prev.id]: true });
+      if (prev.pts >= Math.max(0, ...others) && others.some((x) => x > 0)) {
+        P.owned = P.owned || {}; P.owned['title:roi_semaine'] = Date.now();
+        local((N) => R.unlock(P, 'week_king', N));
+        toast('Roi du poker de la semaine !', 'Tu termines 1er avec ' + prev.pts + ' points : titre exclusif débloqué.', '♚', 'gold');
+        return true;
+      }
+      save();
+      return false;
+    },
     SEASON_TIERS: R.SEASON_TIERS, seasonOf: R.seasonOf, seasonTier: R.seasonTier, seasonName: R.seasonName,
     canUse(kind, id) { return R.canUse(load(), kind, id); },
     owns(kind, id) { const it = R.itemOf(kind, id); return !!it && (!it.price || !!(load().owned || {})[kind + ':' + id]); },

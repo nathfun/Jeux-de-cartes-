@@ -302,6 +302,18 @@
     { id: 'diamant', name: 'Diamant', xp: 12000, icon: '💎' },
   ];
   function seasonOf(now) { return dayOf(now).slice(0, 7); }
+  // Semaine du tournoi de poker : identifiée par la date du lundi (heure de Paris)
+  function weekOf(now) {
+    const d = new Date(dayOf(now) + 'T12:00:00Z');
+    d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+    return d.toISOString().slice(0, 10);
+  }
+  const weekPoints = (place) => (place === 1 ? 10 : place === 2 ? 6 : place === 3 ? 3 : 1);
+  function ensureWeek(P, now) {
+    const id = weekOf(now);
+    if (!P.pokerWeek || P.pokerWeek.id !== id) { if (P.pokerWeek && P.pokerWeek.pts) P.pokerWeekPrev = P.pokerWeek; P.pokerWeek = { id, pts: 0, games: 0 }; }
+    return P.pokerWeek;
+  }
   function seasonTier(xp) { let t = null; SEASON_TIERS.forEach((x) => { if (xp >= x.xp) t = x; }); return t; }
   function seasonName(id) { const [y, m] = id.split('-').map(Number); return ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'][m - 1] + ' ' + y; }
   /** Change de saison si besoin : récompenses de la saison finie selon le palier atteint. */
@@ -520,7 +532,7 @@
   }
 
   const api = {
-    SEASON_TIERS, seasonOf, seasonTier, seasonName, ensureSeason,
+    weekOf, weekPoints, ensureWeek, SEASON_TIERS, seasonOf, seasonTier, seasonName, ensureSeason,
     AVATARS, FELTS, BACKS, SHOP, SHOP_LABELS, DEFAULT_EQUIP, itemOf, canUse, buyItem, unlocksAt, CHALLENGES, ACHIEVEMENTS, TIME_PACKS, START_WALLET, GAMES,
     need, levelOf, title, today, fresh, normalize, addXP, unlock, checkWallet, ensureDaily, track,
     bonusInfo, claimBonus, claimChallenge, timeInfo, startTime, claimTime, startSession, cashOut,

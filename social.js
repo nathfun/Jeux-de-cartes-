@@ -135,6 +135,7 @@
       biggestWin: Math.round(p.totals.biggestWin || 0), hands: p.totals.hands, achievements: Object.keys(p.achievements).length,
       code: p.friendCode || null, updatedAt: Date.now(),
       frame: Casino.equipped ? Casino.equipped('frame') : 'none',
+      pokerWeek: Casino.pokerWeek ? Casino.pokerWeek() : null, pokerWeekPrev: p.pokerWeekPrev || null,
       titleName: (() => { const t = Casino.itemOf && Casino.itemOf('title', Casino.equipped('title')); return t && t.id ? t.name : null; })(),
     });
     return true;
@@ -253,6 +254,7 @@
 
   // ---------- Réactions à table ----------
   const EMOJIS = ['😂', '🔥', '😱', '👏', '😡', '🍀', '🤑', '😎'];
+  const QUICK = ['Bien joué !', 'Allez !', 'Bonne chance !', 'Aïe…', 'GG', 'On en refait une ?', 'Trop fort 😎', 'Je reviens'];
   /** Ajoute une barre de réactions ; onSend(emoji) envoie la réaction par le chat de la table. */
   function reactionBar(container, onSend) {
     const bar = document.createElement('div');
@@ -264,6 +266,15 @@
       bar.appendChild(b);
     });
     container.appendChild(bar);
+    // messages rapides : un appui, ils s'affichent chez tout le monde
+    const q = document.createElement('div');
+    q.className = 'quick-bar';
+    QUICK.forEach((t) => {
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = t;
+      b.addEventListener('click', () => onSend(t));
+      q.appendChild(b);
+    });
+    container.appendChild(q);
   }
   const seen = new Set();
   /** Affiche une réaction qui s'envole au-dessus de la page (une fois par message). */
@@ -280,7 +291,7 @@
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 3000);
   }
-  const isReaction = (m) => m && m.reaction && EMOJIS.includes(m.text);
+  const isReaction = (m) => m && m.reaction && (EMOJIS.includes(m.text) || QUICK.includes(m.text));
 
 
 
@@ -338,6 +349,47 @@
     if (/[?&]backend=local\b/.test(location.search)) u.searchParams.set('backend', 'local');
     if (tab) u.hash = tab;
     return u.toString();
+  }
+
+
+  // ---------- Salle d'attente d'une table ----------
+  /**
+   * Affiche la salle d'attente en haut de la table tant que l'hôte n'a pas lancé la partie.
+   * o = { container, started, players: [{ uid, name, ready }], me, hostUid, onReady(on), onStart(), minPlayers }
+   */
+  function waitingRoom(o) {
+    let el = document.getElementById('wait-room');
+    if (o.started) { if (el) el.remove(); return; }
+    if (!el) { el = document.createElement('div'); el.id = 'wait-room'; el.className = 'wait-room'; o.container.prepend(el); }
+    const isHost = o.me === o.hostUid, mine = o.players.find((p) => p.uid === o.me);
+    const ready = o.players.filter((p) => p.ready || p.uid === o.hostUid).length;
+    el.innerHTML = '';
+    const h = document.createElement('div'); h.className = 'wr-title'; h.textContent = '🕐 Salle d\'attente · ' + ready + ' / ' + o.players.length + ' prêt' + (ready > 1 ? 's' : '');
+    const ul = document.createElement('ul');
+    o.players.forEach((p) => {
+      const li = document.createElement('li');
+      li.textContent = (p.uid === o.hostUid ? '👑 ' : '') + p.name + (p.uid === o.me ? ' (toi)' : '');
+      const st = document.createElement('span'); st.textContent = p.uid === o.hostUid ? 'Hôte' : p.ready ? '✅ Prêt' : '⏳ Pas prêt';
+      li.appendChild(st); ul.appendChild(li);
+    });
+    if (!o.players.length) { const li = document.createElement('li'); li.textContent = 'Personne pour l\'instant : invite tes amis avec le code.'; ul.appendChild(li); }
+    const row = document.createElement('div'); row.className = 'wr-btns';
+    if (isHost) {
+      const go = document.createElement('button'); go.type = 'button'; go.className = 'wr-go';
+      const enough = o.players.length >= (o.minPlayers || 1);
+      go.textContent = enough ? '🚀 Lancer la partie' : 'Il faut au moins ' + o.minPlayers + ' joueurs';
+      go.disabled = !enough;
+      go.addEventListener('click', () => { go.disabled = true; o.onStart(); });
+      row.appendChild(go);
+    } else if (mine) {
+      const r = document.createElement('button'); r.type = 'button'; r.className = mine.ready ? '' : 'wr-go';
+      r.textContent = mine.ready ? 'Je ne suis plus prêt' : '✅ Je suis prêt';
+      r.addEventListener('click', () => o.onReady(!mine.ready));
+      row.appendChild(r);
+    }
+    const tip = document.createElement('p'); tip.className = 'wr-tip';
+    tip.textContent = isHost ? 'Tes amis indiquent quand ils sont prêts ; tu lances la partie quand tout le monde est là.' : mine ? 'L\'hôte lance la partie quand tout le monde est prêt.' : 'Installe-toi à la table, puis indique que tu es prêt.';
+    el.append(h, ul, row, tip);
   }
 
   // ---------- Invitations à une table ----------
@@ -422,7 +474,23 @@
     start();
     setInterval(() => { if (b.uid && b.uid !== current) start(); }, 3000); // connexion à un autre compte
   }
+  // Notifications du système (app en arrière-plan) : invitations, tables
+  async function enableNotifications() {
+    if (!('Notification' in window)) return 'unsupported';
+    if (Notification.permission === 'granted') return 'granted';
+    try { return await Notification.requestPermission(); } catch (e) { return 'denied'; }
+  }
+  async function notify(title, body, url) {
+    if (!('Notification' in window) || Notification.permission !== 'granted' || !document.hidden) return false;
+    try {
+      const reg = navigator.serviceWorker && (await navigator.serviceWorker.getRegistration());
+      if (reg) await reg.showNotification(title, { body, icon: new URL('icons/icon-192.png', tableLink('blackjack').replace(/blackjack\/index\.html.*$/, '')).href, data: { url }, tag: 'casino-' + (url || title) });
+      else new Notification(title, { body });
+      return true;
+    } catch (e) { return false; }
+  }
   function inviteCard(b, uid, id, inv) {
+    notify((inv.name || 'Un ami') + ' t\'invite !', 'Table de ' + (GAME_NAMES[inv.game] || 'jeu') + ' · code ' + inv.code, tableLink(inv.game, inv.code));
     const el = document.createElement('div'); el.className = 'invite-card';
     const t = document.createElement('div');
     const strong = document.createElement('b'); strong.textContent = (inv.avatar || '🎩') + ' ' + (inv.name || 'Un ami');
@@ -454,6 +522,16 @@
 .ic-btns { display: flex; gap: .5rem; margin-top: .5rem; }
 .ic-btns button { font: inherit; flex: 1; border-radius: 10px; border: 1px solid #3a4652; background: #2b3540; color: #e8ecef; padding: .45rem; cursor: pointer; }
 .ic-btns .ic-go { background: #3fb950; border-color: #3fb950; color: #06210d; font-weight: 700; }
+.quick-bar { display: flex; gap: .3rem; flex-wrap: wrap; margin-top: .4rem; }
+.quick-bar button { font: inherit; font-size: .8rem; background: #141a21; color: #e8ecef; border: 1px solid #2a333d; border-radius: 999px; padding: .2rem .6rem; cursor: pointer; }
+.reaction-float small { display: block; }
+.wait-room { background: rgba(0,0,0,.45); border: 2px solid #f2c14e; border-radius: 14px; padding: .8rem 1rem; margin-bottom: .6rem; color: #e8ecef; font: 15px system-ui, sans-serif; }
+.wr-title { font-weight: 800; color: #f2c14e; margin-bottom: .4rem; }
+.wait-room ul { list-style: none; margin: 0 0 .6rem; padding: 0; display: flex; flex-direction: column; gap: .3rem; }
+.wait-room li { display: flex; justify-content: space-between; background: rgba(255,255,255,.06); border-radius: 8px; padding: .35rem .6rem; }
+.wr-btns { display: flex; gap: .5rem; } .wr-btns button { font: inherit; font-weight: 700; flex: 1; border-radius: 10px; border: 1px solid #3a4652; background: #2b3540; color: #e8ecef; padding: .6rem; cursor: pointer; }
+.wr-btns .wr-go { background: #f2c14e; color: #222; border-color: #f2c14e; } .wr-btns button:disabled { opacity: .6; }
+.wr-tip { margin: .5rem 0 0; font-size: .82rem; opacity: .75; }
 .reaction-bar { display: flex; gap: .25rem; flex-wrap: wrap; margin-top: .5rem; }
 .reaction-bar button { font-size: 1.25rem; background: #141a21; border: 1px solid #2a333d; border-radius: 10px; padding: .15rem .35rem; cursor: pointer; }
 .reaction-bar button:active { transform: scale(1.2); }
@@ -475,7 +553,7 @@
   window.Social = {
     rng, backend, myCode, publish, lobbyBeat, lobbyRemove, lobbyList, findTable, hubLink, sendInvite, inviteDialog, tableReady, tableLink, wantsTable, listenInvites, friends, addFriendByCode, addFriendUid, removeFriend, leaderboard,
     createChallenge, getChallenge, submitChallenge, challengeLink, showChallengeResult, shareLink,
-    reactionBar, floatReaction, isReaction, EMOJIS,
+    reactionBar, floatReaction, isReaction, EMOJIS, QUICK, waitingRoom, enableNotifications, notify,
   };
   if (window.Casino) setTimeout(() => { listenInvites().catch(() => {}); }, 1200);
 })();

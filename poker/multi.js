@@ -66,7 +66,7 @@
     const st = P.createTable({ sb: settings.sb, bb: settings.bb });
     for (let i = 0; i < SEATS; i++) st.seats.push(emptySeat());
     return Object.assign(st, {
-      name, creator: me, host: me, settings, players: {}, external: true,
+      name, creator: me, host: me, settings, players: {}, external: true, started: false,
       nextHandAt: null, turnDeadline: null, createdAt: now(), updatedAt: now(),
     });
   }
@@ -82,7 +82,7 @@
     if (st.seats[i].owner || mySeatIn(st) >= 0 || gameRunning(st)) return false;
     const bank = st.players[me] && st.players[me].bank;
     st.seats[i] = Object.assign(emptySeat(), { owner: me, name: myName() || 'Joueur', stack: bank > 0 ? bank : st.settings.stack });
-    if (!st.nextHandAt && !handLive(st) && seatedCount(st) >= 2) st.nextHandAt = now() + 4000;
+    if (st.started !== false && !st.nextHandAt && !handLive(st) && seatedCount(st) >= 2) st.nextHandAt = now() + 4000;
   }
   function opLeaveSeat(st) {
     const i = mySeatIn(st);
@@ -381,6 +381,12 @@
 
   function render() {
     if (!pub || !tableId) return;
+    if (window.Social && Social.waitingRoom) Social.waitingRoom({
+      container: $('pm-table'), started: pub.started !== false, me, hostUid: pub.host, minPlayers: 2,
+      players: pub.seats.filter((x) => x.owner).map((x) => ({ uid: x.owner, name: x.name || 'Joueur', ready: !!(pub.wait && pub.wait[x.owner]) })),
+      onReady: (on) => act((x) => { x.wait = x.wait || {}; x.wait[me] = on; }),
+      onStart: () => act((x) => { if (x.host !== me) return false; x.started = true; if (!handLive(x) && seatedCount(x) >= 2) x.nextHandAt = now() + 3000; }),
+    });
     document.body.classList.toggle('no-coach', !coachOn());
     const st = pub;
     lobbyTick();
@@ -507,6 +513,7 @@
       const nPlayers = (st.tstats.eliminated || []).length + 1;
       const myPlace = won ? 1 : myElim ? myElim.place : 0;
       const prize = myPlace && window.Casino ? Casino.prizeFor(myPlace, nPlayers) : 0;
+      if (myPlace && window.Casino && Casino.pokerWeekAdd) Casino.pokerWeekAdd(myPlace, nPlayers); // tournoi de la semaine
       if (prize !== null && myPlace && window.Casino) Casino.multiPrize('pk:' + tableId + ':' + g.at, myPlace, nPlayers, { game: 'poker', table: tableId });
       setTimeout(() => PokerApp.showRecap({
         won, T: st.tstats, winnerKey: g.winner, winnerName: g.name, meKey: me, blinds: g.blinds,

@@ -33,7 +33,7 @@
     return x;
   }
   function initial(name, settings) {
-    return { name, creator: me, settings, phase: 'waiting', round: 0, history: [], players: {}, bets: {}, createdAt: now(), updatedAt: now() };
+    return { name, creator: me, settings, started: false, phase: 'waiting', round: 0, history: [], players: {}, bets: {}, createdAt: now(), updatedAt: now() };
   }
   const total = (bets) => Object.values(bets || {}).reduce((a, b) => a + b, 0);
   const canBet = (x) => x.phase === 'waiting' || x.phase === 'betting';
@@ -47,6 +47,7 @@
   }
   function opBet(key, amount) {
     return (x) => {
+      if (x.started === false) return false; // salle d'attente : l'hôte n'a pas lancé
       const p = x.players[me];
       if (!p || p.out || !canBet(x) || p.bankroll < amount) return false;
       if (B.room(key, x.bets[me] && x.bets[me][key]) < amount) return false; // limite de table
@@ -251,6 +252,12 @@
 
   function render() {
     if (!st || !tableId) return;
+    if (window.Social && Social.waitingRoom) Social.waitingRoom({
+      container: $('game'), started: st.started !== false, me, hostUid: st.creator, minPlayers: 1,
+      players: Object.keys(st.players || {}).map((u) => ({ uid: u, name: st.players[u].name || 'Joueur', ready: !!(st.wait && st.wait[u]) })),
+      onReady: (on) => act((x) => { x.wait = x.wait || {}; x.wait[me] = on; }),
+      onStart: () => act((x) => { if (x.creator !== me) return false; x.started = true; }),
+    });
     lobbyTick();
     document.body.classList.toggle('no-coach', !coachOn());
     $('opt-info').checked = coachOn();
