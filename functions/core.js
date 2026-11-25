@@ -13,6 +13,7 @@
 const R = require('./shared/casino-rules.js');
 const B = require('./shared/bets.js');
 const SL = require('./shared/slots-engine.js');
+const CR = require('./shared/crash-engine.js');
 const ST = require('./shared/strategy.js');
 const SB = require('./shared/sidebets.js');
 const PK = require('./poker.js');
@@ -181,6 +182,86 @@ function bj(sess, secret, rnd, out) {
   return bjEngine(sess, secret.bj, rnd, out);
 }
 
+
+// ---------- Rocket Crash ----------
+// Seeds « Provably Fair » propres à chaque joueur : l'empreinte est publiée, le seed révélé au changement.
+function crashSeeds(S, rnd) {
+  if (!S.cr || !S.cr.seed) {
+    const seed = Array.from({ length: 32 }, () => rnd(256).toString(16).padStart(2, '0')).join('');
+    S.cr = Object.assign(S.cr || {}, { seed, hash: CR.sha256Sync(seed), client: S.cr && S.cr.client || 'casino', nonce: 0 });
+  }
+  return S.cr;
+}
+// Règle une manche terminée (ou interrompue) : retrait automatique s'il a été atteint, sinon mise perdue. Une seule fois.
+function crashFinish(P, r, track) {
+  if (!r || r.done) return;
+  r.done = true;
+  if (!r.bet || r.cashed) return;
+  if (r.auto && r.auto <= r.crash && r.crash > 1) crashPay(P, r, r.auto, track);
+  else track('cr', { bet: r.bet, net: -r.bet, mult: 0 });
+}
+function crashPay(P, r, m, track) {
+  if (r.cashed) return;
+  const res = CR.settle(r.bet, Math.min(m, CR.maxWinMult(r.bet)), r.crash);
+  if (!res.won) return;
+  r.cashed = true; r.cashAt = Math.min(m, CR.maxWinMult(r.bet)); r.payout = res.payout;
+  if (P.sessions.crash) P.sessions.crash.stack = round2(P.sessions.crash.stack + res.payout);
+  track('cr', { bet: r.bet, net: res.net, mult: r.cashAt });
+}
+function crashOp(P, S, ctx, sess, track, fail) {
+  const d = ctx.data || {}, now = ctx.now;
+  const C = crashSeeds(S, ctx.rnd);
+  const r = C.round;
+  const bustAt = (x) => x.startAt + CR.timeFor(x.crash);
+  if (ctx.op === 'cr.seed') {
+    if (r && !r.done) fail('Attends la fin de la manche.');
+    const prev = { server: C.seed, client: C.client, nonce: C.nonce };
+    S.cr = { client: String(d.client || C.client).slice(0, 32) || 'casino' };
+    const N = crashSeeds(S, ctx.rnd);
+    return { hash: N.hash, client: N.client, nonce: N.nonce, prev };
+  }
+  if (ctx.op === 'cr.round') {
+    if (r && !r.done) {
+      if (r.bet && !r.cashed && now < bustAt(r)) fail('Une manche est encore en cours.');
+      crashFinish(P, r, track);
+    }
+    const bet = int(d.bet || 0);
+    const auto = Number(d.auto) >= 1.01 ? CR.floor2(Number(d.auto)) : 0;
+    if (bet) {
+      const ss = sess('crash');
+      if (!(bet >= CR.CONFIG.MIN_BET && bet <= CR.CONFIG.MAX_BET)) fail('Mise entre ' + CR.CONFIG.MIN_BET + ' et ' + CR.CONFIG.MAX_BET + ' €.');
+      if (bet > ss.stack) fail('Pas assez d\'argent sur la table.');
+      ss.stack = round2(ss.stack - bet);
+    }
+    C.nonce++;
+    const crash = CR.crashFromSeedsSync(C.seed, C.client, C.nonce);
+    C.round = { id: String(C.nonce), bet, auto, crash, startAt: now + CR.CONFIG.LAUNCH_MS, cashed: false, done: false };
+    return { id: C.round.id, startAt: C.round.startAt, serverNow: now, hash: C.hash, nonce: C.nonce, stack: P.sessions.crash ? P.sessions.crash.stack : 0 };
+  }
+  if (!r || r.id !== String(d.id)) fail('Manche inconnue.');
+  const stackNow = () => (P.sessions.crash ? P.sessions.crash.stack : 0);
+  const over = now >= bustAt(r);
+  if (ctx.op === 'cr.cashout') {
+    if (!r.bet) fail('Pas de mise sur cette manche.');
+    if (r.cashed) return { cashAt: r.cashAt, payout: r.payout, stack: stackNow(), again: true }; // déjà payé : rien de plus
+    if (now < r.startAt) fail('La fusée n\'a pas encore décollé.');
+    if (over || r.done) { crashFinish(P, r, track); return r.cashed ? { cashAt: r.cashAt, payout: r.payout, stack: stackNow() } : { busted: true, crash: r.crash, stack: stackNow() }; }
+    let m = CR.multiplierAt(now - r.startAt);
+    if (r.auto && m >= r.auto) m = r.auto; // le retrait automatique est passé avant
+    crashPay(P, r, m, track);
+    return { cashAt: r.cashAt, payout: r.payout, stack: stackNow() };
+  }
+  // cr.status : l'explosion n'est révélée qu'une fois passée
+  if (!over && !r.done) {
+    const m = CR.multiplierAt(now - r.startAt);
+    if (r.bet && !r.cashed && r.auto && m >= r.auto) crashPay(P, r, r.auto, track);
+    if (r.bet && !r.cashed && m >= CR.maxWinMult(r.bet)) crashPay(P, r, CR.maxWinMult(r.bet), track);
+    return { busted: false, m, cashed: r.cashed, cashAt: r.cashAt, payout: r.payout, stack: stackNow() };
+  }
+  crashFinish(P, r, track);
+  return { busted: true, crash: r.crash, cashed: r.cashed, cashAt: r.cashAt, payout: r.payout, stack: stackNow(), nonce: C.nonce };
+}
+
 // ---------- Opérations ----------
 function handle(state, ctx) {
   const now = ctx.now, N = [];
@@ -217,7 +298,7 @@ function handle(state, ctx) {
         if (game === 'slots' && S.sl) { result.free = S.sl.free; result.freeBet = S.sl.freeBet; }
         result.session = P.sessions[game]; result.resumed = true; break;
       }
-      const min = game === 'blackjack' ? MIN_BET : game === 'slots' ? 10 : 1;
+      const min = game === 'blackjack' ? MIN_BET : game === 'slots' ? 10 : 1; // crash : 1 €
       if (!(int(d.amount) >= min)) fail('Il faut apporter au moins ' + min + ' €.');
       if (!R.startSession(P, game, d.amount, now)) fail('Ta banque ne contient pas assez d\'argent.');
       result.session = P.sessions[game];
@@ -233,6 +314,11 @@ function handle(state, ctx) {
       }
       if (game === 'slots' && S.sl && S.sl.free > 0) fail('Termine d\'abord tes tours gratuits.');
       if (game === 'poker') fail('Au poker, la partie se termine à la fin du tournoi.');
+      if (game === 'crash' && S.cr && S.cr.round && !S.cr.round.done) {
+        const r = S.cr.round;
+        if (r.bet && !r.cashed && now < r.startAt + CR.timeFor(r.crash)) fail('Attends la fin de la manche.');
+        crashFinish(P, r, track);
+      }
       const startStack = P.sessions[game].start, endStack = P.sessions[game].stack;
       result.cash = R.cashOut(P, game, N);
       if (game === 'roulette') track('rl-cashout', { diff: endStack - startStack });
@@ -280,6 +366,12 @@ function handle(state, ctx) {
       if (res.freeSpins) { if (!free) S.sl.freeBet = bet; S.sl.free += res.freeSpins; }
       track('sl', { bet: free ? 0 : bet, net: res.total - (free ? 0 : bet), jackpot: res.jackpot, freeTrigger: res.freeSpins > 0 });
       result = { grid, res, free: S.sl.free, freeBet: S.sl.freeBet, stack: ss.stack };
+      break;
+    }
+
+    // ----- Rocket Crash : le serveur tire la manche, encaisse la mise et juge chaque retrait -----
+    case 'cr.round': case 'cr.cashout': case 'cr.status': case 'cr.seed': {
+      result = crashOp(P, S, ctx, sess, track, fail);
       break;
     }
 

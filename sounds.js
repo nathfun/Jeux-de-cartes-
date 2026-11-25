@@ -12,7 +12,7 @@
  */
 (function () {
   'use strict';
-  let ctx = null, noise = null, master = null;
+  let ctx = null, noise = null, master = null, rocket = null;
   let enabled = true;
   try { enabled = localStorage.getItem('sfx-on') !== '0'; } catch (e) { /* ignore */ }
 
@@ -143,6 +143,55 @@
       const t = ctx.currentTime, v = Math.max(0.05, vol || 0.6);
       noiseBurst(t, 3800, 2, 0.45 * v, 0.025);
       tone(t, 2200 + Math.random() * 600, 'triangle', 0.12 * v, 0.001, 0.04);
+    },
+    // ---------- Rocket Crash ----------
+    /** Moteur de la fusée : grondement (bruit filtré) + bourdonnement grave, qui montent avec le multiplicateur. */
+    engineStart() {
+      if (!ac() || rocket) return;
+      const t = ctx.currentTime;
+      const src = ctx.createBufferSource(); src.buffer = noise; src.loop = true;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 380; lp.Q.value = 0.8;
+      const osc = ctx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 48;
+      const og = ctx.createGain(); og.gain.value = 0.05;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.32, t + 0.6);
+      src.connect(lp); lp.connect(g); osc.connect(og); og.connect(lp); g.connect(master);
+      src.start(t); osc.start(t);
+      rocket = { src, lp, osc, g };
+    },
+    engineSet(m) {
+      if (!rocket || !ctx) return;
+      const t = ctx.currentTime, k = Math.min(1, Math.log(Math.max(1, m)) / Math.log(20));
+      rocket.lp.frequency.setTargetAtTime(380 + 1500 * k, t, 0.15);
+      rocket.osc.frequency.setTargetAtTime(48 + 70 * k, t, 0.15);
+      rocket.g.gain.setTargetAtTime(0.32 + 0.18 * k, t, 0.2);
+    },
+    engineStop(fast) {
+      if (!rocket || !ctx) return;
+      const r = rocket; rocket = null;
+      const t = ctx.currentTime, d = fast ? 0.08 : 0.6;
+      r.g.gain.cancelScheduledValues(t); r.g.gain.setValueAtTime(r.g.gain.value || 0.3, t); r.g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      r.src.stop(t + d + 0.05); r.osc.stop(t + d + 0.05);
+    },
+    /** Explosion : souffle filtré qui s'éteint + coup sourd. */
+    explosion() {
+      buzz([90, 40, 160]);
+      if (!ac()) return;
+      const t = ctx.currentTime;
+      const src = ctx.createBufferSource(); src.buffer = noise; src.loop = true;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass';
+      lp.frequency.setValueAtTime(4200, t); lp.frequency.exponentialRampToValueAtTime(90, t + 1.6);
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.9, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.8);
+      src.connect(lp); lp.connect(g); g.connect(master); src.start(t); src.stop(t + 1.9);
+      tone(t, 120, 'sine', 0.7, 0.005, 0.9, 28);
+      tone(t + 0.05, 70, 'triangle', 0.4, 0.01, 1.1, 22);
+    },
+    /** Retrait réussi : « cha-ching » brillant. */
+    cashout() {
+      buzz([20, 25, 40]);
+      if (!ac()) return;
+      const t = ctx.currentTime;
+      [1318.5, 1760, 2637].forEach((f, k) => { tone(t + k * 0.06, f, 'triangle', 0.2, 0.004, 0.4); tone(t + k * 0.06, f * 1.5, 'sine', 0.05, 0.004, 0.3); });
+      noiseBurst(t + 0.12, 7000, 4, 0.12, 0.25);
     },
     /** Annonce vocale (voix féminine française par défaut). */
     say(text, lang) { if (enabled) speak(text, lang || 'fr-FR'); },

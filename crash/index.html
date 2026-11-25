@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Rocket Crash</title>
+  <meta name="theme-color" content="#070a1f">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+  <script src="../firebase-config.js"></script>
+  <script src="../gate.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1><a id="home-link" class="home-link" href="../index.html" hidden aria-label="Retour au casino">←</a> 🚀 Rocket Crash</h1>
+    <div class="bank">
+      <span id="bank-label">Banque</span> : <strong id="wallet">–</strong> €
+      <button id="music-toggle" class="ghost icon-btn" type="button">🎵</button><button id="sound-toggle" class="ghost icon-btn" type="button">🔊</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <div class="main-col">
+      <section id="setup" class="glass setup">
+        <h2>🚀 Rocket Crash</h2>
+        <p class="muted">La fusée décolle, le multiplicateur grimpe… et elle explose à un moment imprévisible. Retire ta mise avant l'explosion pour la multiplier !</p>
+        <div id="mode-picker"></div>
+      </section>
+
+      <section id="game" class="game" hidden>
+        <div id="mode-badge" class="mode-badge" hidden></div>
+        <!-- Historique des derniers multiplicateurs -->
+        <div id="history" class="history" aria-label="Derniers multiplicateurs"></div>
+
+        <!-- Zone de jeu -->
+        <div id="stage" class="stage">
+          <canvas id="scene" aria-hidden="true"></canvas>
+          <div class="hud">
+            <div id="state-label" class="state-label">Préparation…</div>
+            <div id="mult" class="mult">1.00×</div>
+            <div id="sub" class="sub"></div>
+          </div>
+          <div id="toast" class="stage-toast" hidden></div>
+        </div>
+
+        <!-- Panneau de contrôle -->
+        <div class="controls glass">
+          <div class="bet-side">
+            <label class="field">
+              <span>Mise</span>
+              <div class="bet-input">
+                <button id="bet-half" type="button" aria-label="Diviser la mise par deux">½</button>
+                <input id="bet" type="number" min="1" max="500" step="1" value="10" inputmode="numeric" aria-label="Montant de la mise">
+                <button id="bet-double" type="button" aria-label="Doubler la mise">×2</button>
+              </div>
+            </label>
+            <div class="quick" id="quick">
+              <button type="button" data-v="1">1 €</button><button type="button" data-v="5">5 €</button><button type="button" data-v="10">10 €</button>
+              <button type="button" data-v="25">25 €</button><button type="button" data-v="50">50 €</button><button type="button" data-v="100">100 €</button>
+            </div>
+            <label class="field auto">
+              <span>Retrait auto à</span>
+              <div class="auto-row">
+                <input id="auto" type="number" min="1.01" step="0.01" placeholder="ex. 2.00" inputmode="decimal" aria-label="Retrait automatique au multiplicateur">
+                <span class="x">×</span>
+              </div>
+            </label>
+          </div>
+          <div class="action-side">
+            <div class="potential"><span>Gain potentiel</span><b id="potential">–</b></div>
+            <button id="bet-btn" class="btn-bet" type="button">PARIER</button>
+            <button id="cash-btn" class="btn-cash" type="button" hidden>RETIRER</button>
+            <div class="balance"><span id="stack-label">Sur la table</span><b id="stack">–</b></div>
+            <button id="end-btn" class="btn-ghost" type="button">Encaisser et quitter</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="side">
+      <section id="aides" class="glass">
+        <h2>🎓 Aides</h2>
+        <div id="aides-body" class="aides-body"></div>
+      </section>
+      <section class="glass">
+        <h2>Tes statistiques <small id="stats-mode" class="muted"></small></h2>
+        <div class="stats">
+          <div class="stat"><span id="s-rounds">0</span><small>Manches jouées</small></div>
+          <div class="stat"><span id="s-wagered">0 €</span><small>Misé</small></div>
+          <div class="stat"><span id="s-won">0 €</span><small>Gagné</small></div>
+          <div class="stat"><span id="s-net">0 €</span><small>Bénéfice</small></div>
+        </div>
+        <p class="muted small" id="s-best"></p>
+        <h3>Tes dernières mises</h3>
+        <ol id="my-bets" class="my-bets"><li class="muted">Aucune mise pour l'instant.</li></ol>
+      </section>
+      <details class="glass fair">
+        <summary><h2>🔐 Équité vérifiable</h2></summary>
+        <p class="small muted">Chaque manche est tirée par HMAC-SHA256(<i>server seed</i>, « <i>client seed</i>:<i>nonce</i> »). L'empreinte du server seed est publiée avant de jouer ; le seed est révélé quand tu en changes, pour que tu puisses vérifier toutes les manches passées.</p>
+        <div class="fair-grid">
+          <span>Empreinte du server seed</span><code id="pf-hash">–</code>
+          <span>Client seed</span><div class="pf-client"><input id="pf-client" maxlength="32" aria-label="Client seed"><button id="pf-rotate" type="button">Changer de seeds</button></div>
+          <span>Nonce (manche)</span><code id="pf-nonce">0</code>
+          <span>Ancien server seed</span><code id="pf-prev">–</code>
+        </div>
+        <div class="pf-verify">
+          <input id="pf-v-seed" placeholder="server seed" aria-label="Server seed à vérifier">
+          <input id="pf-v-client" placeholder="client seed" aria-label="Client seed à vérifier">
+          <input id="pf-v-nonce" placeholder="nonce" inputmode="numeric" aria-label="Nonce à vérifier">
+          <button id="pf-check" type="button">Vérifier</button>
+          <b id="pf-result"></b>
+        </div>
+        <p id="pf-note" class="small muted"></p>
+      </details>
+    </aside>
+  </main>
+
+  <script src="../sounds.js"></script>
+  <script src="../casino-rules.js"></script>
+  <script src="../profile.js"></script>
+  <script src="../account.js"></script>
+  <script src="engine.js"></script>
+  <script src="scene.js"></script>
+  <script src="app.js"></script>
+  <script src="../pwa.js"></script>
+</body>
+</html>

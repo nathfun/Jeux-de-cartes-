@@ -37,7 +37,10 @@
     { id: 'rl_spins10', game: 'Roulette', text: 'Joue 10 tours de roulette', target: 10, reward: 300, xp: 50, on: (t, d) => (t === 'rl' && d.staked > 0 ? 1 : 0) },
     { id: 'rl_plein', game: 'Roulette', text: 'Touche un plein à la roulette', target: 1, reward: 700, xp: 90, on: (t, d) => (t === 'rl' && d.pleinHit ? 1 : 0) },
     { id: 'rl_win200', game: 'Roulette', text: 'Gagne au moins 200 € en un seul tour', target: 1, reward: 500, xp: 70, on: (t, d) => (t === 'rl' && d.net >= 200 ? 1 : 0) },
-    { id: 'any_win1000', game: 'Tous les jeux', text: 'Gagne 1 000 € au total aujourd\'hui', target: 1000, reward: 600, xp: 80, on: (t, d) => (['bj', 'rl', 'sl'].includes(t) && d.net > 0 ? d.net : 0) },
+    { id: 'any_win1000', game: 'Tous les jeux', text: 'Gagne 1 000 € au total aujourd\'hui', target: 1000, reward: 600, xp: 80, on: (t, d) => (['bj', 'rl', 'sl', 'cr'].includes(t) && d.net > 0 ? d.net : 0) },
+    { id: 'cr_rounds15', game: 'Rocket Crash', text: 'Joue 15 manches de Rocket Crash', target: 15, reward: 300, xp: 50, on: (t) => (t === 'cr' ? 1 : 0) },
+    { id: 'cr_x3', game: 'Rocket Crash', text: 'Retire ta mise à ×3 ou plus', target: 1, reward: 500, xp: 70, on: (t, d) => (t === 'cr' && d.mult >= 3 ? 1 : 0) },
+    { id: 'cr_wins5', game: 'Rocket Crash', text: 'Réussis 5 retraits avant l\'explosion', target: 5, reward: 400, xp: 60, on: (t, d) => (t === 'cr' && d.mult > 0 ? 1 : 0) },
     { id: 'sl_spins20', game: 'Machine à sous', text: 'Fais 20 tours de machine à sous', target: 20, reward: 300, xp: 50, on: (t) => (t === 'sl' ? 1 : 0) },
     { id: 'sl_free', game: 'Machine à sous', text: 'Déclenche des tours gratuits', target: 1, reward: 600, xp: 80, on: (t, d) => (t === 'sl' && d.freeTrigger ? 1 : 0) },
     { id: 'sl_x10', game: 'Machine à sous', text: 'Gagne au moins 10 fois ta mise en un tour', target: 1, reward: 600, xp: 80, on: (t, d) => (t === 'sl' && d.bet > 0 && d.net + d.bet >= 10 * d.bet ? 1 : 0) },
@@ -56,6 +59,7 @@
     { id: 'rl_zero', icon: '0️⃣', name: 'Ami du zéro', text: 'Gagner une mise sur le 0' },
     { id: 'rl_cashout', icon: '💰', name: 'Savoir s\'arrêter', text: 'Encaisser à la roulette avec +1 000 €' },
     { id: 'big_win', icon: '🤑', name: 'Gros gain', text: 'Gagner 10 fois sa mise en un coup' },
+    { id: 'rocket10', icon: '🚀', name: 'Dans les étoiles', text: 'Retirer à ×10 ou plus à Rocket Crash' },
     { id: 'jackpot', icon: '🎰', name: 'Jackpot', text: 'Décrocher le jackpot à la machine à sous' },
     { id: 'friends', icon: '🤝', name: 'Entre potes', text: 'Jouer une partie entre amis' },
     { id: 'daily7', icon: '📅', name: 'Fidèle', text: 'Venir 7 jours d\'affilée' },
@@ -75,7 +79,7 @@
   ];
 
   const START_WALLET = 10000;
-  const GAMES = { blackjack: 'Blackjack', poker: 'Poker', roulette: 'Roulette', slots: 'Machine à sous' };
+  const GAMES = { blackjack: 'Blackjack', poker: 'Poker', roulette: 'Roulette', slots: 'Machine à sous', crash: 'Rocket Crash' };
   const pad = (n) => String(n).padStart(2, '0');
   // Date du jour (et de la veille) à l'heure de Paris : les défis et le bonus changent à minuit
   function dayOf(ms) {
@@ -136,7 +140,7 @@
     let h = 0;
     for (const c of d) h = (h * 31 + c.charCodeAt(0)) >>> 0;
     const pick = (game) => { const list = CHALLENGES.filter((c) => c.game === game); return list[h % list.length]; };
-    const all = ['Blackjack', 'Poker', 'Roulette', 'Machine à sous'];
+    const all = ['Blackjack', 'Poker', 'Roulette', 'Machine à sous', 'Rocket Crash'];
     const games = all.filter((g, i) => i !== (h >>> 3) % all.length);
     const ids = games.map((g) => pick(g).id);
     if (h % 3 === 0) ids[h % 3] = 'any_win1000';
@@ -152,7 +156,7 @@
   function track(P, type, d, now, N) {
     d = d || {};
     const T = P.totals;
-    const isRound = ['bj', 'pk', 'rl', 'sl'].includes(type);
+    const isRound = ['bj', 'pk', 'rl', 'sl', 'cr'].includes(type);
     if (isRound) {
       T.hands++;
       addXP(P, 5, N);
@@ -177,6 +181,7 @@
     if (type === 'pk-tourney') { addXP(P, d.place === 1 ? 150 : 40, N); if (d.place === 1) unlock(P, 'pk_champion', N); }
     if (type === 'rl') { T.rlSpins++; if (d.pleinHit) unlock(P, 'rl_plein', N); if (d.zeroWin) unlock(P, 'rl_zero', N); }
     if (type === 'rl-cashout' && d.diff >= 1000) unlock(P, 'rl_cashout', N);
+    if (type === 'cr') { T.crRounds = (T.crRounds || 0) + 1; if (d.mult >= 10) unlock(P, 'rocket10', N); }
     if (type === 'sl') { T.slSpins++; if (d.jackpot) unlock(P, 'jackpot', N); }
     if (type === 'multi') { unlock(P, 'friends', N); addXP(P, 20, N); }
     if (isRound && d.bet > 0 && d.net >= d.bet * 9) unlock(P, 'big_win', N);

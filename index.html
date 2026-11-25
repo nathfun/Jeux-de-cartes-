@@ -52,6 +52,13 @@
       box-shadow: inset 0 0 0 14px rgba(90,52,22,.0), 0 3px 8px rgba(0,0,0,.4); position: relative; }
     .mini-wheel::after { content: ""; position: absolute; inset: 30%; border-radius: 50%; background: radial-gradient(circle at 40% 40%, #9a6a3a, #3a1f0b); border: 2px solid #c9a24a; }
     @media (prefers-reduced-motion: no-preference) { a.game:hover .mini-wheel { animation: spin 2s linear infinite; } }
+    .game.crash { background: radial-gradient(ellipse at 70% 10%, #2a1a6e 0%, #0b1440 55%, #050816 100%); border-color: #4c1d95; }
+    .game.crash h2 { background: linear-gradient(90deg, #a78bfa, #22d3ee); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .mini-rocket { margin-top: auto; display: flex; align-items: center; gap: .6rem; }
+    .mr-mult { font-weight: 900; font-size: 1.6rem; color: #fff; text-shadow: 0 0 16px rgba(34,211,238,.7); }
+    .mr-rocket { font-size: 2rem; transform: rotate(-10deg); }
+    @media (prefers-reduced-motion: no-preference) { a.game.crash:hover .mr-rocket { animation: lift 1s ease-in-out infinite alternate; } }
+    @keyframes lift { to { transform: translate(6px, -8px) rotate(-10deg); } }
     .mini-reels { display: flex; gap: .3rem; margin-top: auto; }
     .mini-reels span { width: 44px; height: 56px; display: grid; place-items: center; font-size: 1.6rem; background: linear-gradient(#ddd, #fff 30%, #fff 70%, #ccc); border-radius: 6px; border: 2px solid #c9a24a; }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -259,6 +266,12 @@
         <p>Roulette européenne avec une vraie roue et sa bille, « Faites vos jeux » et « Rien ne va plus ». Les aides t'expliquent chaque mise et ses chances.</p>
         <div class="tags"><span>Solo + aides</span><span>Entre amis</span><span>Règles françaises</span></div>
         <div class="mini-wheel" aria-hidden="true"></div>
+      </a>
+      <a class="game crash" href="crash/index.html">
+        <h2>Rocket Crash</h2>
+        <p>La fusée décolle, le multiplicateur s'envole… retire ta mise avant l'explosion ! Retrait automatique, historique et équité vérifiable.</p>
+        <div class="tags"><span>Nouveau</span><span>Multiplicateur</span><span>RTP 97 %</span></div>
+        <div class="mini-rocket" aria-hidden="true"><span class="mr-mult">2.47×</span><span class="mr-rocket">🚀</span></div>
       </a>
       <a class="game slots" href="slots/index.html">
         <h2>Machine à sous</h2>

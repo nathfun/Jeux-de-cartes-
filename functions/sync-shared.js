@@ -7,6 +7,7 @@ const files = {
   'casino-rules.js': 'casino-rules.js',
   'roulette/bets.js': 'bets.js',
   'slots/engine.js': 'slots-engine.js',
+  'crash/engine.js': 'crash-engine.js',
   'blackjack/strategy.js': 'strategy.js',
   'blackjack/sidebets.js': 'sidebets.js',
   'poker/eval.js': 'eval.js',

@@ -153,7 +153,7 @@
           ".validate": "newData.isNumber() && newData.val() >= 0"
         },
         "g": {
-          ".validate": "newData.val().matches(/^(blackjack|poker|roulette|slots)$/)"
+          ".validate": "newData.val().matches(/^(blackjack|poker|roulette|slots|crash)$/)"
         },
         "bonus": {
           ".validate": "newData.isNumber() && (newData.val() === data.val() || newData.parent().child('why').val() === 'bonus')"
