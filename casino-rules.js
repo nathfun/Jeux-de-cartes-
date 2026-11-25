@@ -85,6 +85,17 @@
     { id: 'arcenciel', name: 'Arc-en-ciel', level: 20, price: 20000, body: ['#f472b6', '#facc15', '#22d3ee'], nose: '#a855f7', fin: '#22c55e', flame: ['#fef08a', '#f472b6'] },
     { id: 'galactique', name: 'Galactique', level: 30, price: 40000, body: ['#1e1b4b', '#7c3aed', '#020617'], nose: '#22d3ee', fin: '#f0abfc', flame: ['#f5d0fe', '#a855f7'] },
   ];
+  // Billes du Plinko : cœur, reflet et halo
+  const BALLS = [
+    { id: 'classique', name: 'Néon rose', level: 1, price: 0, c: ['#f472b6', '#fff0f7', '#ec4899'] },
+    { id: 'cyan', name: 'Cyan', level: 2, price: 1500, c: ['#22d3ee', '#ecfeff', '#06b6d4'] },
+    { id: 'or', name: 'Or', level: 5, price: 4000, c: ['#fbbf24', '#fffbeb', '#f59e0b'] },
+    { id: 'emeraude', name: 'Émeraude', level: 8, price: 6000, c: ['#34d399', '#ecfdf5', '#10b981'] },
+    { id: 'plasma', name: 'Plasma', level: 11, price: 9000, c: ['#a78bfa', '#f5f3ff', '#7c3aed'] },
+    { id: 'braise', name: 'Braise', level: 15, price: 12000, c: ['#fb923c', '#fff7ed', '#ef4444'] },
+    { id: 'perle', name: 'Perle', level: 19, price: 18000, c: ['#e2e8f0', '#ffffff', '#94a3b8'] },
+    { id: 'nebuleuse', name: 'Nébuleuse', level: 28, price: 35000, c: ['#f0abfc', '#ffffff', '#22d3ee'] },
+  ];
   // Titres affichés sous le pseudo (et dans le classement)
   const TITLES = [
     { id: '', name: 'Titre du niveau', level: 1, price: 0 },
@@ -137,9 +148,9 @@
     { id: 'saison_or', name: 'Saison or', level: 1, price: 0, exclusive: 'Saison : palier or' },
     { id: 'saison_diamant', name: 'Saison diamant', level: 1, price: 0, exclusive: 'Saison : palier diamant' },
     { id: 'roi_semaine', name: 'Roi du poker de la semaine', level: 1, price: 0, exclusive: 'Tournoi de poker de la semaine : 1re place' });
-  const SHOP = { felt: FELTS, back: BACKS, avatar: AVATAR_ITEMS, frame: FRAMES, rocket: ROCKETS, title: TITLES, theme: THEMES, chips: CHIPS, effect: EFFECTS };
-  const SHOP_LABELS = { felt: 'Tapis', back: 'Dos de cartes', avatar: 'Avatars', frame: 'Cadres', rocket: 'Fusées', title: 'Titres', theme: 'Thèmes', chips: 'Jetons', effect: 'Effets de victoire' };
-  const DEFAULT_EQUIP = { felt: 'vert', back: 'bleu', frame: 'none', rocket: 'classique', title: '', theme: 'classique', chips: 'classique', effect: 'pieces' };
+  const SHOP = { felt: FELTS, back: BACKS, avatar: AVATAR_ITEMS, frame: FRAMES, rocket: ROCKETS, ball: BALLS, title: TITLES, theme: THEMES, chips: CHIPS, effect: EFFECTS };
+  const SHOP_LABELS = { felt: 'Tapis', back: 'Dos de cartes', avatar: 'Avatars', frame: 'Cadres', rocket: 'Fusées', ball: 'Billes', title: 'Titres', theme: 'Thèmes', chips: 'Jetons', effect: 'Effets de victoire' };
+  const DEFAULT_EQUIP = { felt: 'vert', back: 'bleu', frame: 'none', rocket: 'classique', ball: 'classique', title: '', theme: 'classique', chips: 'classique', effect: 'pieces' };
   const itemOf = (kind, id) => (SHOP[kind] || []).find((x) => x.id === id) || null;
   const ownKey = (kind, id) => kind + ':' + id;
   /** L'objet est-il utilisable : niveau atteint, et offert ou acheté. */
@@ -184,10 +195,13 @@
     { id: 'rl_spins10', game: 'Roulette', text: 'Joue 10 tours de roulette', target: 10, reward: 300, xp: 50, on: (t, d) => (t === 'rl' && d.staked > 0 ? 1 : 0) },
     { id: 'rl_plein', game: 'Roulette', text: 'Touche un plein à la roulette', target: 1, reward: 700, xp: 90, on: (t, d) => (t === 'rl' && d.pleinHit ? 1 : 0) },
     { id: 'rl_win200', game: 'Roulette', text: 'Gagne au moins 200 € en un seul tour', target: 1, reward: 500, xp: 70, on: (t, d) => (t === 'rl' && d.net >= 200 ? 1 : 0) },
-    { id: 'any_win1000', game: 'Tous les jeux', text: 'Gagne 1 000 € au total aujourd\'hui', target: 1000, reward: 600, xp: 80, on: (t, d) => (['bj', 'rl', 'sl', 'cr'].includes(t) && d.net > 0 ? d.net : 0) },
+    { id: 'any_win1000', game: 'Tous les jeux', text: 'Gagne 1 000 € au total aujourd\'hui', target: 1000, reward: 600, xp: 80, on: (t, d) => (['bj', 'rl', 'sl', 'cr', 'pl'].includes(t) && d.net > 0 ? d.net : 0) },
     { id: 'cr_rounds15', game: 'Rocket Crash', text: 'Joue 15 manches de Rocket Crash', target: 15, reward: 300, xp: 50, on: (t) => (t === 'cr' ? 1 : 0) },
     { id: 'cr_x3', game: 'Rocket Crash', text: 'Retire ta mise à ×3 ou plus', target: 1, reward: 500, xp: 70, on: (t, d) => (t === 'cr' && d.mult >= 3 ? 1 : 0) },
     { id: 'cr_wins5', game: 'Rocket Crash', text: 'Réussis 5 retraits avant l\'explosion', target: 5, reward: 400, xp: 60, on: (t, d) => (t === 'cr' && d.mult > 0 ? 1 : 0) },
+    { id: 'pl_balls30', game: 'Plinko', text: 'Lâche 30 billes au Plinko', target: 30, reward: 300, xp: 50, on: (t) => (t === 'pl' ? 1 : 0) },
+    { id: 'pl_x5', game: 'Plinko', text: 'Fais tomber une bille sur ×5 ou plus', target: 1, reward: 500, xp: 70, on: (t, d) => (t === 'pl' && d.mult >= 5 ? 1 : 0) },
+    { id: 'pl_win300', game: 'Plinko', text: 'Gagne 300 € au Plinko aujourd\'hui', target: 300, reward: 500, xp: 70, on: (t, d) => (t === 'pl' && d.net > 0 ? d.net : 0) },
     { id: 'sl_spins20', game: 'Machine à sous', text: 'Fais 20 tours de machine à sous', target: 20, reward: 300, xp: 50, on: (t) => (t === 'sl' ? 1 : 0) },
     { id: 'sl_free', game: 'Machine à sous', text: 'Déclenche des tours gratuits', target: 1, reward: 600, xp: 80, on: (t, d) => (t === 'sl' && d.freeTrigger ? 1 : 0) },
     { id: 'sl_x10', game: 'Machine à sous', text: 'Gagne au moins 10 fois ta mise en un tour', target: 1, reward: 600, xp: 80, on: (t, d) => (t === 'sl' && d.bet > 0 && d.net + d.bet >= 10 * d.bet ? 1 : 0) },
@@ -222,6 +236,9 @@
     { id: 'cr_100', icon: '🌌', name: 'Vers l\'infini', text: 'Retirer à ×100 ou plus à Rocket Crash', secret: true },
     { id: 'cr_boom', icon: '💥', name: 'Pas de bol', text: 'Voir sa fusée exploser au décollage (×1,00) avec une mise', secret: true },
     { id: 'broke', icon: '🕳️', name: 'Au fond du trou', text: 'Avoir moins de 100 € en banque', secret: true },
+    { id: 'pl_edge', icon: '🎯', name: 'Tout au bord', text: 'Faire tomber une bille dans une case du bord au Plinko' },
+    { id: 'pl_1000', icon: '🔮', name: 'Bille en or', text: 'Toucher ×1 000 au Plinko', secret: true },
+    { id: 'pl_500', icon: '⚪', name: 'Pluie de billes', text: 'Lâcher 500 billes au Plinko' },
     { id: 'rocket10', icon: '🚀', name: 'Dans les étoiles', text: 'Retirer à ×10 ou plus à Rocket Crash' },
     { id: 'jackpot', icon: '🎰', name: 'Jackpot', text: 'Décrocher le jackpot à la machine à sous' },
     { id: 'friends', icon: '🤝', name: 'Entre potes', text: 'Jouer une partie entre amis' },
@@ -242,7 +259,7 @@
   ];
 
   const START_WALLET = 10000;
-  const GAMES = { blackjack: 'Blackjack', poker: 'Poker', roulette: 'Roulette', slots: 'Machine à sous', crash: 'Rocket Crash' };
+  const GAMES = { blackjack: 'Blackjack', poker: 'Poker', roulette: 'Roulette', slots: 'Machine à sous', crash: 'Rocket Crash', plinko: 'Plinko' };
   const pad = (n) => String(n).padStart(2, '0');
   // Date du jour (et de la veille) à l'heure de Paris : les défis et le bonus changent à minuit
   function dayOf(ms) {
@@ -347,7 +364,7 @@
     let h = 0;
     for (const c of d) h = (h * 31 + c.charCodeAt(0)) >>> 0;
     const pick = (game) => { const list = CHALLENGES.filter((c) => c.game === game); return list[h % list.length]; };
-    const all = ['Blackjack', 'Poker', 'Roulette', 'Machine à sous', 'Rocket Crash'];
+    const all = ['Blackjack', 'Poker', 'Roulette', 'Machine à sous', 'Rocket Crash', 'Plinko'];
     const games = all.filter((g, i) => i !== (h >>> 3) % all.length);
     const ids = games.map((g) => pick(g).id);
     if (h % 3 === 0) ids[h % 3] = 'any_win1000';
@@ -363,7 +380,7 @@
   function track(P, type, d, now, N) {
     d = d || {};
     const T = P.totals;
-    const isRound = ['bj', 'pk', 'rl', 'sl', 'cr'].includes(type);
+    const isRound = ['bj', 'pk', 'rl', 'sl', 'cr', 'pl'].includes(type);
     if (isRound) {
       T.hands++;
       T.netBy = T.netBy || {};
@@ -374,10 +391,11 @@
       if (T.hands >= 1000) unlock(P, 'hands1000', N);
       if (d.bet >= 250) unlock(P, 'high_bet', N);
       try { const h = Number(new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: 'numeric', hourCycle: 'h23' }).format(new Date(now))); if (h < 5) unlock(P, 'night_owl', N); } catch (e) { /* ignore */ }
-      addXP(P, 5, N);
+      const lite = type === 'pl'; // Plinko : on lâche des billes très vite, chaque bille rapporte moins d'XP
+      addXP(P, lite ? (d.bet >= 10 ? 2 : 1) : 5, N);
       if (d.net > 0) {
         T.wins++;
-        addXP(P, Math.min(40, 3 + d.net / 25), N);
+        addXP(P, Math.min(40, (lite ? 0 : 3) + d.net / 25), N);
         unlock(P, 'first_win', N);
         if (T.wins >= 100) unlock(P, 'wins100', N);
         if (d.net > T.biggestWin) T.biggestWin = d.net;
@@ -402,6 +420,12 @@
       if (d.mult >= 10) unlock(P, 'rocket10', N);
       if (d.mult >= 100) unlock(P, 'cr_100', N);
       if (d.crash === 1 && d.bet > 0) unlock(P, 'cr_boom', N);
+    }
+    if (type === 'pl') {
+      T.plBalls = (T.plBalls || 0) + 1;
+      if (d.edge) unlock(P, 'pl_edge', N);
+      if (d.mult >= 1000) unlock(P, 'pl_1000', N);
+      if (T.plBalls >= 500) unlock(P, 'pl_500', N);
     }
     if (type === 'sl') { T.slSpins++; if (d.jackpot) unlock(P, 'jackpot', N); }
     if (type === 'multi') { unlock(P, 'friends', N); addXP(P, 20, N); }

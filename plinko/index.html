@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Plinko</title>
+  <meta name="theme-color" content="#070a1f">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../icons/icon-192.png">
+  <link rel="stylesheet" href="../crash/style.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="../firebase-config.js"></script>
+  <script src="../gate.js"></script>
+</head>
+<body class="crash-page plinko-page">
+  <header class="topbar">
+    <h1><a id="home-link" class="home-link" href="../index.html" hidden aria-label="Retour au casino">←</a> 🔮 Plinko</h1>
+    <div class="bank">
+      <span id="bank-label">Banque</span> : <strong id="wallet">–</strong> €
+      <button id="music-toggle" class="ghost icon-btn" type="button">🎵</button><button id="sound-toggle" class="ghost icon-btn" type="button">🔊</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <div class="main-col">
+      <section id="setup" class="glass setup">
+        <h2>🔮 Plinko</h2>
+        <p class="muted">Lâche une bille en haut du plateau : elle rebondit de picot en picot et tombe dans une case qui multiplie ta mise. Les cases du bord paient le plus… mais ce sont les plus rares !</p>
+        <div id="mode-picker"></div>
+      </section>
+
+      <section id="game" class="game" hidden>
+        <div id="mode-badge" class="mode-badge" hidden></div>
+        <div id="history" class="history" aria-label="Derniers multiplicateurs"></div>
+
+        <div id="stage" class="stage pl-stage">
+          <canvas id="scene" aria-hidden="true"></canvas>
+          <div class="pl-hud">
+            <div class="pl-last"><span>Dernière bille</span><b id="last">–</b></div>
+            <div class="pl-inplay" id="inplay" hidden></div>
+          </div>
+          <div id="toast" class="stage-toast" hidden></div>
+        </div>
+
+        <div class="controls glass">
+          <div class="bet-side">
+            <label class="field">
+              <span>Mise par bille</span>
+              <div class="bet-input">
+                <button id="bet-half" type="button" aria-label="Diviser la mise par deux">½</button>
+                <input id="bet" type="number" min="1" max="500" step="1" value="10" inputmode="numeric" aria-label="Montant de la mise par bille">
+                <button id="bet-double" type="button" aria-label="Doubler la mise">×2</button>
+              </div>
+            </label>
+            <div class="quick" id="quick">
+              <button type="button" data-v="1">1 €</button><button type="button" data-v="5">5 €</button><button type="button" data-v="10">10 €</button>
+              <button type="button" data-v="25">25 €</button><button type="button" data-v="50">50 €</button><button type="button" data-v="100">100 €</button>
+            </div>
+            <div class="field"><span>Risque</span>
+              <div class="seg" id="risk" role="radiogroup" aria-label="Risque">
+                <button type="button" data-v="low">Faible</button><button type="button" data-v="medium">Moyen</button><button type="button" data-v="high">Élevé</button>
+              </div>
+            </div>
+            <div class="field"><span>Rangées de picots</span>
+              <div class="seg" id="rows" role="radiogroup" aria-label="Nombre de rangées">
+                <button type="button" data-v="8">8</button><button type="button" data-v="10">10</button><button type="button" data-v="12">12</button><button type="button" data-v="14">14</button><button type="button" data-v="16">16</button>
+              </div>
+            </div>
+          </div>
+          <div class="action-side">
+            <div class="potential"><span>Gain maximal</span><b id="potential">–</b></div>
+            <button id="drop-btn" class="btn-bet" type="button">LÂCHER</button>
+            <div class="auto-line">
+              <select id="auto-n" aria-label="Nombre de billes en automatique">
+                <option value="10">10 billes</option><option value="25">25 billes</option><option value="50">50 billes</option><option value="100">100 billes</option>
+              </select>
+              <button id="auto-btn" class="btn-ghost" type="button">▶ Auto</button>
+            </div>
+            <div class="balance"><span id="stack-label">Sur la table</span><b id="stack">–</b></div>
+            <button id="end-btn" class="btn-ghost" type="button">Encaisser et quitter</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="side">
+      <section id="aides" class="glass">
+        <h2>🎓 Aides</h2>
+        <div id="aides-body" class="aides-body"></div>
+      </section>
+      <section class="glass">
+        <h2>Tes statistiques <small id="stats-mode" class="muted"></small></h2>
+        <div class="stats">
+          <div class="stat"><span id="s-rounds">0</span><small>Billes lâchées</small></div>
+          <div class="stat"><span id="s-wagered">0 €</span><small>Misé</small></div>
+          <div class="stat"><span id="s-won">0 €</span><small>Gagné</small></div>
+          <div class="stat"><span id="s-net">0 €</span><small>Bénéfice</small></div>
+        </div>
+        <p class="muted small" id="s-best"></p>
+        <h3>Tes dernières billes</h3>
+        <ol id="my-bets" class="my-bets"><li class="muted">Aucune bille pour l'instant.</li></ol>
+      </section>
+      <details class="glass fair">
+        <summary><h2>🔐 Équité vérifiable</h2></summary>
+        <p class="small muted">Le chemin de chaque bille vient de HMAC-SHA256(<i>server seed</i>, « <i>client seed</i>:<i>nonce</i> ») : le 1er bit donne la direction au 1er picot (0 = gauche, 1 = droite), le 2e bit au 2e picot, etc. L'empreinte du server seed est publiée avant de jouer ; le seed est révélé quand tu en changes.</p>
+        <div class="fair-grid">
+          <span>Empreinte du server seed</span><code id="pf-hash">–</code>
+          <span>Client seed</span><div class="pf-client"><input id="pf-client" maxlength="32" aria-label="Client seed"><button id="pf-rotate" type="button">Changer de seeds</button></div>
+          <span>Nonce (bille)</span><code id="pf-nonce">0</code>
+          <span>Ancien server seed</span><code id="pf-prev">–</code>
+        </div>
+        <div class="pf-verify">
+          <input id="pf-v-seed" placeholder="server seed" aria-label="Server seed à vérifier">
+          <input id="pf-v-client" placeholder="client seed" aria-label="Client seed à vérifier">
+          <input id="pf-v-nonce" placeholder="nonce" inputmode="numeric" aria-label="Nonce à vérifier">
+          <input id="pf-v-rows" placeholder="rangées (8 à 16)" inputmode="numeric" aria-label="Nombre de rangées">
+          <button id="pf-check" type="button">Vérifier</button>
+          <b id="pf-result"></b>
+        </div>
+        <p id="pf-note" class="small muted"></p>
+      </details>
+    </aside>
+  </main>
+
+  <script src="../sounds.js"></script>
+  <script src="../casino-rules.js"></script>
+  <script src="../profile.js"></script>
+  <script src="../account.js"></script>
+  <script src="engine.js"></script>
+  <script src="scene.js"></script>
+  <script src="app.js"></script>
+  <script src="../pwa.js"></script>
+</body>
+</html>

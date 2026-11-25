@@ -1,0 +1,26 @@
+/* ================= Plinko (même direction artistique que Rocket Crash) ================= */
+.pl-stage { aspect-ratio: 1 / .8; max-height: min(62vh, 640px); margin: 0 auto; width: 100%; }
+.pl-hud { position: absolute; inset: 10px 12px auto 12px; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; gap: .5rem; }
+.pl-last { display: flex; flex-direction: column; background: rgba(5, 7, 26, .55); border: 1px solid var(--c-line); border-radius: 12px; padding: .3rem .65rem; backdrop-filter: blur(6px); }
+.pl-last span { font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; color: rgba(203, 213, 255, .7); font-weight: 700; }
+.pl-last b { font-size: 1.15rem; font-weight: 900; font-variant-numeric: tabular-nums; color: #fff; text-shadow: 0 0 14px rgba(34, 211, 238, .5); }
+.pl-last b.win { color: var(--c-green); } .pl-last b.lose { color: #ff8fa3; } .pl-last b.epic { color: #fde68a; text-shadow: 0 0 18px rgba(251, 191, 36, .7); }
+.pl-inplay { background: rgba(139, 92, 246, .2); border: 1px solid rgba(139, 92, 246, .5); color: #ddd6fe; font-weight: 800; font-size: .8rem; border-radius: 999px; padding: .3rem .7rem; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: .3rem; }
+.seg button { background: rgba(139, 92, 246, .12); border: 1px solid var(--c-line); color: #ddd6fe; border-radius: 12px; font-weight: 800; padding: .45rem 0; font-size: .85rem; }
+.seg button:hover:not(:disabled) { background: rgba(139, 92, 246, .28); border-color: var(--c-violet); }
+.seg button.on { background: rgba(34, 211, 238, .2); border-color: var(--c-cyan); color: #cffafe; box-shadow: 0 0 12px rgba(34, 211, 238, .25); }
+.bet-side { display: flex; flex-direction: column; gap: .55rem; }
+.bet-side .quick { margin: 0; }
+.auto-line { display: grid; grid-template-columns: 1fr auto; gap: .4rem; }
+.auto-line select { font: inherit; font-weight: 700; background: rgba(5, 7, 26, .7); color: #fff; border: 1px solid var(--c-line); border-radius: 12px; padding: .45rem .5rem; }
+#auto-btn.on { border-color: var(--c-pink); color: #fbcfe8; background: rgba(244, 114, 182, .15); }
+.btn-bet .drop-sub { display: block; font-size: .85rem; font-weight: 700; letter-spacing: 0; opacity: .85; }
+.odds { width: 100%; border-collapse: collapse; font-size: .8rem; font-variant-numeric: tabular-nums; }
+.odds td, .odds th { padding: .2rem .35rem; border-bottom: 1px solid var(--c-line); text-align: right; }
+.odds th { color: var(--muted); font-weight: 700; font-size: .72rem; }
+.odds td:first-child, .odds th:first-child { text-align: left; }
+@media (max-width: 640px) {
+  .pl-stage { aspect-ratio: 1 / 1; }
+  .bet-side .quick { grid-template-columns: repeat(6, 1fr); }
+}

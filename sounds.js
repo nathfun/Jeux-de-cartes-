@@ -193,6 +193,25 @@
       [1318.5, 1760, 2637].forEach((f, k) => { tone(t + k * 0.06, f, 'triangle', 0.2, 0.004, 0.4); tone(t + k * 0.06, f * 1.5, 'sine', 0.05, 0.004, 0.3); });
       noiseBurst(t + 0.12, 7000, 4, 0.12, 0.25);
     },
+    // ---------- Plinko ----------
+    /** Bille qui touche un picot : petit « tic » cristallin, plus aigu vers le bas du plateau. */
+    peg(row, rows) {
+      if (!ac()) return;
+      const t = ctx.currentTime, k = rows ? row / rows : 0.5;
+      tone(t, 1400 + 900 * k + Math.random() * 120, 'sine', 0.05, 0.001, 0.06);
+      tone(t, 2800 + 1600 * k, 'triangle', 0.015, 0.001, 0.03);
+    },
+    /** Bille qui tombe dans une case : son plus riche pour les gros multiplicateurs. */
+    plinkLand(mult) {
+      if (!ac()) return;
+      const t = ctx.currentTime;
+      if (mult < 1) { tone(t, 330, 'triangle', 0.1, 0.005, 0.18, 260); return; }
+      if (mult < 2) { tone(t, 660, 'triangle', 0.12, 0.004, 0.22); tone(t + 0.05, 990, 'sine', 0.05, 0.004, 0.2); return; }
+      buzz(mult >= 10 ? [25, 30, 50] : 20);
+      const notes = mult >= 10 ? [1046.5, 1318.5, 1568, 2093] : [880, 1108.7, 1318.5];
+      notes.forEach((f, k) => { tone(t + k * 0.06, f, 'triangle', 0.16, 0.004, 0.35); tone(t + k * 0.06, f * 1.5, 'sine', 0.04, 0.004, 0.25); });
+      if (mult >= 10) noiseBurst(t + 0.15, 7000, 4, 0.1, 0.3);
+    },
     /** Annonce vocale (voix féminine française par défaut). */
     say(text, lang) { if (enabled) speak(text, lang || 'fr-FR'); },
     blackjack() {
@@ -244,7 +263,7 @@
   // synthwave (Rocket Crash). Mesures de 3 s dans tous les cas.
   const hz = (m) => 440 * Math.pow(2, (m - 69) / 12);
   const chord = (bass, ...ns) => ({ bass: hz(bass), notes: ns.map(hz) });
-  const STYLE = /\/crash\//.test(location.pathname) ? 'synth' : /\/(roulette|slots)\//.test(location.pathname) ? 'vegas' : /\/poker\//.test(location.pathname) ? 'jazz' : 'lounge';
+  const STYLE = /\/(crash|plinko)\//.test(location.pathname) ? 'synth' : /\/(roulette|slots)\//.test(location.pathname) ? 'vegas' : /\/poker\//.test(location.pathname) ? 'jazz' : 'lounge';
   const PROGS = {
     jazz: [chord(38, 65, 69, 72, 76), chord(43, 65, 69, 71, 76), chord(36, 64, 67, 71, 74), chord(45, 61, 67, 70, 73)],      // Dm9 G13 Cmaj9 A7b9
     vegas: [chord(36, 64, 67, 69, 72), chord(45, 64, 67, 69, 72), chord(38, 65, 69, 72, 74), chord(43, 65, 67, 71, 74)],     // C6 Am7 Dm7 G7

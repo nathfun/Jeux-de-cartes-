@@ -57,6 +57,15 @@
     .mini-rocket { margin-top: auto; display: flex; align-items: center; gap: .6rem; }
     .mr-mult { font-weight: 900; font-size: 1.6rem; color: #fff; text-shadow: 0 0 16px rgba(34,211,238,.7); }
     .mr-rocket { font-size: 2rem; transform: rotate(-10deg); }
+    .game.plinko { background: radial-gradient(ellipse at 30% 10%, #3b1a6e 0%, #0b1440 55%, #050816 100%); border-color: #6d28d9; }
+    .game.plinko h2 { background: linear-gradient(90deg, #f472b6, #a78bfa, #22d3ee); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .mini-plinko { margin-top: auto; display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; max-width: 170px; }
+    .mini-plinko i { height: 14px; border-radius: 4px; background: linear-gradient(#f472b6, #9d174d); }
+    .mini-plinko i:nth-of-type(2), .mini-plinko i:nth-of-type(6) { background: linear-gradient(#c084fc, #6b21a8); }
+    .mini-plinko i:nth-of-type(3), .mini-plinko i:nth-of-type(5) { background: linear-gradient(#818cf8, #3730a3); }
+    .mini-plinko i:nth-of-type(4) { background: linear-gradient(#22d3ee, #0e7490); }
+    .mini-plinko b { grid-column: 1 / -1; justify-self: center; width: 12px; height: 12px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff, #f472b6 50%, #ec4899); box-shadow: 0 0 10px #f472b6; }
+    @media (prefers-reduced-motion: no-preference) { a.game.plinko:hover .mini-plinko b { animation: lift .5s ease-in-out infinite alternate; } }
     @media (prefers-reduced-motion: no-preference) { a.game.crash:hover .mr-rocket { animation: lift 1s ease-in-out infinite alternate; } }
     @keyframes lift { to { transform: translate(6px, -8px) rotate(-10deg); } }
     .mini-reels { display: flex; gap: .3rem; margin-top: auto; }
@@ -150,6 +159,7 @@
     .sh-item button { font: inherit; font-size: .8rem; font-weight: 700; width: 100%; border-radius: 10px; border: 1px solid var(--border); background: #2b3540; color: inherit; padding: .4rem; cursor: pointer; }
     .sh-item button.buy { background: var(--gold); color: #222; border-color: var(--gold); }
     .sh-item button:disabled { cursor: default; opacity: .7; }
+    .pv-ball { width: 28px; height: 28px; border-radius: 50%; }
     .pv { width: 84px; height: 64px; border-radius: 10px; display: grid; place-items: center; }
     .pv-felt { border: 3px solid #5b3a1e; } .pv-back { width: 46px; height: 64px; border: 3px solid #fff; border-radius: 7px; }
     .pv-avatar { font-size: 2.4rem; } .pv-title { font-size: .8rem; font-weight: 700; color: var(--gold); padding: 0 .2rem; text-align: center; }
@@ -336,6 +346,12 @@
         <p>La fusée décolle, le multiplicateur s'envole… retire ta mise avant l'explosion ! Retrait automatique, historique et équité vérifiable.</p>
         <div class="tags"><span>Nouveau</span><span>Multiplicateur</span><span>RTP 97 %</span></div>
         <div class="mini-rocket" aria-hidden="true"><span class="mr-mult">2.47×</span><span class="mr-rocket">🚀</span></div>
+      </a>
+      <a class="game plinko" href="plinko/index.html">
+        <h2>Plinko</h2>
+        <p>Lâche des billes qui rebondissent de picot en picot jusqu'aux cases à multiplicateurs. Choisis le risque et le nombre de rangées, lâche-en une ou cent !</p>
+        <div class="tags"><span>Nouveau</span><span>Jusqu'à ×1 000</span><span>RTP 97 %</span></div>
+        <div class="mini-plinko" aria-hidden="true"><b></b><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
       </a>
       <a class="game slots" href="slots/index.html">
         <h2>Machine à sous</h2>
@@ -527,7 +543,7 @@
         $('bonus').textContent = b.available ? '🎁 Bonus du jour : +' + fmt(b.amount) + ' €' + (b.streak > 1 ? ' (série de ' + b.streak + ' jours)' : '') : '✔ Bonus récupéré · série de ' + b.streak + ' jour' + (b.streak > 1 ? 's' : '') + ' · reviens demain';
         const ses = Casino.sessions();
         const ip = $('in-play'); ip.innerHTML = '';
-        const paths = { blackjack: 'blackjack/index.html', poker: 'poker/index.html', roulette: 'roulette/index.html', slots: 'slots/index.html' };
+        const paths = { blackjack: 'blackjack/index.html', poker: 'poker/index.html', roulette: 'roulette/index.html', slots: 'slots/index.html', crash: 'crash/index.html', plinko: 'plinko/index.html' };
         Object.keys(ses).forEach((g) => {
           const a = document.createElement('a'); a.href = paths[g] || '#';
           a.textContent = '🎲 ' + (Casino.GAMES[g] || g) + ' : ' + fmt(ses[g].stack) + ' € sur la table';
@@ -715,7 +731,7 @@
           box.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="Évolution de ta banque"><polyline points="' + pts + '" fill="none" stroke="' + (up ? '#3fb950' : '#f85149') + '" stroke-width="2.5" vector-effect="non-scaling-stroke"/></svg>'
             + '<div class="bc-legend"><span>' + days[0].slice(5).split('-').reverse().join('/') + ' : ' + fmt(vals[0]) + ' €</span><span>min ' + fmt(mn) + ' € · max ' + fmt(mx) + ' €</span><span>aujourd\'hui : <b>' + fmt(vals[vals.length - 1]) + ' €</b></span></div>';
         }
-        const NAMES = { bj: '🂡 Blackjack', pk: '♠ Poker', rl: '🎡 Roulette', sl: '🎰 Machine à sous', cr: '🚀 Rocket Crash' };
+        const NAMES = { bj: '🂡 Blackjack', pk: '♠ Poker', rl: '🎡 Roulette', sl: '🎰 Machine à sous', cr: '🚀 Rocket Crash', pl: '🔮 Plinko' };
         const nb = (P.totals && P.totals.netBy) || {};
         const g = $('bank-games'); g.innerHTML = '';
         Object.keys(NAMES).forEach((k) => {
@@ -727,7 +743,7 @@
       }
       // ---------- Boutique ----------
       let shopCat = 'felt', armedBuy = null, armedTimer = null;
-      const KIND_ICON = { felt: '🟩', back: '🂠', avatar: '😀', frame: '⭕', rocket: '🚀', title: '🏷️', theme: '🎨', chips: '🪙', effect: '🎆' };
+      const KIND_ICON = { felt: '🟩', back: '🂠', avatar: '😀', frame: '⭕', rocket: '🚀', ball: '🔮', title: '🏷️', theme: '🎨', chips: '🪙', effect: '🎆' };
       function rocketSvg(it) {
         const b = it.body, f = it.flame;
         return '<svg viewBox="0 0 40 70" width="34" height="60" aria-hidden="true"><defs><linearGradient id="rb-' + it.id + '" x1="0" x2="1"><stop offset="0" stop-color="' + b[0] + '"/><stop offset=".5" stop-color="' + b[1] + '"/><stop offset="1" stop-color="' + b[2] + '"/></linearGradient>'
@@ -745,6 +761,7 @@
         else if (kind === 'avatar') d.textContent = it.id;
         else if (kind === 'frame') { const a = document.createElement('span'); a.className = 'pv-ring fr-' + it.id; a.textContent = Casino.profile.avatar; d.appendChild(a); }
         else if (kind === 'rocket') d.innerHTML = rocketSvg(it);
+        else if (kind === 'ball') { d.style.background = 'radial-gradient(circle at 50% 120%, #1e1b4b, #050816)'; const b = document.createElement('span'); b.className = 'pv-ball'; b.style.background = 'radial-gradient(circle at 35% 30%, ' + it.c[1] + ', ' + it.c[0] + ' 45%, ' + it.c[2] + ')'; b.style.boxShadow = '0 0 14px ' + it.c[2]; d.appendChild(b); }
         else if (kind === 'title') d.textContent = it.id ? '« ' + it.name + ' »' : 'Titre de ton niveau';
         else if (kind === 'theme') { d.style.background = it.bg; d.style.border = '3px solid ' + it.border; d.innerHTML = '<span style="display:block;width:70%;height:40%;border-radius:6px;background:' + it.panel + ';border-bottom:4px solid ' + it.accent + '"></span>'; }
         else if (kind === 'chips') { ['#c62828', '#1565c0', '#2e7d32'].forEach((c) => { const x = document.createElement('span'); x.className = 'pv-chip'; x.style.background = c; x.style.filter = it.filter; d.appendChild(x); }); }
