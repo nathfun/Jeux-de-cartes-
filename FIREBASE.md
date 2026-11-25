@@ -81,6 +81,41 @@ elle est supprimée et son code ne fonctionne plus.
   le paquet. Un joueur qui fouillerait dans les outils développeur de son navigateur pendant qu'il est
   hôte pourrait le lire. Entre amis, c'est un compromis raisonnable.
 
+## Serveur anti-triche (Cloud Functions)
+
+Sans serveur, l'argent est calculé sur le téléphone de chaque joueur : un petit malin peut le modifier.
+Avec le serveur, **la banque, les bonus, les défis, la banque du temps, les prix entre amis et tous les
+tirages des parties réelles** (bille de la roulette, rouleaux, sabot du blackjack, paquet et bots du poker)
+sont gérés par Firebase. Le navigateur ne fait plus qu'afficher : modifier l'app ne sert à rien.
+
+### 1. Passer à l'offre Blaze (une fois)
+
+1. Console Firebase → en bas à gauche, **Spark** → **Mettre à niveau** → **Blaze** → ajoute une carte.
+2. Crée une **alerte de budget** à 1 € (proposée pendant la mise à niveau, sinon Google Cloud →
+   Facturation → Budgets et alertes). Pour un groupe d'amis, on reste dans la partie gratuite
+   (2 millions d'appels par mois) : la facture attendue est de 0 €.
+
+### 2. Déployer le serveur (une fois, puis à chaque mise à jour du serveur)
+
+1. Ouvre <https://shell.cloud.google.com> avec le même compte Google (un terminal dans le navigateur, rien à installer).
+2. Colle ces lignes :
+   ```
+   git clone -b claude/blackjack-app-feedback-appqgy https://github.com/nathfun/Jeux-de-cartes-.git
+   cd Jeux-de-cartes- && bash deploy.sh
+   ```
+3. Pendant le script, ouvre le lien proposé, autorise Firebase CLI, et colle le code obtenu.
+4. Le déploiement envoie le serveur **et** les règles de la base (plus besoin de les copier à la main).
+   La première fois, il peut prendre 3 à 5 minutes (activation des services Google).
+5. Préviens Claude : il passe `window.CASINO_SERVER = true` dans `firebase-config.js`.
+
+Bon à savoir :
+- Au passage au serveur, chaque joueur repart avec **10 000 €** (les progressions enregistrées seulement
+  sur les téléphones ne sont pas reprises, sinon une banque trafiquée pourrait l'être aussi).
+- Les jetons des tables entre amis restent gérés par les téléphones (ils ne valent rien hors de la table) ;
+  le serveur vérifie la fin de partie avant de verser un prix, et limite à 5 prix par jour et par joueur.
+- `vault/` contient les données du serveur (illisibles par les joueurs), `profiles/` le classement public
+  (écrit uniquement par le serveur).
+
 ## Comptes et sauvegarde
 
 - Sur l'accueil, **Mon compte** : un pseudo et un mot de passe. Le compte garde la banque, le niveau,

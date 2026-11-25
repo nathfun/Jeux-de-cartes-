@@ -1,127 +1,109 @@
 /*
- * Profil du joueur, commun à tous les jeux du Casino (enregistré sur l'appareil) :
+ * Profil du joueur, commun à tous les jeux du Casino :
  *  - banque unique ; parties réelles (somme apportée puis encaissée) et mode Entraînement (rien ne compte) ;
- *  - expérience et niveaux, avec un titre ;
- *  - bonus quotidien (plus fort si on revient plusieurs jours de suite) ;
- *  - 3 défis du jour, renouvelés à minuit ;
- *  - succès à débloquer ;
- *  - personnalisation (tapis, dos de cartes) débloquée avec les niveaux ;
- *  - notifications, effet « gros gain », vibrations.
- * Les jeux appellent Casino.track(type, données) après chaque main ou tour.
+ *  - expérience et niveaux, bonus quotidien, défis du jour, succès, banque du temps, prix entre amis ;
+ *  - personnalisation (tapis, dos de cartes), notifications, effet « gros gain », vibrations.
+ *
+ * Deux façons de fonctionner :
+ *  - avec le serveur (Firebase + Cloud Functions, window.CASINO_SERVER = true) : la banque et tous les tirages
+ *    des parties réelles sont gérés par le serveur (functions/), impossible de tricher depuis le navigateur ;
+ *  - sans serveur (tests, ?backend=local) : tout est calculé dans le navigateur avec les mêmes règles (casino-rules.js).
  * Tout est en jetons virtuels : aucun argent réel.
  */
 (function () {
   'use strict';
+  const R = window.CasinoRules;
   const KEY = 'casino-profile-v1';
-  const AVATARS = ['🎩', '🦊', '🐯', '🦁', '🐼', '🐸', '🦄', '🐙', '🦉', '🐺', '👑', '😎', '🤠', '🧙', '🥷', '🚀'];
-
-  // ---------- Niveaux ----------
-  const need = (n) => 50 * n * (n - 1); // XP totale pour atteindre le niveau n (niveau 2 : 100, 10 : 4 500, 20 : 19 000)
-  function levelOf(xp) { let n = 1; while (need(n + 1) <= xp) n++; return n; }
-  function title(lv) {
-    return lv >= 35 ? 'Légende' : lv >= 20 ? 'High Roller' : lv >= 10 ? 'Joueur confirmé' : lv >= 5 ? 'Habitué' : 'Débutant';
-  }
-
-  // ---------- Personnalisation ----------
-  const FELTS = [
-    { id: 'vert', name: 'Vert classique', level: 1, a: '#0f5132', b: '#0a3a24' },
-    { id: 'bleu', name: 'Bleu nuit', level: 3, a: '#123a6b', b: '#0b2546' },
-    { id: 'rouge', name: 'Rouge velours', level: 6, a: '#6b1220', b: '#460a14' },
-    { id: 'violet', name: 'Violet royal', level: 10, a: '#43206b', b: '#2b1446' },
-    { id: 'noir', name: 'Noir et or', level: 20, a: '#1c1c1c', b: '#0b0b0b' },
-  ];
-  const BACKS = [
-    { id: 'bleu', name: 'Bleu', level: 1, a: '#1c3d7a', b: '#24519e' },
-    { id: 'rouge', name: 'Rouge', level: 4, a: '#7a1c24', b: '#9e2430' },
-    { id: 'vert', name: 'Émeraude', level: 8, a: '#145c3a', b: '#1d7a4e' },
-    { id: 'or', name: 'Or', level: 15, a: '#8a6a1c', b: '#c9a24a' },
-  ];
-
-  // ---------- Défis du jour ----------
-  const CHALLENGES = [
-    { id: 'bj_wins3', game: 'Blackjack', text: 'Gagne 3 mains de blackjack', target: 3, reward: 400, xp: 60, on: (t, d) => (t === 'bj' && d.net > 0 ? 1 : 0) },
-    { id: 'bj_hands15', game: 'Blackjack', text: 'Joue 15 mains de blackjack', target: 15, reward: 300, xp: 50, on: (t) => (t === 'bj' ? 1 : 0) },
-    { id: 'bj_double', game: 'Blackjack', text: 'Gagne une main en doublant', target: 1, reward: 500, xp: 70, on: (t, d) => (t === 'bj' && d.doubledWin ? 1 : 0) },
-    { id: 'bj_natural', game: 'Blackjack', text: 'Obtiens un blackjack', target: 1, reward: 500, xp: 70, on: (t, d) => (t === 'bj' && d.blackjack ? 1 : 0) },
-    { id: 'pk_hands12', game: 'Poker', text: 'Joue 12 mains de poker', target: 12, reward: 300, xp: 50, on: (t) => (t === 'pk' ? 1 : 0) },
-    { id: 'pk_trips', game: 'Poker', text: 'Gagne une main avec un brelan ou mieux', target: 1, reward: 600, xp: 80, on: (t, d) => (t === 'pk' && d.won && d.cat >= 3 ? 1 : 0) },
-    { id: 'pk_top3', game: 'Poker', text: 'Termine dans les 3 premiers d\'un tournoi', target: 1, reward: 700, xp: 90, on: (t, d) => (t === 'pk-tourney' && d.place <= 3 ? 1 : 0) },
-    { id: 'rl_spins10', game: 'Roulette', text: 'Joue 10 tours de roulette', target: 10, reward: 300, xp: 50, on: (t, d) => (t === 'rl' && d.staked > 0 ? 1 : 0) },
-    { id: 'rl_plein', game: 'Roulette', text: 'Touche un plein à la roulette', target: 1, reward: 700, xp: 90, on: (t, d) => (t === 'rl' && d.pleinHit ? 1 : 0) },
-    { id: 'rl_win200', game: 'Roulette', text: 'Gagne au moins 200 € en un seul tour', target: 1, reward: 500, xp: 70, on: (t, d) => (t === 'rl' && d.net >= 200 ? 1 : 0) },
-    { id: 'any_win1000', game: 'Tous les jeux', text: 'Gagne 1 000 € au total aujourd\'hui', target: 1000, reward: 600, xp: 80, on: (t, d) => (['bj', 'rl', 'sl'].includes(t) && d.net > 0 ? d.net : 0) },
-    { id: 'sl_spins20', game: 'Machine à sous', text: 'Fais 20 tours de machine à sous', target: 20, reward: 300, xp: 50, on: (t) => (t === 'sl' ? 1 : 0) },
-    { id: 'sl_free', game: 'Machine à sous', text: 'Déclenche des tours gratuits', target: 1, reward: 600, xp: 80, on: (t, d) => (t === 'sl' && d.freeTrigger ? 1 : 0) },
-    { id: 'sl_x10', game: 'Machine à sous', text: 'Gagne au moins 10 fois ta mise en un tour', target: 1, reward: 600, xp: 80, on: (t, d) => (t === 'sl' && d.bet > 0 && d.net + d.bet >= 10 * d.bet ? 1 : 0) },
-  ];
-
-  // ---------- Succès ----------
-  const ACHIEVEMENTS = [
-    { id: 'first_win', icon: '🌟', name: 'Première victoire', text: 'Gagner une main ou un tour' },
-    { id: 'bj_first', icon: '🂡', name: 'Blackjack !', text: 'Obtenir son premier blackjack' },
-    { id: 'bj_10', icon: '🃏', name: 'Collectionneur', text: 'Obtenir 10 blackjacks' },
-    { id: 'bj_100', icon: '♠️', name: 'Pilier du blackjack', text: 'Jouer 100 mains de blackjack' },
-    { id: 'pk_quads', icon: '🎴', name: 'Carré', text: 'Gagner une main de poker avec un carré' },
-    { id: 'pk_sflush', icon: '🌈', name: 'Quinte flush', text: 'Gagner avec une quinte flush' },
-    { id: 'pk_champion', icon: '🏆', name: 'Champion', text: 'Gagner un tournoi de poker' },
-    { id: 'pk_allin', icon: '💥', name: 'Tout ou rien', text: 'Gagner un tapis au poker' },
-    { id: 'rl_plein', icon: '🎯', name: 'En plein dans le mille', text: 'Toucher un plein à la roulette' },
-    { id: 'rl_zero', icon: '0️⃣', name: 'Ami du zéro', text: 'Gagner une mise sur le 0' },
-    { id: 'rl_cashout', icon: '💰', name: 'Savoir s\'arrêter', text: 'Encaisser à la roulette avec +1 000 €' },
-    { id: 'big_win', icon: '🤑', name: 'Gros gain', text: 'Gagner 10 fois sa mise en un coup' },
-    { id: 'jackpot', icon: '🎰', name: 'Jackpot', text: 'Décrocher le jackpot à la machine à sous' },
-    { id: 'friends', icon: '🤝', name: 'Entre potes', text: 'Jouer une partie entre amis' },
-    { id: 'daily7', icon: '📅', name: 'Fidèle', text: 'Venir 7 jours d\'affilée' },
-    { id: 'challenges10', icon: '✅', name: 'Relevé !', text: 'Terminer 10 défis du jour' },
-    { id: 'lvl10', icon: '⭐', name: 'Joueur confirmé', text: 'Atteindre le niveau 10' },
-    { id: 'lvl20', icon: '💎', name: 'High Roller', text: 'Atteindre le niveau 20' },
-    { id: 'rich25', icon: '🏦', name: 'Grosse banque', text: 'Avoir 25 000 € en banque' },
-    { id: 'rich100', icon: '👑', name: 'Millionnaire en herbe', text: 'Avoir 100 000 € en banque' },
-  ];
+  const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
+  const { AVATARS, FELTS, BACKS, CHALLENGES, ACHIEVEMENTS, TIME_PACKS, need, levelOf, title } = R;
+  const cfg = window.FIREBASE_CONFIG;
+  const SERVER = !!(window.CASINO_SERVER && cfg && cfg.databaseURL && !/[?&]backend=local\b/.test(location.search) && !window.claude);
+  // Réglages propres à l'appareil (jamais envoyés au serveur comme argent)
+  const LOCAL_KEYS = ['equipped', 'settings', 'friends', 'friendCode', 'friendCodeUid', 'myChallenges', 'savedAt'];
 
   // ---------- Stockage ----------
-  const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
-  function fresh() {
-    let pseudo = '';
-    try { pseudo = localStorage.getItem('bj-pseudo') || ''; } catch (e) { /* ignore */ }
-    return {
-      pseudo, avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)], wallet: 10000, xp: 0,
-      totals: { hands: 0, wins: 0, bjHands: 0, bjBlackjacks: 0, pkHands: 0, rlSpins: 0, slSpins: 0, biggestWin: 0, challenges: 0 },
-      achievements: {}, daily: null, bonus: { last: null, streak: 0 }, rescueAt: 0, sessions: {}, timebank: null,
-      equipped: { felt: 'vert', back: 'bleu' }, settings: { music: false, vibrate: true }, createdAt: Date.now(),
-    };
-  }
   let P = null;
+  function localDefaults() { return { equipped: { felt: 'vert', back: 'bleu' }, settings: { music: false, vibrate: true } }; }
   function load() {
     if (P) return P;
-    try { const raw = localStorage.getItem(KEY); if (raw) P = Object.assign(fresh(), JSON.parse(raw)); } catch (e) { /* ignore */ }
-    if (!P) P = fresh();
-    P.totals = Object.assign(fresh().totals, P.totals);
-    if (!P.sessions) P.sessions = {};
+    let raw = null;
+    try { raw = JSON.parse(localStorage.getItem(KEY)); } catch (e) { /* ignore */ }
+    P = Object.assign(localDefaults(), R.normalize(raw, Date.now()), raw ? pick(raw, LOCAL_KEYS) : {});
+    if (!raw || !raw.pseudo) { try { P.pseudo = P.pseudo || localStorage.getItem('bj-pseudo') || ''; } catch (e) { /* ignore */ } }
     return P;
   }
+  function pick(o, keys) { const r = {}; keys.forEach((k) => { if (o[k] !== undefined) r[k] = o[k]; }); return r; }
+  const listeners = [];
   function save(keepStamp) {
     if (!keepStamp) P.savedAt = Date.now();
     try { localStorage.setItem(KEY, JSON.stringify(P)); } catch (e) { /* ignore */ }
     listeners.forEach((f) => { try { f(P); } catch (e) { /* ignore */ } });
   }
-  const listeners = [];
 
-  // Les 3 défis du jour (choisis selon la date, un par jeu si possible)
-  function ensureDaily() {
+  // ---------- Serveur ----------
+  let fbp = null;
+  function firebase() {
+    if (!fbp) {
+      fbp = (async () => {
+        if (!cfg || !cfg.databaseURL) return null;
+        const [appMod, authMod, dbMod, fnMod] = await Promise.all(['app', 'auth', 'database', 'functions'].map((m) => import(FB + 'firebase-' + m + '.js')));
+        const app = appMod.getApps().length ? appMod.getApp() : appMod.initializeApp(cfg);
+        const auth = authMod.getAuth(app);
+        if (auth.authStateReady) await auth.authStateReady();
+        if (!auth.currentUser) await authMod.signInAnonymously(auth);
+        const fns = fnMod.getFunctions(app, 'europe-west1');
+        return { app, auth, authMod, dbMod, db: dbMod.getDatabase(app), fn: fnMod.httpsCallable(fns, 'casino') };
+      })();
+      fbp.catch(() => { fbp = null; });
+    }
+    return fbp;
+  }
+  // Applique la réponse du serveur : profil à jour + notifications
+  function applyServer(res) {
     load();
-    const d = today();
-    if (P.daily && P.daily.date === d) return P.daily;
-    let h = 0;
-    for (const c of d) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-    const pick = (game) => { const list = CHALLENGES.filter((c) => c.game === game); return list[h % list.length]; };
-    const all = ['Blackjack', 'Poker', 'Roulette', 'Machine à sous'];
-    const games = all.filter((g, i) => i !== (h >>> 3) % all.length); // 3 jeux sur 4, qui tournent
-    const ids = games.map((g) => pick(g).id);
-    if (h % 3 === 0) ids[h % 3] = 'any_win1000';
-    P.daily = { date: d, list: ids.map((id) => ({ id, progress: 0, done: false, claimed: false })), wonToday: 0 };
+    if (res && res.player) {
+      const keep = pick(P, LOCAL_KEYS);
+      P = Object.assign(localDefaults(), R.normalize(res.player, Date.now()), keep);
+      save(true);
+    }
+    showNotes(res && res.notes);
+  }
+  function showNotes(notes) {
+    (notes || []).forEach((n) => {
+      toast(n.title, n.text, n.icon, n.kind);
+      if (n.kind === 'level') { vibrate([40, 30, 80]); if (window.Sfx) Sfx.win(); }
+      else if (n.kind === 'achievement') vibrate([30, 30, 30, 30, 90]);
+      else if (n.kind === 'challenge') vibrate([40, 30, 40]);
+    });
+  }
+  const errText = (e) => (e && e.message ? String(e.message).replace(/^.*?:\s*/, '') : 'Le serveur ne répond pas.');
+  /** Opération sur le serveur : renvoie result, ou { error } (message pour le joueur). */
+  async function call(op, data) {
+    if (!SERVER) return { error: 'Serveur non configuré.' };
+    try {
+      const f = await firebase();
+      if (!f) return { error: 'Serveur injoignable.' };
+      const res = (await f.fn({ op, data: data || {} })).data;
+      applyServer(res);
+      return res.result || {};
+    } catch (e) {
+      const msg = e && e.code === 'functions/failed-precondition' ? e.message : (e && e.code === 'functions/unavailable') || /network|internet|fetch/i.test(String(e && e.message)) ? 'Pas de connexion au serveur.' : errText(e);
+      return { error: msg };
+    }
+  }
+  let syncing = null;
+  function sync() {
+    if (!syncing) syncing = call('sync', { pseudo: load().pseudo }).finally(() => { setTimeout(() => { syncing = null; }, 2000); });
+    return syncing;
+  }
+  // Mode sans serveur : les mêmes règles appliquées localement
+  function local(fn) {
+    load();
+    const N = [];
+    const out = fn(N);
     save();
-    return P.daily;
+    showNotes(N);
+    return out;
   }
 
   // ---------- Notifications ----------
@@ -189,103 +171,6 @@
     setTimeout(() => o.remove(), 4200);
   }
 
-  // ---------- Expérience, succès ----------
-  function addXP(n) {
-    load();
-    const before = levelOf(P.xp);
-    P.xp += Math.round(n);
-    const after = levelOf(P.xp);
-    if (after > before) {
-      const unlocked = FELTS.concat(BACKS).filter((c) => c.level > before && c.level <= after).map((c) => c.name);
-      toast('Niveau ' + after + ' !', title(after) + (unlocked.length ? ' — débloqué : ' + unlocked.join(', ') : ''), '⬆️', 'level');
-      vibrate([40, 30, 80]);
-      if (window.Sfx) Sfx.win();
-      if (after >= 10) unlock('lvl10');
-      if (after >= 20) unlock('lvl20');
-    }
-  }
-  function unlock(id) {
-    load();
-    if (P.achievements[id]) return;
-    const a = ACHIEVEMENTS.find((x) => x.id === id);
-    if (!a) return;
-    P.achievements[id] = Date.now();
-    toast('Succès débloqué : ' + a.name, a.text + ' (+100 XP)', a.icon, 'achievement');
-    vibrate([30, 30, 30, 30, 90]);
-    addXP(100);
-  }
-  function checkWallet() {
-    if (P.wallet >= 25000) unlock('rich25');
-    if (P.wallet >= 100000) unlock('rich100');
-  }
-
-  /**
-   * Événements envoyés par les jeux :
-   *  bj { net, bet, blackjack, doubledWin }            · pk { won, net, cat, allinWon }
-   *  pk-tourney { place, players }                       · rl { staked, net, pleinHit, zeroWin }
-   *  rl-cashout { diff }                                 · sl { bet, net, jackpot }
-   *  multi { game }
-   */
-  function track(type, d) {
-    if (Casino.training) return; // mode Entraînement : rien ne compte (ni XP, ni défis, ni succès)
-    load();
-    d = d || {};
-    const T = P.totals;
-    const isRound = ['bj', 'pk', 'rl', 'sl'].includes(type);
-    if (isRound) {
-      T.hands++;
-      addXP(5);
-      if (d.net > 0) {
-        T.wins++;
-        addXP(Math.min(40, 3 + d.net / 25));
-        unlock('first_win');
-        if (d.net > T.biggestWin) T.biggestWin = d.net;
-      }
-    }
-    if (type === 'bj') {
-      T.bjHands++;
-      if (d.blackjack) { T.bjBlackjacks++; unlock('bj_first'); if (T.bjBlackjacks >= 10) unlock('bj_10'); }
-      if (T.bjHands >= 100) unlock('bj_100');
-    }
-    if (type === 'pk') {
-      T.pkHands++;
-      if (d.won && d.cat === 7) unlock('pk_quads');
-      if (d.won && d.cat === 8) unlock('pk_sflush');
-      if (d.allinWon) unlock('pk_allin');
-    }
-    if (type === 'pk-tourney') { addXP(d.place === 1 ? 150 : 40); if (d.place === 1) unlock('pk_champion'); }
-    if (type === 'rl') { T.rlSpins++; if (d.pleinHit) unlock('rl_plein'); if (d.zeroWin) unlock('rl_zero'); }
-    if (type === 'rl-cashout' && d.diff >= 1000) unlock('rl_cashout');
-    if (type === 'sl') { T.slSpins++; if (d.jackpot) unlock('jackpot'); }
-    if (type === 'multi') { unlock('friends'); addXP(20); }
-    if (isRound && d.bet > 0 && d.net >= d.bet * 9) unlock('big_win');
-    // défis du jour
-    const daily = ensureDaily();
-    daily.list.forEach((c) => {
-      if (c.done) return;
-      const def = CHALLENGES.find((x) => x.id === c.id);
-      const inc = def ? def.on(type, d) : 0;
-      if (!inc) return;
-      c.progress = Math.min(def.target, c.progress + inc);
-      if (c.progress >= def.target) {
-        c.done = true;
-        toast('Défi du jour réussi !', def.text + ' — récupère ta récompense sur l\'accueil', '✅', 'challenge');
-        vibrate([40, 30, 40]);
-      }
-    });
-    checkWallet();
-    save();
-  }
-
-
-  // ---------- Banque du temps ----------
-  const TIME_PACKS = [
-    // plus l'attente est longue, plus chaque minute rapporte : enchaîner les petites pauses n'est jamais plus rentable
-    { id: 'cafe', icon: '☕', name: 'Pause café', minutes: 5, amount: 100 },       // 20 €/min
-    { id: 'repas', icon: '🍔', name: 'Pause repas', minutes: 30, amount: 1000 },   // 33 €/min
-    { id: 'soiree', icon: '🌙', name: 'Soirée', minutes: 120, amount: 4500 },      // 37,5 €/min
-    { id: 'nuit', icon: '🛌', name: 'Nuit complète', minutes: 480, amount: 20000 }, // 41,7 €/min
-  ];
 
   // ---------- Choix du mode avant une partie solo ----------
   /**
@@ -315,7 +200,14 @@
       real.append(mk('p', '', 'Tu as une partie en cours : ' + fmtE(cur.stack) + ' sur la table (apporté : ' + fmtE(cur.start) + ').'));
       const rb = mk('button', 'cm-btn gold', 'Reprendre la partie');
       rb.type = 'button';
-      rb.onclick = () => { Casino.training = false; opts.onStart('real', cur.stack, true); };
+      rb.onclick = async () => {
+        rb.disabled = true;
+        const r = await Casino.startSession(opts.game, cur.stack);
+        rb.disabled = false;
+        if (!r || r.error) { real.appendChild(mk('p', 'cm-note', (r && r.error) || 'Impossible de reprendre.')); return; }
+        Casino.training = false;
+        opts.onStart('real', r.session.stack, true, r);
+      };
       real.appendChild(rb);
     } else {
       real.append(mk('p', '', 'Tu apportes une somme de ta banque, sans aides : c\'est là que tu vois si tu as bien appris. Gains, XP, défis et succès comptent. Tu encaisses quand tu veux ; si tu perds tout, c\'est perdu.' + (opts.realNote ? ' ' + opts.realNote : '')));
@@ -336,13 +228,17 @@
       const note = mk('p', 'cm-note');
       const go = mk('button', 'cm-btn gold', 'Jouer pour de vrai');
       go.type = 'button';
-      go.onclick = () => {
+      go.onclick = async () => {
         const v = Math.floor(Number(inp.value));
         if (!(v >= min)) { note.textContent = 'Il faut apporter au moins ' + fmtE(min) + '.'; return; }
         if (v > P.wallet) { note.textContent = 'Ta banque ne contient que ' + fmtE(P.wallet) + '. Gagne du temps contre de l\'argent sur l\'accueil (banque du temps).'; return; }
-        if (!Casino.startSession(opts.game, v)) return;
+        go.disabled = true;
+        note.textContent = '';
+        const r = await Casino.startSession(opts.game, v);
+        go.disabled = false;
+        if (!r || r.error) { note.textContent = (r && r.error) || 'Impossible de commencer.'; return; }
         Casino.training = false;
-        opts.onStart('real', v, false);
+        opts.onStart('real', r.session.stack, !!r.resumed, r);
       };
       if (wal < min) { go.disabled = true; note.textContent = 'Ta banque est trop basse (' + fmtE(wal) + '). Récupère ton bonus du jour ou passe par la banque du temps sur l\'accueil.'; }
       real.append(row, quick, go, note);
@@ -376,58 +272,38 @@
     document.body.appendChild(ov);
   }
 
+
+
   // ---------- API ----------
   const Casino = {
-    AVATARS, FELTS, BACKS, CHALLENGES, ACHIEVEMENTS, need, levelOf, title,
+    AVATARS, FELTS, BACKS, CHALLENGES, ACHIEVEMENTS, TIME_PACKS, GAMES: R.GAMES, need, levelOf, title,
+    server: SERVER,
+    call, sync, firebase,
     get profile() { return load(); },
     onChange(f) { listeners.push(f); },
     wallet() { return load().wallet; },
-    setWallet(v) { load(); P.wallet = Math.max(0, Math.round(v * 100) / 100); checkWallet(); save(); },
-    addWallet(v) { load(); Casino.setWallet(P.wallet + v); },
+    // Mode sans serveur uniquement (les jeux ne touchent jamais la banque directement avec le serveur)
+    setWallet(v) { if (SERVER) return; local((N) => { P.wallet = Math.max(0, Math.round(v * 100) / 100); R.checkWallet(P, N); }); },
+    addWallet(v) { if (SERVER) return; Casino.setWallet(load().wallet + v); },
     setPseudo(name) {
       load(); P.pseudo = String(name || '').trim().slice(0, 16);
       try { localStorage.setItem('bj-pseudo', P.pseudo); } catch (e) { /* ignore */ }
       save();
+      if (SERVER) call('profile.set', { pseudo: P.pseudo });
     },
-    setAvatar(a) { load(); if (AVATARS.includes(a)) { P.avatar = a; save(); } },
+    setAvatar(a) { load(); if (AVATARS.includes(a)) { P.avatar = a; save(); if (SERVER) call('profile.set', { avatar: a }); } },
+    setFriendCode(code) { if (SERVER) call('profile.set', { code }); },
     setSetting(k, v) { load(); P.settings[k] = v; save(); },
     save() { load(); save(); },
-    // Bonus quotidien : 500 €, +250 € par jour consécutif (jusqu'à 2 000 €)
-    bonusInfo() {
-      load();
-      const d = today();
-      if (P.bonus.last === d) return { available: false, streak: P.bonus.streak };
-      const y = new Date(); y.setDate(y.getDate() - 1);
-      const yd = y.getFullYear() + '-' + String(y.getMonth() + 1).padStart(2, '0') + '-' + String(y.getDate()).padStart(2, '0');
-      const streak = P.bonus.last === yd ? P.bonus.streak + 1 : 1;
-      return { available: true, streak, amount: Math.min(2000, 500 + 250 * (streak - 1)) };
+    bonusInfo() { return R.bonusInfo(load(), Date.now()); },
+    async claimBonus() {
+      if (SERVER) { const r = await call('bonus.claim'); return r.amount || 0; }
+      return local((N) => R.claimBonus(P, Date.now(), N));
     },
-    claimBonus() {
-      const b = Casino.bonusInfo();
-      if (!b.available) return 0;
-      P.bonus = { last: today(), streak: b.streak };
-      P.wallet += b.amount;
-      addXP(30);
-      if (b.streak >= 7) unlock('daily7');
-      checkWallet();
-      save();
-      vibrate([30, 30, 60]);
-      return b.amount;
-    },
-    daily() { return ensureDaily(); },
-    claimChallenge(id) {
-      const daily = ensureDaily();
-      const c = daily.list.find((x) => x.id === id);
-      const def = CHALLENGES.find((x) => x.id === id);
-      if (!c || !c.done || c.claimed || !def) return 0;
-      c.claimed = true;
-      P.wallet += def.reward;
-      P.totals.challenges++;
-      addXP(def.xp);
-      if (P.totals.challenges >= 10) unlock('challenges10');
-      checkWallet();
-      save();
-      return def.reward;
+    daily() { load(); if (!SERVER) R.ensureDaily(P, Date.now()); return P.daily || { list: [] }; },
+    async claimChallenge(id) {
+      if (SERVER) { const r = await call('challenge.claim', { id }); return r.amount || 0; }
+      return local((N) => R.claimChallenge(P, id, Date.now(), N));
     },
     equip(kind, id) {
       load();
@@ -439,114 +315,87 @@
       applyCosmetics();
       return true;
     },
-
-    // ---------- Parties réelles : on apporte une somme, on encaisse quand on veut ----------
+    // ---------- Parties réelles ----------
     training: false,
     TRAIN_BANK: 10000,
-    GAMES: { blackjack: 'Blackjack', poker: 'Poker', roulette: 'Roulette', slots: 'Machine à sous' },
     session(game) { return load().sessions[game] || null; },
     sessions() { return Object.assign({}, load().sessions); },
-    startSession(game, amount) {
+    /** Commence (ou reprend) une partie réelle : { session, resumed, … } ou { error } */
+    async startSession(game, amount) {
+      if (SERVER) { const r = await call('session.start', { game, amount }); return r; }
       load();
-      amount = Math.floor(amount);
-      if (P.sessions[game]) return P.sessions[game];
-      if (!(amount > 0) || amount > P.wallet) return null;
-      P.wallet -= amount;
-      P.sessions[game] = { stack: amount, start: amount, at: Date.now() };
-      save();
-      return P.sessions[game];
+      if (P.sessions[game]) return { session: P.sessions[game], resumed: true };
+      const s = local(() => R.startSession(P, game, amount, Date.now()));
+      return s ? { session: s } : { error: 'Ta banque ne contient pas assez d\'argent.' };
     },
+    // Sans serveur : la somme sur la table est enregistrée par le jeu
     setStack(game, v) {
+      if (SERVER) return;
       load();
       const ss = P.sessions[game];
       if (!ss) return;
       ss.stack = Math.max(0, Math.round(v * 100) / 100);
       save();
     },
-    // Fin de partie : la somme sur la table revient à la banque (rien si tout a été perdu)
-    cashOut(game) {
-      load();
-      const ss = P.sessions[game];
-      if (!ss) return null;
-      delete P.sessions[game];
-      P.wallet += ss.stack;
-      const diff = Math.round((ss.stack - ss.start) * 100) / 100;
-      if (diff > 0) { P.totals.cashouts = (P.totals.cashouts || 0) + 1; addXP(Math.min(80, 10 + diff / 50)); }
-      checkWallet();
-      save();
-      return { start: ss.start, end: ss.stack, diff };
+    /** Encaisse : la somme sur la table revient à la banque. { start, end, diff } ou { error } */
+    async cashOut(game, extra) {
+      if (SERVER) { const r = await call('session.cashout', { game }); return r.error ? r : r.cash; }
+      return local((N) => {
+        const ss = P.sessions[game];
+        const r = R.cashOut(P, game, N);
+        if (r && extra && extra.track) R.track(P, extra.track.type, extra.track.data, Date.now(), N);
+        return r;
+      });
     },
     modePicker,
-    // ---------- Parties entre amis : la monnaie de la table ne sort pas ; le classement rapporte ----------
-    prizeFor(place, players) {
-      if (players >= 3) return place === 1 ? 500 : place === 2 ? 200 : 0;
-      if (players === 2) return place === 1 ? 300 : 0;
-      return 0;
-    },
-    prizeText(players) {
-      return players >= 3 ? '1er : +500 €, 2e : +200 € sur ta banque' : players === 2 ? 'Le gagnant : +300 € sur sa banque' : 'Il faut au moins 2 joueurs pour gagner un prix';
-    },
-    // Verse une seule fois le prix d'une partie (clé unique par table et par partie)
-    multiPrize(key, place, players) {
-      load();
-      P.prizes = P.prizes || {};
-      if (P.prizes[key]) return 0;
-      const v = Casino.prizeFor(place, players);
-      P.prizes[key] = Date.now();
-      const keys = Object.keys(P.prizes).sort((a, b) => P.prizes[a] - P.prizes[b]);
-      while (keys.length > 60) delete P.prizes[keys.shift()];
-      if (v > 0) {
-        P.wallet += v;
-        P.totals.multiWins = (P.totals.multiWins || 0) + (place === 1 ? 1 : 0);
-        addXP(place === 1 ? 120 : 50);
-        checkWallet();
+    // ---------- Entre amis ----------
+    prizeFor: R.prizeFor,
+    prizeText: R.prizeText,
+    /** Prix de fin de partie (une seule fois) ; avec le serveur, il vérifie la table lui-même. */
+    async multiPrize(key, place, players, info) {
+      if (SERVER) {
+        const r = await call('multi.prize', info || {});
+        if (r.amount > 0) setTimeout(() => bigWin(r.amount, place === 1 ? 'VICTOIRE ENTRE AMIS !' : '2e PLACE !'), 2200);
+        return r.amount || 0;
       }
-      save();
-      if (v > 0) setTimeout(() => Casino.bigWin(v, place === 1 ? 'VICTOIRE ENTRE AMIS !' : '2e PLACE !'), 2200);
+      const v = local((N) => R.applyPrize(P, key, place, players, Date.now(), N));
+      if (v > 0) setTimeout(() => bigWin(v, place === 1 ? 'VICTOIRE ENTRE AMIS !' : '2e PLACE !'), 2200);
       return v;
     },
     showRanking,
-    // ---------- Sauvegarde du compte ----------
-    exportSave() { load(); return JSON.parse(JSON.stringify(P)); },
+    // ---------- Banque du temps ----------
+    timebank() { return R.timeInfo(load(), Date.now()); },
+    async startTime(id) {
+      if (SERVER) return !(await call('time.start', { pack: id })).error;
+      return local(() => R.startTime(P, id, Date.now()));
+    },
+    async claimTime() {
+      if (SERVER) { const r = await call('time.claim'); if (r.amount) vibrate([30, 30, 60]); return r.amount || 0; }
+      return local((N) => R.claimTime(P, Date.now(), N));
+    },
+    async cancelTime() {
+      if (SERVER) { await call('time.cancel'); return; }
+      local(() => { P.timebank = null; });
+    },
+    // ---------- Progression (mode sans serveur ; avec le serveur, c'est lui qui compte) ----------
+    track(type, d) {
+      if (Casino.training || SERVER) return;
+      local((N) => R.track(P, type, d, Date.now(), N));
+    },
+    // ---------- Compte (account.js) : seuls les réglages de l'appareil sont sauvegardés avec le serveur ----------
+    exportSave() { load(); return JSON.parse(JSON.stringify(SERVER ? pick(P, LOCAL_KEYS.concat(['pseudo', 'avatar'])) : P)); },
     importSave(data) {
       if (!data || typeof data !== 'object') return;
-      P = Object.assign(fresh(), data);
-      P.totals = Object.assign(fresh().totals, P.totals);
-      if (!P.sessions) P.sessions = {};
+      load();
+      P = SERVER ? Object.assign(P, pick(data, LOCAL_KEYS)) : Object.assign(localDefaults(), R.normalize(data, Date.now()), pick(data, LOCAL_KEYS));
       try { if (P.pseudo) localStorage.setItem('bj-pseudo', P.pseudo); } catch (e) { /* ignore */ }
       save(true);
       applyCosmetics();
+      if (SERVER) sync();
     },
-    resetLocal() { P = fresh(); P.pseudo = ''; save(); },
-    // ---------- Banque du temps : on « achète » de l'argent avec du temps d'attente ----------
-    TIME_PACKS,
-    timebank() {
-      load();
-      const t = P.timebank;
-      if (!t) return null;
-      const pack = TIME_PACKS.find((x) => x.id === t.pack);
-      return { pack, start: t.start, end: t.end, left: Math.max(0, t.end - Date.now()), ready: Date.now() >= t.end };
-    },
-    startTime(id) {
-      load();
-      const pack = TIME_PACKS.find((x) => x.id === id);
-      if (!pack || P.timebank) return false;
-      P.timebank = { pack: id, start: Date.now(), end: Date.now() + pack.minutes * 60000 };
-      save();
-      return true;
-    },
-    claimTime() {
-      const t = Casino.timebank();
-      if (!t || !t.ready) return 0;
-      P.timebank = null;
-      P.wallet += t.pack.amount;
-      checkWallet();
-      save();
-      vibrate([30, 30, 60]);
-      return t.pack.amount;
-    },
-    cancelTime() { load(); P.timebank = null; save(); },
-    track, toast, bigWin, vibrate, unlock, applyCosmetics,
+    resetLocal() { P = Object.assign(localDefaults(), R.normalize(null, Date.now())); P.pseudo = ''; save(); if (SERVER) sync(); },
+    unlock(id) { if (!SERVER) local((N) => R.unlock(P, id, N)); },
+    toast, bigWin, vibrate, applyCosmetics,
   };
 
   // Couleurs du tapis et du dos des cartes choisies par le joueur
@@ -614,6 +463,7 @@
   }
 
   window.Casino = Casino;
-  document.addEventListener('DOMContentLoaded', () => { applyCosmetics(); ensureDaily(); });
+  document.addEventListener('DOMContentLoaded', () => { applyCosmetics(); });
   if (document.readyState !== 'loading') { applyCosmetics(); }
+  if (SERVER) sync().catch(() => {}); else { load(); R.ensureDaily(P, Date.now()); }
 })();

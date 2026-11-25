@@ -100,10 +100,19 @@
     return null;
   }
 
+  let lastPub = null;
   async function publish() {
     const b = await backend();
     if (!b) return false;
     const p = P();
+    // Avec le serveur du Casino, c'est lui qui écrit le profil public (impossible d'y mettre une fausse banque)
+    if (window.Casino && Casino.server) {
+      const key = (p.friendCode || '') + '|' + (p.pseudo || '');
+      if (key === lastPub) return true; // le serveur republie déjà le profil après chaque partie
+      lastPub = key;
+      await Casino.call('profile.set', { code: p.friendCode || undefined, pseudo: p.pseudo });
+      return true;
+    }
     await b.set('profiles/' + b.uid, {
       pseudo: p.pseudo || 'Joueur', avatar: p.avatar, xp: p.xp, level: Casino.levelOf(p.xp), wallet: Math.round(p.wallet),
       biggestWin: Math.round(p.totals.biggestWin || 0), hands: p.totals.hands, achievements: Object.keys(p.achievements).length,

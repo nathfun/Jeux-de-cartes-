@@ -109,6 +109,7 @@
       setInfo({ pseudo: String(pseudo).trim().slice(0, 16), id, uid: user.uid });
       pulling = true;
       try { const got = await pull(true); if (!got) await push(); } finally { pulling = false; }
+      if (window.Casino && Casino.server) await Casino.sync(); // la banque du compte vient du serveur
       startSync(false);
       return true;
     },

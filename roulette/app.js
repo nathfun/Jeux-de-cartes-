@@ -583,8 +583,21 @@
     rienNeVaPlus();
     soloRender();
     let n;
+    S.serverStack = null;
     if (S.defi) n = Math.floor(S.defi.rng() * 37); // défi : la même suite de numéros pour tous les amis
-    else {
+    else if (S.mode === 'real' && window.Casino && Casino.server) {
+      // partie réelle : c'est le serveur qui lance la bille et compte l'argent
+      const r = await Casino.call('rl.spin', { bets: S.bets });
+      if (r.error) {
+        S.log.forEach((l) => { S.bankroll += l.amount; });
+        S.bets = {}; S.log = []; S.phase = 'waiting'; S.deadline = null;
+        soloRender();
+        $('sub-message').textContent = '⚠️ ' + r.error + ' Tes mises te sont rendues.';
+        return;
+      }
+      n = r.n;
+      S.serverStack = r.stack;
+    } else {
       const arr = new Uint32Array(1);
       (window.crypto || window.msCrypto).getRandomValues(arr);
       n = arr[0] % 37;
@@ -598,6 +611,7 @@
   function resolveSolo(n) {
     const r = recordSpin(S.T, S.bets, n);
     S.bankroll += r.back;
+    if (S.serverStack != null) S.bankroll = S.serverStack; // le serveur fait foi
     S.maxBank = Math.max(S.maxBank, S.bankroll);
     S.T.peak = Math.max(S.T.peak || 0, S.bankroll);
     S.result = n;

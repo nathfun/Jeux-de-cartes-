@@ -12,3 +12,8 @@ window.FIREBASE_CONFIG = {
   messagingSenderId: "433776035648",
   appId: "1:433776035648:web:25fe2e6211435e7529dca5"
 };
+
+// Serveur du Casino (Cloud Functions, dossier functions/) : à passer à true une fois le serveur déployé
+// (voir FIREBASE.md, « Serveur anti-triche »). Avec true, la banque et les tirages des parties réelles
+// sont gérés par le serveur ; avec false, tout est calculé dans le navigateur.
+window.CASINO_SERVER = false;

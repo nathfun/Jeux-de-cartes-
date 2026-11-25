@@ -151,14 +151,26 @@
     $('win-text').textContent = free ? 'Tour gratuit…' : 'Bonne chance !';
     if (window.Sfx) Sfx.chips();
 
-    const grid = window.__forceGrid ? window.__forceGrid.shift() || E.spinGrid() : E.spinGrid();
+    // Partie réelle avec le serveur : c'est lui qui tire les rouleaux et compte l'argent
+    let srv = null;
+    if (S.mode === 'real' && window.Casino && Casino.server) {
+      srv = await Casino.call('sl.spin', { bet: b });
+      if (srv.error) {
+        if (!free) { addWallet(b); S.staked -= b; } else S.free++;
+        S.spinning = false;
+        $('win-text').textContent = '⚠️ ' + srv.error;
+        stopAuto(); renderFree(); renderControls();
+        return;
+      }
+    }
+    const grid = srv ? srv.grid : window.__forceGrid ? window.__forceGrid.shift() || E.spinGrid() : E.spinGrid();
     const turbo = $('turbo').checked;
     const base = turbo ? 320 : 800, step = turbo ? 90 : 260;
     if (window.Sfx) Sfx.tick();
     await Promise.all([0, 1, 2, 3, 4].map((r) => spinReel(r, grid[r], base + r * step)));
     S.grid = grid;
 
-    const res = E.evaluate(grid, b, free);
+    const res = srv ? srv.res : E.evaluate(grid, b, free);
     S.spins++;
     if (res.total > 0) { addWallet(res.total); S.won += res.total; S.best = Math.max(S.best, res.total); }
     if (free) S.freeWon += res.total;
@@ -186,6 +198,7 @@
     if (res.jackpot) setTimeout(() => window.Casino && Casino.bigWin(res.total, 'JACKPOT !'), 900);
     else if (res.total >= 15 * b) setTimeout(() => window.Casino && Casino.bigWin(res.total, 'MÉGA GAIN !'), 900);
 
+    if (srv) { S.stack = srv.stack; S.free = srv.free; S.freeBet = srv.freeBet || S.freeBet; showWallet(); } // le serveur fait foi
     S.spinning = false;
     renderFree();
     renderStats();
@@ -263,7 +276,7 @@
   $('turbo').addEventListener('change', () => { try { localStorage.setItem('slots-turbo', $('turbo').checked ? '1' : '0'); } catch (e) { /* ignore */ } });
 
   // ---------- Début et fin de partie ----------
-  function startGame(mode, amount, resumed) {
+  function startGame(mode, amount, resumed, info) {
     S.mode = mode;
     if (window.Casino) Casino.training = mode === 'train';
     S.stack = amount;
@@ -278,14 +291,20 @@
     $('aides-panel').hidden = mode !== 'train';
     document.body.classList.toggle('no-aides', mode !== 'train' || !aides.checked);
     $('win-text').textContent = resumed ? 'Partie reprise : ' + fmt(S.stack) + ' € sur la table.' : 'Bonne chance !';
+    S.free = 0;
+    if (info && info.free > 0) { S.free = info.free; S.freeBet = info.freeBet; }
+    renderFree();
     showWallet(); renderStats(); renderControls();
+    if (S.free > 0) setTimeout(spin, 800); // tours gratuits restés en attente
   }
-  function endSession(broke) {
+  async function endSession(broke) {
     if (S.spinning || S.free > 0) return;
     stopAuto();
     let msg;
     if (S.mode === 'real' && window.Casino) {
-      const r = Casino.cashOut('slots');
+      const r0 = await Casino.cashOut('slots');
+      if (r0 && r0.error) { $('win-text').textContent = '⚠️ ' + r0.error; return; }
+      const r = r0;
       const diff = r ? r.diff : 0;
       msg = broke ? 'Tout est perdu : les ' + fmt(S.start) + ' € apportés sont partis.' :
         'Tu encaisses ' + fmt(r ? r.end : S.stack) + ' € (' + (diff >= 0 ? '+' : '−') + fmt(Math.abs(diff)) + ' € par rapport à ta mise de départ).';

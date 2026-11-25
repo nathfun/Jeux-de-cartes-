@@ -447,7 +447,7 @@
     const rows = st.gameEnd.rows || [];
     const place = rows.findIndex((r) => r.uid === me) + 1;
     let prize = 0;
-    if (place && window.Casino) prize = Casino.multiPrize('bj:' + tableId + ':' + st.gameEnd.at, place, rows.length);
+    if (place && window.Casino) { prize = Casino.prizeFor(place, rows.length); Casino.multiPrize('bj:' + tableId + ':' + st.gameEnd.at, place, rows.length, { game: 'blackjack', table: tableId }); }
     const fn = () => window.Casino && Casino.showRanking({
       title: place === 1 ? 'Tu gagnes la partie !' : (rows[0] ? rows[0].name + ' gagne la partie !' : 'Partie terminée'),
       subtitle: (place ? 'Tu termines ' + (place === 1 ? '1er' : place + 'e') + '. ' : '') + (prize ? '+' + prize + ' € sur ta banque du Casino.' : 'Les jetons de la table restent sur la table.'),

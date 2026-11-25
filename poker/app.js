@@ -37,7 +37,33 @@
   function saveStats() { try { localStorage.setItem(STATS_KEY, JSON.stringify(stats)); } catch (e) { /* ignore */ } }
 
   // ---------- Démarrage ----------
+  // Tournoi réel avec le serveur : le serveur garde le paquet et joue les bots ; l'app anime ses « images » de la table
+  let srv = false, srvQueue = [], srvHand = null;
+  async function startServer() {
+    $('buyin-note').textContent = '';
+    $('start').disabled = true;
+    const r = await Casino.call('pk.start', {
+      buyIn: parseInt($('set-buyin').value, 10), opponents: parseInt($('set-opponents').value, 10), style: $('set-style').value,
+      blinds: $('set-blinds').value, stack: parseInt($('set-stack').value, 10), rule: $('set-blindup').value,
+    });
+    $('start').disabled = false;
+    if (r.error) { $('buyin-note').textContent = r.error; return; }
+    srv = true;
+    Casino.training = false;
+    cfg = Object.assign({}, r.cfg, { coach: false, real: true, timer: parseInt($('set-timer').value, 10) || 0 });
+    T = r.T;
+    st = r.frames[r.frames.length - 1];
+    document.body.classList.add('no-coach');
+    $('setup').hidden = true;
+    $('game').hidden = false;
+    if (r.resumed && st.street !== 'idle' && st.street !== 'showdown') { setMessage('Tournoi repris.'); handStartStack = st.seats[ME].stack + st.seats[ME].total; loop(); return; }
+    if (r.resumed) { render(); setMessage('Tournoi repris : lance la main suivante.'); $('next-hand').hidden = false; return; }
+    newHand();
+  }
+
   function start() {
+    if (window.Casino && Casino.server && pkMode() === 'real') { startServer(); return; }
+    srv = false;
     const [sb, bb] = $('set-blinds').value.split('/').map(Number);
     const n = parseInt($('set-opponents').value, 10);
     const styleSel = $('set-style').value;
@@ -65,9 +91,21 @@
     newHand();
   }
 
-  function newHand() {
+  async function newHand() {
     $('next-hand').hidden = true;
     $('summary-panel').hidden = true;
+    if (srv) {
+      handLog = []; vpipThisHand = false; boardShown = 0; pending = null;
+      const r = await Casino.call('pk.hand');
+      if (r.error) { setMessage('⚠️ ' + r.error); $('next-hand').hidden = false; return; }
+      T = r.T;
+      st = r.frames.shift(); srvQueue = r.frames; srvHand = r.hand;
+      handStartStack = st.seats[ME].stack + st.seats[ME].total; // tapis avant les blindes
+      stats.hands++;
+      setMessage(r.blindMsg || '');
+      loop();
+      return;
+    }
     // Pas de recave : un joueur sans jetons est éliminé (le moteur le laisse hors du jeu)
     // Montée des blindes au début de la main
     let blindMsg = '';
@@ -112,17 +150,35 @@
       return;
     }
     await wait(1);
+    if (srv) {
+      if (!srvQueue.length) { busy = false; setMessage('⚠️ Connexion perdue avec le serveur : recharge la page pour reprendre.'); return; }
+      st = srvQueue.shift();
+      loop();
+      return;
+    }
     const s = st.seats[i];
     B.play(st, i, s.style);
     loop();
   }
 
   // ---------- Actions du joueur ----------
-  function humanAct(action) {
+  async function humanAct(action) {
     if (busy || !st || st.toAct !== ME) return;
     stopTimer();
     const L = P.legal(st, ME);
     if (action.type === 'raise' && action.to >= L.maxTo) action = { type: 'allin' };
+    if (srv) {
+      busy = true;
+      if (st.street === 'preflop' && ['call', 'raise', 'allin'].includes(action.type)) vpipThisHand = true;
+      $('raise-box').hidden = true;
+      const r = await Casino.call('pk.act', { action });
+      if (r.error) { busy = false; setMessage('⚠️ ' + r.error); render(); return; }
+      T = r.T;
+      st = r.frames.shift(); srvQueue = r.frames; srvHand = r.hand;
+      busy = false;
+      loop();
+      return;
+    }
     const res = pending || (coachOn() ? C.analyze(st, ME, { iters: 400 }) : null);
     const street = st.street;
     if (!P.act(st, ME, action)) return;
@@ -234,14 +290,15 @@
     msg += net > 0 ? ' — tu gagnes ' + net + ' !' : net < 0 ? ' — tu perds ' + (-net) + '.' : '.';
     setMessage(msg);
     if (window.Sfx) { if (net > 0) Sfx.win(); else if (net < 0) Sfx.lose(); }
-    if (window.Casino) {
+    if (window.Casino && !srv) {
       const cat = me.score ? Math.floor(me.score / 759375) : -1; // catégorie de la main (0 = hauteur … 8 = quinte flush)
       Casino.track('pk', { won: me.won > 0, net, cat: me.won > 0 && !r.uncontested ? cat : -1, allinWon: me.allin && me.won > 0 });
       if (net >= cfg.stack * 0.8) setTimeout(() => Casino.bigWin(net, 'GROS POT !'), 1200);
     }
     if (coachOn() && handLog.length) renderSummary(net);
     // Statistiques de la partie, éliminations et fin de partie
-    const out = Tourney.recordHand(T, st, (i) => 's' + i, (i) => st.seats[i].name, Date.now());
+    const out = srv ? ((srvHand && srvHand.out) || []) : Tourney.recordHand(T, st, (i) => 's' + i, (i) => st.seats[i].name, Date.now());
+    if (srv && net >= cfg.stack * 0.8) setTimeout(() => Casino.bigWin(net, 'GROS POT !'), 1200);
     if (out.length) {
       const names = out.filter((i) => i !== ME).map((i) => st.seats[i].name);
       if (names.length) setMessage(msg + ' ' + names.join(' et ') + (names.length > 1 ? ' sont éliminés.' : ' est éliminé(e).'));
@@ -272,6 +329,11 @@
   }
   function payPrize(place) {
     if (!window.Casino) return 0;
+    if (srv) { // le serveur a déjà versé la cagnotte
+      const prize = (srvHand && srvHand.prize) || 0;
+      if (prize >= cfg.buyIn * 3) setTimeout(() => Casino.bigWin(prize, place === 1 ? 'VICTOIRE !' : 'BELLE PLACE !'), 4500);
+      return prize;
+    }
     const prize = prizeFor(place);
     if (prize) Casino.addWallet(prize);
     Casino.track('pk-tourney', { place, players: cfg.players });
@@ -603,7 +665,7 @@
       const real = pkMode() === 'real';
       $('buyin-row').hidden = !real;
       $('buyin-info').hidden = !real;
-      $('start').textContent = real ? 'Payer et commencer le tournoi' : 'Commencer l\'entraînement';
+      $('start').textContent = real ? (Casino.session('poker') ? 'Reprendre le tournoi en cours' : 'Payer et commencer le tournoi') : 'Commencer l\'entraînement';
       const b = parseInt($('set-buyin').value, 10) || 0, n = parseInt($('set-opponents').value, 10) + 1;
       if (!b) { $('buyin-info').textContent = 'Partie gratuite : pas de cagnotte. Portefeuille : ' + Casino.wallet().toLocaleString('fr-FR') + ' €.'; return; }
       const pool = b * n;

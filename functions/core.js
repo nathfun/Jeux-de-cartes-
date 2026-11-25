@@ -1,0 +1,359 @@
+/*
+ * Logique du serveur du Casino, sans Firebase (testable seule).
+ * handle(state, ctx) applique une opération demandée par un joueur et renvoie le résultat.
+ *
+ * state = { player, secret } :
+ *   player : profil du joueur (banque, niveau, défis, succès, parties réelles en cours…)
+ *   secret : ce que le joueur ne doit pas voir (sabot du blackjack, table de poker complète…)
+ * ctx = { uid, anon, op, data, now, rnd, table }
+ *   rnd(n) : entier aléatoire dans [0, n) (crypto côté serveur)
+ *   table  : état d'une table entre amis lu juste avant (pour les prix)
+ */
+'use strict';
+const R = require('./shared/casino-rules.js');
+const B = require('./shared/bets.js');
+const SL = require('./shared/slots-engine.js');
+const ST = require('./shared/strategy.js');
+const SB = require('./shared/sidebets.js');
+const PK = require('./poker.js');
+
+class GameError extends Error { constructor(msg) { super(msg); this.userMessage = msg; } }
+const fail = (msg) => { throw new GameError(msg); };
+const int = (v) => (Number.isInteger(v) ? v : NaN);
+const round2 = (v) => Math.round(v * 100) / 100;
+
+// ---------- Blackjack (règle européenne : pas de carte cachée) ----------
+const DECKS = 6, MIN_BET = 5, MAX_BET = 250, MAX_HANDS = 4, MAX_SIDE = 100;
+const SUITS = ['♠', '♥', '♦', '♣'];
+const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+const value = (cards) => ST.handValue(cards);
+const isBJ = (cards) => cards.length === 2 && value(cards).total === 21;
+
+function newShoe(rnd) {
+  const shoe = [];
+  for (let d = 0; d < DECKS; d++) for (const s of SUITS) for (const r of RANKS) shoe.push({ rank: r, suit: s });
+  for (let i = shoe.length - 1; i > 0; i--) { const j = rnd(i + 1); [shoe[i], shoe[j]] = [shoe[j], shoe[i]]; }
+  return shoe;
+}
+
+/**
+ * Le serveur déroule la main dans le même ordre que l'app : chaque carte tirée est ajoutée à `out`,
+ * l'app les distribue ensuite une par une avec ses animations. L'argent est compté ici.
+ */
+function bjEngine(sess, bj, rnd, out) {
+  const draw = () => {
+    if (!bj.shoe.length) bj.shoe = newShoe(rnd);
+    const c = bj.shoe.pop();
+    out.push(c);
+    return { rank: c.rank, suit: c.suit };
+  };
+  function proceed() {
+    const r = bj.round;
+    if (isBJ(r.hands[0].cards)) { r.hands[0].done = true; r.active = 1; return dealer(); }
+    r.phase = 'playing';
+    return null;
+  }
+  function advance() {
+    const r = bj.round;
+    while (r.active < r.hands.length && r.hands[r.active].done) r.active++;
+    if (r.active < r.hands.length) {
+      const h = r.hands[r.active];
+      if (h.cards.length === 1) h.cards.push(draw());
+      if (value(h.cards).total === 21) { h.done = true; return advance(); }
+      return null;
+    }
+    return dealer();
+  }
+  function dealer() {
+    const r = bj.round;
+    r.phase = 'dealer';
+    const live = r.hands.filter((h) => value(h.cards).total <= 21 && !h.surrendered);
+    const onlyNaturals = live.length > 0 && r.hands.length === 1 && isBJ(r.hands[0].cards);
+    if (live.length) r.dealer.push(draw());
+    if (live.length && !onlyNaturals && !isBJ(r.dealer)) {
+      while (value(r.dealer).total < 17) r.dealer.push(draw());
+    }
+    return settle();
+  }
+  function settle() {
+    const r = bj.round;
+    r.phase = 'over';
+    const d = value(r.dealer).total;
+    const dBJ = isBJ(r.dealer);
+    const single = r.hands.length === 1;
+    let payout = 0, wagered = 0;
+    const results = r.hands.map((h) => {
+      const p = value(h.cards).total;
+      const pBJ = single && !h.split && isBJ(h.cards);
+      wagered += h.bet;
+      let back = 0, res;
+      if (h.surrendered) { back = h.bet / 2; res = 'lose'; }
+      else if (pBJ && dBJ) { back = h.bet; res = 'push'; }
+      else if (pBJ) { back = h.bet * 2.5; res = 'win'; }
+      else if (dBJ) res = 'lose';
+      else if (p > 21) res = 'lose';
+      else if (d > 21 || p > d) { back = h.bet * 2; res = 'win'; }
+      else if (p === d) { back = h.bet; res = 'push'; }
+      else res = 'lose';
+      payout += back;
+      return res;
+    });
+    if (r.ins && dBJ) payout += r.ins * 3;
+    sess.stack = round2(sess.stack + payout);
+    const net = payout - wagered - (r.ins && dBJ ? r.ins : 0);
+    return {
+      net, results,
+      track: {
+        net, bet: r.hands.reduce((a, h) => a + (h.doubled ? h.bet / 2 : h.bet), 0),
+        blackjack: single && !r.hands[0].split && isBJ(r.hands[0].cards),
+        doubledWin: r.hands.some((h, i) => h.doubled && results[i] === 'win'),
+      },
+    };
+  }
+  return {
+    deal(bet, pp, t213) {
+      if (bj.round && bj.round.phase !== 'over') fail('Une main est déjà en cours.');
+      if (!(bet >= MIN_BET && bet <= MAX_BET)) fail('Mise entre ' + MIN_BET + ' et ' + MAX_BET + ' €.');
+      if (!(pp >= 0 && pp <= MAX_SIDE && t213 >= 0 && t213 <= MAX_SIDE)) fail('Pari annexe invalide.');
+      if (bet + pp + t213 > sess.stack) fail('Pas assez d\'argent sur la table.');
+      let shuffled = false;
+      if (!bj.shoe || bj.shoe.length < DECKS * 52 * 0.25) { bj.shoe = newShoe(rnd); shuffled = true; }
+      sess.stack = round2(sess.stack - bet - pp - t213);
+      bj.round = { bet, pp, t213, hands: [{ cards: [], bet, done: false }], dealer: [], active: 0, phase: 'dealing', ins: 0 };
+      const r = bj.round;
+      const p = r.hands[0].cards;
+      p.push(draw()); r.dealer.push(draw()); p.push(draw());
+      // paris annexes, réglés tout de suite
+      const pr = pp ? SB.perfectPairs(p[0], p[1]) : null;
+      const tr = t213 ? SB.twentyOnePlusThree(p[0], p[1], r.dealer[0]) : null;
+      if (pr) sess.stack = round2(sess.stack + pp + pp * pr.mult);
+      if (tr) sess.stack = round2(sess.stack + t213 + t213 * tr.mult);
+      // assurance proposée quand le croupier montre un As (si on peut la payer)
+      const cost = Math.floor(bet / 2);
+      if (ST.cardValue(r.dealer[0].rank) === 11 && cost > 0 && sess.stack >= cost) { r.phase = 'insurance'; return { shuffled, settle: null }; }
+      return { shuffled, settle: proceed() };
+    },
+    insurance(take) {
+      const r = bj.round;
+      if (!r || r.phase !== 'insurance') fail('Pas d\'assurance en attente.');
+      if (take) { const cost = Math.floor(r.bet / 2); sess.stack = round2(sess.stack - cost); r.ins = cost; }
+      return { settle: proceed() };
+    },
+    act(action) {
+      const r = bj.round;
+      if (!r || r.phase !== 'playing') fail('Ce n\'est pas le moment de jouer.');
+      const h = r.hands[r.active];
+      const two = h.cards.length === 2;
+      const affordable = sess.stack >= h.bet;
+      const can = {
+        H: true, S: true, D: two && affordable,
+        P: two && affordable && r.hands.length < MAX_HANDS && ST.cardValue(h.cards[0].rank) === ST.cardValue(h.cards[1].rank),
+      };
+      if (!can[action]) fail('Action impossible.');
+      if (action === 'H') { h.cards.push(draw()); if (value(h.cards).total >= 21) h.done = true; }
+      else if (action === 'S') h.done = true;
+      else if (action === 'D') { sess.stack = round2(sess.stack - h.bet); h.bet *= 2; h.doubled = true; h.cards.push(draw()); h.done = true; }
+      else if (action === 'P') {
+        sess.stack = round2(sess.stack - h.bet);
+        const second = { cards: [h.cards.pop()], bet: h.bet, done: false, split: true };
+        h.split = true;
+        const aces = h.cards[0].rank === 'A';
+        r.hands.splice(r.active + 1, 0, second);
+        h.cards.push(draw());
+        if (aces) { second.cards.push(draw()); h.done = true; second.done = true; }
+      }
+      if (value(h.cards).total === 21) h.done = true;
+      return { settle: advance() };
+    },
+    // Page quittée en pleine main : assurance refusée et on reste sur toutes les mains restantes
+    finish() {
+      const r = bj.round;
+      if (!r || r.phase === 'over') return null;
+      if (r.phase === 'insurance') { const s = proceed(); if (s) return s; }
+      r.hands.forEach((h) => { h.done = true; });
+      return advance();
+    },
+  };
+}
+
+function bj(sess, secret, rnd, out) {
+  secret.bj = secret.bj || { shoe: null, round: null };
+  return bjEngine(sess, secret.bj, rnd, out);
+}
+
+// ---------- Opérations ----------
+function handle(state, ctx) {
+  const now = ctx.now, N = [];
+  const P = R.normalize(state.player, now);
+  if (!state.player) { P.pseudo = String(ctx.data && ctx.data.pseudo || '').slice(0, 16); }
+  const S = state.secret || {};
+  const d = ctx.data || {};
+  R.ensureDaily(P, now);
+  let result = {};
+  const sess = (game) => P.sessions[game] || fail('Aucune partie réelle en cours : choisis une somme pour commencer.');
+  const track = (type, data) => R.track(P, type, data, now, N);
+
+  switch (ctx.op) {
+    case 'sync': break;
+    case 'profile.set': {
+      if (typeof d.pseudo === 'string') P.pseudo = d.pseudo.trim().slice(0, 16);
+      if (typeof d.avatar === 'string' && R.AVATARS.includes(d.avatar)) P.avatar = d.avatar;
+      if (ctx.codeOk) P.friendCode = d.code;
+      break;
+    }
+    case 'bonus.claim': result.amount = R.claimBonus(P, now, N); break;
+    case 'challenge.claim': result.amount = R.claimChallenge(P, String(d.id), now, N); break;
+    case 'time.start': if (!R.startTime(P, String(d.pack), now)) fail('Une attente est déjà en cours.'); break;
+    case 'time.claim': result.amount = R.claimTime(P, now, N); if (!result.amount) fail('L\'attente n\'est pas finie.'); break;
+    case 'time.cancel': P.timebank = null; break;
+    case 'session.start': {
+      const game = String(d.game);
+      if (P.sessions[game]) {
+        // reprise : une main de blackjack laissée en plein milieu est terminée (on reste)
+        if (game === 'blackjack' && S.bj && S.bj.round && S.bj.round.phase !== 'over') {
+          const s = bj(P.sessions.blackjack, S, ctx.rnd, []).finish();
+          if (s) { track('bj', s.track); result.finished = true; }
+        }
+        if (game === 'slots' && S.sl) { result.free = S.sl.free; result.freeBet = S.sl.freeBet; }
+        result.session = P.sessions[game]; result.resumed = true; break;
+      }
+      const min = game === 'blackjack' ? MIN_BET : game === 'slots' ? 10 : 1;
+      if (!(int(d.amount) >= min)) fail('Il faut apporter au moins ' + min + ' €.');
+      if (!R.startSession(P, game, d.amount, now)) fail('Ta banque ne contient pas assez d\'argent.');
+      result.session = P.sessions[game];
+      break;
+    }
+    case 'session.cashout': {
+      const game = String(d.game);
+      sess(game);
+      if (game === 'blackjack' && S.bj && S.bj.round && S.bj.round.phase !== 'over') {
+        const out = [];
+        const s = bj(P.sessions.blackjack, S, ctx.rnd, out).finish();
+        if (s) track('bj', s.track);
+      }
+      if (game === 'slots' && S.sl && S.sl.free > 0) fail('Termine d\'abord tes tours gratuits.');
+      if (game === 'poker') fail('Au poker, la partie se termine à la fin du tournoi.');
+      const startStack = P.sessions[game].start, endStack = P.sessions[game].stack;
+      result.cash = R.cashOut(P, game, N);
+      if (game === 'roulette') track('rl-cashout', { diff: endStack - startStack });
+      if (game === 'slots') S.sl = null;
+      if (game === 'blackjack') S.bj = { shoe: S.bj && S.bj.shoe, round: null };
+      break;
+    }
+
+    // ----- Roulette : le serveur lance la bille -----
+    case 'rl.spin': {
+      const ss = sess('roulette');
+      const bets = d.bets || {};
+      let staked = 0;
+      for (const k of Object.keys(bets)) {
+        const v = bets[k];
+        if (!B.byKey[k] || !(int(v) >= 1) || v > B.byKey[k].max) fail('Mise invalide sur ' + k + '.');
+        staked += v;
+      }
+      if (!staked) fail('Aucune mise.');
+      if (staked > ss.stack) fail('Pas assez d\'argent sur la table.');
+      const n = ctx.rnd(37);
+      let back = 0;
+      for (const k of Object.keys(bets)) back += B.payout(k, bets[k], n);
+      ss.stack = round2(ss.stack - staked + back);
+      const pleinHit = Object.keys(bets).some((k) => B.byKey[k].type === 'plein' && B.byKey[k].numbers[0] === n);
+      const zeroWin = n === 0 && Object.keys(bets).some((k) => B.byKey[k].numbers.includes(0));
+      track('rl', { staked, bet: staked, net: back - staked, pleinHit, zeroWin });
+      result = { n, back, staked, stack: ss.stack };
+      break;
+    }
+
+    // ----- Machine à sous : le serveur tire les rouleaux -----
+    case 'sl.spin': {
+      const ss = sess('slots');
+      S.sl = S.sl || { free: 0, freeBet: 0 };
+      const free = S.sl.free > 0;
+      const bet = free ? S.sl.freeBet : int(d.bet);
+      if (!free && ![10, 20, 50, 100, 200].includes(bet)) fail('Mise invalide.');
+      if (!free && bet > ss.stack) fail('Pas assez d\'argent sur la table.');
+      const random = () => ctx.rnd(1 << 30) / (1 << 30);
+      const grid = SL.spinGrid(random);
+      const res = SL.evaluate(grid, bet, free);
+      if (free) S.sl.free--; else ss.stack = round2(ss.stack - bet);
+      ss.stack = round2(ss.stack + res.total);
+      if (res.freeSpins) { if (!free) S.sl.freeBet = bet; S.sl.free += res.freeSpins; }
+      track('sl', { bet: free ? 0 : bet, net: res.total - (free ? 0 : bet), jackpot: res.jackpot, freeTrigger: res.freeSpins > 0 });
+      result = { grid, res, free: S.sl.free, freeBet: S.sl.freeBet, stack: ss.stack };
+      break;
+    }
+
+    // ----- Blackjack : le sabot reste sur le serveur -----
+    case 'bj.deal': case 'bj.ins': case 'bj.act': {
+      const ss = sess('blackjack');
+      const out = [];
+      const eng = bj(ss, S, ctx.rnd, out);
+      let r;
+      if (ctx.op === 'bj.deal') r = eng.deal(int(d.bet), int(d.pp || 0), int(d.t213 || 0));
+      else if (ctx.op === 'bj.ins') r = eng.insurance(!!d.take);
+      else r = eng.act(String(d.action));
+      if (r.settle) track('bj', r.settle.track);
+      result = { cards: out, shuffled: !!r.shuffled, phase: S.bj.round.phase, stack: ss.stack, left: S.bj.shoe.length };
+      break;
+    }
+
+    // ----- Poker : le serveur joue la table (bots compris) -----
+    case 'pk.start': case 'pk.hand': case 'pk.act': {
+      S.pk = S.pk || null;
+      result = PK.handle(P, S, ctx, N, fail, track);
+      break;
+    }
+
+    // ----- Entre amis : prix de fin de partie, vérifié sur la table -----
+    case 'multi.prize': {
+      const v = verifyTable(ctx.uid, String(d.game), ctx.table, now);
+      const day = R.today(now);
+      P.prizeDay = P.prizeDay && P.prizeDay.date === day ? P.prizeDay : { date: day, n: 0 };
+      if (P.prizes[v.key]) { result.amount = 0; break; }
+      if (P.prizeDay.n >= 5) { P.prizes[v.key] = now; result.amount = 0; result.capped = true; break; }
+      result.amount = R.applyPrize(P, v.key, v.place, v.players, now, N);
+      if (result.amount) P.prizeDay.n++;
+      result.place = v.place; result.players = v.players;
+      break;
+    }
+    default: fail('Opération inconnue.');
+  }
+  state.player = P;
+  state.secret = S;
+  return { state, result, notes: N };
+}
+
+// Vérifie la fin de partie d'une table entre amis et la place du joueur
+function verifyTable(uid, game, t, now) {
+  if (!t) fail('Table introuvable.');
+  const recent = (at) => at && now - at < 30 * 60000;
+  if (game === 'blackjack') {
+    const g = t.gameEnd;
+    if (!g || !recent(g.at) || !Array.isArray(g.rows)) fail('Partie non terminée.');
+    const place = g.rows.findIndex((r) => r.uid === uid) + 1;
+    if (!place) fail('Tu ne faisais pas partie de cette partie.');
+    if (!(t.round >= 3)) fail('Partie trop courte.');
+    return { key: 'bj:' + t.id + ':' + g.at, place, players: g.rows.length };
+  }
+  if (game === 'poker') {
+    const g = t.gameOver;
+    if (!g || !recent(g.at) || !t.tstats) fail('Partie non terminée.');
+    const elim = t.tstats.eliminated || [];
+    const players = elim.length + 1;
+    const place = g.winner === uid ? 1 : ((elim.find((e) => e.key === uid) || {}).place || 0);
+    if (!place) fail('Tu ne faisais pas partie de cette partie.');
+    if (!(t.tstats.hands >= 3)) fail('Partie trop courte.');
+    return { key: 'pk:' + t.id + ':' + g.at, place, players };
+  }
+  if (game === 'roulette') {
+    if (t.phase !== 'over' || !t.over || !recent(t.over.at)) fail('Partie non terminée.');
+    const ranking = Object.keys(t.players || {}).sort((a, b) => t.players[b].bankroll - t.players[a].bankroll);
+    const place = ranking.indexOf(uid) + 1;
+    if (!place) fail('Tu ne faisais pas partie de cette partie.');
+    if (!(t.round >= 3)) fail('Partie trop courte.');
+    return { key: 'rl:' + t.id + ':' + t.over.at, place, players: ranking.length };
+  }
+  fail('Jeu inconnu.');
+}
+
+module.exports = { handle, GameError, newShoe };

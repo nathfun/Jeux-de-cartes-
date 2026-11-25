@@ -250,7 +250,8 @@
       const ranking = Object.keys(st.players).map((u) => Object.assign({ me: u === me }, st.players[u], { name: st.players[u].name + (st.players[u].cashedOut ? ' 💰' : '') })).sort((a, b) => b.bankroll - a.bankroll);
       const won = ranking[0] && ranking[0].me;
       const myRank = ranking.findIndex((r) => r.me) + 1;
-      const prize = myRank && window.Casino ? Casino.multiPrize('rl:' + tableId + ':' + st.over.at, myRank, ranking.length) : 0;
+      const prize = myRank && window.Casino ? Casino.prizeFor(myRank, ranking.length) : 0;
+      if (myRank && window.Casino) Casino.multiPrize('rl:' + tableId + ':' + st.over.at, myRank, ranking.length, { game: 'roulette', table: tableId });
       const counts = {};
       st.history.forEach((n) => { counts[n] = (counts[n] || 0) + 1; });
       const hot = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];

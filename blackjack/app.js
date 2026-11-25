@@ -63,7 +63,11 @@
     }
   }
   let cardSeq = 0;
+  // Partie réelle avec le serveur : les cartes viennent du sabot du serveur, dans l'ordre où l'app les distribue
+  let srvQueue = [], srvStack = null;
+  const srvMode = () => mode === 'real' && !!window.Casino && Casino.server;
   function draw() {
+    if (srvMode() && srvQueue.length) { const c = srvQueue.shift(); return { rank: c.rank, suit: c.suit, id: ++cardSeq }; }
     if (shoe.length === 0) buildShoe();
     const c = shoe.pop();
     return { rank: c.rank, suit: c.suit, id: ++cardSeq };
@@ -263,7 +267,13 @@
     if (busy || bet < MIN_BET || bet > MAX_BET || bet + side.pp + side.t213 > stats.bankroll) return;
     if (round && round.phase !== 'over') return;
     busy = true;
-    if (shoe.length < DECKS * 52 * 0.25) {
+    let srvPhase = null;
+    if (srvMode()) {
+      const r = await Casino.call('bj.deal', { bet, pp: side.pp, t213: side.t213 });
+      if (r.error) { busy = false; setMessage('⚠️ ' + r.error); render(); return; }
+      srvQueue = r.cards.slice(); srvStack = r.stack; srvPhase = r.phase;
+      setMessage(r.shuffled ? 'Le sabot est mélangé à nouveau.' : 'Distribution…');
+    } else if (shoe.length < DECKS * 52 * 0.25) {
       buildShoe();
       setMessage('Le sabot est mélangé à nouveau.');
     } else {
@@ -295,7 +305,12 @@
     // Assurance : proposée quand le croupier montre un As
     if (up === 11) {
       const cost = Math.floor(bet / 2);
-      const took = cost > 0 && stats.bankroll >= cost ? await askInsurance(cost) : false;
+      const offer = srvMode() ? srvPhase === 'insurance' : cost > 0 && stats.bankroll >= cost;
+      const took = offer ? await askInsurance(cost) : false;
+      if (srvMode() && offer) {
+        const r = await Casino.call('bj.ins', { take: took });
+        if (!r.error) { srvQueue = srvQueue.concat(r.cards); srvStack = r.stack; }
+      }
       recordInsurance(took);
       if (took) { round.ins = cost; stats.bankroll -= cost; render(); }
       if (!enhc) {
@@ -343,6 +358,11 @@
     setSituation({ cards: h.cards, up: round.dealer[0].rank, opts: o }, action);
     recordDecision(rec, action);
     busy = true;
+    if (srvMode()) {
+      const r = await Casino.call('bj.act', { action });
+      if (r.error) { busy = false; setMessage('⚠️ ' + r.error); render(); return; }
+      srvQueue = srvQueue.concat(r.cards); srvStack = r.stack;
+    }
 
     if (action === 'H') {
       await give(h.cards, 0.8);
@@ -461,6 +481,7 @@
       if (!dealerBJ) stats.net -= round.ins;
     }
     stats.bankroll += payout;
+    if (srvMode() && srvStack != null) stats.bankroll = srvStack; // le serveur fait foi
     const net = payout - wagered - (round.ins && dealerBJ ? round.ins : 0);
     stats.net += net;
 
@@ -1032,6 +1053,10 @@
     bet = Math.min(10, amount);
     if (m === 'real') ['opt-coach', 'opt-hint', 'opt-tags', 'opt-dev'].forEach((id) => { $(id).checked = false; });
     else $('opt-coach').checked = true;
+    // Partie réelle : règle européenne (pas de carte cachée), comme dans les casinos français
+    if (m === 'real') $('opt-rule').value = 'eu';
+    $('opt-rule').disabled = m === 'real';
+    srvQueue = []; srvStack = null;
     round = null;
     buildShoe();
     $('feedback').className = 'feedback empty';
@@ -1063,11 +1088,12 @@
     Casino.modePicker($('mode-picker'), { game: 'blackjack', min: MIN_BET, suggest: 500, onStart: (m, amount) => startMode(m, amount) });
     if (msg) { const p = document.createElement('p'); p.className = 'end-msg'; p.textContent = msg; $('mode-picker').prepend(p); }
   }
-  function endSession(broke) {
+  async function endSession(broke) {
     if (busy || (round && round.phase !== 'over')) return;
     let msg = 'Entraînement terminé.';
     if (mode === 'real' && window.Casino) {
-      const r = Casino.cashOut('blackjack');
+      const r = await Casino.cashOut('blackjack');
+      if (r && r.error) { setMessage('⚠️ ' + r.error); return; }
       const diff = r ? r.diff : 0;
       msg = broke ? 'Tout est perdu : il ne reste plus assez pour la mise minimale.' :
         'Tu encaisses ' + (r ? r.end : stats.bankroll) + ' € (' + (diff >= 0 ? '+' : '−') + Math.abs(diff) + ' € par rapport à la somme apportée).';

@@ -294,8 +294,9 @@
     </section>
   </main>
   <script src="sounds.js"></script>
-  <script src="profile.js"></script>
   <script src="firebase-config.js"></script>
+  <script src="casino-rules.js"></script>
+  <script src="profile.js"></script>
   <script src="account.js"></script>
   <script src="social.js"></script>
   <script>
@@ -346,7 +347,7 @@
           if (c.claimed) { const k = document.createElement('div'); k.className = 'claimed'; k.textContent = '✔ Récompense récupérée'; el.appendChild(k); }
           else if (c.done) {
             const btn = document.createElement('button'); btn.type = 'button'; btn.textContent = 'Récupérer +' + fmt(def.reward) + ' €';
-            btn.addEventListener('click', () => { const v = Casino.claimChallenge(c.id); if (v) Casino.toast('Récompense', '+' + fmt(v) + ' € dans ta banque', '🎉', 'challenge'); render(); });
+            btn.addEventListener('click', async () => { btn.disabled = true; const v = await Casino.claimChallenge(c.id); if (v) Casino.toast('Récompense', '+' + fmt(v) + ' € dans ta banque', '🎉', 'challenge'); render(); });
             el.appendChild(btn);
           }
           box.appendChild(el);
@@ -392,8 +393,9 @@
           box.appendChild(b);
         });
       });
-      $('bonus').addEventListener('click', () => {
-        const v = Casino.claimBonus();
+      $('bonus').addEventListener('click', async () => {
+        $('bonus').disabled = true;
+        const v = await Casino.claimBonus();
         if (v) { Casino.bigWin(v, 'BONUS DU JOUR'); }
         render();
       });
@@ -408,6 +410,7 @@
         const box = $('timebank');
         const t = Casino.timebank();
         const key = t ? t.pack.id + (t.ready ? 'r' : 'w') : 'none';
+        if (!t && key === lastTimeKey && box.children.length) return;
         if (t && !t.ready && key === lastTimeKey) {
           const bar = box.querySelector('.bar div'), left = box.querySelector('.tleft');
           if (bar) bar.style.width = Math.min(100, (1 - t.left / (t.end - t.start)) * 100) + '%';
@@ -424,7 +427,7 @@
             const a = document.createElement('span'); a.className = 'ta'; a.textContent = '+' + fmt(p.amount) + ' €';
             const sm = document.createElement('small'); sm.textContent = 'contre ' + packLen(p) + ' d\'attente · ' + (Math.round(p.amount / p.minutes * 10) / 10).toLocaleString('fr-FR') + ' €/min';
             b.append(i, n, a, sm);
-            b.addEventListener('click', () => { Casino.startTime(p.id); Casino.toast('Banque du temps', p.name + ' lancée : reviens dans ' + packLen(p) + ' pour encaisser ' + fmt(p.amount) + ' €.', '⏳'); render(); });
+            b.addEventListener('click', async () => { b.disabled = true; if (!(await Casino.startTime(p.id))) { render(); return; } Casino.toast('Banque du temps', p.name + ' lancée : reviens dans ' + packLen(p) + ' pour encaisser ' + fmt(p.amount) + ' €.', '⏳'); render(); });
             box.appendChild(b);
           });
           return;
@@ -438,7 +441,7 @@
         const row = document.createElement('div'); row.className = 'row2';
         if (t.ready) {
           const c = document.createElement('button'); c.type = 'button'; c.className = 'bonus-btn'; c.textContent = '💰 Encaisser +' + fmt(t.pack.amount) + ' €';
-          c.addEventListener('click', () => { const v = Casino.claimTime(); if (v) Casino.bigWin(v, 'TEMPS ENCAISSÉ'); render(); });
+          c.addEventListener('click', async () => { c.disabled = true; const v = await Casino.claimTime(); if (v) Casino.bigWin(v, 'TEMPS ENCAISSÉ'); render(); });
           row.appendChild(c);
         } else {
           const l = document.createElement('span'); l.className = 'tleft'; l.textContent = 'Encore ' + dur(t.left);
@@ -446,7 +449,7 @@
           let armed = false;
           x.addEventListener('click', () => {
             if (!armed) { armed = true; x.textContent = 'Sûr ? Le temps passé sera perdu'; setTimeout(() => { armed = false; x.textContent = 'Abandonner'; }, 3000); return; }
-            Casino.cancelTime(); render();
+            Casino.cancelTime().then(render);
           });
           row.append(l, x);
         }
@@ -502,6 +505,7 @@
       $('opt-vibrate').addEventListener('change', (e) => { Casino.setSetting('vibrate', e.target.checked); if (e.target.checked) Casino.vibrate(40); });
       Casino.onChange(render);
       render();
+      if (Casino.server) Casino.sync();
       setInterval(render, 30000);
     })();
 

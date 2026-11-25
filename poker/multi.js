@@ -491,7 +491,8 @@
       // Prix sur la banque du Casino (les jetons de la table, eux, restent sur la table)
       const nPlayers = (st.tstats.eliminated || []).length + 1;
       const myPlace = won ? 1 : myElim ? myElim.place : 0;
-      const prize = myPlace && window.Casino ? Casino.multiPrize('pk:' + tableId + ':' + g.at, myPlace, nPlayers) : 0;
+      const prize = myPlace && window.Casino ? Casino.prizeFor(myPlace, nPlayers) : 0;
+      if (prize !== null && myPlace && window.Casino) Casino.multiPrize('pk:' + tableId + ':' + g.at, myPlace, nPlayers, { game: 'poker', table: tableId });
       setTimeout(() => PokerApp.showRecap({
         won, T: st.tstats, winnerKey: g.winner, winnerName: g.name, meKey: me, blinds: g.blinds,
         title: won ? 'Tu as gagné la partie !' : g.name + ' remporte la partie !',
