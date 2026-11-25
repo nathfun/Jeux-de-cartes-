@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Poker Coach</title>
+  <meta name="theme-color" content="#0f5132">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1><a id="home-link" class="home-link" href="../index.html" hidden aria-label="Retour aux jeux">←</a> ♣ Poker Coach</h1>
+    <div class="bank">Tapis : <strong id="my-stack">–</strong></div>
+  </header>
+
+  <main class="layout">
+    <div class="main-col">
+      <!-- Réglages de la partie -->
+      <section id="setup" class="panel setup">
+        <h2>Partie solo contre des bots</h2>
+        <p class="muted">Texas Hold'em No-Limit. Le coach t'explique chaque décision : force de ta main, position, outs, cotes du pot.</p>
+        <div class="setup-grid">
+          <label>Adversaires
+            <select id="set-opponents">
+              <option value="1">1 (tête-à-tête)</option><option value="2">2</option><option value="3">3</option>
+              <option value="4">4</option><option value="5" selected>5 (table de 6)</option>
+            </select>
+          </label>
+          <label>Style des adversaires
+            <select id="set-style">
+              <option value="mix" selected>Mélangé</option>
+              <option value="prudent">Prudents</option>
+              <option value="regulier">Réguliers</option>
+              <option value="agressif">Agressifs</option>
+            </select>
+          </label>
+          <label>Blindes
+            <select id="set-blinds">
+              <option value="10/20" selected>10 / 20</option>
+              <option value="25/50">25 / 50</option>
+              <option value="50/100">50 / 100</option>
+            </select>
+          </label>
+          <label>Tapis de départ
+            <select id="set-stack">
+              <option value="50">50 grosses blindes</option>
+              <option value="100" selected>100 grosses blindes</option>
+              <option value="200">200 grosses blindes</option>
+            </select>
+          </label>
+        </div>
+        <label class="check"><input type="checkbox" id="set-coach" checked> Activer le coach (retour après chaque décision)</label>
+        <button id="start" class="primary big">Commencer la partie</button>
+      </section>
+
+      <!-- Table -->
+      <section id="game" hidden>
+        <div class="felt-wrap">
+          <div id="felt" class="felt">
+            <div class="center">
+              <div id="board" class="board"></div>
+              <div id="pot" class="pot"></div>
+              <div id="message" class="message" role="status"></div>
+            </div>
+            <div id="seats"></div>
+          </div>
+        </div>
+
+        <div id="actions" class="actions">
+          <div class="action-row" id="main-actions">
+            <button id="a-fold" class="act fold">Se coucher</button>
+            <button id="a-check" class="act">Parler</button>
+            <button id="a-raise" class="act raise">Relancer</button>
+            <button id="a-allin" class="act allin">Tapis</button>
+          </div>
+          <div id="raise-box" class="raise-box" hidden>
+            <div class="presets">
+              <button data-preset="0.5">½ pot</button>
+              <button data-preset="0.66">⅔ pot</button>
+              <button data-preset="1">Pot</button>
+              <button data-preset="max">Tapis</button>
+            </div>
+            <div class="slider-row">
+              <button id="r-minus" aria-label="Moins">−</button>
+              <input id="r-slider" type="range" min="0" max="100" step="5" aria-label="Montant de la relance">
+              <button id="r-plus" aria-label="Plus">+</button>
+              <button id="r-confirm" class="primary">Relancer à <span id="r-value"></span></button>
+            </div>
+          </div>
+          <div class="action-row secondary">
+            <button id="a-hint" class="ghost coach-only">💡 Conseil</button>
+            <button id="next-hand" class="primary" hidden>Main suivante</button>
+            <label class="small coach-only"><input type="checkbox" id="opt-hint"> Conseil automatique</label>
+            <label class="small">Vitesse
+              <select id="opt-speed"><option value="0.6">Lente</option><option value="1" selected>Normale</option><option value="1.8">Rapide</option></select>
+            </label>
+            <button id="quit" class="ghost small">Nouvelle partie</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="side">
+      <section class="panel coach-only">
+        <h2>Retour du coach</h2>
+        <div id="feedback" class="feedback empty">Tes décisions seront analysées ici.</div>
+      </section>
+      <section class="panel coach-only" id="summary-panel" hidden>
+        <h2>Résumé de la main</h2>
+        <div id="summary"></div>
+      </section>
+      <section class="panel">
+        <h2>Tes statistiques</h2>
+        <div class="stats">
+          <div class="stat"><span id="s-acc">–</span><small>Bonnes décisions</small></div>
+          <div class="stat"><span id="s-hands">0</span><small>Mains</small></div>
+          <div class="stat"><span id="s-vpip">–</span><small>Mains jouées</small></div>
+          <div class="stat"><span id="s-net">0</span><small>Gain net</small></div>
+        </div>
+        <p class="muted small">« Mains jouées » : part des mains où tu as mis des jetons volontairement avant le flop. Entre 18 et 28 % à 6 joueurs, c'est un bon repère.</p>
+      </section>
+      <section class="panel coach-only">
+        <h2>Conseils pour progresser</h2>
+        <ul id="tips" class="tips"><li>Joue quelques mains pour recevoir des conseils personnalisés.</li></ul>
+        <button id="reset-stats" class="ghost small">Réinitialiser les statistiques</button>
+      </section>
+      <details class="panel">
+        <summary><h2>Classement des mains</h2></summary>
+        <ol class="ranking">
+          <li><b>Quinte flush</b> : 5 cartes qui se suivent, de la même couleur</li>
+          <li><b>Carré</b> : 4 cartes de même valeur</li>
+          <li><b>Full</b> : un brelan et une paire</li>
+          <li><b>Couleur</b> : 5 cartes de la même couleur</li>
+          <li><b>Suite</b> : 5 cartes qui se suivent</li>
+          <li><b>Brelan</b> : 3 cartes de même valeur</li>
+          <li><b>Double paire</b></li>
+          <li><b>Paire</b></li>
+          <li><b>Carte haute</b></li>
+        </ol>
+      </details>
+      <details class="panel">
+        <summary><h2>Journal de la main</h2></summary>
+        <ol id="log" class="log"></ol>
+      </details>
+    </aside>
+  </main>
+
+  <script src="../firebase-config.js"></script>
+  <script src="eval.js"></script>
+  <script src="engine.js"></script>
+  <script src="coach.js"></script>
+  <script src="bots.js"></script>
+  <script src="app.js"></script>
+  <script src="../pwa.js"></script>
+</body>
+</html>
