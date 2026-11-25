@@ -330,7 +330,7 @@
       if (s.bet > (prevBets[i] || 0) && window.Sfx) Sfx.chips();
       prevBets[i] = s.bet;
       if (s.bet > 0 && !showdown) {
-        const bp = seatPos(i, n, betR);
+        const bp = seatPos(i, n, i === ME ? [betR[0], betR[1] * 0.45] : betR); // au-dessus de tes cartes
         const chip = document.createElement('div');
         chip.className = 'bet-chip';
         chip.style.left = bp.left + '%';

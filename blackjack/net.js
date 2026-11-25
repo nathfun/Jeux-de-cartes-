@@ -216,10 +216,23 @@
     } catch (e) { me = 'L' + Math.random().toString(36).slice(2, 9); }
     const bc = 'BroadcastChannel' in window ? new BroadcastChannel('bj-local') : null;
     const subs = new Set();
-    const read = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
-    const write = (k, v) => { localStorage.setItem(k, JSON.stringify(v)); };
-    const fire = (k) => { subs.forEach((s) => s(k)); if (bc) bc.postMessage(k); };
-    if (bc) bc.onmessage = (e) => subs.forEach((s) => s(e.data));
+    // Les onglets ne voient pas toujours tout de suite ce qu'un autre vient d'écrire dans localStorage :
+    // la valeur voyage donc avec le message, et chaque onglet garde la dernière valeur reçue.
+    const cache = new Map();
+    const read = (k) => {
+      if (cache.has(k)) return cache.get(k) == null ? null : JSON.parse(cache.get(k));
+      try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; }
+    };
+    const write = (k, v) => { const txt = JSON.stringify(v); cache.set(k, txt); localStorage.setItem(k, txt); };
+    const remove = (k) => { cache.set(k, null); localStorage.removeItem(k); };
+    const fire = (k) => {
+      subs.forEach((s) => s(k));
+      if (bc) bc.postMessage({ k, v: cache.has(k) ? cache.get(k) : localStorage.getItem(k) });
+    };
+    if (bc) bc.onmessage = (e) => {
+      const m = e.data;
+      if (m && typeof m === 'object') { cache.set(m.k, m.v); subs.forEach((s) => s(m.k)); }
+    };
     const watch = (key, cb) => {
       const f = (k) => { if (k === key) cb(read(key)); };
       subs.add(f);
@@ -257,12 +270,12 @@
         fire(ns + 'bj-c-' + id);
       },
       async deleteTable(id) {
-        localStorage.removeItem(ns + 'bj-t-' + id); localStorage.removeItem(ns + 'bj-c-' + id); localStorage.removeItem(ns + 'bj-p-' + id);
+        remove(ns + 'bj-t-' + id); remove(ns + 'bj-c-' + id); remove(ns + 'bj-p-' + id);
         fire(ns + 'bj-t-' + id);
       },
       presenceStart(id) {
         const key = ns + 'bj-p-' + id;
-        const upd = (fn) => { const p = read(key) || {}; fn(p); write(key, p); };
+        const upd = (fn) => { const p = read(key) || {}; fn(p); write(key, p); fire(key); };
         return heartbeat(() => upd((p) => { p[me] = Date.now(); }), async () => upd((p) => { delete p[me]; }));
       },
       async activeCount(id) {

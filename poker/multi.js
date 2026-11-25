@@ -344,7 +344,7 @@
       const plate = document.createElement('div');
       plate.className = 'plate';
       if (!s.owner) {
-        const nm = document.createElement('div'); nm.className = 'name'; nm.textContent = 'Place libre';
+        const nm = document.createElement('div'); nm.className = 'name'; nm.textContent = 'Libre';
         plate.appendChild(nm);
         if (mySeat < 0) {
           const b = document.createElement('button');
@@ -370,7 +370,7 @@
       if (s.bet > (prevBets[i] || 0) && window.Sfx) Sfx.chips();
       prevBets[i] = s.bet;
       if (s.bet > 0 && !showdown) {
-        const bp = seatPos(k, betR);
+        const bp = seatPos(k, k === 0 ? [betR[0], betR[1] * 0.45] : betR); // devant ta place : plus haut, au-dessus de tes cartes
         const chip = document.createElement('div');
         chip.className = 'bet-chip'; chip.style.left = bp.left + '%'; chip.style.top = bp.top + '%'; chip.textContent = s.bet;
         seats.appendChild(chip);
@@ -683,5 +683,5 @@
   }
   if (new URLSearchParams(location.search).get('table')) setMode('multi');
 
-  window.PokerMulti = { get pub() { return pub; }, get hole() { return myHole; } };
+  window.PokerMulti = { get pub() { return pub; }, get hole() { return myHole; }, get net() { return net; }, get me() { return me; }, get tableId() { return tableId; } };
 })();

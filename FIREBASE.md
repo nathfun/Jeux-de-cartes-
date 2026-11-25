@@ -55,7 +55,7 @@ la protection vient des règles de l'étape 2.5 et de la connexion anonyme.
 
 ## Jouer entre amis
 
-1. Ouvre le site → **Blackjack** → onglet **Entre amis** → choisis un pseudo → **Créer une table**.
+1. Ouvre le site → **Blackjack** ou **Poker** → onglet **Entre amis** → choisis un pseudo → **Créer une table**.
 2. Un **code** de 4 caractères s'affiche (ex. `KQ7P`). Le bouton **Inviter** envoie le lien
    (WhatsApp, SMS…) ; tes amis peuvent aussi taper le code dans **Rejoindre**.
 3. Chacun choisit une ou plusieurs places, mise, et c'est parti.
@@ -65,6 +65,17 @@ la protection vient des règles de l'étape 2.5 et de la connexion anonyme.
 Chaque joueur présent envoie un petit signal toutes les 45 secondes. Quand plus personne n'est
 présent depuis 2 minutes (tout le monde a quitté la table ou fermé l'app), la table est fermée :
 elle est supprimée et son code ne fonctionne plus.
+
+## Poker entre amis : le secret des cartes
+
+- Les cartes de chaque joueur sont rangées dans un coffre (`phands`) que **lui seul** peut lire.
+- Le paquet (`pdeck`) n'est lisible que par l'**hôte** de la table, dont l'appareil distribue le flop,
+  le turn, la river et révèle les cartes des joueurs encore en jeu à l'abattage.
+- Si l'hôte quitte la table, un autre joueur présent devient hôte ; une main en cours est annulée
+  et les mises sont rendues.
+- Limite honnête : sans serveur payant (Cloud Functions, offre Blaze), l'appareil de l'hôte connaît
+  le paquet. Un joueur qui fouillerait dans les outils développeur de son navigateur pendant qu'il est
+  hôte pourrait le lire. Entre amis, c'est un compromis raisonnable.
 
 ## Limites de l'offre gratuite
 

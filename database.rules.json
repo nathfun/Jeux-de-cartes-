@@ -26,6 +26,48 @@
           ".validate": "newData.isNumber()"
         }
       }
+    },
+    "ptables": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        ".validate": "$code.matches(/^[A-Z0-9]{4}$/)"
+      }
+    },
+    "pchats": {
+      "$code": {
+        ".read": "auth != null",
+        "$msg": {
+          ".write": "auth != null && (!data.exists() || data.child('uid').val() === auth.uid)",
+          ".validate": "newData.child('uid').val() === auth.uid && newData.child('text').isString() && newData.child('text').val().length <= 300"
+        },
+        ".write": "auth != null && !newData.exists()"
+      }
+    },
+    "ppresence": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null && !newData.exists()",
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.isNumber()"
+        }
+      }
+    },
+    "phands": {
+      "$code": {
+        ".write": "auth != null && !newData.exists()",
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && (auth.uid === $uid || root.child('ptables').child($code).child('host').val() === auth.uid)"
+        }
+      }
+    },
+    "pdeck": {
+      "$code": {
+        ".read": "auth != null && root.child('ptables').child($code).child('host').val() === auth.uid",
+        ".write": "auth != null && (root.child('ptables').child($code).child('host').val() === auth.uid || !newData.exists())"
+      }
     }
   }
 }
