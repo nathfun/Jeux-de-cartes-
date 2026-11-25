@@ -234,6 +234,8 @@
   function render() {
     if (!st || !tableId) return;
     document.body.classList.toggle('no-coach', !coachOn());
+    $('opt-info').checked = coachOn();
+    $('aides-row').hidden = !st.settings.coach; // l'hôte a interdit les aides : pas d'interrupteur
     $('rm-table-name').textContent = st.name || 'Table';
     $('rm-table-code').textContent = tableId;
     $('rm-round').textContent = 'Tour ' + Math.min(st.round + (st.phase === 'result' || st.phase === 'over' ? 0 : 1), st.settings.rounds || Infinity) + (st.settings.rounds ? ' / ' + st.settings.rounds : '');
@@ -291,6 +293,7 @@
       });
     },
     ready() { act(opReady); },
+    setAides(on) { setCoach(on); },
     end() {
       if (!st || !st.players[me]) return;
       if (st.phase === 'spinning') { $('sub-message').textContent = 'La bille tourne : tu pourras encaisser juste après ce tour.'; return; }

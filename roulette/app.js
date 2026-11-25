@@ -227,7 +227,7 @@
 
   // ---------- Aides ----------
   function coachInfo(key) {
-    if (document.body.classList.contains('no-coach') || !$('opt-info').checked) return;
+    if (document.body.classList.contains('no-coach')) return;
     const inf = B.info(key);
     const fb = $('feedback');
     fb.className = 'feedback hint';
@@ -425,10 +425,17 @@
     handlers.end();
   });
   window.addEventListener('resize', () => { if (lastView) { buildTapis(); render(lastView); } });
+  // Interrupteur « Aides » : active ou coupe tout (pourcentages sur les jetons, panneau d'aides, conseils, chance)
+  function applyAides(on) {
+    document.body.classList.toggle('no-coach', !on);
+    $('opt-info').checked = on;
+    if (lastView) render(lastView);
+  }
+  $('opt-info').addEventListener('change', (e) => { if (handlers.setAides) handlers.setAides(e.target.checked); else applyAides(e.target.checked); });
   buildChips();
 
   window.RouletteUI = {
-    render, setHandlers, ensureWheel, showOutcome, limitText, rienNeVaPlus, announceResult, coachInfo, coachRound,
+    render, setHandlers, ensureWheel, showOutcome, limitText, applyAides, rienNeVaPlus, announceResult, coachInfo, coachRound,
     createStats, analyseBets, recordSpin, renderStats, showRecap, bilanStats,
     get chip() { return selected; },
     SPIN_MS, RESULT_MS, fmt,
@@ -445,7 +452,8 @@
       bets: {}, log: [], lastBets: {}, history: [], phase: 'waiting', deadline: null, result: null,
       T: createStats(), startedAt: now(), maxBank: bank,
     };
-    document.body.classList.toggle('no-coach', !S.coach);
+    applyAides(S.coach);
+    $('aides-row').hidden = false;
     $('setup').hidden = true;
     $('game').hidden = false;
     ensureWheel();
@@ -529,6 +537,7 @@
       soloRender();
     },
     ready() { if (S && S.phase === 'betting') { clearTimeout(soloTimer); closeBets(); } },
+    setAides(on) { if (S) S.coach = on; applyAides(on); },
     end() {
       if (!S) return;
       if (S.phase === 'spinning') { $('sub-message').textContent = 'La bille tourne : tu pourras encaisser juste après ce tour.'; return; }
@@ -617,6 +626,8 @@
     // retour sur l'onglet Solo : on reprend la partie en cours ou on affiche les réglages
     activate() {
       document.body.classList.toggle('no-coach', !!S && !S.coach);
+      $('opt-info').checked = !S || S.coach;
+      $('aides-row').hidden = false;
       if (S) { $('setup').hidden = true; $('game').hidden = false; setHandlers(soloHandlers); soloRender(); renderStats(S.T); }
       else { $('setup').hidden = false; $('game').hidden = true; }
     },
