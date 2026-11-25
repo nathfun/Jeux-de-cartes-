@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Casino</title>
+  <meta name="casino-hub" content="1">
   <meta name="description" content="Blackjack, poker et roulette : en solo avec des aides, ou entre amis avec un code de table.">
   <meta name="theme-color" content="#0f5132">
   <link rel="manifest" href="manifest.webmanifest">
@@ -77,6 +78,16 @@
     .wallet-row { display: flex; gap: .7rem; align-items: center; flex-wrap: wrap; }
     .wallet { font-size: 1.4rem; font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
     .bonus-btn { font: inherit; font-weight: 700; background: linear-gradient(135deg, #f2c14e, #e89a2c); color: #222; border: 0; border-radius: 10px; padding: .5rem .9rem; cursor: pointer; animation: glow 1.6s ease-in-out infinite; }
+    .acc-welcome { display: none; text-align: center; }
+    .acc-welcome .aw-logo { font-size: 3rem; }
+    .acc-welcome h2 { font-size: 1.5rem; margin: .2rem 0 .4rem; }
+    .acc-welcome p { color: var(--muted); margin: 0 0 1rem; line-height: 1.45; }
+    body.gated main > *:not(.account) { display: none !important; }
+    body.gated .account { max-width: 460px; margin: 2rem auto; padding: 1.4rem; border-color: var(--gold); }
+    body.gated .acc-welcome { display: block; }
+    body.gated .acc-title, body.gated #acc-out > .small-p { display: none; }
+    body.gated .acc-form { flex-direction: column; }
+    body.gated .acc-form input, body.gated .acc-form button { flex: none; width: 100%; }
     .acc-tabs { display: flex; gap: .4rem; margin-bottom: .6rem; }
     .acc-tabs button { font: inherit; font-size: .9rem; background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: .3rem .8rem; cursor: pointer; }
     .acc-tabs button.on { color: #222; background: var(--gold); border-color: var(--gold); font-weight: 700; }
@@ -179,7 +190,13 @@
     </section>
 
     <section class="panel account" aria-label="Mon compte">
-      <h2>🔐 Mon compte</h2>
+      <div id="acc-welcome" class="acc-welcome">
+        <div class="aw-logo">🎰</div>
+        <h2>Bienvenue au Casino</h2>
+        <p>Pour jouer, crée ton compte ou connecte-toi : ta banque, ton niveau et tes amis te suivent sur tous tes appareils.
+          Tout se joue en argent virtuel (aucun argent réel).</p>
+      </div>
+      <h2 class="acc-title">🔐 Mon compte</h2>
       <div id="acc-out">
         <p class="muted small-p">Crée ton compte (un pseudo et un mot de passe, pas besoin d'e-mail) pour garder ta banque, ton niveau, tes succès et tes amis, et les retrouver sur ton téléphone comme sur ton ordinateur.</p>
         <div class="acc-tabs" role="tablist">
@@ -295,6 +312,7 @@
   </main>
   <script src="sounds.js"></script>
   <script src="firebase-config.js"></script>
+  <script src="gate.js"></script>
   <script src="casino-rules.js"></script>
   <script src="profile.js"></script>
   <script src="account.js"></script>
@@ -463,6 +481,8 @@
       function renderAccount() {
         const a = window.Account && Account.info();
         $('acc-out').hidden = !!a; $('acc-in').hidden = !a;
+        // il faut un compte pour jouer
+        document.body.classList.toggle('gated', !!window.CASINO_GATE && !a);
         if (a) {
           $('acc-name').textContent = a.pseudo;
           $('acc-sync').textContent = a.syncedAt ? '(dernière : ' + new Date(a.syncedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + ')' : '';
@@ -487,6 +507,9 @@
           else { await Account.login(ps, pw); accMsg('Bon retour ' + ps + ' ! Ta progression est récupérée.', 'ok'); }
           $('acc-pwd').value = '';
           if (window.Social && Social.publish) Social.publish().catch(() => {});
+          // retour vers la page demandée (lien d'invitation, de défi…)
+          const next = new URLSearchParams(location.search).get('next');
+          if (next && /^\/[^/\\]/.test(next)) { setTimeout(() => { location.href = next; }, 600); }
         } catch (err) {
           accMsg(err && err.code === 'local' ? err.message : Account.errorText(err), 'err');
         }
