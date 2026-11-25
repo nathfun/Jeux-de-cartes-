@@ -14,16 +14,16 @@
   const range = (a, b) => Array.from({ length: b - a + 1 }, (_, k) => a + k);
 
   const TYPES = {
-    // max : mise maximale par case (mise minimale 1 €) : moitié des limites des casinos français
-    // (plein 15, cheval 30, transversale 50, carré 60, sixain 100, douzaine/colonne 250, chances simples 500)
-    plein: { label: 'Plein', payout: 35, max: 15 },
-    cheval: { label: 'Cheval', payout: 17, max: 30 },
-    trans: { label: 'Transversale', payout: 11, max: 50 },
-    carre: { label: 'Carré', payout: 8, max: 60 },
-    sixain: { label: 'Sixain', payout: 5, max: 100 },
-    douzaine: { label: 'Douzaine', payout: 2, max: 250 },
-    colonne: { label: 'Colonne', payout: 2, max: 250 },
-    simple: { label: 'Chance simple', payout: 1, max: 500 },
+    // max : mise maximale par case (mise minimale 1 €), limites des casinos français
+    // (plein 30, cheval 60, transversale 100, carré 120, sixain 200, douzaine/colonne 500, chances simples 1 000)
+    plein: { label: 'Plein', payout: 35, max: 30 },
+    cheval: { label: 'Cheval', payout: 17, max: 60 },
+    trans: { label: 'Transversale', payout: 11, max: 100 },
+    carre: { label: 'Carré', payout: 8, max: 120 },
+    sixain: { label: 'Sixain', payout: 5, max: 200 },
+    douzaine: { label: 'Douzaine', payout: 2, max: 500 },
+    colonne: { label: 'Colonne', payout: 2, max: 500 },
+    simple: { label: 'Chance simple', payout: 1, max: 1000 },
   };
 
   // Position des numéros (tapis horizontal) : colonne = transversale, ligne 0 en haut (3, 6, … 36)
