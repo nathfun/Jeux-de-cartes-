@@ -206,3 +206,7 @@ input:not([type]), input[type="text"] { font: inherit; background: #10151c; colo
 .outcome.even .outcome-amount { color: var(--text); }
 .outcome-detail { font-size: .78rem; color: var(--muted); }
 @keyframes outcome-in { from { transform: translateX(-50%) translateY(20px) scale(.7); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
+
+.cashout { background: #1f3d26; border-color: #2e6b3c; color: #b9f6ca; font-weight: 700; }
+.cashout:hover:not(:disabled) { background: #275232; }
+.recap-stats { grid-template-columns: repeat(3, 1fr); }

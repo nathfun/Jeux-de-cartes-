@@ -137,7 +137,7 @@
     (view.players || []).forEach((p) => {
       const s = document.createElement('span');
       const i = document.createElement('i'); i.style.background = p.color;
-      s.append(i, (p.me ? 'Toi' : p.name) + ' · ' + fmt(p.bankroll) + ' €' + (p.ready ? ' ✔' : '') + (p.out ? ' (éliminé)' : ''));
+      s.append(i, (p.me ? 'Toi' : p.name) + ' · ' + fmt(p.bankroll) + ' €' + (p.ready ? ' ✔' : '') + (p.cashedOut ? ' 💰 encaissé' : p.out ? ' (éliminé)' : ''));
       pl.appendChild(s);
     });
     $('bankroll').textContent = view.bankroll == null ? '–' : fmt(view.bankroll);
@@ -146,6 +146,7 @@
     ['b-undo', 'b-clear', 'b-rebet', 'b-double'].forEach((id) => { $(id).disabled = !view.canBet; });
     $('b-ready').textContent = view.readyLabel || 'Lancer la bille';
     $('b-ready').disabled = !!view.readyDisabled;
+    $('b-end').disabled = !!view.endDisabled;
     if (showResult) showBadge(view.result); else $('result-badge').hidden = true;
     tickTimer();
   }
@@ -250,7 +251,7 @@
 
   // Statistiques et détection des pièges classiques (partagées solo / entre amis)
   function createStats() {
-    return { spins: 0, wagered: 0, net: 0, expected: 0, biggestWin: 0, tips: {}, lastSimple: {}, history: [] };
+    return { spins: 0, wagered: 0, net: 0, expected: 0, biggestWin: 0, biggestLoss: 0, played: 0, wins: 0, streak: 0, bestStreak: 0, peak: 0, startedAt: Date.now(), tips: {}, lastSimple: {}, history: [] };
   }
   const TIP_TEXT = {
     martingale: 'Tu doubles ta mise après une perte (martingale). Ça semble sûr, mais une série de pertes arrive plus vite qu\'on ne croit et vide le solde : la martingale ne change pas l\'avantage du casino.',
@@ -287,6 +288,12 @@
     T.net += back - staked;
     T.expected += expected;
     if (back - staked > T.biggestWin) T.biggestWin = back - staked;
+    if (staked - back > (T.biggestLoss || 0)) T.biggestLoss = staked - back;
+    if (staked) {
+      T.played = (T.played || 0) + 1;
+      if (back > staked) { T.wins = (T.wins || 0) + 1; T.streak = (T.streak || 0) + 1; T.bestStreak = Math.max(T.bestStreak || 0, T.streak); }
+      else T.streak = 0;
+    }
     T.history.unshift(n);
     ['red', 'black', 'even', 'odd', 'low', 'high'].forEach((k) => {
       T.lastSimple[k] = bets[k] ? { amount: bets[k], lost: B.payout(k, bets[k], n) < bets[k] } : null;
@@ -319,13 +326,37 @@
     list.forEach((t) => { const li = document.createElement('li'); li.textContent = t; tips.appendChild(li); });
   }
 
+  // ---------- Bilan de partie (encaissement, fin de partie) ----------
+  function bilanStats(T, startBank, finalBank) {
+    const counts = {};
+    T.history.forEach((n) => { counts[n] = (counts[n] || 0) + 1; });
+    const hot = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+    const res = finalBank - startBank;
+    const luck = Math.round(T.net + T.expected);
+    const mins = Math.max(1, Math.round((Date.now() - (T.startedAt || Date.now())) / 60000));
+    return [
+      ['Résultat', (res > 0 ? '+' : res < 0 ? '−' : '') + fmt(Math.abs(res)) + ' €'],
+      ['Solde final', fmt(finalBank) + ' €'],
+      ['Solde le plus haut', fmt(Math.max(T.peak || 0, startBank, finalBank)) + ' €'],
+      ['Tours joués', T.spins],
+      ['Tours gagnants', T.played ? T.wins + ' / ' + T.played + ' (' + Math.round((T.wins / T.played) * 100) + ' %)' : '–'],
+      ['Meilleure série', (T.bestStreak || 0) + ' gain' + ((T.bestStreak || 0) > 1 ? 's' : '')],
+      ['Total misé', fmt(T.wagered) + ' €'],
+      ['Plus gros gain', T.biggestWin ? '+' + fmt(T.biggestWin) + ' €' : '–'],
+      ['Plus grosse perte', T.biggestLoss ? '−' + fmt(T.biggestLoss) + ' €' : '–'],
+      ['Numéro le plus sorti', hot !== undefined ? hot + ' (' + counts[hot] + '×)' : '–'],
+      ['Chance', (luck >= 0 ? '+' : '−') + fmt(Math.abs(luck)) + ' €'],
+      ['Durée', mins + ' min'],
+    ];
+  }
+
   // ---------- Fin de partie ----------
   function showRecap(o) {
     const box = $('recap');
     box.hidden = false;
     box.classList.remove('show-stats');
     box.classList.toggle('lost', !o.won);
-    $('recap-icon').textContent = o.won ? '🏆' : '🎡';
+    $('recap-icon').textContent = o.icon || (o.won ? '🏆' : '🎡');
     $('recap-title').textContent = o.title;
     $('recap-sub').textContent = o.subtitle || '';
     if (window.Sfx) { if (o.won) { Sfx.win(); setTimeout(() => Sfx.win(), 450); } else Sfx.lose(); }
@@ -347,9 +378,11 @@
         .forEach((v) => { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); });
       tb.appendChild(tr);
     });
+    $('recap-rank-title').textContent = o.rankTitle || 'Classement';
     $('recap-again').textContent = o.againLabel || 'Nouvelle partie';
     $('recap-again').onclick = () => { box.hidden = true; if (o.onAgain) o.onAgain(); };
-    $('recap-close').onclick = () => { box.hidden = true; };
+    $('recap-close').textContent = o.closeLabel || 'Fermer';
+    $('recap-close').onclick = () => { box.hidden = true; if (o.onClose) o.onClose(); };
     setTimeout(() => box.classList.add('show-stats'), 2000);
   }
   function confetti() {
@@ -375,13 +408,28 @@
   $('b-rebet').addEventListener('click', () => handlers.rebet && handlers.rebet());
   $('b-double').addEventListener('click', () => handlers.double && handlers.double());
   $('b-ready').addEventListener('click', () => handlers.ready && handlers.ready());
-  $('b-end').addEventListener('click', () => handlers.end && handlers.end());
+  // « Encaisser » : deux clics pour confirmer
+  let endArmed = null;
+  $('b-end').addEventListener('click', () => {
+    if (!handlers.end) return;
+    if (!endArmed) {
+      // solde + mises pas encore jouées (elles seront rendues)
+      const v = lastView || {};
+      const amount = (v.bankroll || 0) + (v.phase === 'waiting' || v.phase === 'betting' ? Object.values(v.bets || {}).reduce((x, y) => x + y, 0) : 0);
+      $('b-end').textContent = 'Confirmer : encaisser ' + fmt(amount) + ' € ?';
+      endArmed = setTimeout(() => { endArmed = null; $('b-end').textContent = '💰 Encaisser'; }, 3500);
+      return;
+    }
+    clearTimeout(endArmed); endArmed = null;
+    $('b-end').textContent = '💰 Encaisser';
+    handlers.end();
+  });
   window.addEventListener('resize', () => { if (lastView) { buildTapis(); render(lastView); } });
   buildChips();
 
   window.RouletteUI = {
     render, setHandlers, ensureWheel, showOutcome, limitText, rienNeVaPlus, announceResult, coachInfo, coachRound,
-    createStats, analyseBets, recordSpin, renderStats, showRecap,
+    createStats, analyseBets, recordSpin, renderStats, showRecap, bilanStats,
     get chip() { return selected; },
     SPIN_MS, RESULT_MS, fmt,
   };
@@ -481,7 +529,15 @@
       soloRender();
     },
     ready() { if (S && S.phase === 'betting') { clearTimeout(soloTimer); closeBets(); } },
-    end() { if (S) soloRecap(false); },
+    end() {
+      if (!S) return;
+      if (S.phase === 'spinning') { $('sub-message').textContent = 'La bille tourne : tu pourras encaisser juste après ce tour.'; return; }
+      // les mises posées mais pas encore jouées sont rendues
+      S.log.forEach((l) => { S.bankroll += l.amount; });
+      S.bets = {}; S.log = [];
+      soloRender();
+      soloRecap(false, true);
+    },
   };
 
   async function closeBets() {
@@ -504,6 +560,7 @@
     const r = recordSpin(S.T, S.bets, n);
     S.bankroll += r.back;
     S.maxBank = Math.max(S.maxBank, S.bankroll);
+    S.T.peak = Math.max(S.T.peak || 0, S.bankroll);
     S.result = n;
     S.history.unshift(n);
     S.phase = 'result';
@@ -535,24 +592,23 @@
     soloRender();
   }
 
-  function soloRecap(broke) {
+  function soloRecap(broke, cashout) {
     clearTimeout(soloTimer);
+    S.phase = 'over';
     const T = S.T;
     const won = S.bankroll > S.start;
+    const diff = S.bankroll - S.start;
     showRecap({
-      won,
-      title: broke ? 'Solde épuisé' : won ? 'Bravo, tu repars gagnant !' : 'Fin de la partie',
-      subtitle: 'Tu termines avec ' + fmt(S.bankroll) + ' € (départ : ' + fmt(S.start) + ' €)',
-      stats: [
-        ['Tours joués', T.spins], ['Durée', Math.max(1, Math.round((now() - S.startedAt) / 60000)) + ' min'], ['Total misé', fmt(T.wagered) + ' €'],
-        ['Gain net', (T.net > 0 ? '+' : '') + fmt(T.net) + ' €'], ['Plus gros gain', T.biggestWin ? '+' + fmt(T.biggestWin) + ' €' : '–'],
-        ['Chance', (T.net + T.expected >= 0 ? '+' : '') + fmt(Math.round(T.net + T.expected)) + ' €'],
-      ],
+      won, icon: cashout ? (won ? '💰' : '🎡') : undefined,
+      title: broke ? 'Solde épuisé' : cashout ? 'Tu encaisses ' + fmt(S.bankroll) + ' €' : won ? 'Bravo, tu repars gagnant !' : 'Fin de la partie',
+      subtitle: diff > 0 ? 'Tu repars avec ' + fmt(diff) + ' € de plus qu\'au départ !' : diff < 0 ? 'Tu repars avec ' + fmt(-diff) + ' € de moins qu\'au départ.' : 'Tu repars avec ton solde de départ.',
+      stats: bilanStats(T, S.start, S.bankroll),
       ranking: [{ name: 'Toi', me: true, bankroll: S.bankroll, biggestWin: T.biggestWin, wagered: T.wagered }],
-      againLabel: 'Nouvelle partie',
+      rankTitle: 'Ton bilan',
+      againLabel: 'Nouvelle partie', closeLabel: 'Fermer',
       onAgain: () => { S = null; $('game').hidden = true; $('setup').hidden = false; },
+      onClose: () => { S = null; $('game').hidden = true; $('setup').hidden = false; },
     });
-    $('recap-rank-title').textContent = 'Ton bilan';
   }
 
   $('start').addEventListener('click', startSolo);

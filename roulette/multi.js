@@ -122,9 +122,19 @@
       x.over = { at: now() };
     }
   }
+  // Encaisser : le joueur quitte le jeu avec son solde (mises non jouées rendues), il reste au classement
+  function opCashOut(x) {
+    const p = x.players[me];
+    if (!p || p.out || x.phase === 'spinning' || x.phase === 'over') return false;
+    if (canBet(x) && x.bets[me]) { p.bankroll += total(x.bets[me]); delete x.bets[me]; }
+    p.out = true; p.cashedOut = true; p.ready = false;
+    if (!activePlayers(x).length) { x.phase = 'over'; x.over = { at: now() }; }
+    else if (x.phase === 'betting' && activePlayers(x).every((u) => x.players[u].ready)) startSpin(x);
+  }
+
   function opRestart(x) {
     if (x.phase !== 'over') return false;
-    Object.values(x.players).forEach((p) => { p.bankroll = x.settings.bank; p.out = false; p.wagered = 0; p.biggestWin = 0; p.ready = false; });
+    Object.values(x.players).forEach((p) => { p.bankroll = x.settings.bank; p.out = false; p.cashedOut = false; p.wagered = 0; p.biggestWin = 0; p.ready = false; });
     x.phase = 'waiting'; x.round = 0; x.history = []; x.bets = {}; x.over = null; x.spin = null;
   }
 
@@ -176,6 +186,7 @@
         recordedSpin = st.round;
         const myBets = (st.bets && st.bets[me]) || {};
         const r = UI.recordSpin(T, myBets, n);
+        if (st.players[me]) T.peak = Math.max(T.peak || 0, st.players[me].bankroll);
         if (prev) UI.announceResult(n);
         if (r.staked && prev) setTimeout(() => UI.showOutcome(r.net, r.staked), 700);
         if (r.staked) {
@@ -203,7 +214,7 @@
       sub = mine === undefined ? '' : mine > 0 ? 'Tu gagnes ' + UI.fmt(mine) + ' € !' : mine < 0 ? 'Tu perds ' + UI.fmt(-mine) + ' €.' : 'Mise récupérée.';
     }
     if (x.phase === 'over') { announce = 'Partie terminée'; sub = ''; }
-    if (p && p.out) sub = 'Ton solde est épuisé : tu regardes la fin de la partie.';
+    if (p && p.out) sub = p.cashedOut ? 'Tu as encaissé ' + UI.fmt(p.bankroll) + ' € : tu regardes la fin de la partie.' : 'Ton solde est épuisé : tu regardes la fin de la partie.';
     const others = [];
     Object.keys(x.bets).forEach((u) => {
       if (u === me || !x.players[u]) return;
@@ -216,6 +227,7 @@
       canBet: !!p && !p.out && canBet(x),
       players: Object.keys(x.players).map((u) => Object.assign({ me: u === me }, x.players[u])),
       readyLabel: p && p.ready ? 'Prêt ✔' : 'Prêt', readyDisabled: !p || p.out || x.phase !== 'betting' || p.ready,
+      endDisabled: !p || p.out || x.phase === 'over',
     };
   }
 
@@ -228,7 +240,7 @@
     UI.render(view());
     if (st.phase === 'over' && st.over && shownOver !== st.over.at) {
       shownOver = st.over.at;
-      const ranking = Object.keys(st.players).map((u) => Object.assign({ me: u === me }, st.players[u])).sort((a, b) => b.bankroll - a.bankroll);
+      const ranking = Object.keys(st.players).map((u) => Object.assign({ me: u === me }, st.players[u], { name: st.players[u].name + (st.players[u].cashedOut ? ' 💰' : '') })).sort((a, b) => b.bankroll - a.bankroll);
       const won = ranking[0] && ranking[0].me;
       const myRank = ranking.findIndex((r) => r.me) + 1;
       const counts = {};
@@ -279,7 +291,25 @@
       });
     },
     ready() { act(opReady); },
-    end() { showLobby(); },
+    end() {
+      if (!st || !st.players[me]) return;
+      if (st.phase === 'spinning') { $('sub-message').textContent = 'La bille tourne : tu pourras encaisser juste après ce tour.'; return; }
+      act(opCashOut).then((ok) => {
+        if (!ok || !st) return;
+        const p = st.players[me];
+        const diff = p.bankroll - st.settings.bank;
+        T.peak = Math.max(T.peak || 0, p.bankroll);
+        UI.showRecap({
+          won: diff > 0, icon: diff > 0 ? '💰' : '🎡',
+          title: 'Tu encaisses ' + UI.fmt(p.bankroll) + ' €',
+          subtitle: diff > 0 ? 'Tu repars avec ' + UI.fmt(diff) + ' € de plus qu\'au départ !' : diff < 0 ? 'Tu repars avec ' + UI.fmt(-diff) + ' € de moins qu\'au départ.' : 'Tu repars avec ton solde de départ.',
+          stats: UI.bilanStats(T, st.settings.bank, p.bankroll),
+          ranking: [{ name: 'Toi', me: true, bankroll: p.bankroll, biggestWin: p.biggestWin, wagered: p.wagered }],
+          rankTitle: 'Ton bilan', againLabel: 'Quitter la table', closeLabel: 'Regarder la fin',
+          onAgain: () => showLobby(),
+        });
+      });
+    },
   };
 
   // ---------- Accueil ----------
