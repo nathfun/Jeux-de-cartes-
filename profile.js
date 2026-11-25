@@ -40,6 +40,13 @@
   const listeners = [];
   function save(keepStamp) {
     if (!keepStamp) P.savedAt = Date.now();
+    // historique de la banque : dernière valeur de chaque jour (31 jours)
+    if (typeof P.wallet === 'number') {
+      P.bankHist = P.bankHist || {};
+      P.bankHist[R.today(Date.now())] = Math.round(P.wallet);
+      const days = Object.keys(P.bankHist).sort();
+      while (days.length > 31) delete P.bankHist[days.shift()];
+    }
     try { localStorage.setItem(KEY, JSON.stringify(P)); } catch (e) { /* ignore */ }
     listeners.forEach((f) => { try { f(P); } catch (e) { /* ignore */ } });
   }
@@ -245,7 +252,8 @@
     for (let k = 0; k < 28; k++) {
       const coin = document.createElement('span');
       coin.className = 'cb-coin';
-      coin.textContent = ['🪙', '💰', '💎', '⭐'][k % 4];
+      const fx = R.itemOf('effect', Casino.equipped ? Casino.equipped('effect') : 'pieces') || R.SHOP.effect[0];
+      coin.textContent = fx.emojis[k % fx.emojis.length];
       coin.style.left = Math.random() * 100 + '%';
       coin.style.animationDelay = Math.random() * 1.2 + 's';
       coin.style.animationDuration = 1.6 + Math.random() * 1.4 + 's';
@@ -443,6 +451,7 @@
     },
     // ---------- Boutique et cosmétiques ----------
     SHOP: R.SHOP, SHOP_LABELS: R.SHOP_LABELS, unlocksAt: R.unlocksAt, itemOf: R.itemOf,
+    SEASON_TIERS: R.SEASON_TIERS, seasonOf: R.seasonOf, seasonTier: R.seasonTier, seasonName: R.seasonName,
     canUse(kind, id) { return R.canUse(load(), kind, id); },
     owns(kind, id) { const it = R.itemOf(kind, id); return !!it && (!it.price || !!(load().owned || {})[kind + ':' + id]); },
     equipped(kind) { load(); P.equipped = Object.assign({}, R.DEFAULT_EQUIP, P.equipped); const id = P.equipped[kind]; return R.canUse(P, kind, id) ? id : R.DEFAULT_EQUIP[kind]; },
@@ -604,8 +613,16 @@
     const r = document.documentElement.style;
     r.setProperty('--felt', f.a); r.setProperty('--felt-dark', f.b);
     r.setProperty('--back1', b.a); r.setProperty('--back2', b.b);
+    // thème de l'app et apparence des jetons (choisis à la boutique)
+    const th = R.itemOf('theme', Casino.equipped('theme')) || R.SHOP.theme[0];
+    const ch = R.itemOf('chips', Casino.equipped('chips')) || R.SHOP.chips[0];
+    let st = document.getElementById('casino-skin');
+    if (!st) { st = document.createElement('style'); st.id = 'casino-skin'; (document.head || document.documentElement).appendChild(st); }
+    let css = '';
+    if (th.id !== 'classique') css += ':root{--bg:' + th.bg + ';--panel:' + th.panel + ';--panel-border:' + th.border + ';--border:' + th.border + ';--gold:' + th.accent + '}body:not(.crash-page){background-color:' + th.bg + '}';
+    if (ch.filter && ch.filter !== 'none') css += '.chip,.chip-on,.mini-chip,.spot-chip,#quick button,.round{filter:' + ch.filter + '}' + (ch.anim ? '@keyframes chipHue{to{filter:hue-rotate(360deg) saturate(2.5)}}.chip,.chip-on,.spot-chip{animation:chipHue 6s linear infinite}' : '');
+    st.textContent = css;
   }
-
   let styled = false;
   function injectStyle() {
     if (styled) return;

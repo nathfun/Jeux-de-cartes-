@@ -168,6 +168,21 @@
     @keyframes frSpin { to { filter: hue-rotate(360deg); } }
     @media (prefers-reduced-motion: reduce) { .fr-neon, .fr-feu, .fr-arcenciel { animation: none; } }
     .leaderboard .av { border-radius: 50%; border: 2px solid transparent; display: inline-grid; place-items: center; width: 2rem; height: 2rem; }
+    .season-bar { height: 12px; background: #2b3540; border-radius: 999px; overflow: hidden; }
+    .season-bar div { height: 100%; background: linear-gradient(90deg, #cd7f32, #c0c0c0, #f2c14e, #7dd3fc); }
+    .season-tiers { position: relative; height: 26px; margin: .2rem .6rem 0; }
+    .season-tiers span { position: absolute; transform: translateX(-50%); font-size: 1.1rem; filter: grayscale(1); opacity: .55; }
+    .season-tiers span.on { filter: none; opacity: 1; }
+    .bank-chart svg { width: 100%; height: 90px; background: #0d1117; border-radius: 10px; }
+    .bc-legend { display: flex; justify-content: space-between; gap: .4rem; flex-wrap: wrap; font-size: .78rem; color: var(--muted); margin-top: .3rem; }
+    .bank-games { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .35rem; margin-top: .6rem; }
+    .bank-games div { display: flex; justify-content: space-between; background: #141a21; border-radius: 8px; padding: .35rem .6rem; font-size: .88rem; }
+    .bank-games .pos { color: #3fb950; } .bank-games .neg { color: #f85149; }
+    .bank-games b { white-space: nowrap; margin-left: .4rem; }
+    @media (max-width: 420px) { .bank-games { grid-template-columns: 1fr; } }
+    .ach.secret.locked { border-style: dashed; }
+    .pv-chip { width: 22px; height: 22px; border-radius: 50%; border: 3px dashed #fff; display: inline-block; margin: 0 1px; }
+    .pv-effect { font-size: 1.3rem; letter-spacing: .1em; }
     .acc-welcome { display: none; text-align: center; }
     .acc-welcome .aw-logo { font-size: 3rem; }
     .acc-welcome h2 { font-size: 1.5rem; margin: .2rem 0 .4rem; }
@@ -325,6 +340,19 @@
         <div class="tags"><span>Solo</span><span>Tours gratuits</span><span>Jackpot</span></div>
         <div class="mini-reels" aria-hidden="true"><span>7️⃣</span><span>7️⃣</span><span>7️⃣</span></div>
       </a>
+    </section>
+
+    <section class="panel" aria-label="Saison">
+      <h2>🏆 Saison de <span id="season-name"></span> <small id="season-end" class="muted" style="font-weight:400;font-size:.8rem"></small></h2>
+      <div class="season-bar"><div id="season-fill"></div></div>
+      <div id="season-tiers" class="season-tiers"></div>
+      <p id="season-text" class="muted small-p"></p>
+    </section>
+
+    <section class="panel" aria-label="Ta banque">
+      <h2>📈 Ta banque</h2>
+      <div id="bank-chart" class="bank-chart"></div>
+      <div id="bank-games" class="bank-games"></div>
     </section>
 
     <section class="panel" aria-label="Défis du jour">
@@ -523,9 +551,10 @@
         let n = 0;
         Casino.ACHIEVEMENTS.forEach((a) => {
           const got = !!P.achievements[a.id]; if (got) n++;
-          const el = document.createElement('div'); el.className = 'ach' + (got ? '' : ' locked'); el.title = a.text;
-          const i = document.createElement('span'); i.className = 'i'; i.textContent = a.icon;
-          const tx = document.createElement('div'); const bb = document.createElement('b'); bb.textContent = a.name; tx.append(bb, a.text);
+          const hide = a.secret && !got; // succès secret : caché tant qu'il n'est pas débloqué
+          const el = document.createElement('div'); el.className = 'ach' + (got ? '' : ' locked') + (a.secret ? ' secret' : ''); el.title = hide ? 'Succès secret' : a.text;
+          const i = document.createElement('span'); i.className = 'i'; i.textContent = hide ? '❓' : a.icon;
+          const tx = document.createElement('div'); const bb = document.createElement('b'); bb.textContent = hide ? '???' : a.name; tx.append(bb, hide ? 'Succès secret : à toi de le découvrir' : a.text);
           el.append(i, tx); ach.appendChild(el);
         });
         $('ach-count').textContent = '· ' + n + ' / ' + Casino.ACHIEVEMENTS.length;
@@ -545,6 +574,7 @@
           });
         });
         $('opt-vibrate').checked = P.settings.vibrate;
+        renderSeason(P); renderBank(P);
       }
       $('pseudo').addEventListener('change', (e) => { Casino.setPseudo(e.target.value); render(); });
       $('avatar').addEventListener('click', () => {
@@ -638,9 +668,49 @@
       $('tab-shop').addEventListener('click', () => setHubTab('shop'));
       $('open-shop').addEventListener('click', () => setHubTab('shop'));
 
+
+      // ---------- Saison ----------
+      function renderSeason(P) {
+        const id = Casino.seasonOf(Date.now());
+        const se = P.season && P.season.id === id ? P.season : { id, xp: 0, net: 0 };
+        const tiers = Casino.SEASON_TIERS, max = tiers[tiers.length - 1].xp;
+        $('season-name').textContent = Casino.seasonName(id);
+        const end = new Date(); end.setMonth(end.getMonth() + 1, 1); end.setHours(0, 0, 0, 0);
+        $('season-end').textContent = '· fin dans ' + Math.ceil((end - new Date()) / 864e5) + ' j';
+        $('season-fill').style.width = Math.min(100, se.xp / max * 100) + '%';
+        const box = $('season-tiers'); box.innerHTML = '';
+        tiers.forEach((t) => { const d = document.createElement('span'); d.className = se.xp >= t.xp ? 'on' : ''; d.style.left = (t.xp / max * 100) + '%'; d.textContent = t.icon; d.title = t.name + ' : ' + fmt(t.xp) + ' XP'; box.appendChild(d); });
+        const cur = Casino.seasonTier(se.xp), next = tiers.find((t) => se.xp < t.xp);
+        $('season-text').textContent = 'XP de saison : ' + fmt(se.xp) + (cur ? ' · palier ' + cur.name : '') + (next ? ' · encore ' + fmt(next.xp - se.xp) + ' XP pour ' + next.name : ' · palier maximal !') +
+          ' · bénéfice du mois : ' + (se.net >= 0 ? '+' : '−') + fmt(Math.abs(se.net)) + ' €. À la fin du mois, chaque palier atteint donne un titre exclusif (le cadre « Champion de saison » dès l\'or).' +
+          (P.lastSeason ? ' Saison précédente (' + Casino.seasonName(P.lastSeason.id) + ') : ' + fmt(P.lastSeason.xp) + ' XP' + (P.lastSeason.tier ? ', palier ' + P.lastSeason.tier : '') + '.' : '');
+      }
+      // ---------- Historique de la banque ----------
+      function renderBank(P) {
+        const h = P.bankHist || {}, days = Object.keys(h).sort().slice(-30);
+        const box = $('bank-chart');
+        if (days.length < 2) { box.innerHTML = '<p class="muted small-p">La courbe de ta banque apparaîtra au fil des jours.</p>'; }
+        else {
+          const vals = days.map((d) => h[d]), mn = Math.min(...vals), mx = Math.max(...vals), W = 300, H = 90, pad = 6;
+          const X = (i) => pad + i / (days.length - 1) * (W - 2 * pad), Y = (v) => H - pad - (mx === mn ? 0.5 : (v - mn) / (mx - mn)) * (H - 2 * pad);
+          const pts = vals.map((v, i) => X(i).toFixed(1) + ',' + Y(v).toFixed(1)).join(' ');
+          const up = vals[vals.length - 1] >= vals[0];
+          box.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="Évolution de ta banque"><polyline points="' + pts + '" fill="none" stroke="' + (up ? '#3fb950' : '#f85149') + '" stroke-width="2.5" vector-effect="non-scaling-stroke"/></svg>'
+            + '<div class="bc-legend"><span>' + days[0].slice(5).split('-').reverse().join('/') + ' : ' + fmt(vals[0]) + ' €</span><span>min ' + fmt(mn) + ' € · max ' + fmt(mx) + ' €</span><span>aujourd\'hui : <b>' + fmt(vals[vals.length - 1]) + ' €</b></span></div>';
+        }
+        const NAMES = { bj: '🂡 Blackjack', pk: '♠ Poker', rl: '🎡 Roulette', sl: '🎰 Machine à sous', cr: '🚀 Rocket Crash' };
+        const nb = (P.totals && P.totals.netBy) || {};
+        const g = $('bank-games'); g.innerHTML = '';
+        Object.keys(NAMES).forEach((k) => {
+          const v = nb[k] || 0, d = document.createElement('div');
+          d.innerHTML = '<span></span><b class="' + (v > 0 ? 'pos' : v < 0 ? 'neg' : '') + '"></b>';
+          d.firstChild.textContent = NAMES[k]; d.lastChild.textContent = (v >= 0 ? '+' : '−') + fmt(Math.abs(v)) + ' €';
+          g.appendChild(d);
+        });
+      }
       // ---------- Boutique ----------
       let shopCat = 'felt', armedBuy = null, armedTimer = null;
-      const KIND_ICON = { felt: '🟩', back: '🂠', avatar: '😀', frame: '⭕', rocket: '🚀', title: '🏷️' };
+      const KIND_ICON = { felt: '🟩', back: '🂠', avatar: '😀', frame: '⭕', rocket: '🚀', title: '🏷️', theme: '🎨', chips: '🪙', effect: '🎆' };
       function rocketSvg(it) {
         const b = it.body, f = it.flame;
         return '<svg viewBox="0 0 40 70" width="34" height="60" aria-hidden="true"><defs><linearGradient id="rb-' + it.id + '" x1="0" x2="1"><stop offset="0" stop-color="' + b[0] + '"/><stop offset=".5" stop-color="' + b[1] + '"/><stop offset="1" stop-color="' + b[2] + '"/></linearGradient>'
@@ -659,6 +729,9 @@
         else if (kind === 'frame') { const a = document.createElement('span'); a.className = 'pv-ring fr-' + it.id; a.textContent = Casino.profile.avatar; d.appendChild(a); }
         else if (kind === 'rocket') d.innerHTML = rocketSvg(it);
         else if (kind === 'title') d.textContent = it.id ? '« ' + it.name + ' »' : 'Titre de ton niveau';
+        else if (kind === 'theme') { d.style.background = it.bg; d.style.border = '3px solid ' + it.border; d.innerHTML = '<span style="display:block;width:70%;height:40%;border-radius:6px;background:' + it.panel + ';border-bottom:4px solid ' + it.accent + '"></span>'; }
+        else if (kind === 'chips') { ['#c62828', '#1565c0', '#2e7d32'].forEach((c) => { const x = document.createElement('span'); x.className = 'pv-chip'; x.style.background = c; x.style.filter = it.filter; d.appendChild(x); }); }
+        else if (kind === 'effect') d.textContent = it.emojis.join('');
         return d;
       }
       function isEquipped(kind, it) { return kind === 'avatar' ? Casino.profile.avatar === it.id : Casino.equipped(kind) === it.id; }
@@ -667,7 +740,7 @@
         const P = Casino.profile, lv = Casino.levelOf(P.xp);
         $('shop-wallet').textContent = fmt(P.wallet);
         $('shop-lvl').textContent = lv;
-        const totalPaid = Object.values(Casino.SHOP).reduce((a, l) => a + l.filter((x) => x.price).length, 0);
+        const totalPaid = Object.values(Casino.SHOP).reduce((a, l) => a + l.filter((x) => x.price && !x.exclusive).length, 0);
         $('shop-owned').textContent = Object.keys(P.owned || {}).length + ' / ' + totalPaid + ' objets achetés';
         // parcours des niveaux
         const tr = $('level-track'); tr.innerHTML = '';
@@ -698,11 +771,13 @@
           card.appendChild(preview(shopCat, it));
           const nm = document.createElement('b'); nm.textContent = it.name; card.appendChild(nm);
           const info = document.createElement('small');
-          info.textContent = !unlocked ? '🔒 Niveau ' + it.level + (it.price ? ' · ' + fmt(it.price) + ' €' : ' · offert') : it.price ? (owned ? 'Acheté' : fmt(it.price) + ' €') : 'Offert';
+          if (it.exclusive) info.textContent = '🏆 ' + it.exclusive;
+          else info.textContent = !unlocked ? '🔒 Niveau ' + it.level + (it.price ? ' · ' + fmt(it.price) + ' €' : ' · offert') : it.price ? (owned ? 'Acheté' : fmt(it.price) + ' €') : 'Offert';
           card.appendChild(info);
           const btn = document.createElement('button'); btn.type = 'button';
           if (isEquipped(shopCat, it)) { btn.textContent = 'Équipé ✓'; btn.disabled = true; }
           else if (usable) { btn.textContent = 'Équiper'; btn.addEventListener('click', () => { Casino.equip(shopCat, it.id); if (window.Sfx) Sfx.chips(); render(); renderShop(); }); }
+          else if (it.exclusive) { btn.textContent = '🏆 Récompense exclusive'; btn.disabled = true; }
           else if (!unlocked) { btn.textContent = '🔒 Niv. ' + it.level; btn.disabled = true; }
           else {
             const key = shopCat + ':' + it.id;

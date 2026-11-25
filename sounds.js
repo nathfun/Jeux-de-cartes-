@@ -240,8 +240,46 @@
     o.connect(g); o2.connect(g2); g2.connect(g); g.connect(musicBus);
     o.start(t); o2.start(t); o.stop(t + dur + 0.05); o2.stop(t + dur + 0.05);
   }
+  // Une ambiance par jeu : lounge (accueil, blackjack), jazz feutré (poker), Las Vegas (roulette, machine à sous),
+  // synthwave (Rocket Crash). Mesures de 3 s dans tous les cas.
+  const hz = (m) => 440 * Math.pow(2, (m - 69) / 12);
+  const chord = (bass, ...ns) => ({ bass: hz(bass), notes: ns.map(hz) });
+  const STYLE = /\/crash\//.test(location.pathname) ? 'synth' : /\/(roulette|slots)\//.test(location.pathname) ? 'vegas' : /\/poker\//.test(location.pathname) ? 'jazz' : 'lounge';
+  const PROGS = {
+    jazz: [chord(38, 65, 69, 72, 76), chord(43, 65, 69, 71, 76), chord(36, 64, 67, 71, 74), chord(45, 61, 67, 70, 73)],      // Dm9 G13 Cmaj9 A7b9
+    vegas: [chord(36, 64, 67, 69, 72), chord(45, 64, 67, 69, 72), chord(38, 65, 69, 72, 74), chord(43, 65, 67, 71, 74)],     // C6 Am7 Dm7 G7
+    synth: [chord(33, 69, 72, 76, 81), chord(29, 65, 69, 72, 77), chord(36, 64, 67, 72, 76), chord(31, 67, 71, 74, 79)],     // Am F C G
+  };
+  function synthNote(t, f, vol, dur, type) {
+    const o = ctx.createOscillator(), g = ctx.createGain(), lp = ctx.createBiquadFilter();
+    o.type = type || 'sawtooth'; o.frequency.value = f; lp.type = 'lowpass'; lp.frequency.value = 1400;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(lp); lp.connect(g); g.connect(musicBus); o.start(t); o.stop(t + dur + 0.05);
+  }
+  function kick(t) { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.setValueAtTime(120, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.15); g.gain.setValueAtTime(0.4, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2); o.connect(g); g.connect(musicBus); o.start(t); o.stop(t + 0.25); }
+  function playStyled() {
+    const t = ctx.currentTime + 0.05, beat = 0.75, ch = PROGS[STYLE][bar % 4];
+    if (STYLE === 'synth') {
+      for (let i = 0; i < 8; i++) synthNote(t + i * beat / 2, ch.bass * (i % 2 ? 2 : 1), 0.12, beat / 2.2, 'sawtooth');
+      ch.notes.forEach((f) => synthNote(t, f, 0.025, beat * 4, 'triangle'));
+      for (let i = 0; i < 4; i++) { kick(t + i * beat); noiseBurst(t + i * beat + beat / 2, 8000, 1, 0.03, 0.05); }
+      [0, 1.5, 3].forEach((b, k) => synthNote(t + b * beat, ch.notes[(k + bar) % 4] * 2, 0.04, beat * 0.9, 'square'));
+    } else if (STYLE === 'vegas') {
+      [0, 1, 2, 3].forEach((b) => synthNote(t + b * beat, b % 2 ? ch.bass * 1.5 : ch.bass, 0.22, beat * 0.9, 'triangle'));
+      [0.5, 1.5, 2.5, 3.5].forEach((b) => ch.notes.forEach((f) => epiano(t + b * beat, f, 0.03, beat * 0.45)));
+      for (let i = 0; i < 8; i++) noiseBurst(t + i * beat / 2, 9000, 1.2, i % 2 ? 0.015 : 0.03, 0.04);
+      [0, 0.75, 1.5, 2.25].forEach((b, k) => epiano(t + b * beat * 1.33, ch.notes[(k + bar) % 4] * 2, 0.045, beat * 0.6));
+    } else { // jazz : comme le lounge, plus lent et plus grave
+      [0, 2].forEach((b) => synthNote(t + b * beat, ch.bass, 0.28, beat * 1.9, 'triangle'));
+      ch.notes.forEach((f) => epiano(t + 0.1, f, 0.045, beat * 3.6));
+      [2, 3.5].forEach((b, k) => epiano(t + b * beat, ch.notes[(k + bar * 2) % 4] * 2, 0.03, beat));
+      [1, 3].forEach((b) => noiseBurst(t + b * beat, 5000, 0.6, 0.02, 0.18));
+    }
+    bar++;
+  }
   function playBar() {
     if (!ctx || !musicOn || !enabled) return;
+    if (STYLE !== 'lounge') { playStyled(); return; }
     const t = ctx.currentTime + 0.05, beat = 0.75, ch = CHORDS[bar % CHORDS.length];
     // contrebasse : fondamentale et quinte
     [0, 2].forEach((b, k) => {

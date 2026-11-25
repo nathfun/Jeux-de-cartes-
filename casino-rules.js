@@ -99,15 +99,54 @@
     { id: 'millionnaire', name: 'Millionnaire', level: 20, price: 30000 },
     { id: 'legende', name: 'Légende du Casino', level: 35, price: 0 },
   ];
-  const SHOP = { felt: FELTS, back: BACKS, avatar: AVATAR_ITEMS, frame: FRAMES, rocket: ROCKETS, title: TITLES };
-  const SHOP_LABELS = { felt: 'Tapis', back: 'Dos de cartes', avatar: 'Avatars', frame: 'Cadres', rocket: 'Fusées', title: 'Titres' };
-  const DEFAULT_EQUIP = { felt: 'vert', back: 'bleu', frame: 'none', rocket: 'classique', title: '' };
+  // Thèmes de toute l'app (couleurs de fond, panneaux, accent)
+  const THEMES = [
+    { id: 'classique', name: 'Classique', level: 1, price: 0, bg: '#10151c', panel: '#1a2129', border: '#2a333d', accent: '#f2c14e' },
+    { id: 'nuit', name: 'Nuit bleue', level: 3, price: 2500, bg: '#0a1020', panel: '#121b33', border: '#22325a', accent: '#60a5fa' },
+    { id: 'emeraude', name: 'Émeraude', level: 6, price: 5000, bg: '#07140f', panel: '#0f2219', border: '#1d3b2c', accent: '#34d399' },
+    { id: 'neon', name: 'Néon', level: 8, price: 8000, bg: '#0b0617', panel: '#160d2b', border: '#3b1f6b', accent: '#e879f9' },
+    { id: 'vegas', name: 'Las Vegas', level: 12, price: 12000, bg: '#170707', panel: '#2a0d0d', border: '#5a1a1a', accent: '#fbbf24' },
+    { id: 'monte', name: 'Monte-Carlo', level: 18, price: 20000, bg: '#0c1210', panel: '#16201c', border: '#2f4a3e', accent: '#d4af37' },
+    { id: 'arctique', name: 'Arctique', level: 22, price: 25000, bg: '#08131a', panel: '#10222d', border: '#1f4152', accent: '#7dd3fc' },
+    { id: 'or', name: 'Or massif', level: 30, price: 45000, bg: '#120e04', panel: '#221a08', border: '#4a3a12', accent: '#facc15' },
+  ];
+  // Jetons : apparence des jetons dans tous les jeux (filtre de couleur)
+  const CHIPS = [
+    { id: 'classique', name: 'Classiques', level: 1, price: 0, filter: 'none' },
+    { id: 'or', name: 'Dorés', level: 4, price: 3000, filter: 'sepia(1) saturate(3) brightness(1.1) hue-rotate(-10deg)' },
+    { id: 'pastel', name: 'Pastel', level: 6, price: 4000, filter: 'saturate(.55) brightness(1.25)' },
+    { id: 'neon', name: 'Néon', level: 9, price: 7000, filter: 'hue-rotate(160deg) saturate(2) drop-shadow(0 0 6px #22d3ee)' },
+    { id: 'onyx', name: 'Onyx', level: 14, price: 10000, filter: 'grayscale(1) contrast(1.4) brightness(.8)' },
+    { id: 'arcenciel', name: 'Arc-en-ciel', level: 24, price: 30000, filter: 'hue-rotate(90deg) saturate(2.5) drop-shadow(0 0 5px #f472b6)', anim: true },
+  ];
+  // Effets de victoire : ce qui pleut lors d'un gros gain
+  const EFFECTS = [
+    { id: 'pieces', name: 'Pluie de pièces', level: 1, price: 0, emojis: ['🪙', '💰', '💎', '⭐'] },
+    { id: 'confettis', name: 'Confettis', level: 3, price: 2000, emojis: ['🎉', '🎊', '✨', '🎈'] },
+    { id: 'coeurs', name: 'Cœurs', level: 5, price: 3000, emojis: ['❤️', '💖', '💘', '💝'] },
+    { id: 'etoiles', name: 'Étoiles filantes', level: 7, price: 5000, emojis: ['⭐', '🌟', '✨', '💫'] },
+    { id: 'feu', name: 'Feu d\'artifice', level: 11, price: 9000, emojis: ['🎆', '🎇', '🔥', '💥'] },
+    { id: 'diamants', name: 'Diamants', level: 16, price: 14000, emojis: ['💎', '💠', '🔷', '✨'] },
+    { id: 'espace', name: 'Espace', level: 20, price: 20000, emojis: ['🚀', '🌠', '🪐', '✨'] },
+  ];
+  // Récompenses exclusives (saisons, tournoi de la semaine) : ni achetables ni débloquées par niveau
+  FRAMES.push({ id: 'saison', name: 'Champion de saison', level: 1, price: 0, exclusive: 'Saison : palier or' });
+  TITLES.push(
+    { id: 'saison_bronze', name: 'Saison bronze', level: 1, price: 0, exclusive: 'Saison : palier bronze' },
+    { id: 'saison_argent', name: 'Saison argent', level: 1, price: 0, exclusive: 'Saison : palier argent' },
+    { id: 'saison_or', name: 'Saison or', level: 1, price: 0, exclusive: 'Saison : palier or' },
+    { id: 'saison_diamant', name: 'Saison diamant', level: 1, price: 0, exclusive: 'Saison : palier diamant' },
+    { id: 'roi_semaine', name: 'Roi du poker de la semaine', level: 1, price: 0, exclusive: 'Tournoi de poker de la semaine : 1re place' });
+  const SHOP = { felt: FELTS, back: BACKS, avatar: AVATAR_ITEMS, frame: FRAMES, rocket: ROCKETS, title: TITLES, theme: THEMES, chips: CHIPS, effect: EFFECTS };
+  const SHOP_LABELS = { felt: 'Tapis', back: 'Dos de cartes', avatar: 'Avatars', frame: 'Cadres', rocket: 'Fusées', title: 'Titres', theme: 'Thèmes', chips: 'Jetons', effect: 'Effets de victoire' };
+  const DEFAULT_EQUIP = { felt: 'vert', back: 'bleu', frame: 'none', rocket: 'classique', title: '', theme: 'classique', chips: 'classique', effect: 'pieces' };
   const itemOf = (kind, id) => (SHOP[kind] || []).find((x) => x.id === id) || null;
   const ownKey = (kind, id) => kind + ':' + id;
   /** L'objet est-il utilisable : niveau atteint, et offert ou acheté. */
   function canUse(P, kind, id) {
     const it = itemOf(kind, id);
     if (!it) return false;
+    if (it.exclusive) return !!(P.owned && P.owned[ownKey(kind, id)]);
     if (levelOf(P.xp) < it.level) return false;
     return !it.price || !!(P.owned && P.owned[ownKey(kind, id)]);
   }
@@ -130,7 +169,7 @@
   /** Ce que chaque niveau débloque (offert ou disponible à l'achat). */
   function unlocksAt(level) {
     const out = [];
-    Object.keys(SHOP).forEach((k) => SHOP[k].forEach((it) => { if (it.level === level && level > 1) out.push(Object.assign({ kind: k }, it)); }));
+    Object.keys(SHOP).forEach((k) => SHOP[k].forEach((it) => { if (it.level === level && level > 1 && !it.exclusive) out.push(Object.assign({ kind: k }, it)); }));
     return out;
   }
 
@@ -171,6 +210,18 @@
     { id: 'shop10', icon: '🎨', name: 'Collectionneur', text: 'Posséder 10 objets de la boutique' },
     { id: 'shop25', icon: '👑', name: 'Grand collectionneur', text: 'Posséder 25 objets de la boutique' },
     { id: 'lvl30', icon: '🌟', name: 'Vétéran', text: 'Atteindre le niveau 30' },
+    { id: 'hands1000', icon: '🏋️', name: 'Infatigable', text: 'Jouer 1 000 mains ou tours en partie réelle' },
+    { id: 'wins100', icon: '🥇', name: 'Gagnant', text: 'Gagner 100 mains ou tours' },
+    { id: 'high_bet', icon: '💸', name: 'Gros joueur', text: 'Miser 250 € ou plus en une seule fois' },
+    { id: 'daily30', icon: '📆', name: 'Pilier du Casino', text: 'Venir 30 jours d\'affilée' },
+    { id: 'time_night', icon: '🛌', name: 'Gros dormeur', text: 'Encaisser une nuit complète à la banque du temps' },
+    { id: 'season_gold', icon: '🏆', name: 'Saison en or', text: 'Finir une saison au palier or ou mieux' },
+    { id: 'week_king', icon: '♚', name: 'Roi de la semaine', text: 'Finir 1er du tournoi de poker de la semaine entre amis' },
+    { id: 'streak7', icon: '🍀', name: 'Sept à la suite', text: 'Gagner 7 fois d\'affilée', secret: true },
+    { id: 'night_owl', icon: '🦉', name: 'Oiseau de nuit', text: 'Jouer entre minuit et 5 h du matin', secret: true },
+    { id: 'cr_100', icon: '🌌', name: 'Vers l\'infini', text: 'Retirer à ×100 ou plus à Rocket Crash', secret: true },
+    { id: 'cr_boom', icon: '💥', name: 'Pas de bol', text: 'Voir sa fusée exploser au décollage (×1,00) avec une mise', secret: true },
+    { id: 'broke', icon: '🕳️', name: 'Au fond du trou', text: 'Avoir moins de 100 € en banque', secret: true },
     { id: 'rocket10', icon: '🚀', name: 'Dans les étoiles', text: 'Retirer à ×10 ou plus à Rocket Crash' },
     { id: 'jackpot', icon: '🎰', name: 'Jackpot', text: 'Décrocher le jackpot à la machine à sous' },
     { id: 'friends', icon: '🤝', name: 'Entre potes', text: 'Jouer une partie entre amis' },
@@ -224,6 +275,7 @@
   function addXP(P, n, N) {
     const before = levelOf(P.xp);
     P.xp += Math.round(n);
+    ensureSeason(P, Date.now(), N).xp += Math.round(n);
     const after = levelOf(P.xp);
     if (after > before) {
       const unlocked = [];
@@ -242,7 +294,36 @@
     N.push({ kind: 'achievement', title: 'Succès débloqué : ' + a.name, text: a.text + ' (+100 XP)', icon: a.icon });
     addXP(P, 100, N);
   }
+  // ---------- Saisons (un mois) ----------
+  const SEASON_TIERS = [
+    { id: 'bronze', name: 'Bronze', xp: 300, icon: '🥉' },
+    { id: 'argent', name: 'Argent', xp: 1500, icon: '🥈' },
+    { id: 'or', name: 'Or', xp: 5000, icon: '🥇' },
+    { id: 'diamant', name: 'Diamant', xp: 12000, icon: '💎' },
+  ];
+  function seasonOf(now) { return dayOf(now).slice(0, 7); }
+  function seasonTier(xp) { let t = null; SEASON_TIERS.forEach((x) => { if (xp >= x.xp) t = x; }); return t; }
+  function seasonName(id) { const [y, m] = id.split('-').map(Number); return ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'][m - 1] + ' ' + y; }
+  /** Change de saison si besoin : récompenses de la saison finie selon le palier atteint. */
+  function ensureSeason(P, now, N) {
+    const id = seasonOf(now || Date.now());
+    if (P.season && P.season.id === id) return P.season;
+    const old = P.season;
+    P.season = { id, xp: 0, net: 0 }; // d'abord la nouvelle saison (les récompenses donnent de l'XP)
+    if (old && old.xp > 0) {
+      const tier = seasonTier(old.xp);
+      P.lastSeason = { id: old.id, xp: old.xp, net: old.net || 0, tier: tier ? tier.id : null };
+      if (tier) {
+        P.owned = P.owned || {};
+        SEASON_TIERS.slice(0, SEASON_TIERS.indexOf(tier) + 1).forEach((t) => { P.owned['title:saison_' + t.id] = Date.now(); });
+        (N || []).push({ kind: 'achievement', title: 'Saison de ' + seasonName(old.id) + ' terminée', text: 'Palier ' + tier.name + ' : récompenses exclusives ajoutées à ta collection', icon: tier.icon });
+        if (SEASON_TIERS.indexOf(tier) >= 2) { P.owned['frame:saison'] = Date.now(); unlock(P, 'season_gold', N || []); }
+      }
+    }
+    return P.season;
+  }
   function checkWallet(P, N) {
+    if (P.wallet < 100) unlock(P, 'broke', N);
     if (P.wallet >= 25000) unlock(P, 'rich25', N);
     if (P.wallet >= 100000) unlock(P, 'rich100', N);
   }
@@ -273,11 +354,20 @@
     const isRound = ['bj', 'pk', 'rl', 'sl', 'cr'].includes(type);
     if (isRound) {
       T.hands++;
+      T.netBy = T.netBy || {};
+      T.netBy[type] = Math.round(((T.netBy[type] || 0) + (d.net || 0)) * 100) / 100;
+      ensureSeason(P, now, N).net = Math.round(((P.season.net || 0) + (d.net || 0)) * 100) / 100;
+      if (d.net > 0) T.streak = (T.streak || 0) + 1; else if (d.net < 0) T.streak = 0;
+      if (T.streak >= 7) unlock(P, 'streak7', N);
+      if (T.hands >= 1000) unlock(P, 'hands1000', N);
+      if (d.bet >= 250) unlock(P, 'high_bet', N);
+      try { const h = Number(new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: 'numeric', hourCycle: 'h23' }).format(new Date(now))); if (h < 5) unlock(P, 'night_owl', N); } catch (e) { /* ignore */ }
       addXP(P, 5, N);
       if (d.net > 0) {
         T.wins++;
         addXP(P, Math.min(40, 3 + d.net / 25), N);
         unlock(P, 'first_win', N);
+        if (T.wins >= 100) unlock(P, 'wins100', N);
         if (d.net > T.biggestWin) T.biggestWin = d.net;
       }
     }
@@ -295,7 +385,12 @@
     if (type === 'pk-tourney') { addXP(P, d.place === 1 ? 150 : 40, N); if (d.place === 1) unlock(P, 'pk_champion', N); }
     if (type === 'rl') { T.rlSpins++; if (d.pleinHit) unlock(P, 'rl_plein', N); if (d.zeroWin) unlock(P, 'rl_zero', N); }
     if (type === 'rl-cashout' && d.diff >= 1000) unlock(P, 'rl_cashout', N);
-    if (type === 'cr') { T.crRounds = (T.crRounds || 0) + 1; if (d.mult >= 10) unlock(P, 'rocket10', N); }
+    if (type === 'cr') {
+      T.crRounds = (T.crRounds || 0) + 1;
+      if (d.mult >= 10) unlock(P, 'rocket10', N);
+      if (d.mult >= 100) unlock(P, 'cr_100', N);
+      if (d.crash === 1 && d.bet > 0) unlock(P, 'cr_boom', N);
+    }
     if (type === 'sl') { T.slSpins++; if (d.jackpot) unlock(P, 'jackpot', N); }
     if (type === 'multi') { unlock(P, 'friends', N); addXP(P, 20, N); }
     if (isRound && d.bet > 0 && d.net >= d.bet * 9) unlock(P, 'big_win', N);
@@ -327,6 +422,7 @@
     P.wallet += b.amount;
     addXP(P, 30, N);
     if (b.streak >= 7) unlock(P, 'daily7', N);
+    if (b.streak >= 30) unlock(P, 'daily30', N);
     checkWallet(P, N);
     return b.amount;
   }
@@ -363,6 +459,7 @@
     if (!t || !t.ready) return 0;
     P.timebank = null;
     P.wallet += t.pack.amount;
+    if (t.pack.id === 'nuit') unlock(P, 'time_night', N);
     checkWallet(P, N);
     return t.pack.amount;
   }
@@ -423,6 +520,7 @@
   }
 
   const api = {
+    SEASON_TIERS, seasonOf, seasonTier, seasonName, ensureSeason,
     AVATARS, FELTS, BACKS, SHOP, SHOP_LABELS, DEFAULT_EQUIP, itemOf, canUse, buyItem, unlocksAt, CHALLENGES, ACHIEVEMENTS, TIME_PACKS, START_WALLET, GAMES,
     need, levelOf, title, today, fresh, normalize, addXP, unlock, checkWallet, ensureDaily, track,
     bonusInfo, claimBonus, claimChallenge, timeInfo, startTime, claimTime, startSession, cashOut,

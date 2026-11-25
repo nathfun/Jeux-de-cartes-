@@ -162,7 +162,7 @@
     betsOf().unshift({ amount: b.amount, cashAt: won ? b.cashAt : null, crash: G.crash, net, at: Date.now() });
     store.bets[S.mode === 'real' ? 'real' : 'train'] = betsOf().slice(0, 30);
     persist();
-    if (window.Casino && S.mode === 'real' && !Casino.server) Casino.track('cr', { bet: b.amount, net, mult: won ? b.cashAt : 0 });
+    if (window.Casino && S.mode === 'real' && !Casino.server) Casino.track('cr', { bet: b.amount, net, mult: won ? b.cashAt : 0, crash: G.crash });
     renderStats();
   }
 
