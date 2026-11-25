@@ -184,7 +184,10 @@
       if (!res.committed) return { error: refused || 'Opération refusée.' };
       return { ok: true, wallet: res.snapshot.val().wallet };
     } catch (e) {
-      return { error: 'Opération refusée par la banque.' };
+      // compte bloqué par l'administrateur, ou règles de la base pas à jour
+      const banned = await f.dbMod.get(f.dbMod.ref(f.db, 'banned/' + bankUid)).then((v) => v.exists()).catch(() => false);
+      if (banned) return { error: 'Ton compte a été bloqué par l\'administrateur du Casino.' };
+      return { error: 'Opération refusée par la banque (' + ((e && e.code) || 'erreur') + '). Si ça continue, l\'administrateur doit recoller database.rules.json dans Firebase (Règles → Publier).' };
     }
   }
   // Mouvement d'argent validé en ligne, puis appliqué au profil (XP, défis…) avec la banque officielle

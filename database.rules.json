@@ -99,7 +99,7 @@
     "saves": {
       "$uid": {
         ".read": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true)",
-        ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true)",
+        ".write": "auth != null && ((auth.uid === $uid && !root.child('banned').child(auth.uid).exists()) || root.child('admins').child(auth.uid).val() === true)",
         ".validate": "newData.hasChildren(['data', 'at']) && newData.child('data').isString() && newData.child('data').val().length < 200000"
       },
       ".read": "auth != null && root.child('admins').child(auth.uid).val() === true"
@@ -113,7 +113,7 @@
     "profiles": {
       "$uid": {
         ".read": "auth != null",
-        ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).val() === true)"
+        ".write": "auth != null && ((auth.uid === $uid && !root.child('banned').child(auth.uid).exists()) || root.child('admins').child(auth.uid).val() === true)"
       },
       ".read": "auth != null && root.child('admins').child(auth.uid).val() === true"
     },
@@ -140,7 +140,7 @@
     "bank": {
       "$uid": {
         ".read": "auth != null",
-        ".write": "auth != null && ((auth.uid === $uid && newData.exists()) || root.child('admins').child(auth.uid).val() === true)",
+        ".write": "auth != null && ((auth.uid === $uid && newData.exists() && !root.child('banned').child(auth.uid).exists()) || root.child('admins').child(auth.uid).val() === true)",
         ".validate": "root.child('admins').child(auth.uid).val() === true || (newData.hasChildren(['wallet', 'why', 'at', 'x']) && (!data.child('bonus').exists() || newData.child('bonus').exists()) && (!data.child('gw').exists() || newData.child('gw').exists()) && (newData.child('x').val() === 0 || newData.child('gw').exists()) && ((!data.exists() && newData.child('why').val() === 'new' && newData.child('wallet').val() === 10000 && newData.child('x').val() === 0) || (data.exists() && newData.child('why').val() === 'spend' && newData.child('wallet').val() <= data.child('wallet').val() && newData.child('x').val() === 0) || (data.exists() && newData.child('why').val() === 'start' && newData.child('g').exists() && !data.child('ses').child(newData.child('g').val()).exists() && newData.child('ses').child(newData.child('g').val()).val() > 0 && newData.child('wallet').val() === data.child('wallet').val() - newData.child('ses').child(newData.child('g').val()).val() && newData.child('x').val() === 0) || (data.exists() && newData.child('why').val() === 'cash' && newData.child('g').exists() && data.child('ses').child(newData.child('g').val()).exists() && !newData.child('ses').child(newData.child('g').val()).exists() && newData.child('wallet').val() >= data.child('wallet').val() && ((newData.child('wallet').val() - data.child('wallet').val() - data.child('ses').child(newData.child('g').val()).val() <= 0 && newData.child('x').val() === 0) || (newData.child('wallet').val() - data.child('wallet').val() - data.child('ses').child(newData.child('g').val()).val() > 0 && newData.child('x').val() === newData.child('wallet').val() - data.child('wallet').val() - data.child('ses').child(newData.child('g').val()).val()))) || (data.exists() && newData.child('why').val() === 'bonus' && newData.child('wallet').val() >= data.child('wallet').val() && newData.child('wallet').val() - data.child('wallet').val() <= 2000 && newData.child('x').val() === 0 && newData.child('bonus').val() === now && (!data.child('bonus').exists() || (data.child('bonus').exists() && now - data.child('bonus').val() >= 21600000))) || (data.exists() && newData.child('why').val() === 'tstart' && newData.child('wallet').val() === data.child('wallet').val() && newData.child('x').val() === 0 && !data.child('tb').exists() && newData.child('tb/s').val() === now) || (data.exists() && newData.child('why').val() === 'tclaim' && newData.child('x').val() === 0 && data.child('tb').exists() && !newData.child('tb').exists() && ((data.child('tb/p').val() === 'cafe' && newData.child('wallet').val() - data.child('wallet').val() === 100 && now >= data.child('tb/s').val() + 300000) || (data.child('tb/p').val() === 'repas' && newData.child('wallet').val() - data.child('wallet').val() === 1000 && now >= data.child('tb/s').val() + 1800000) || (data.child('tb/p').val() === 'soiree' && newData.child('wallet').val() - data.child('wallet').val() === 4500 && now >= data.child('tb/s').val() + 7200000) || (data.child('tb/p').val() === 'nuit' && newData.child('wallet').val() - data.child('wallet').val() === 20000 && now >= data.child('tb/s').val() + 28800000))) || (data.exists() && newData.child('why').val() === 'gain' && newData.child('wallet').val() > data.child('wallet').val() && newData.child('wallet').val() - data.child('wallet').val() <= 700 && newData.child('x').val() === newData.child('wallet').val() - data.child('wallet').val())))",
         "wallet": {
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000"
@@ -155,7 +155,7 @@
           ".validate": "newData.isNumber() && newData.val() >= 0"
         },
         "g": {
-          ".validate": "newData.val().matches(/^(blackjack|poker|roulette|slots|crash)$/)"
+          ".validate": "newData.isString() && newData.val().matches(/^[a-z]{3,12}$/)"
         },
         "bonus": {
           ".validate": "newData.isNumber() && (newData.val() === data.val() || newData.parent().child('why').val() === 'bonus')"
@@ -201,7 +201,8 @@
         "$id": {
           ".write": "auth != null && (auth.uid === $uid || (!data.exists() && newData.child('from').val() === auth.uid))",
           ".validate": "newData.hasChildren(['from', 'game', 'code', 'at']) && newData.child('game').val().matches(/^(blackjack|poker|roulette)$/) && newData.child('code').val().matches(/^[A-Z0-9]{4,6}$/) && newData.child('name').isString() && newData.child('name').val().length <= 20"
-        }
+        },
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
       }
     },
     "lobby": {
@@ -217,6 +218,17 @@
         ".write": "auth != null && auth.uid === 'pJ5ScZ8Y3QfdgosmUdve22LmSmt1' && $uid === auth.uid",
         ".validate": "newData.val() === true"
       }
+    },
+    "banned": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+      }
+    },
+    "announce": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      ".validate": "!newData.exists() || (newData.hasChildren(['text', 'at']) && newData.child('text').isString() && newData.child('text').val().length <= 300)"
     }
   }
 }

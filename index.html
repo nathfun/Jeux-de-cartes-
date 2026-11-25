@@ -213,6 +213,9 @@
     .acc-form input { font: inherit; flex: 1 1 160px; min-width: 0; padding: .5rem .7rem; border-radius: 10px; border: 1px solid var(--border); background: #0d1117; color: inherit; }
     .acc-msg { margin: .5rem 0 0; font-size: .9rem; min-height: 0; }
     .acc-msg.err { color: #ff8a80; } .acc-msg.ok { color: #3fb950; }
+    .announce { margin: .8rem 0 0; padding: .7rem 1rem; border-radius: 12px; background: rgba(242, 193, 78, .12); border: 1px solid rgba(242, 193, 78, .5); color: var(--text); white-space: pre-wrap; }
+    .announce.banned { background: rgba(248, 81, 73, .12); border-color: rgba(248, 81, 73, .6); }
+    .announce b { color: var(--gold); } .announce.banned b { color: #f85149; }
     .in-play { margin-top: .5rem; font-size: .9rem; display: flex; gap: .4rem; flex-wrap: wrap; }
     .in-play a { color: inherit; text-decoration: none; background: rgba(242,193,78,.12); border: 1px solid var(--gold); border-radius: 999px; padding: .2rem .6rem; }
     .small-p { font-size: .9rem; margin: .2rem 0 .7rem; }
@@ -275,6 +278,7 @@
 </head>
 <body>
   <main>
+    <div id="announce" class="announce" hidden role="status"></div>
     <header>
       <img src="icons/icon-192.png" alt="">
       <div>
@@ -905,6 +909,16 @@
       });
       // lien vers l'administration, visible seulement par les comptes admins
       if (Casino.bank && Casino.firebase) Casino.firebase().then(async (f) => { if (!f || !f.auth.currentUser) return; const v = (await f.dbMod.get(f.dbMod.ref(f.db, 'admins/' + f.auth.currentUser.uid)).catch(() => null)); if (v && v.val() === true) $('admin-link').hidden = false; }).catch(() => {});
+      // annonce de l'administrateur et compte bloqué
+      if (Casino.bank && Casino.firebase) Casino.firebase().then(async (f) => {
+        if (!f || !f.auth.currentUser) return;
+        const g = (p) => f.dbMod.get(f.dbMod.ref(f.db, p)).then((v) => v.val()).catch(() => null);
+        const [ban, ann] = await Promise.all([g('banned/' + f.auth.currentUser.uid), g('announce')]);
+        const box = $('announce'); box.innerHTML = '';
+        const b = document.createElement('b');
+        if (ban) { box.className = 'announce banned'; b.textContent = '⛔ Compte bloqué'; box.append(b, document.createTextNode(' — l\'administrateur du Casino a bloqué ce compte : tu ne peux plus jouer avec ta banque.')); box.hidden = false; }
+        else if (ann && ann.text) { box.className = 'announce'; b.textContent = '📢 Annonce'; box.append(b, document.createTextNode(' — ' + ann.text)); box.hidden = false; }
+      }).catch(() => {});
       setHubTab(location.hash === '#multi' ? 'multi' : location.hash === '#shop' ? 'shop' : 'play');
       // mode test : les liens gardent ?backend=local
       if (/[?&]backend=local\b/.test(location.search)) document.querySelectorAll('a.game').forEach((a) => { const u = new URL(a.href); u.searchParams.set('backend', 'local'); a.href = u.toString(); });

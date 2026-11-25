@@ -22,10 +22,15 @@
   }
   if (isAdmin !== true) { $('denied').hidden = false; return; }
   $('list-panel').hidden = false;
+  $('tools-panel').hidden = false;
+  const tmsg = (t, cls) => { $('tools-msg').textContent = t || ''; $('tools-msg').className = 'msg ' + (cls || ''); };
+  let banned = {};
 
   let players = [], sortKey = 'updatedAt', sel = null, saveData = null;
   async function load() {
-    const [profiles, banks] = await Promise.all([get('profiles').catch(() => null), get('bank').catch(() => null)]);
+    const [profiles, banks, bans, lobby] = await Promise.all([get('profiles').catch(() => null), get('bank').catch(() => null), get('banned').catch(() => null), get('lobby').catch(() => null)]);
+    banned = bans || {};
+    $('lobby-count').textContent = Object.keys(lobby || {}).length + ' partie(s) dans la liste du Multijoueur.';
     const ids = new Set(Object.keys(profiles || {}).concat(Object.keys(banks || {})));
     players = [...ids].map((uid) => {
       const p = (profiles || {})[uid] || {}, b = (banks || {})[uid] || {};
@@ -43,7 +48,7 @@
     list.forEach((p) => {
       const tr = document.createElement('tr'); tr.className = 'row' + (sel && sel.uid === p.uid ? ' sel' : '');
       const td = (t, c) => { const x = document.createElement('td'); x.textContent = t; if (c) x.className = c; tr.appendChild(x); };
-      td(p.avatar + ' ' + p.pseudo); td(String(p.level)); td(fmt(p.wallet) + ' €', 'num');
+      td(p.avatar + ' ' + p.pseudo + (banned[p.uid] ? ' ⛔' : '')); td(String(p.level)); td(fmt(p.wallet) + ' €', 'num');
       td(p.updatedAt ? new Date(p.updatedAt).toLocaleDateString('fr-FR') : '–');
       tr.addEventListener('click', () => open(p));
       tb.appendChild(tr);
@@ -59,6 +64,7 @@
     $('ed-title').textContent = p.avatar + ' ' + p.pseudo;
     $('ed-uid').textContent = p.uid;
     $('ed-wallet').value = Math.round(p.wallet);
+    $('act-ban').textContent = banned[p.uid] ? '✅ Débloquer' : '⛔ Bloquer';
     $('ed-sessions').textContent = p.ses ? 'Parties réelles en cours : ' + Object.entries(p.ses).map(([g, v]) => g + ' (' + fmt(v) + ' € apportés)').join(', ') : '';
     const sv = await get('saves/' + p.uid).catch(() => null);
     saveData = sv && sv.data ? JSON.parse(sv.data) : null;
@@ -121,6 +127,89 @@
       $('ed-xp').textContent = fmt(saveData.xp) + ' XP';
       msg('Profil enregistré. Le joueur le verra au prochain chargement de l\'app.', 'ok');
     } catch (e) { msg('Refusé : ' + e.message + ' (règles Firebase à jour ?)', 'err'); }
+  });
+
+  // ---------- Actions sur un compte ----------
+  const sure = (t) => window.confirm(t);
+  async function bankSet(uid, fn) {
+    await D.get(ref('bank/' + uid)); // remplit le cache : la transaction part de la vraie valeur
+    await D.runTransaction(ref('bank/' + uid), (cur) => {
+      if (cur === null) return { e: 1 }; // pas de banque : écriture refusée par les règles, rien n'est créé
+      const o = Object.assign({}, cur); fn(o); o.why = 'admin'; o.at = D.serverTimestamp(); o.x = 0; delete o.g; return o;
+    }, { applyLocally: false });
+  }
+  async function refresh(text, cls) { await load(); const p = sel && players.find((x) => x.uid === sel.uid); if (p) await open(p); msg(text, cls); }
+  const sesTotal = (ses) => Object.values(ses || {}).reduce((a, v) => a + (Number(v) || 0), 0);
+
+  $('act-close').addEventListener('click', async () => {
+    if (!sel) return;
+    try {
+      let back = 0;
+      await bankSet(sel.uid, (o) => { back = sesTotal(o.ses); o.wallet = Math.round((o.wallet + back) * 100) / 100; delete o.ses; });
+      if (saveData) { saveData.sessions = {}; saveData.wallet = (saveData.wallet || 0) + back; saveData.savedAt = Date.now(); await D.set(ref('saves/' + sel.uid), { data: JSON.stringify(saveData), at: saveData.savedAt, adminAt: saveData.savedAt }); }
+      await refresh(back ? fmt(back) + ' € (somme apportée sur ses tables) rendus à la banque du joueur.' : 'Aucune partie en cours.', 'ok');
+    } catch (e) { msg('Refusé : ' + e.message, 'err'); }
+  });
+
+  $('act-reset').addEventListener('click', async () => {
+    if (!sel || !sure('Remettre ' + sel.pseudo + ' à zéro ? Banque à ' + fmt(R.START_WALLET) + ' €, niveau 1, objets et succès retirés. Le pseudo et le compte sont gardés.')) return;
+    try {
+      const now = Date.now();
+      await D.set(ref('bank/' + sel.uid), { wallet: R.START_WALLET, why: 'admin', at: D.serverTimestamp(), x: 0 });
+      const fresh = R.fresh(now); fresh.pseudo = sel.pseudo; fresh.avatar = sel.avatar; fresh.savedAt = now;
+      await D.set(ref('saves/' + sel.uid), { data: JSON.stringify(fresh), at: now, adminAt: now });
+      const pub = (await get('profiles/' + sel.uid).catch(() => null)) || {};
+      await D.set(ref('profiles/' + sel.uid), Object.assign(pub, { xp: 0, level: 1, wallet: R.START_WALLET, achievements: 0, updatedAt: now }));
+      await refresh('Compte remis à zéro.', 'ok');
+    } catch (e) { msg('Refusé : ' + e.message, 'err'); }
+  });
+
+  $('act-ban').addEventListener('click', async () => {
+    if (!sel) return;
+    if (sel.uid === me) { msg('Tu ne peux pas bloquer ton propre compte.', 'err'); return; }
+    const on = !banned[sel.uid];
+    if (on && !sure('Bloquer ' + sel.pseudo + ' ? Il ne pourra plus jouer avec sa banque ni modifier son profil.')) return;
+    try { await D.set(ref('banned/' + sel.uid), on ? Date.now() : null); await refresh(on ? 'Compte bloqué : il ne peut plus jouer avec sa banque.' : 'Compte débloqué.', 'ok'); }
+    catch (e) { msg('Refusé : ' + e.message + ' (règles Firebase à jour ?)', 'err'); }
+  });
+
+  $('act-del').addEventListener('click', async () => {
+    if (!sel) return;
+    if (sel.uid === me) { msg('Tu ne peux pas supprimer ton propre compte.', 'err'); return; }
+    const block = $('del-block').checked;
+    if (!sure('Supprimer définitivement le compte de ' + sel.pseudo + ' (banque, progression, profil) ?' + (block ? '\nIl sera aussi bloqué.' : ''))) return;
+    try {
+      if (block) await D.set(ref('banned/' + sel.uid), Date.now());
+      await Promise.all(['bank/', 'saves/', 'profiles/', 'invites/'].map((p) => D.remove(ref(p + sel.uid))));
+      msg('Compte supprimé. Son pseudo reste réservé : pour le libérer, supprime aussi l\'utilisateur dans Firebase → Authentication.', 'ok');
+      $('edit-panel').hidden = true; sel = null; await load();
+    } catch (e) { msg('Refusé : ' + e.message + ' (règles Firebase à jour ?)', 'err'); }
+  });
+
+  // ---------- Outils ----------
+  get('announce').then((a) => { if (a && a.text) $('ann-text').value = a.text; }).catch(() => {});
+  $('ann-save').addEventListener('click', async () => {
+    const t = $('ann-text').value.trim().slice(0, 300);
+    if (!t) { tmsg('Écris un message.', 'err'); return; }
+    try { await D.set(ref('announce'), { text: t, at: Date.now() }); tmsg('Annonce publiée : les joueurs la voient sur l\'accueil.', 'ok'); } catch (e) { tmsg('Refusé : ' + e.message + ' (règles Firebase à jour ?)', 'err'); }
+  });
+  $('ann-clear').addEventListener('click', async () => {
+    try { await D.remove(ref('announce')); $('ann-text').value = ''; tmsg('Annonce retirée.', 'ok'); } catch (e) { tmsg('Refusé : ' + e.message, 'err'); }
+  });
+  $('gift-go').addEventListener('click', async () => {
+    const v = Math.round(Number($('gift').value) || 0);
+    if (!(v > 0)) return;
+    const list = players.filter((p) => !banned[p.uid]);
+    if (!sure('Créditer ' + fmt(v) + ' € à ' + list.length + ' compte(s) ?')) return;
+    $('gift-go').disabled = true;
+    let ok = 0;
+    for (const p of list) { try { await bankSet(p.uid, (o) => { o.wallet = Math.round(((o.wallet || 0) + v) * 100) / 100; }); ok++; } catch (e) { /* compte suivant */ } }
+    $('gift-go').disabled = false;
+    tmsg(fmt(v) + ' € crédités à ' + ok + ' compte(s).', 'ok'); load();
+  });
+  $('lobby-clear').addEventListener('click', async () => {
+    try { const l = (await get('lobby')) || {}; await Promise.all(Object.keys(l).map((k) => D.remove(ref('lobby/' + k)))); tmsg('Liste des parties vidée.', 'ok'); load(); }
+    catch (e) { tmsg('Refusé : ' + e.message, 'err'); }
   });
 
   load();
