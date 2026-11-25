@@ -15,6 +15,7 @@ App web installable sur téléphone (PWA) : blackjack, poker, roulette et machin
 - **Entraînement** : crédit illimité et toutes les aides ; rien ne compte pour les niveaux, défis et succès.
 - **Partie réelle** : on apporte une somme de sa banque, sans aides. « Encaisser » ramène ce qui reste sur la table ; si on perd tout, c'est perdu. Au poker : tournoi avec droit d'entrée et cagnotte.
 - **Gagner de l'argent** : bonus du jour, défis du jour, **banque du temps** (100 € contre 5 min d'attente… 20 000 € contre 8 h : plus c'est long, plus chaque minute rapporte), et les parties entre amis.
+- **Protection** : la banque est rangée en ligne et les règles de la base refusent les montants impossibles (voir FIREBASE.md).
 - **Entre amis** : les jetons de la table ne servent qu'à la table ; le classement final rapporte 500 € au 1er et 200 € au 2e (à deux joueurs : 300 € au gagnant).
 
 - **Mise en ligne et serveur de jeu** : voir [FIREBASE.md](FIREBASE.md) (GitHub Pages + Firebase, gratuit).

@@ -17,7 +17,11 @@
   const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
   const { AVATARS, FELTS, BACKS, CHALLENGES, ACHIEVEMENTS, TIME_PACKS, need, levelOf, title } = R;
   const cfg = window.FIREBASE_CONFIG;
-  const SERVER = !!(window.CASINO_SERVER && cfg && cfg.databaseURL && !/[?&]backend=local\b/.test(location.search) && !window.claude);
+  const ONLINE = !!(cfg && cfg.databaseURL && !/[?&]backend=local\b/.test(location.search) && !window.claude);
+  const SERVER = ONLINE && !!window.CASINO_SERVER;
+  // Sans serveur payant : la banque est rangée dans Firebase (bank/<uid>) et les règles de la base
+  // n'acceptent que les mouvements d'argent plausibles (voir database.rules.json)
+  const BANK = ONLINE && !SERVER;
   // Réglages propres à l'appareil (jamais envoyés au serveur comme argent)
   const LOCAL_KEYS = ['equipped', 'settings', 'friends', 'friendCode', 'friendCodeUid', 'myChallenges', 'savedAt'];
 
@@ -46,13 +50,13 @@
     if (!fbp) {
       fbp = (async () => {
         if (!cfg || !cfg.databaseURL) return null;
-        const [appMod, authMod, dbMod, fnMod] = await Promise.all(['app', 'auth', 'database', 'functions'].map((m) => import(FB + 'firebase-' + m + '.js')));
+        const [appMod, authMod, dbMod, fnMod] = await Promise.all(['app', 'auth', 'database'].concat(SERVER ? ['functions'] : []).map((m) => import(FB + 'firebase-' + m + '.js')));
         const app = appMod.getApps().length ? appMod.getApp() : appMod.initializeApp(cfg);
         const auth = authMod.getAuth(app);
         if (auth.authStateReady) await auth.authStateReady();
         if (!auth.currentUser) await authMod.signInAnonymously(auth);
-        const fns = fnMod.getFunctions(app, 'europe-west1');
-        return { app, auth, authMod, dbMod, db: dbMod.getDatabase(app), fn: fnMod.httpsCallable(fns, 'casino') };
+        const fn = SERVER ? fnMod.httpsCallable(fnMod.getFunctions(app, 'europe-west1'), 'casino') : null;
+        return { app, auth, authMod, dbMod, db: dbMod.getDatabase(app), fn };
       })();
       fbp.catch(() => { fbp = null; });
     }
@@ -96,6 +100,96 @@
     if (!syncing) syncing = call('sync', { pseudo: load().pseudo }).finally(() => { setTimeout(() => { syncing = null; }, 2000); });
     return syncing;
   }
+
+  // ---------- Banque protégée par les règles de la base (sans serveur payant) ----------
+  const BONUS_GAP = 6 * 3600000; // les règles imposent 6 h entre deux bonus
+  const GAIN_CAP = 100000;       // et au plus 100 000 € de gains encaissés par 24 h
+  let bank = null, bankUid = null, bankUnsub = null, offset = 0, bankReady = null;
+  const packMs = (id) => { const p = TIME_PACKS.find((x) => x.id === id); return p ? p.minutes * 60000 : 0; };
+  function bankInit() {
+    bankReady = (async () => {
+      const f = await firebase();
+      if (!f) return;
+      f.dbMod.onValue(f.dbMod.ref(f.db, '.info/serverTimeOffset'), (snap) => { offset = snap.val() || 0; });
+      f.authMod.onAuthStateChanged(f.auth, (u) => { if (u && u.uid !== bankUid) attach(f, u.uid); });
+      if (f.auth.currentUser) await attach(f, f.auth.currentUser.uid);
+    })().catch(() => {});
+    return bankReady;
+  }
+  async function attach(f, uid) {
+    if (bankUnsub) bankUnsub();
+    bankUid = uid; bank = null;
+    const ref = f.dbMod.ref(f.db, 'bank/' + uid);
+    // première visite : la banque est créée à 10 000 € (seul montant accepté par les règles)
+    const first = await f.dbMod.get(ref).catch(() => null);
+    if (first && !first.exists()) {
+      await f.dbMod.runTransaction(ref, (cur) => (cur ? undefined : { wallet: R.START_WALLET, why: 'new', at: f.dbMod.serverTimestamp(), x: 0 }), { applyLocally: false }).catch(() => {});
+    }
+    if (bankUid !== uid) return; // le joueur a changé de compte entre-temps
+    await new Promise((resolve) => {
+      bankUnsub = f.dbMod.onValue(ref, (snap) => { bank = snap.val(); if (bank) reconcile(); resolve(); }, () => resolve());
+    });
+  }
+  // La banque en ligne fait foi : banque, parties en cours, banque du temps, date du dernier bonus
+  function reconcile() {
+    load();
+    P.wallet = bank.wallet;
+    P.timebank = bank.tb ? { pack: bank.tb.p, start: bank.tb.s - offset, end: bank.tb.s - offset + packMs(bank.tb.p) + 3000 } : null;
+    P.bonusAt = bank.bonus ? bank.bonus - offset : 0;
+    const ses = bank.ses || {};
+    Object.keys(ses).forEach((g) => { if (!P.sessions[g]) P.sessions[g] = { stack: ses[g], start: ses[g], at: Date.now() }; else P.sessions[g].start = ses[g]; });
+    Object.keys(P.sessions).forEach((g) => { if (!(g in ses)) delete P.sessions[g]; });
+    save(true);
+  }
+  // Sans connexion, Firebase attend indéfiniment : on abandonne au bout de 12 s
+  function bankTx(why, delta, mutate) {
+    return Promise.race([
+      bankTx0(why, delta, mutate).catch(() => ({ error: 'Banque injoignable : vérifie ta connexion.' })),
+      new Promise((r) => setTimeout(() => r({ error: 'Pas de connexion : les parties réelles ont besoin d\'internet (l\'entraînement marche hors ligne).' }), 12000)),
+    ]);
+  }
+  async function bankTx0(why, delta, mutate) {
+    await (bankReady || bankInit());
+    const f = await firebase();
+    if (!f || !bankUid) return { error: 'Banque injoignable : vérifie ta connexion.' };
+    let refused = null, x = 0;
+    try {
+      const res = await f.dbMod.runTransaction(f.dbMod.ref(f.db, 'bank/' + bankUid), (cur) => {
+        refused = null;
+        if (!cur) return {}; // cache vide : Firebase relit la vraie valeur et rappelle la fonction
+        const o = JSON.parse(JSON.stringify(cur));
+        o.wallet = Math.round((cur.wallet + delta) * 100) / 100;
+        if (o.wallet < 0) { refused = 'Pas assez d\'argent dans ta banque.'; return; }
+        o.why = why; o.at = f.dbMod.serverTimestamp(); delete o.g;
+        const r = mutate ? mutate(o, cur) : null;
+        if (r === false) { refused = refused || 'Opération impossible.'; return; }
+        x = (r && r.x) || 0;
+        o.x = x;
+        if (x > 0 || cur.gw) {
+          const t = Date.now() + offset;
+          if (cur.gw && t - cur.gw.d < 86400000 - 60000) o.gw = { d: cur.gw.d, s: cur.gw.s + x };
+          else if (!cur.gw || t - cur.gw.d >= 86400000 + 60000) o.gw = { d: f.dbMod.serverTimestamp(), s: x };
+          else { refused = 'Réessaie dans une minute.'; return; }
+          if (o.gw.s > GAIN_CAP) { refused = 'Plafond de ' + GAIN_CAP.toLocaleString('fr-FR') + ' € de gains encaissés sur 24 h atteint : garde ta partie et encaisse plus tard.'; return; }
+        }
+        return o;
+      }, { applyLocally: false });
+      if (!res.committed) return { error: refused || 'Opération refusée.' };
+      return { ok: true, wallet: res.snapshot.val().wallet };
+    } catch (e) {
+      return { error: 'Opération refusée par la banque.' };
+    }
+  }
+  // Mouvement d'argent validé en ligne, puis appliqué au profil (XP, défis…) avec la banque officielle
+  async function bankOp(why, delta, mutate, localFn) {
+    const t = await bankTx(why, delta, mutate);
+    if (t.error) { if (bank) reconcile(); return t; }
+    const out = localFn ? local(localFn) : null;
+    P.wallet = t.wallet;
+    save(true);
+    return { ok: true, out };
+  }
+
   // Mode sans serveur : les mêmes règles appliquées localement
   function local(fn) {
     load();
@@ -278,13 +372,18 @@
   const Casino = {
     AVATARS, FELTS, BACKS, CHALLENGES, ACHIEVEMENTS, TIME_PACKS, GAMES: R.GAMES, need, levelOf, title,
     server: SERVER,
+    bank: BANK,
     call, sync, firebase,
     get profile() { return load(); },
     onChange(f) { listeners.push(f); },
     wallet() { return load().wallet; },
     // Mode sans serveur uniquement (les jeux ne touchent jamais la banque directement avec le serveur)
-    setWallet(v) { if (SERVER) return; local((N) => { P.wallet = Math.max(0, Math.round(v * 100) / 100); R.checkWallet(P, N); }); },
-    addWallet(v) { if (SERVER) return; Casino.setWallet(load().wallet + v); },
+    setWallet(v) { if (SERVER) return; if (BANK) return Casino.addWallet(v - load().wallet); local((N) => { P.wallet = Math.max(0, Math.round(v * 100) / 100); R.checkWallet(P, N); }); },
+    addWallet(v) {
+      if (SERVER) return;
+      if (BANK) return bankOp(v < 0 ? 'spend' : 'gain', v, () => ({ x: v > 0 ? v : 0 }), () => { P.wallet += v; });
+      Casino.setWallet(load().wallet + v);
+    },
     setPseudo(name) {
       load(); P.pseudo = String(name || '').trim().slice(0, 16);
       try { localStorage.setItem('bj-pseudo', P.pseudo); } catch (e) { /* ignore */ }
@@ -295,14 +394,31 @@
     setFriendCode(code) { if (SERVER) call('profile.set', { code }); },
     setSetting(k, v) { load(); P.settings[k] = v; save(); },
     save() { load(); save(); },
-    bonusInfo() { return R.bonusInfo(load(), Date.now()); },
+    bonusInfo() {
+      const b = R.bonusInfo(load(), Date.now());
+      if (BANK && b.available && P.bonusAt && Date.now() - P.bonusAt < BONUS_GAP) return { available: false, streak: P.bonus.streak, wait: BONUS_GAP - (Date.now() - P.bonusAt) };
+      return b;
+    },
     async claimBonus() {
       if (SERVER) { const r = await call('bonus.claim'); return r.amount || 0; }
+      if (BANK) {
+        const b = Casino.bonusInfo();
+        if (!b.available) return 0;
+        const r = await bankOp('bonus', b.amount, (o) => { o.bonus = { '.sv': 'timestamp' }; }, (N) => R.claimBonus(P, Date.now(), N));
+        return r.ok ? b.amount : 0;
+      }
       return local((N) => R.claimBonus(P, Date.now(), N));
     },
     daily() { load(); if (!SERVER) R.ensureDaily(P, Date.now()); return P.daily || { list: [] }; },
     async claimChallenge(id) {
       if (SERVER) { const r = await call('challenge.claim', { id }); return r.amount || 0; }
+      if (BANK) {
+        const c = (Casino.daily().list || []).find((x) => x.id === id);
+        const def = CHALLENGES.find((x) => x.id === id);
+        if (!c || !c.done || c.claimed || !def) return 0;
+        const r = await bankOp('gain', def.reward, () => ({ x: def.reward }), (N) => R.claimChallenge(P, id, Date.now(), N));
+        return r.ok ? def.reward : 0;
+      }
       return local((N) => R.claimChallenge(P, id, Date.now(), N));
     },
     equip(kind, id) {
@@ -325,6 +441,12 @@
       if (SERVER) { const r = await call('session.start', { game, amount }); return r; }
       load();
       if (P.sessions[game]) return { session: P.sessions[game], resumed: true };
+      if (BANK) {
+        amount = Math.floor(amount);
+        if (!(amount > 0) || amount > P.wallet) return { error: 'Ta banque ne contient pas assez d\'argent.' };
+        const r = await bankOp('start', -amount, (o) => { o.g = game; o.ses = Object.assign({}, o.ses, { [game]: amount }); }, () => R.startSession(P, game, amount, Date.now()));
+        return r.error ? r : { session: P.sessions[game] };
+      }
       const s = local(() => R.startSession(P, game, amount, Date.now()));
       return s ? { session: s } : { error: 'Ta banque ne contient pas assez d\'argent.' };
     },
@@ -340,6 +462,25 @@
     /** Encaisse : la somme sur la table revient à la banque. { start, end, diff } ou { error } */
     async cashOut(game, extra) {
       if (SERVER) { const r = await call('session.cashout', { game }); return r.error ? r : r.cash; }
+      if (BANK) {
+        const ss0 = load().sessions[game];
+        if (!ss0) return { error: 'Aucune partie en cours.' };
+        const ss = Object.assign({}, ss0);
+        const r = await bankOp('cash', ss.stack, (o, cur) => {
+          const stake = cur.ses && cur.ses[game];
+          if (stake == null) return false;
+          o.g = game;
+          o.ses = Object.assign({}, o.ses); delete o.ses[game];
+          const x = (o.wallet - cur.wallet) - stake;
+          return { x: x > 0 ? x : 0 };
+        }, (N) => {
+          P.sessions[game] = ss; // la banque en ligne a pu déjà retirer la partie : on la remet le temps du calcul
+          const c = R.cashOut(P, game, N);
+          if (c && extra && extra.track) R.track(P, extra.track.type, extra.track.data, Date.now(), N);
+          return c;
+        });
+        return r.error ? r : { start: ss.start, end: ss.stack, diff: Math.round((ss.stack - ss.start) * 100) / 100 };
+      }
       return local((N) => {
         const ss = P.sessions[game];
         const r = R.cashOut(P, game, N);
@@ -358,6 +499,14 @@
         if (r.amount > 0) setTimeout(() => bigWin(r.amount, place === 1 ? 'VICTOIRE ENTRE AMIS !' : '2e PLACE !'), 2200);
         return r.amount || 0;
       }
+      if (BANK) {
+        if (load().prizes[key]) return 0;
+        const amt = R.prizeFor(place, players);
+        if (!amt) { local((N) => R.applyPrize(P, key, place, players, Date.now(), N)); return 0; }
+        const r = await bankOp('gain', amt, () => ({ x: amt }), (N) => R.applyPrize(P, key, place, players, Date.now(), N));
+        if (r.ok) setTimeout(() => bigWin(amt, place === 1 ? 'VICTOIRE ENTRE AMIS !' : '2e PLACE !'), 2200);
+        return r.ok ? amt : 0;
+      }
       const v = local((N) => R.applyPrize(P, key, place, players, Date.now(), N));
       if (v > 0) setTimeout(() => bigWin(v, place === 1 ? 'VICTOIRE ENTRE AMIS !' : '2e PLACE !'), 2200);
       return v;
@@ -367,14 +516,23 @@
     timebank() { return R.timeInfo(load(), Date.now()); },
     async startTime(id) {
       if (SERVER) return !(await call('time.start', { pack: id })).error;
+      if (BANK) return !(await bankOp('tstart', 0, (o) => { if (o.tb) return false; o.tb = { p: id, s: { '.sv': 'timestamp' } }; }, () => R.startTime(P, id, Date.now()))).error;
       return local(() => R.startTime(P, id, Date.now()));
     },
     async claimTime() {
       if (SERVER) { const r = await call('time.claim'); if (r.amount) vibrate([30, 30, 60]); return r.amount || 0; }
+      if (BANK) {
+        const t = R.timeInfo(load(), Date.now());
+        if (!t || !t.ready) return 0;
+        const r = await bankOp('tclaim', t.pack.amount, (o) => { delete o.tb; }, (N) => R.claimTime(P, Date.now(), N));
+        if (r.ok) vibrate([30, 30, 60]);
+        return r.ok ? t.pack.amount : 0;
+      }
       return local((N) => R.claimTime(P, Date.now(), N));
     },
     async cancelTime() {
       if (SERVER) { await call('time.cancel'); return; }
+      if (BANK) { await bankOp('spend', 0, (o) => { delete o.tb; }, () => { P.timebank = null; }); return; }
       local(() => { P.timebank = null; });
     },
     // ---------- Progression (mode sans serveur ; avec le serveur, c'est lui qui compte) ----------
@@ -392,6 +550,7 @@
       save(true);
       applyCosmetics();
       if (SERVER) sync();
+      if (BANK && bank) reconcile();
     },
     resetLocal() { P = Object.assign(localDefaults(), R.normalize(null, Date.now())); P.pseudo = ''; save(); if (SERVER) sync(); },
     unlock(id) { if (!SERVER) local((N) => R.unlock(P, id, N)); },
@@ -466,4 +625,5 @@
   document.addEventListener('DOMContentLoaded', () => { applyCosmetics(); });
   if (document.readyState !== 'loading') { applyCosmetics(); }
   if (SERVER) sync().catch(() => {}); else { load(); R.ensureDaily(P, Date.now()); }
+  if (BANK) bankInit();
 })();

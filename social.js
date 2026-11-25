@@ -40,10 +40,15 @@
     const d = dbMod.getDatabase(app);
     const R = (p) => dbMod.ref(d, p);
     return {
-      uid: auth.currentUser.uid,
+      get uid() { return auth.currentUser ? auth.currentUser.uid : null; }, // suit la connexion au compte
       get: async (p) => (await dbMod.get(R(p))).val(),
       set: (p, v) => dbMod.set(R(p), v),
-      createOnce: async (p, v) => (await dbMod.runTransaction(R(p), (cur) => (cur ? undefined : v))).committed,
+      createOnce: async (p, v) => {
+        try {
+          if ((await dbMod.get(R(p))).exists()) return false; // déjà pris (les règles refuseraient l'écriture)
+          return (await dbMod.runTransaction(R(p), (cur) => (cur ? undefined : v))).committed;
+        } catch (e) { return false; }
+      },
     };
   }
   function localBackend() {
@@ -148,7 +153,14 @@
     if (!b) return null;
     await publish();
     const ids = [b.uid].concat(Object.keys(friends()));
-    const rows = await Promise.all(ids.map(async (u) => { const pr = await b.get('profiles/' + u); return pr ? Object.assign({ uid: u, me: u === b.uid }, pr) : null; }));
+    const rows = await Promise.all(ids.map(async (u) => {
+      const pr = await b.get('profiles/' + u);
+      if (!pr) return null;
+      // la banque affichée vient de bank/<uid>, protégée par les règles (le profil, lui, est écrit par le joueur)
+      const w = await b.get('bank/' + u + '/wallet').catch(() => null);
+      if (typeof w === 'number') pr.wallet = Math.round(w);
+      return Object.assign({ uid: u, me: u === b.uid }, pr);
+    }));
     return rows.filter(Boolean);
   }
 

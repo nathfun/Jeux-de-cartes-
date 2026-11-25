@@ -81,40 +81,31 @@ elle est supprimée et son code ne fonctionne plus.
   le paquet. Un joueur qui fouillerait dans les outils développeur de son navigateur pendant qu'il est
   hôte pourrait le lire. Entre amis, c'est un compromis raisonnable.
 
-## Serveur anti-triche (Cloud Functions)
+## Protection de la banque (gratuit)
 
-Sans serveur, l'argent est calculé sur le téléphone de chaque joueur : un petit malin peut le modifier.
-Avec le serveur, **la banque, les bonus, les défis, la banque du temps, les prix entre amis et tous les
-tirages des parties réelles** (bille de la roulette, rouleaux, sabot du blackjack, paquet et bots du poker)
-sont gérés par Firebase. Le navigateur ne fait plus qu'afficher : modifier l'app ne sert à rien.
+La banque de chaque joueur est rangée dans la base (`bank/<uid>`) et les **règles de la base** refusent
+tout mouvement d'argent qui n'a pas de raison valable :
 
-### 1. Passer à l'offre Blaze (une fois)
+- départ à 10 000 €, une seule fois ;
+- bonus : 2 000 € au plus, et au moins 6 h entre deux bonus ;
+- banque du temps : l'heure de départ est celle du serveur, et l'argent ne se touche qu'une fois l'attente finie ;
+- partie réelle : la somme apportée est notée en ligne ; à l'encaissement, le **bénéfice** est compté ;
+- défis et prix entre amis : 700 € au plus à la fois ;
+- au plus **100 000 € de gains encaissés par 24 h** (bénéfices des parties + défis + prix) ;
+- impossible de modifier la banque d'un autre joueur, ou d'écrire directement un montant.
 
-1. Console Firebase → en bas à gauche, **Spark** → **Mettre à niveau** → **Blaze** → ajoute une carte.
-2. Crée une **alerte de budget** à 1 € (proposée pendant la mise à niveau, sinon Google Cloud →
-   Facturation → Budgets et alertes). Pour un groupe d'amis, on reste dans la partie gratuite
-   (2 millions d'appels par mois) : la facture attendue est de 0 €.
+Le classement entre amis affiche la banque protégée. Limite honnête : les parties elles-mêmes se jouent sur le
+téléphone, donc un tricheur déterminé peut gonfler ses gains, mais jamais au-delà de 100 000 € par jour.
+Le niveau, les succès et les défis du jour restent calculés sur le téléphone.
 
-### 2. Déployer le serveur (une fois, puis à chaque mise à jour du serveur)
+Pour l'activer : recopie [`database.rules.json`](database.rules.json) dans **Realtime Database → Règles** → **Publier**.
 
-1. Ouvre <https://shell.cloud.google.com> avec le même compte Google (un terminal dans le navigateur, rien à installer).
-2. Colle ces lignes :
-   ```
-   git clone -b claude/blackjack-app-feedback-appqgy https://github.com/nathfun/Jeux-de-cartes-.git
-   cd Jeux-de-cartes- && bash deploy.sh
-   ```
-3. Pendant le script, ouvre le lien proposé, autorise Firebase CLI, et colle le code obtenu.
-4. Le déploiement envoie le serveur **et** les règles de la base (plus besoin de les copier à la main).
-   La première fois, il peut prendre 3 à 5 minutes (activation des services Google).
-5. Préviens Claude : il passe `window.CASINO_SERVER = true` dans `firebase-config.js`.
+### Option payante : serveur complet (offre Blaze)
 
-Bon à savoir :
-- Au passage au serveur, chaque joueur repart avec **10 000 €** (les progressions enregistrées seulement
-  sur les téléphones ne sont pas reprises, sinon une banque trafiquée pourrait l'être aussi).
-- Les jetons des tables entre amis restent gérés par les téléphones (ils ne valent rien hors de la table) ;
-  le serveur vérifie la fin de partie avant de verser un prix, et limite à 5 prix par jour et par joueur.
-- `vault/` contient les données du serveur (illisibles par les joueurs), `profiles/` le classement public
-  (écrit uniquement par le serveur).
+Le dossier `functions/` contient un serveur qui joue lui-même les parties réelles (tirages, cartes, bots) :
+plus aucune triche possible, mais il faut l'offre Blaze de Firebase (carte bancaire). Il est désactivé
+(`window.CASINO_SERVER = false` dans `firebase-config.js`). Pour l'utiliser un jour : `deploy.sh` dans Google Cloud Shell,
+puis `window.CASINO_SERVER = true`.
 
 ## Comptes et sauvegarde
 

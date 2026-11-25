@@ -61,7 +61,7 @@
     newHand();
   }
 
-  function start() {
+  async function start() {
     if (window.Casino && Casino.server && pkMode() === 'real') { startServer(); return; }
     srv = false;
     const [sb, bb] = $('set-blinds').value.split('/').map(Number);
@@ -72,7 +72,14 @@
     const real = !!window.Casino && pkMode() === 'real';
     const buyIn = real ? parseInt($('set-buyin').value, 10) || 0 : 0;
     if (buyIn && Casino.wallet() < buyIn) { $('buyin-note').textContent = 'Ta banque est insuffisante pour ce droit d\'entrée (' + Casino.wallet().toLocaleString('fr-FR') + ' €). Passe par la banque du temps sur l\'accueil.'; return; }
-    if (buyIn) Casino.addWallet(-buyIn);
+    if (buyIn) {
+      // un tournoi réel abandonné (page fermée) est perdu : son droit d'entrée ne revient pas
+      if (Casino.session('poker')) { Casino.setStack('poker', 0); await Casino.cashOut('poker'); }
+      $('start').disabled = true;
+      const r = await Casino.startSession('poker', buyIn);
+      $('start').disabled = false;
+      if (!r || r.error) { $('buyin-note').textContent = (r && r.error) || 'Impossible de payer le droit d\'entrée.'; return; }
+    }
     if (window.Casino) Casino.training = !real;
     cfg = { sb, bb, stack: bb * parseInt($('set-stack').value, 10), coach: !real, real, timer: parseInt($('set-timer').value, 10) || 0,
       rule: $('set-blindup').value, lv: {}, buyIn, players: n + 1 };
@@ -335,7 +342,7 @@
       return prize;
     }
     const prize = prizeFor(place);
-    if (prize) Casino.addWallet(prize);
+    if (Casino.session('poker')) { Casino.setStack('poker', prize); Casino.cashOut('poker'); }
     Casino.track('pk-tourney', { place, players: cfg.players });
     if (prize >= cfg.buyIn * 3) setTimeout(() => Casino.bigWin(prize, place === 1 ? 'VICTOIRE !' : 'BELLE PLACE !'), 4500);
     return prize;
@@ -665,7 +672,7 @@
       const real = pkMode() === 'real';
       $('buyin-row').hidden = !real;
       $('buyin-info').hidden = !real;
-      $('start').textContent = real ? (Casino.session('poker') ? 'Reprendre le tournoi en cours' : 'Payer et commencer le tournoi') : 'Commencer l\'entraînement';
+      $('start').textContent = real ? (Casino.session('poker') && Casino.server ? 'Reprendre le tournoi en cours' : 'Payer et commencer le tournoi') : 'Commencer l\'entraînement';
       const b = parseInt($('set-buyin').value, 10) || 0, n = parseInt($('set-opponents').value, 10) + 1;
       if (!b) { $('buyin-info').textContent = 'Partie gratuite : pas de cagnotte. Portefeuille : ' + Casino.wallet().toLocaleString('fr-FR') + ' €.'; return; }
       const pool = b * n;

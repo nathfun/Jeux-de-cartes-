@@ -104,12 +104,15 @@
       }
     },
     "vault": {
-      "$uid": { ".read": false, ".write": false }
+      "$uid": {
+        ".read": false,
+        ".write": false
+      }
     },
     "profiles": {
       "$uid": {
         ".read": "auth != null",
-        ".write": false
+        ".write": "auth != null && auth.uid === $uid"
       }
     },
     "friendcodes": {
@@ -129,6 +132,63 @@
           "$uid": {
             ".write": "auth != null && auth.uid === $uid"
           }
+        }
+      }
+    },
+    "bank": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid && newData.exists()",
+        ".validate": "newData.hasChildren(['wallet', 'why', 'at', 'x']) && (!data.child('bonus').exists() || newData.child('bonus').exists()) && (!data.child('gw').exists() || newData.child('gw').exists()) && (newData.child('x').val() === 0 || newData.child('gw').exists()) && ((!data.exists() && newData.child('why').val() === 'new' && newData.child('wallet').val() === 10000 && newData.child('x').val() === 0) || (data.exists() && newData.child('why').val() === 'spend' && newData.child('wallet').val() <= data.child('wallet').val() && newData.child('x').val() === 0) || (data.exists() && newData.child('why').val() === 'start' && newData.child('g').exists() && !data.child('ses').child(newData.child('g').val()).exists() && newData.child('ses').child(newData.child('g').val()).val() > 0 && newData.child('wallet').val() === data.child('wallet').val() - newData.child('ses').child(newData.child('g').val()).val() && newData.child('x').val() === 0) || (data.exists() && newData.child('why').val() === 'cash' && newData.child('g').exists() && data.child('ses').child(newData.child('g').val()).exists() && !newData.child('ses').child(newData.child('g').val()).exists() && newData.child('wallet').val() >= data.child('wallet').val() && ((newData.child('wallet').val() - data.child('wallet').val() - data.child('ses').child(newData.child('g').val()).val() <= 0 && newData.child('x').val() === 0) || (newData.child('wallet').val() - data.child('wallet').val() - data.child('ses').child(newData.child('g').val()).val() > 0 && newData.child('x').val() === newData.child('wallet').val() - data.child('wallet').val() - data.child('ses').child(newData.child('g').val()).val()))) || (data.exists() && newData.child('why').val() === 'bonus' && newData.child('wallet').val() >= data.child('wallet').val() && newData.child('wallet').val() - data.child('wallet').val() <= 2000 && newData.child('x').val() === 0 && newData.child('bonus').val() === now && (!data.child('bonus').exists() || (data.child('bonus').exists() && now - data.child('bonus').val() >= 21600000))) || (data.exists() && newData.child('why').val() === 'tstart' && newData.child('wallet').val() === data.child('wallet').val() && newData.child('x').val() === 0 && !data.child('tb').exists() && newData.child('tb/s').val() === now) || (data.exists() && newData.child('why').val() === 'tclaim' && newData.child('x').val() === 0 && data.child('tb').exists() && !newData.child('tb').exists() && ((data.child('tb/p').val() === 'cafe' && newData.child('wallet').val() - data.child('wallet').val() === 100 && now >= data.child('tb/s').val() + 300000) || (data.child('tb/p').val() === 'repas' && newData.child('wallet').val() - data.child('wallet').val() === 1000 && now >= data.child('tb/s').val() + 1800000) || (data.child('tb/p').val() === 'soiree' && newData.child('wallet').val() - data.child('wallet').val() === 4500 && now >= data.child('tb/s').val() + 7200000) || (data.child('tb/p').val() === 'nuit' && newData.child('wallet').val() - data.child('wallet').val() === 20000 && now >= data.child('tb/s').val() + 28800000))) || (data.exists() && newData.child('why').val() === 'gain' && newData.child('wallet').val() > data.child('wallet').val() && newData.child('wallet').val() - data.child('wallet').val() <= 700 && newData.child('x').val() === newData.child('wallet').val() - data.child('wallet').val()))",
+        "wallet": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000"
+        },
+        "why": {
+          ".validate": "newData.isString()"
+        },
+        "at": {
+          ".validate": "newData.val() === now"
+        },
+        "x": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "g": {
+          ".validate": "newData.val().matches(/^(blackjack|poker|roulette|slots)$/)"
+        },
+        "bonus": {
+          ".validate": "newData.isNumber() && (newData.val() === data.val() || newData.parent().child('why').val() === 'bonus')"
+        },
+        "tb": {
+          ".validate": "newData.hasChildren(['p', 's']) && ((newData.child('p').val() === data.child('p').val() && newData.child('s').val() === data.child('s').val()) || newData.parent().child('why').val() === 'tstart')",
+          "p": {
+            ".validate": "newData.val().matches(/^(cafe|repas|soiree|nuit)$/)"
+          },
+          "s": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "ses": {
+          "$g": {
+            ".validate": "newData.isNumber() && (newData.val() === data.val() || (newData.parent().parent().child('why').val() === 'start' && newData.parent().parent().child('g').val() === $g))"
+          }
+        },
+        "gw": {
+          ".validate": "newData.hasChildren(['d', 's']) && newData.child('s').val() <= 100000 && ((data.exists() && now - data.child('d').val() < 86400000 && newData.child('d').val() === data.child('d').val() && newData.child('s').val() === data.child('s').val() + newData.parent().child('x').val()) || (!data.exists() && newData.child('d').val() === now && newData.child('s').val() === newData.parent().child('x').val()) || (data.exists() && now - data.child('d').val() >= 86400000 && newData.child('d').val() === now && newData.child('s').val() === newData.parent().child('x').val()))",
+          "$other": {
+            ".validate": false
+          },
+          "d": {
+            ".validate": "newData.isNumber()"
+          },
+          "s": {
+            ".validate": "newData.isNumber()"
+          }
+        },
+        "$other": {
+          ".validate": false
         }
       }
     }
