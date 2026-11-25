@@ -410,7 +410,7 @@
       };
       [[100, 'c1'], [500, 'c2'], [1000, 'c3'], [2500, 'c4']].filter(([v]) => v >= min && v <= wal).forEach(([v, c]) => {
         const q = mk('button', 'cm-chip ' + c); q.type = 'button'; q.dataset.v = v;
-        q.append(mk('b', '', v >= 1000 ? (v / 1000) + 'k' : String(v)));
+        q.append(mk('b', '', v >= 1000 ? String(v / 1000).replace('.', ',') + 'k' : String(v)));
         q.onclick = () => { show(v, true); if (window.Sfx) Sfx.chips(); };
         chips.appendChild(q);
       });
@@ -811,12 +811,15 @@
 .cm-range::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 4px solid var(--cm-a); box-shadow: 0 0 16px color-mix(in srgb, var(--cm-a) 70%, transparent); }
 .cm-range::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 4px solid var(--cm-a); }
 .cm-chips { display: flex; gap: .5rem; flex-wrap: wrap; }
-.cm-chip { --c: #c62828; width: 54px; height: 54px; border-radius: 50%; border: 0; cursor: pointer; display: grid; place-items: center; color: #fff; font: inherit; font-weight: 900; font-size: .85rem;
-  background: radial-gradient(circle, var(--c) 0 52%, transparent 53%), repeating-conic-gradient(#fff 0 12deg, var(--c) 12deg 30deg); box-shadow: 0 4px 10px rgba(0,0,0,.45), inset 0 0 0 3px rgba(0,0,0,.18); transition: transform .15s; }
-.cm-chip b { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; border: 2px dashed rgba(255,255,255,.55); text-shadow: 0 1px 2px rgba(0,0,0,.5); }
-.cm-chip:hover { transform: translateY(-3px) rotate(-8deg); } .cm-chip.on { transform: translateY(-5px) scale(1.08); box-shadow: 0 0 0 3px #fff, 0 0 20px var(--c); }
-.cm-chip.c1 { --c: #1565c0; } .cm-chip.c2 { --c: #c62828; } .cm-chip.c3 { --c: #2e7d32; } .cm-chip.c4 { --c: #6a1b9a; } .cm-chip.c5 { --c: #b8860b; }
-@media (max-width: 480px) { .cm-chips { gap: .35rem; justify-content: space-between; } .cm-chip { width: 48px; height: 48px; font-size: .78rem; } .cm-chip b { width: 30px; height: 30px; } .cm-panel { margin: .5rem; padding: 1rem .9rem .9rem; } }
+.cm-chip { --c: #c62828; --d: #7f1d1d; position: relative; width: 56px; height: 56px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; display: grid; place-items: center; color: #fff; font: inherit; font-weight: 900;
+  background: radial-gradient(circle, transparent 0 63%, var(--c) 64%), repeating-conic-gradient(from -11deg, #f8fafc 0 22deg, var(--c) 22deg 60deg);
+  box-shadow: 0 3px 0 var(--d), 0 6px 12px rgba(0,0,0,.45), inset 0 0 0 2px rgba(0,0,0,.15); transition: transform .18s cubic-bezier(.2,.9,.3,1.4), box-shadow .18s; }
+.cm-chip b { width: 62%; height: 62%; border-radius: 50%; display: grid; place-items: center; font-size: .72rem; letter-spacing: -.02em; line-height: 1;
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--c) 70%, #fff), var(--c) 70%); box-shadow: 0 0 0 2px rgba(255,255,255,.85), inset 0 -2px 3px rgba(0,0,0,.25); text-shadow: 0 1px 2px rgba(0,0,0,.45); }
+.cm-chip:hover { transform: translateY(-3px); }
+.cm-chip.on { transform: translateY(-6px); box-shadow: 0 3px 0 var(--d), 0 10px 18px rgba(0,0,0,.5), 0 0 0 3px #fff, 0 0 24px var(--c); }
+.cm-chip.c1 { --c: #1d4ed8; --d: #1e3a8a; } .cm-chip.c2 { --c: #dc2626; --d: #7f1d1d; } .cm-chip.c3 { --c: #15803d; --d: #14532d; } .cm-chip.c4 { --c: #7c3aed; --d: #4c1d95; } .cm-chip.c5 { --c: #b7791f; --d: #78350f; }
+@media (max-width: 480px) { .cm-chips { gap: .35rem; justify-content: space-between; } .cm-chip { width: 50px; height: 50px; } .cm-chip b { font-size: .66rem; } .cm-panel { margin: .5rem; padding: 1rem .9rem .9rem; } }
 .cm-exact-row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; font-size: .82rem; color: rgba(243,244,246,.7); }
 .cm-exact { width: 8em; font: inherit; font-weight: 700; padding: .35rem .55rem; border-radius: 10px; border: 1px solid rgba(255,255,255,.15); background: rgba(0,0,0,.35); color: #fff; }
 .cm-cta { position: relative; overflow: hidden; font: inherit; font-size: 1.15rem; font-weight: 900; letter-spacing: .04em; border: 0; border-radius: 16px; padding: 1rem; cursor: pointer; color: #0b0b14;
