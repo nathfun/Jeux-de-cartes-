@@ -55,6 +55,14 @@
               <option value="200">200 grosses blindes</option>
             </select>
           </label>
+          <label>Montée des blindes
+            <select id="set-blindup">
+              <option value="0">Jamais (blindes fixes)</option>
+              <option value="5">Toutes les 5 minutes</option>
+              <option value="10" selected>Toutes les 10 minutes</option>
+              <option value="15">Toutes les 15 minutes</option>
+            </select>
+          </label>
           <label>Temps de réflexion
             <select id="set-timer">
               <option value="0" selected>Illimité</option>
@@ -69,6 +77,7 @@
 
       <!-- Table -->
       <section id="game" hidden>
+        <div id="blinds-info" class="blinds-info"></div>
         <div class="felt-wrap">
           <div id="felt" class="felt">
             <div class="center">
@@ -143,6 +152,9 @@
               <label>Tapis de départ
                 <select id="pm-stack"><option value="50">50 grosses blindes</option><option value="100" selected>100 grosses blindes</option><option value="200">200 grosses blindes</option></select>
               </label>
+              <label>Montée des blindes
+                <select id="pm-blindup"><option value="0">Jamais</option><option value="5">Toutes les 5 min</option><option value="10" selected>Toutes les 10 min</option><option value="15">Toutes les 15 min</option></select>
+              </label>
               <label>Temps pour jouer
                 <select id="pm-turn"><option value="15">15 s</option><option value="20">20 s</option><option value="30" selected>30 s</option><option value="60">60 s</option></select>
               </label>
@@ -160,6 +172,7 @@
             <span class="code-badge">Code <b id="pm-table-code"></b> <button id="pm-invite" class="ghost small" type="button">Inviter</button></span>
             <span id="pm-host" class="muted small"></span>
           </div>
+          <div id="pm-blinds-info" class="blinds-info"></div>
           <div class="felt-wrap">
             <div class="felt">
               <div class="center">
@@ -193,6 +206,7 @@
             <div class="action-row secondary">
               <button id="pm-hint" class="ghost coach-only">💡 Conseil</button>
               <button id="pm-rebuy" hidden>Se recaver</button>
+              <button id="pm-show" class="primary" hidden>Montrer mes cartes</button>
               <button id="pm-leave-seat" class="ghost small" hidden>Quitter ma place</button>
               <label id="pm-coach-row" class="small"><input type="checkbox" id="pm-opt-coach"> Aides du coach</label>
               <label class="small coach-only"><input type="checkbox" id="pm-opt-hint"> Conseil automatique</label>

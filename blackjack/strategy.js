@@ -39,11 +39,12 @@
 
   // --- Tables (valeur du croupier : 2..11, 11 = As) ---
 
-  function hardAction(total, up) {
+  // enhc = règle européenne : le croupier n'a pas de carte cachée (sa 2e carte arrive après les joueurs)
+  function hardAction(total, up, enhc) {
     if (total <= 8) return 'H';
     if (total === 9) return up >= 3 && up <= 6 ? 'D' : 'H';
     if (total === 10) return up <= 9 ? 'D' : 'H';
-    if (total === 11) return up <= 10 ? 'D' : 'H';
+    if (total === 11) return up <= (enhc ? 9 : 10) ? 'D' : 'H';
     if (total === 12) return up >= 4 && up <= 6 ? 'S' : 'H';
     if (total <= 16) return up <= 6 ? 'S' : 'H';
     return 'S';
@@ -64,12 +65,12 @@
   }
 
   // Renvoie true si la paire doit être séparée (valeur d'une carte : 2..11)
-  function pairSplit(v, up) {
+  function pairSplit(v, up, enhc) {
     switch (v) {
-      case 11: return true;
+      case 11: return !(enhc && up === 11);
       case 10: return false;
       case 9: return (up >= 2 && up <= 6) || up === 8 || up === 9;
-      case 8: return true;
+      case 8: return !(enhc && up >= 10);
       case 7: return up <= 7;
       case 6: return up <= 6;
       case 5: return false;
@@ -188,7 +189,8 @@
 
     let category, action, key, pairVal = null;
 
-    if (isPair && opts.canSplit && pairSplit(cardValue(cards[0].rank), up)) {
+    const enhc = !!opts.enhc;
+    if (isPair && opts.canSplit && pairSplit(cardValue(cards[0].rank), up, enhc)) {
       pairVal = cardValue(cards[0].rank);
       category = 'pair';
       action = 'P';
@@ -196,13 +198,13 @@
       // paire qu'on ne sépare pas : on la classe en "paire" pour le suivi
       pairVal = cardValue(cards[0].rank);
       category = 'pair';
-      action = hv.soft ? softAction(hv.total, up) : hardAction(hv.total, up);
+      action = hv.soft ? softAction(hv.total, up) : hardAction(hv.total, up, enhc);
     } else if (hv.soft) {
       category = 'soft';
       action = softAction(hv.total, up);
     } else {
       category = 'hard';
-      action = hardAction(hv.total, up);
+      action = hardAction(hv.total, up, enhc);
     }
 
     if (action === 'Ds') action = opts.canDouble ? 'D' : 'S';
@@ -215,6 +217,11 @@
       deviation = { base: action, index: dev.idx };
       reason = deviationReason(dev, opts.trueCount, action);
       action = dev.act;
+    } else if (enhc && ((hv.total === 11 && !hv.soft && up >= 10 && action === 'H' && cards.length === 2) ||
+        (isPair && opts.canSplit && action !== 'P' && pairSplit(cardValue(cards[0].rank), up, false)))) {
+      reason = 'Règle européenne : le croupier n\'a pas encore sa deuxième carte. S\'il fait blackjack, tu perdrais aussi la mise ' +
+        (action === 'H' && hv.total === 11 ? 'doublée' : 'de la main séparée') + '. Contre ' + upLabel(up) + ', ce risque est trop grand : ' +
+        ACTION_LABELS[action].toLowerCase() + ' plutôt que ' + (hv.total === 11 && !isPair ? 'doubler' : 'séparer') + '.';
     } else if (action === 'R') {
       reason = 'Dur ' + hv.total + ' contre ' + upLabel(up) + ' : une des pires situations du jeu, tu perds plus de 3 fois sur 4 en restant comme en tirant. Abandonne : tu récupères la moitié de ta mise.';
     } else {
@@ -308,11 +315,11 @@
   }
 
   // Grille complète pour l'affichage du tableau
-  function chart() {
+  function chart(enhc) {
     const ups = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
     const hard = [];
     for (let t = 8; t <= 17; t++) {
-      hard.push({ label: t === 8 ? '≤8' : t === 17 ? '17+' : String(t), key: 'hard-' + t, cells: ups.map(u => (surrenderBasic(t, u) ? 'R' : hardAction(t, u))) });
+      hard.push({ label: t === 8 ? '≤8' : t === 17 ? '17+' : String(t), key: 'hard-' + t, cells: ups.map(u => (surrenderBasic(t, u) && !enhc ? 'R' : hardAction(t, u, enhc))) });
     }
     const soft = [];
     for (let t = 13; t <= 20; t++) {
@@ -323,7 +330,7 @@
       const n = v === 11 ? 'A' : String(v);
       pairs.push({
         label: n + ',' + n, key: 'pair-' + v,
-        cells: ups.map(u => pairSplit(v, u) ? 'P' : (v === 11 ? 'P' : hardAction(v * 2, u))),
+        cells: ups.map(u => pairSplit(v, u, enhc) ? 'P' : (v === 11 ? 'H' : hardAction(v * 2, u, enhc))),
       });
     }
     return { ups, hard, soft, pairs };

@@ -175,3 +175,5 @@ input:not([type]), input[type="text"] { font: inherit; background: #10151c; colo
 .dialog::backdrop { background: rgba(0,0,0,.6); }
 .dialog h2 { margin: 0 0 .6rem; font-size: 1.15rem; }
 .dialog .row { margin-top: .9rem; }
+
+.blinds-info { text-align: center; font-size: .85rem; color: var(--gold); margin-bottom: .5rem; font-variant-numeric: tabular-nums; min-height: 1.2em; }

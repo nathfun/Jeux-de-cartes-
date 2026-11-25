@@ -1,5 +1,5 @@
 // Service worker : réseau d'abord (pour toujours avoir la dernière version), cache en secours hors ligne.
-const CACHE = 'jeux-de-cartes-v4';
+const CACHE = 'jeux-de-cartes-v5';
 const CORE = [
   './', './index.html', './manifest.webmanifest', './pwa.js', './firebase-config.js', './sounds.js',
   './icons/icon-192.png', './icons/icon-512.png',

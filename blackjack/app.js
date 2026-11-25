@@ -79,7 +79,9 @@
 
   // Chaque mode (solo, table entre amis) a son propre suivi des cartes affichées et son compteur
   // shown : id de carte -> 'hidden' | 'shown' : permet d'animer seulement les nouvelles cartes
-  const soloCtx = { shown: new Map(), counter: HiLo.create(), cardsLeft: () => shoe.length };
+  const soloCtx = { shown: new Map(), counter: HiLo.create(), cardsLeft: () => shoe.length, enhc: () => soloEnhc() };
+  // Règle du croupier en solo : européenne (pas de carte cachée, par défaut) ou américaine
+  function soloEnhc() { const el = document.getElementById('opt-rule'); return !el || el.value !== 'us'; }
   let countCtx = soloCtx; // contexte affiché dans le panneau de comptage
 
   // ---------- Rendu des cartes ----------
@@ -237,7 +239,7 @@
     const canDouble = two && affordable;
     const canSplit = two && affordable && round.hands.length < MAX_HANDS &&
       Strategy.cardValue(h.cards[0].rank) === Strategy.cardValue(h.cards[1].rank);
-    const canSurrender = two && round.hands.length === 1 && !h.split;
+    const canSurrender = two && round.hands.length === 1 && !h.split && !soloEnhc(); // pas d'abandon en règle européenne
     return { H: true, S: true, D: canDouble, P: canSplit, R: canSurrender };
   }
 
@@ -269,14 +271,17 @@
     render();
     await sleep(0.4);
     const player = round.hands[0].cards;
+    const enhc = soloEnhc();
+    round.enhc = enhc;
     await give(player);
-    await give(round.dealer);
-    await give(player);
-    await give(round.dealer, 0.8);
+    await give(round.dealer, enhc ? 0.8 : 1);
+    await give(player, enhc ? 0.8 : 1);
+    // Règle américaine : 2e carte du croupier face cachée. Règle européenne : elle viendra après les joueurs.
+    if (!enhc) await give(round.dealer, 0.8);
     settleSideBets(player, round.dealer[0]);
 
     const up = Strategy.cardValue(round.dealer[0].rank);
-    const dealerBJ = isBlackjack(round.dealer);
+    const dealerBJ = !enhc && isBlackjack(round.dealer);
 
     // Assurance : proposée quand le croupier montre un As
     if (up === 11) {
@@ -284,13 +289,21 @@
       const took = cost > 0 && stats.bankroll >= cost ? await askInsurance(cost) : false;
       recordInsurance(took);
       if (took) { round.ins = cost; stats.bankroll -= cost; render(); }
-      setMessage('Le croupier vérifie s\'il a un blackjack…');
-      await sleep(1);
-      if (round.ins && dealerBJ) round.insText = 'Assurance gagnée : +' + round.ins * 2 + ' €';
-      else if (round.ins) { round.insText = 'Pas de blackjack : assurance perdue (−' + round.ins + ' €)'; stats.net -= round.ins; }
+      if (!enhc) {
+        setMessage('Le croupier vérifie s\'il a un blackjack…');
+        await sleep(1);
+      }
     }
 
-    if (isBlackjack(player) || (dealerBJ && up >= 10)) {
+    if (enhc && isBlackjack(player)) {
+      // Règle européenne : le blackjack du joueur attend la 2e carte du croupier
+      setMessage('Blackjack ! Le croupier tire sa deuxième carte…');
+      round.hands[0].done = true;
+      round.active = 1;
+      await dealerTurn();
+      return;
+    }
+    if (!enhc && (isBlackjack(player) || (dealerBJ && up >= 10))) {
       if (dealerBJ && up >= 10) {
         setMessage('Le croupier vérifie sa carte cachée…');
         await sleep(0.8);
@@ -375,13 +388,27 @@
       startTimer(() => act('S'));
       return;
     }
-    // Tour du croupier : retourne la carte cachée puis tire une carte à la fois
+    await dealerTurn();
+  }
+
+  // Tour du croupier : retourne sa carte cachée (règle américaine) ou tire sa 2e carte (règle européenne),
+  // puis tire une carte à la fois jusqu'à 17
+  async function dealerTurn() {
     round.phase = 'dealer';
-    setMessage('Le croupier retourne sa carte…');
-    render();
-    await sleep(1.1);
-    const allBust = round.hands.every((h) => value(h.cards).total > 21);
-    if (!allBust) {
+    const enhc = round.enhc;
+    const live = round.hands.filter((h) => value(h.cards).total <= 21 && !h.surrendered);
+    const onlyNaturals = live.length > 0 && live.every((h) => round.hands.length === 1 && isBlackjack(h.cards));
+    if (enhc) {
+      setMessage(live.length ? 'Le croupier tire sa deuxième carte…' : 'Main terminée.');
+      render();
+      await sleep(0.6);
+      if (live.length) await give(round.dealer, 1);
+    } else {
+      setMessage('Le croupier retourne sa carte…');
+      render();
+      await sleep(1.1);
+    }
+    if (live.length && !onlyNaturals && !isBlackjack(round.dealer)) {
       while (value(round.dealer).total < 17) {
         setMessage('Le croupier a ' + value(round.dealer).total + ', il tire…');
         await sleep(0.5);
@@ -420,6 +447,10 @@
       payout += back;
     }
     if (round.ins && dealerBJ) payout += round.ins * 3; // l'assurance paie 2 contre 1
+    if (round.ins) {
+      round.insText = dealerBJ ? 'Assurance gagnée : +' + round.ins * 2 + ' €' : 'Pas de blackjack : assurance perdue (−' + round.ins + ' €)';
+      if (!dealerBJ) stats.net -= round.ins;
+    }
     stats.bankroll += payout;
     const net = payout - wagered - (round.ins && dealerBJ ? round.ins : 0);
     stats.net += net;
@@ -785,7 +816,7 @@
   // ---------- Tableau de stratégie ----------
   const CHART_LABELS = { H: 'T', S: 'R', D: 'D', Ds: 'Dr', P: 'S', R: 'Ab' };
   function renderChart() {
-    const ch = Strategy.chart();
+    const ch = Strategy.chart(countCtx.enhc ? countCtx.enhc() : false);
     const head = '<tr><th></th>' + ch.ups.map((u) => '<th>' + (u === 11 ? 'A' : u) + '</th>').join('') + '</tr>';
     const table = (title, rows) => '<table><caption>' + title + '</caption>' + head +
       rows.map((r) => '<tr data-row="' + r.key + '"><th>' + r.label + '</th>' +
@@ -817,6 +848,7 @@
   // Ajoute le compte vrai aux options si les conseils ajustés au comptage sont activés
   function withCount(o) {
     if ($('opt-dev').checked) o.trueCount = countCtx.counter.trueCount(countCtx.cardsLeft());
+    o.enhc = countCtx.enhc ? countCtx.enhc() : false;
     return o;
   }
   function renderCount() {
@@ -887,7 +919,7 @@
       const adv = Strategy.insuranceAdvice(insuranceCount());
       showInsuranceFeedback('hint', '💡 Conseil : ' + adv.label, adv.reason);
     },
-    setCountCtx(ctx) { countCtx = ctx || soloCtx; renderCount(); },
+    setCountCtx(ctx) { countCtx = ctx || soloCtx; renderCount(); renderChart(); },
     renderCount,
   };
 
@@ -901,6 +933,11 @@
   $('deal').addEventListener('click', deal);
   document.querySelectorAll('[data-action]').forEach((b) => b.addEventListener('click', () => act(b.dataset.action)));
   $('hint').addEventListener('click', showHint);
+  try { const r = localStorage.getItem('bj-rule'); if (r) $('opt-rule').value = r; } catch (e) { /* ignore */ }
+  $('opt-rule').addEventListener('change', () => {
+    try { localStorage.setItem('bj-rule', $('opt-rule').value); } catch (e) { /* ignore */ }
+    renderChart();
+  });
   $('ins-yes').addEventListener('click', () => insuranceResolve && insuranceResolve(true));
   $('ins-no').addEventListener('click', () => insuranceResolve && insuranceResolve(false));
   $('opt-tags').addEventListener('change', () => { if (window.Multi) window.Multi.rerender(); render(); });

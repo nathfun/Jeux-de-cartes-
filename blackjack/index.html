@@ -77,6 +77,12 @@
         <div class="options">
           <label><input type="checkbox" id="opt-coach" checked> Coach en direct (retour après chaque décision)</label>
           <label><input type="checkbox" id="opt-hint"> Afficher le conseil avant de jouer</label>
+          <label>Règle du croupier
+            <select id="opt-rule">
+              <option value="eu" selected>Européenne : pas de carte cachée (casinos français)</option>
+              <option value="us">Américaine : carte cachée + vérification du blackjack</option>
+            </select>
+          </label>
           <label>Minuteur de décision
             <select id="opt-timer">
               <option value="0" selected>Aucun</option>
@@ -124,6 +130,9 @@
                 <option value="5000">5 000 €</option>
                 <option value="10000">10 000 €</option>
               </select>
+            </label>
+            <label>Règle du croupier
+              <select id="set-rule"><option value="eu" selected>Européenne (pas de carte cachée)</option><option value="us">Américaine (carte cachée)</option></select>
             </label>
             <label>Temps pour jouer son tour
               <select id="set-turn"><option value="15">15 s</option><option value="20" selected>20 s</option><option value="30">30 s</option><option value="60">60 s</option></select>
@@ -251,7 +260,7 @@
 
       <details class="panel coach-only">
         <summary><h2>Tableau de stratégie de base</h2></summary>
-        <p class="muted small">6 jeux, croupier reste sur 17 souple, double après séparation autorisé.
+        <p class="muted small">6 jeux, croupier reste sur 17 souple, double après séparation autorisé. Le tableau suit la règle du croupier choisie (européenne : ne pas doubler 11 contre 10/As, ne pas séparer As contre As ni 8 contre 10/As).
           T = tirer, R = rester, D = doubler, S = séparer, Dr = doubler sinon rester, Ab = abandonner (sinon tirer).</p>
         <div id="chart"></div>
       </details>

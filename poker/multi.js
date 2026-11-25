@@ -52,7 +52,8 @@
     st.log = st.log || [];
     st.players = st.players || {};
     if (st.results) { st.results.pots = (st.results.pots || []).map((p) => Object.assign({ winners: [] }, p, { winners: p.winners || [] })); }
-    st.settings = Object.assign({ sb: 10, bb: 20, stack: 2000, turnTime: 30, coach: true }, st.settings || {});
+    st.settings = Object.assign({ sb: 10, bb: 20, stack: 2000, turnTime: 30, coach: true, blindEvery: 0 }, st.settings || {});
+    st.level = st.level || 0;
     return st;
   }
 
@@ -90,6 +91,19 @@
     if (!st.nextHandAt && !handLive(st) && seatedCount(st) >= 2) st.nextHandAt = now() + 4000;
   }
 
+  // Après la main, chacun peut choisir de montrer ses cartes (gagnant sans abattage, perdant, joueur couché)
+  function opShow(cards) {
+    return (st) => {
+      const i = mySeatIn(st);
+      if (i < 0 || st.street !== 'showdown' || !cards || !st.seats[i].cards.length) return false;
+      const s = st.seats[i];
+      if (s.cards.some((c) => c.rank)) return false; // déjà visibles
+      s.cards = cards; s.shown = true; s.mucked = false; s.showedByChoice = true;
+      s.handName = st.board.length >= 3 ? PokerEval.evaluate(cards.concat(st.board)).name : '';
+      st.log.push((s.name || 'Un joueur') + ' montre ses cartes');
+    };
+  }
+
   function afterChange(st, extraMs) {
     if (st.street === 'showdown') {
       st.turnDeadline = null;
@@ -118,6 +132,16 @@
       if (seatedCount(st) < 2) { st.nextHandAt = null; st.street = 'idle'; return; }
       st.seats.forEach((s) => { s.out = !s.owner || s.stack <= 0; });
       st.external = true;
+      st.runoutShown = false;
+      // Montée des blindes (minutes choisies par l'hôte)
+      if (!st.levelStartAt) st.levelStartAt = now();
+      else if (st.settings.blindEvery && now() - st.levelStartAt >= st.settings.blindEvery * 60000 && st.level < P.LEVELS.length - 1) {
+        st.level++;
+        st.levelStartAt = now();
+        const b = P.levelBlinds(st.settings.sb, st.settings.bb, st.level);
+        st.sb = b.sb; st.bb = b.bb;
+        st.log.push('Les blindes augmentent : ' + b.sb + ' / ' + b.bb);
+      }
       if (!P.startHand(st)) { st.nextHandAt = null; return; }
       lastSecret = { hand: st.handNo, deck: st.deck, holes: {}, owners: {} };
       delete st.deck;
@@ -138,6 +162,12 @@
       if (st.host !== me || !st.pending || !secret || secret.hand !== st.handNo) return false;
       const deck = secret.deck.slice();
       let guard = 0, drawn = 0;
+      // Plus aucune enchère possible (joueurs à tapis) : toutes les cartes sont retournées avant la suite du tableau
+      const alive = st.seats.filter(P.inHand).length, actors = st.seats.filter(P.canAct).length;
+      if (alive >= 2 && actors < 2 && !st.runoutShown) {
+        st.runoutShown = true;
+        st.seats.forEach((s, i) => { if (P.inHand(s) && secret.holes[i]) { s.cards = secret.holes[i]; s.shown = true; } });
+      }
       while (st.pending && st.pending !== 'showdown' && guard++ < 5) {
         const n = st.pending === 'flop' ? 3 : 1;
         const cards = [];
@@ -148,6 +178,12 @@
       if (st.pending === 'showdown') {
         st.seats.forEach((s, i) => { if (P.inHand(s) && secret.holes[i]) s.cards = secret.holes[i]; });
         P.showdown(st);
+        // Les perdants jettent leurs cartes face cachée (ils peuvent choisir de les montrer ensuite)
+        if (!st.runoutShown) {
+          st.seats.forEach((s) => {
+            if (P.inHand(s) && !s.won) { s.cards = s.cards.map((c) => ({ hidden: true, id: c.id })); s.shown = false; s.handName = ''; s.mucked = true; }
+          });
+        }
       }
       lastSecret = Object.assign({}, secret, { deck });
       afterChange(st, drawn * CARD_MS);
@@ -330,11 +366,11 @@
       el.style.top = isMe ? 'calc(100% - 6px)' : pos.top + '%';
       const hole = document.createElement('div');
       hole.className = 'hole';
-      if (s.cards.length && (!s.folded || isMe)) {
+      if (s.cards.length && (!s.folded || isMe || s.showedByChoice) && !(s.mucked && !isMe && !s.shown)) {
         const mine = isMe ? myCards() : null;
         s.cards.forEach((c, j) => {
           const real = mine ? mine[j] : c;
-          const faceUp = !!(real && real.rank) && (isMe || (showdown && boardDone));
+          const faceUp = !!(real && real.rank) && (isMe || st.runoutShown || (showdown && boardDone) || s.showedByChoice);
           const ce = cardEl(real || c, faceUp);
           if (winCards.has(c.id)) ce.classList.add('win');
           if (s.folded) ce.classList.add('dim');
@@ -359,7 +395,7 @@
         const nm = document.createElement('div'); nm.className = 'name'; nm.textContent = isMe ? 'Toi' : s.name;
         const sk = document.createElement('div'); sk.className = 'stack'; sk.textContent = s.allin && !showdown ? 'Tapis' : s.stack;
         const last = document.createElement('div'); last.className = 'last';
-        last.textContent = showdown && boardDone && s.won ? '+' + s.won : s.last || '';
+        last.textContent = showdown && boardDone && s.won ? '+' + s.won : showdown && boardDone && s.mucked && !s.shown ? 'Cartes jetées' : s.last || '';
         plate.append(nm, sk, last);
         if (showdown && boardDone && s.handName && s.shown) {
           const hn = document.createElement('div'); hn.className = 'hand-name'; hn.textContent = s.handName; plate.appendChild(hn);
@@ -423,6 +459,8 @@
     $('pm-leave-seat').hidden = !s || (handLive(st) && P.inHand(s));
     $('pm-rebuy').hidden = !s || s.stack >= st.settings.bb || (handLive(st) && P.inHand(s));
     $('pm-rebuy').textContent = 'Se recaver (' + st.settings.stack + ')';
+    $('pm-show').hidden = !(s && st.street === 'showdown' && s.cards.length && !s.cards.some((c) => c.rank) && myCards());
+    renderBlinds();
     if (!myTurn) return;
     const L = P.legal(st, mySeat);
     $('pm-fold').hidden = L.canCheck;
@@ -449,6 +487,17 @@
       }, 30);
     }
   }
+
+  function renderBlinds() {
+    if (!pub) return;
+    let t = 'Blindes ' + pub.sb + ' / ' + pub.bb;
+    if (pub.settings.blindEvery && pub.levelStartAt && pub.level < P.LEVELS.length - 1) {
+      const left = Math.max(0, pub.levelStartAt + pub.settings.blindEvery * 60000 - now());
+      t += ' · hausse dans ' + Math.floor(left / 60000) + ':' + String(Math.floor(left / 1000) % 60).padStart(2, '0');
+    }
+    $('pm-blinds-info').textContent = t;
+  }
+  setInterval(() => { if (pub && tableId) renderBlinds(); }, 1000);
 
   function updateRaise() {
     const mySeat = mySeatIn(pub);
@@ -592,7 +641,8 @@
     e.preventDefault();
     if (needPseudo()) return;
     const [sb, bb] = $('pm-blinds').value.split('/').map(Number);
-    const settings = { sb, bb, stack: bb * parseInt($('pm-stack').value, 10), turnTime: parseInt($('pm-turn').value, 10), coach: $('pm-coach').checked };
+    const settings = { sb, bb, stack: bb * parseInt($('pm-stack').value, 10), turnTime: parseInt($('pm-turn').value, 10), coach: $('pm-coach').checked,
+      blindEvery: parseInt($('pm-blindup').value, 10) || 0 };
     try {
       const id = await net.createTable(initialPub($('pm-name').value.trim().slice(0, 30) || 'Poker de ' + myName(), settings));
       $('pm-name').value = '';
@@ -632,6 +682,7 @@
   $('pm-confirm').addEventListener('click', () => myAction({ type: 'raise', to: +$('pm-slider').value }));
   $('pm-hint').addEventListener('click', () => { if (pending) PokerApp.showHintRes(pending); });
   $('pm-rebuy').addEventListener('click', () => act(opRebuy));
+  $('pm-show').addEventListener('click', () => act(opShow(myCards())));
   $('pm-leave-seat').addEventListener('click', () => act(opLeaveSeat));
   $('pm-opt-coach').addEventListener('change', (e) => setCoach(e.target.checked));
   $('pm-coach-yes').addEventListener('click', () => { $('pm-coach-dialog').close(); setCoach(true); });

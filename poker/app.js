@@ -40,7 +40,8 @@
     const [sb, bb] = $('set-blinds').value.split('/').map(Number);
     const n = parseInt($('set-opponents').value, 10);
     const styleSel = $('set-style').value;
-    cfg = { sb, bb, stack: bb * parseInt($('set-stack').value, 10), coach: $('set-coach').checked, timer: parseInt($('set-timer').value, 10) || 0 };
+    cfg = { sb, bb, stack: bb * parseInt($('set-stack').value, 10), coach: $('set-coach').checked, timer: parseInt($('set-timer').value, 10) || 0,
+      blindEvery: parseInt($('set-blindup').value, 10) || 0, level: 0, levelStart: Date.now() };
     document.body.classList.toggle('no-coach', !cfg.coach);
     st = P.createTable({ sb, bb });
     P.addSeat(st, { name: 'Toi', stack: cfg.stack, human: true });
@@ -65,6 +66,15 @@
       setMessage('Tu n\'as plus de jetons. Tu te recaves de ' + cfg.stack + '.');
       st.seats[ME].stack = cfg.stack; st.seats[ME].out = false;
     }
+    // Montée des blindes : au début d'une main, si le temps du niveau est écoulé
+    let blindMsg = '';
+    if (cfg.blindEvery && Date.now() - cfg.levelStart >= cfg.blindEvery * 60000 && cfg.level < P.LEVELS.length - 1) {
+      cfg.level++;
+      cfg.levelStart = Date.now();
+      const b = P.levelBlinds(cfg.sb, cfg.bb, cfg.level);
+      st.sb = b.sb; st.bb = b.bb;
+      blindMsg = 'Les blindes augmentent : ' + b.sb + ' / ' + b.bb + '. ';
+    }
     handStartStack = st.seats[ME].stack;
     handLog = [];
     vpipThisHand = false;
@@ -74,7 +84,7 @@
     stats.hands++;
     const rebuys = st.seats.filter((s) => s.rebuy).map((s) => s.name);
     st.seats.forEach((s) => { s.rebuy = false; });
-    setMessage(rebuys.length ? rebuys.join(', ') + ' se recave' + (rebuys.length > 1 ? 'nt' : '') + '.' : '');
+    setMessage(blindMsg + (rebuys.length ? rebuys.join(', ') + ' se recave' + (rebuys.length > 1 ? 'nt' : '') + '.' : ''));
     loop();
   }
 
@@ -297,9 +307,12 @@
       el.style.top = i === ME ? 'calc(100% - 6px)' : pos.top + '%'; // ta place reste dans le tapis, en bas
       const hole = document.createElement('div');
       hole.className = 'hole';
-      if (!s.folded || i === ME) {
+      // À l'abattage, un perdant jette ses cartes sans les montrer, sauf s'il était à tapis (cartes déjà retournées)
+      const mucked = showdown && P.inHand(s) && !s.won && !st.runout && i !== ME && !st.results.uncontested;
+      if ((!s.folded || i === ME) && !mucked) {
         s.cards.forEach((c) => {
-          const faceUp = i === ME || (showdown && s.shown);
+          // À tapis sans plus d'enchères possibles, toutes les cartes sont retournées avant la suite du tableau
+          const faceUp = i === ME || (st.runout && P.inHand(s)) || (showdown && s.shown);
           const ce = cardEl(c, !faceUp);
           if (winCards.has(c.id)) ce.classList.add('win');
           if (s.folded) ce.classList.add('dim');
@@ -316,9 +329,9 @@
       sk.textContent = s.allin && !showdown ? 'Tapis' : s.stack;
       const last = document.createElement('div');
       last.className = 'last';
-      last.textContent = showdown && s.won ? '+' + s.won : s.last || '';
+      last.textContent = showdown && s.won ? '+' + s.won : mucked ? 'Cartes jetées' : s.last || '';
       plate.append(nm, sk, last);
-      if (showdown && s.shown && s.handName) {
+      if (showdown && s.shown && s.handName && !mucked) {
         const hn = document.createElement('div');
         hn.className = 'hand-name';
         hn.textContent = s.handName;
@@ -365,11 +378,23 @@
     }
     const pot = P.pot(st);
     $('pot').textContent = pot ? 'Pot : ' + pot : '';
+    renderBlinds();
     $('my-stack').textContent = st.seats[ME].stack;
     renderActions();
     renderLog();
     renderStats();
   }
+
+  function renderBlinds() {
+    if (!st || !cfg) return;
+    let t = 'Blindes ' + st.sb + ' / ' + st.bb;
+    if (cfg.blindEvery && cfg.level < P.LEVELS.length - 1) {
+      const left = Math.max(0, cfg.levelStart + cfg.blindEvery * 60000 - Date.now());
+      t += ' · hausse dans ' + Math.floor(left / 60000) + ':' + String(Math.floor(left / 1000) % 60).padStart(2, '0');
+    }
+    $('blinds-info').textContent = t;
+  }
+  setInterval(() => { if (st && document.body.dataset.mode !== 'multi') renderBlinds(); }, 1000);
 
   function renderActions() {
     const myTurn = !busy && st.toAct === ME && st.street !== 'showdown';

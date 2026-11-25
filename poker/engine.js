@@ -69,12 +69,12 @@
     st.seats.forEach((s) => {
       s.out = s.out || s.stack <= 0;
       s.cards = []; s.bet = 0; s.total = 0; s.folded = false; s.allin = false; s.acted = false; s.last = '';
-      s.won = 0; s.shown = false; s.handName = '';
+      s.won = 0; s.shown = false; s.handName = ''; s.mucked = false; s.showedByChoice = false;
     });
     const players = st.seats.filter((s) => !s.out);
     if (players.length < 2) return false;
     st.handNo++;
-    st.board = []; st.results = null;
+    st.board = []; st.results = null; st.runout = false;
     st.deck = shuffle(E.fullDeck());
     st.button = next(st, st.button < 0 ? st.seats.length - 1 : st.button, (s) => !s.out);
     const headsUp = players.length === 2;
@@ -285,7 +285,15 @@
     st.results = { pots, uncontested: false };
   }
 
-  const api = { createTable, addSeat, startHand, legal, act, pot, inHand, canAct, next, fulfill, showdown };
+  // Montée des blindes (comme en tournoi) : multiplicateurs appliqués aux blindes de départ
+  const LEVELS = [1, 1.5, 2.5, 5, 7.5, 10, 15, 20, 30, 40, 60, 100];
+  function levelBlinds(baseSb, baseBb, level) {
+    const m = LEVELS[Math.min(level, LEVELS.length - 1)];
+    const round5 = (x) => Math.max(1, Math.round(x / 5) * 5);
+    return { sb: round5(baseSb * m), bb: round5(baseBb * m) };
+  }
+
+  const api = { LEVELS, levelBlinds, createTable, addSeat, startHand, legal, act, pot, inHand, canAct, next, fulfill, showdown };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.PokerEngine = api;
 })(typeof window !== 'undefined' ? window : this);

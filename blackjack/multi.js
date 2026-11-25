@@ -27,7 +27,7 @@
   let stopPresence = null;  // arrête le signal de présence à la table
 
   // ----- Animation : les cartes reçues sont révélées une par une -----
-  const ctx = { shown: new Map(), counter: HiLo.create(), cardsLeft: () => (state ? state.shoe.length : DECKS * 52) };
+  const ctx = { shown: new Map(), counter: HiLo.create(), cardsLeft: () => (state ? state.shoe.length : DECKS * 52), enhc: () => !!(state && state.settings.noHole) };
   const revealed = new Set();
   let holeFlipped = false;
   let shownRound = -1;
@@ -67,7 +67,7 @@
   const inPlay = (st) => st.phase === 'playing' || st.phase === 'insurance';
   // La carte cachée du croupier reste face cachée pendant l'assurance et le jeu
   const holeHidden = inPlay;
-  function defaultSettings() { return { coach: true, sides: true, bankroll: START_BANKROLL, turnTime: 20, betTime: 15 }; }
+  function defaultSettings() { return { coach: true, sides: true, bankroll: START_BANKROLL, turnTime: 20, betTime: 15, noHole: true }; }
   const now = () => Date.now();
   // Démarre le minuteur des mises s'il ne tourne pas déjà
   function armBetTimer(st, extraMs) {
@@ -192,7 +192,8 @@
     st.round++;
     for (let r = 0; r < 2; r++) {
       active.forEach((i) => st.seats[i].hands[0].cards.push(draw(st)));
-      st.dealer.push(draw(st));
+      // Règle européenne : une seule carte pour le croupier, la 2e viendra après les joueurs
+      if (r === 0 || !st.settings.noHole) st.dealer.push(draw(st));
     }
     // Paris annexes
     const up = st.dealer[0];
@@ -244,7 +245,7 @@
     const dBJ = isBJ(st.dealer);
     st.seats.forEach((s) => {
       s.insDecided = true;
-      if (!s.ins) return;
+      if (!s.ins || st.settings.noHole) return; // règle européenne : réglée à la fin, avec la 2e carte du croupier
       const p = player(st, s.owner);
       if (dBJ) { p.bankroll += s.ins * 3; s.side = (s.side ? s.side + ' · ' : '') + '✔ Assurance +' + s.ins * 2 + ' €'; }
       else s.side = (s.side ? s.side + ' · ' : '') + '✘ Assurance −' + s.ins + ' €';
@@ -256,7 +257,7 @@
   function afterPeek(st, extraMs) {
     st.phase = 'playing';
     const upV = Strategy.cardValue(st.dealer[0].rank);
-    if (upV >= 10 && isBJ(st.dealer)) {
+    if (!st.settings.noHole && upV >= 10 && isBJ(st.dealer)) {
       st.msg = 'Le croupier a un blackjack.';
       return finish(st);
     }
@@ -295,8 +296,11 @@
   }
 
   function dealerPlay(st) {
-    const live = st.seats.some((s) => s.hands.some((h) => value(h.cards).total <= 21 && !h.natural && !h.surrendered));
-    if (live) {
+    const live = [];
+    st.seats.forEach((s) => s.hands.forEach((h) => { if (value(h.cards).total <= 21 && !h.surrendered) live.push(h); }));
+    const playing = live.filter((h) => !h.natural);
+    if (st.settings.noHole && live.length) st.dealer.push(draw(st)); // 2e carte du croupier
+    if (playing.length && !isBJ(st.dealer)) {
       while (value(st.dealer).total < 17) st.dealer.push(draw(st));
     }
     finish(st);
@@ -313,6 +317,10 @@
     st.seats.forEach((s) => {
       if (!s.owner || !s.hands.length) return;
       const p = player(st, s.owner);
+      if (st.settings.noHole && s.ins) { // assurance (règle européenne) : réglée maintenant
+        if (dBJ) { p.bankroll += s.ins * 3; s.side = (s.side ? s.side + ' · ' : '') + '✔ Assurance +' + s.ins * 2 + ' €'; }
+        else s.side = (s.side ? s.side + ' · ' : '') + '✘ Assurance −' + s.ins + ' €';
+      }
       const single = s.hands.length === 1;
       s.hands.forEach((h) => {
         const v = value(h.cards).total;
@@ -354,7 +362,7 @@
       p.bankroll -= h.bet; h.bet *= 2; h.doubled = true;
       h.cards.push(draw(st)); h.done = true;
     } else if (action === 'R') {
-      if (!two || s.hands.length > 1 || h.split) return false;
+      if (!two || s.hands.length > 1 || h.split || st.settings.noHole) return false;
       h.surrendered = true; h.done = true;
     } else if (action === 'P') {
       if (!two || p.bankroll < h.bet || s.hands.length >= 4 ||
@@ -379,7 +387,7 @@
       D: two && p.bankroll >= h.bet,
       P: two && p.bankroll >= h.bet && s.hands.length < 4 &&
         Strategy.cardValue(h.cards[0].rank) === Strategy.cardValue(h.cards[1].rank),
-      R: two && s.hands.length === 1 && !h.split,
+      R: two && s.hands.length === 1 && !h.split && !st.settings.noHole,
     };
   }
 
@@ -418,13 +426,14 @@
     if (!raw) { state = null; showLobby('Cette table n\'existe pas ou a été supprimée.'); return; }
     const st = normalize(JSON.parse(JSON.stringify(raw)));
     state = st;
-    if (st.round !== shownRound) { holeFlipped = false; ctx.counter.reset(st.rcBase); }
+    if (firstSnap) BJ.setCountCtx(ctx); // le tableau de stratégie suit la règle de la table
+    if (st.round !== shownRound) { holeFlipped = !!st.settings.noHole; ctx.counter.reset(st.rcBase); }
     const all = [];
     st.dealer.forEach((c, i) => all.push({ c, dealerIdx: i }));
     st.seats.forEach((s) => s.hands.forEach((h) => h.cards.forEach((c) => all.push({ c }))));
     if (firstSnap) {
       all.forEach((x) => revealed.add(x.c.id));
-      holeFlipped = !holeHidden(st);
+      holeFlipped = !holeHidden(st) || st.settings.noHole;
       firstSnap = false;
       shownRound = st.round;
       queue = [];
@@ -1037,6 +1046,7 @@
         bankroll: parseInt($('set-bankroll').value, 10) || START_BANKROLL,
         turnTime: parseInt($('set-turn').value, 10) || 20,
         betTime: parseInt($('set-bettime').value, 10) || 15,
+        noHole: $('set-rule').value !== 'us',
       });
       const id = await net.createTable(st);
       $('table-name').value = '';
