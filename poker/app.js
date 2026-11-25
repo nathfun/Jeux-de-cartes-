@@ -61,6 +61,19 @@
     newHand();
   }
 
+  // En-tête animé de l'écran de lancement (même style que les autres jeux)
+  if (window.Casino && Casino.gameHero) {
+    const setup = $('setup'), wrap = document.createElement('div');
+    wrap.className = 'cm-launcher cm-solo-hero';
+    wrap.style.setProperty('--cm-a', '#4fc3f7'); wrap.style.setProperty('--cm-b', '#f2c14e');
+    wrap.style.setProperty('--cm-bg', 'radial-gradient(ellipse at 50% 0%, #1c4a63 0%, #0d1f2c 60%, #070f16 100%)');
+    wrap.appendChild(Casino.gameHero('poker'));
+    setup.querySelectorAll(':scope > h2, :scope > p.muted').forEach((x) => { x.hidden = true; });
+    setup.prepend(wrap);
+    // bouton de lancement aux couleurs du jeu
+    ['--cm-a', '--cm-b'].forEach((k) => setup.style.setProperty(k, wrap.style.getPropertyValue(k)));
+    const sb = $('start'); sb.classList.remove('primary'); sb.classList.add('cm-cta'); sb.textContent = '▶ ' + sb.textContent.replace(/^▶\s*/, '');
+  }
   async function start() {
     if (window.Casino && Casino.server && pkMode() === 'real') { startServer(); return; }
     srv = false;
@@ -95,6 +108,7 @@
     }
     $('setup').hidden = true;
     $('game').hidden = false;
+    if (window.Casino && Casino.launchFx) Casino.launchFx('poker', real ? 'Tournoi réel' : 'Bonne chance !', (n + 1) + ' joueurs · blindes ' + sb + ' / ' + bb);
     newHand();
   }
 

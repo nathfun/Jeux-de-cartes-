@@ -283,92 +283,161 @@
    * (somme apportée de la banque, sans aides, compte pour la progression).
    * opts : { game, min, suggest, realNote, onStart(mode, amount, resumed) }
    */
+  // ---------- Écran de lancement des jeux ----------
+  // Chaque jeu a son ambiance : icône, couleurs, accroche et points forts
+  const LAUNCH = {
+    blackjack: { icon: '🂡', deco: ['♠', '♥', '♦', '♣'], name: 'Blackjack', tag: 'Approche-toi de 21 sans dépasser… et bats le croupier.', a: '#2ecc71', b: '#f2c14e', bg: 'radial-gradient(ellipse at 50% 0%, #1f6b45 0%, #0d2a1d 60%, #07140e 100%)', pills: ['6 jeux de cartes', 'Croupier reste à 17', 'Paye 3 pour 2'] },
+    poker: { icon: '♠', deco: ['A♠', 'K♥', '🂮', '♣'], name: 'Poker Texas Hold\'em', tag: 'Tournoi contre des bots : le dernier avec des jetons gagne.', a: '#4fc3f7', b: '#f2c14e', bg: 'radial-gradient(ellipse at 50% 0%, #1c4a63 0%, #0d1f2c 60%, #070f16 100%)', pills: ['No-Limit', 'Blindes qui montent', 'Jusqu\'à 6 joueurs'] },
+    roulette: { icon: '🎡', deco: ['🔴', '⚫', '🟢', '🪙'], name: 'Roulette européenne', tag: 'Faites vos jeux… rien ne va plus !', a: '#ef4444', b: '#f2c14e', bg: 'radial-gradient(ellipse at 50% 0%, #6b1d1d 0%, #2a0d0d 60%, #140606 100%)', pills: ['Un seul zéro', 'Règles françaises', 'Paye jusqu\'à 35×'] },
+    slots: { icon: '🎰', deco: ['7️⃣', '💎', '🍒', '⭐'], name: 'Casino Royal', tag: '5 rouleaux, 10 lignes, tours gratuits et jackpot.', a: '#c084fc', b: '#f2c14e', bg: 'radial-gradient(ellipse at 50% 0%, #4c1d6b 0%, #1d0d2a 60%, #0e0614 100%)', pills: ['Jokers', 'Tours gratuits ×2', 'Jackpot 5000×'] },
+    crash: { icon: '🚀', deco: ['✦', '✧', '🌙', '⭐'], name: 'Rocket Crash', tag: 'Retire ta mise avant que la fusée n\'explose !', a: '#8b5cf6', b: '#22d3ee', bg: 'radial-gradient(ellipse at 50% 0%, #2a1a6e 0%, #0b1440 55%, #050816 100%)', pills: ['Retrait auto', 'RTP 97 %', 'Équité vérifiable'] },
+    plinko: { icon: '🔮', deco: ['●', '•', '◦', '✦'], name: 'Plinko', tag: 'Lâche des billes et vise les cases du bord.', a: '#f472b6', b: '#a78bfa', bg: 'radial-gradient(ellipse at 50% 0%, #3b1a6e 0%, #0b1440 55%, #050816 100%)', pills: ['Jusqu\'à ×1 000', '3 niveaux de risque', 'Mode auto'] },
+    trader: { icon: '📈', deco: ['▲', '▼', '💹', '₿'], name: 'Bourse Flash', tag: 'Achète, vends, et clôture au bon moment.', a: '#34d399', b: '#22d3ee', bg: 'radial-gradient(ellipse at 50% 0%, #0f3b4a 0%, #0b1440 55%, #050816 100%)', pills: ['Effet de levier', 'Krachs et envolées', '3 actions en direct'] },
+  };
+  const themeOf = (g) => LAUNCH[g] || { icon: '🎲', deco: ['✦'], name: (R.GAMES[g] || 'Jeu'), tag: '', a: '#f2c14e', b: '#4fc3f7', bg: '#10151c', pills: [] };
+  const fmtE = (n) => Math.round(n).toLocaleString('fr-FR') + ' €';
+  const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const reducedMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /** En-tête animé du jeu (icône flottante, titre, accroche, points forts). */
+  function gameHero(game) {
+    injectStyle();
+    const t = themeOf(game);
+    const h = mk('div', 'cm-hero');
+    const art = mk('div', 'cm-art');
+    t.deco.forEach((d, i) => { const x = mk('span', 'cm-deco d' + i, d); art.appendChild(x); });
+    art.append(mk('span', 'cm-ring'), mk('span', 'cm-icon', t.icon));
+    const pills = mk('div', 'cm-pills'); t.pills.forEach((p) => pills.appendChild(mk('span', '', p)));
+    h.append(art, mk('div', 'cm-name', t.name), mk('div', 'cm-tag', t.tag), pills);
+    return h;
+  }
+  function applyTheme(el, game) {
+    const t = themeOf(game);
+    el.style.setProperty('--cm-a', t.a); el.style.setProperty('--cm-b', t.b); el.style.setProperty('--cm-bg', t.bg);
+  }
+
+  /** Animation de lancement d'une partie, par-dessus le jeu (n'attend rien : le jeu démarre en dessous). */
+  function launchFx(game, label, sub) {
+    injectStyle();
+    const t = themeOf(game);
+    const old = document.querySelector('.cm-launch'); if (old) old.remove();
+    const ov = mk('div', 'cm-launch'); applyTheme(ov, game);
+    const burst = mk('div', 'cm-burst');
+    for (let i = 0; i < 18; i++) {
+      const c = mk('i', '', i % 3 ? '' : t.deco[i % t.deco.length]);
+      const ang = (i / 18) * Math.PI * 2, dist = 120 + Math.random() * 120;
+      c.style.setProperty('--x', Math.round(Math.cos(ang) * dist) + 'px'); c.style.setProperty('--y', Math.round(Math.sin(ang) * dist) + 'px');
+      c.style.animationDelay = (Math.random() * 0.12) + 's';
+      burst.appendChild(c);
+    }
+    ov.append(burst, mk('div', 'cm-l-icon', t.icon), mk('div', 'cm-l-title', label || 'Bonne chance !'), mk('div', 'cm-l-sub', sub || t.name));
+    document.body.appendChild(ov);
+    if (window.Sfx) { try { Sfx.chips(); setTimeout(() => Sfx.chips(), 160); } catch (e) { /* ignore */ } }
+    vibrate([15, 40, 25]);
+    const ms = reducedMotion() ? 700 : 1450;
+    setTimeout(() => ov.classList.add('out'), ms - 380);
+    setTimeout(() => ov.remove(), ms);
+  }
+
+  /**
+   * Écran de lancement d'un jeu solo : partie réelle avec une somme apportée de la banque
+   * (ou reprise d'une partie en cours). En mode Apprentissage (choisi sur l'accueil), le jeu démarre tout de suite.
+   * opts : { game, min, suggest, realNote, onStart(mode, amount, resumed) }
+   */
   function modePicker(box, opts) {
     injectStyle();
     load();
+    const host = box.parentNode;
+    if (host && host.classList) { host.classList.add('cm-host'); applyTheme(host, opts.game); }
     // Mode Apprentissage (choisi sur l'accueil) : on joue tout de suite, crédit illimité et aides
     if (Casino.learn) {
       box.innerHTML = '';
       Casino.training = true;
-      setTimeout(() => opts.onStart('train', Casino.TRAIN_BANK, false), 0);
+      setTimeout(() => { opts.onStart('train', Casino.TRAIN_BANK, false); launchFx(opts.game, '🎓 Apprentissage', 'Crédit illimité · aides et conseils'); }, 0);
       return;
     }
     // Partie réelle déjà en cours dans ce jeu : on la reprend directement
     if (P.sessions[opts.game] && !opts.noAutoResume) {
       box.innerHTML = '';
-      const p0 = document.createElement('p'); p0.className = 'muted'; p0.textContent = 'Reprise de ta partie…'; box.appendChild(p0);
+      box.appendChild(mk('p', 'cm-wait', 'Reprise de ta partie…'));
       Casino.startSession(opts.game, P.sessions[opts.game].stack).then((r) => {
         if (!r || r.error) { opts.noAutoResume = true; modePicker(box, opts); return; }
         Casino.training = false;
         opts.onStart('real', r.session.stack, true, r);
+        launchFx(opts.game, 'Partie reprise', fmtE(r.session.stack) + ' sur la table');
       });
       return;
     }
-    const fmtE = (n) => Math.round(n).toLocaleString('fr-FR') + ' €';
     box.innerHTML = '';
     box.className = 'cm-picker';
-    const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
-    const train = mk('div', 'cm-card cm-train');
-    train.append(mk('div', 'cm-title', '🎓 Entraînement'),
-      mk('p', '', 'Crédit illimité et toutes les aides pour apprendre. Ne compte pas pour les niveaux, les défis et les succès.'));
-    const tb = mk('button', 'cm-btn', 'S\'entraîner');
-    tb.type = 'button';
-    tb.onclick = () => { Casino.training = true; opts.onStart('train', Casino.TRAIN_BANK, false); };
-    train.appendChild(tb);
-
-    const real = mk('div', 'cm-card cm-real');
-    real.append(mk('div', 'cm-title', '💰 Partie réelle'));
+    const card = mk('div', 'cm-launcher'); applyTheme(card, opts.game);
+    card.appendChild(gameHero(opts.game));
+    const panel = mk('div', 'cm-panel');
     const cur = P.sessions[opts.game];
+    const min = opts.min || 1;
+    const wal = P.wallet;
+    const note = mk('p', 'cm-note');
     if (cur) {
-      real.append(mk('p', '', 'Tu as une partie en cours : ' + fmtE(cur.stack) + ' sur la table (apporté : ' + fmtE(cur.start) + ').'));
-      const rb = mk('button', 'cm-btn gold', 'Reprendre la partie');
-      rb.type = 'button';
+      panel.append(mk('div', 'cm-label', 'Partie en cours'), mk('div', 'cm-big', fmtE(cur.stack)), mk('div', 'cm-sub', 'sur la table · apporté : ' + fmtE(cur.start)));
+      const rb = mk('button', 'cm-cta', '▶ Reprendre la partie'); rb.type = 'button';
       rb.onclick = async () => {
         rb.disabled = true;
         const r = await Casino.startSession(opts.game, cur.stack);
         rb.disabled = false;
-        if (!r || r.error) { real.appendChild(mk('p', 'cm-note', (r && r.error) || 'Impossible de reprendre.')); return; }
+        if (!r || r.error) { note.textContent = (r && r.error) || 'Impossible de reprendre.'; return; }
         Casino.training = false;
         opts.onStart('real', r.session.stack, true, r);
+        launchFx(opts.game, 'Partie reprise', fmtE(r.session.stack) + ' sur la table');
       };
-      real.appendChild(rb);
+      panel.append(rb, note);
     } else {
-      real.append(mk('p', '', 'Tu apportes une somme de ta banque, sans aides : c\'est là que tu vois si tu as bien appris. Gains, XP, défis et succès comptent. Tu encaisses quand tu veux ; si tu perds tout, c\'est perdu.' + (opts.realNote ? ' ' + opts.realNote : '')));
-      const min = opts.min || 1;
-      const wal = P.wallet;
-      const row = mk('div', 'cm-amount');
-      const lab = mk('label', '', 'Somme apportée ');
-      const inp = document.createElement('input');
-      inp.type = 'number'; inp.min = min; inp.max = Math.max(min, Math.floor(wal)); inp.step = 1;
-      inp.value = Math.max(min, Math.min(Math.floor(wal), opts.suggest || 500));
-      lab.appendChild(inp);
-      row.append(lab, mk('span', 'cm-bank', 'Banque : ' + fmtE(wal)));
-      const quick = mk('div', 'cm-quick');
-      [100, 500, 1000, 2500].filter((v) => v >= min && v <= wal).forEach((v) => {
-        const q = mk('button', 'cm-q', fmtE(v)); q.type = 'button'; q.onclick = () => { inp.value = v; }; quick.appendChild(q);
+      const maxV = Math.max(min, Math.floor(wal));
+      let val = Math.max(min, Math.min(Math.floor(wal), opts.suggest || 500));
+      panel.appendChild(mk('div', 'cm-label', 'Combien apportes-tu à la table ?'));
+      const big = mk('div', 'cm-big'); const amount = mk('span', 'cm-amt'); big.append(amount, mk('span', 'cm-eur', ' €'));
+      const after = mk('div', 'cm-sub');
+      const range = document.createElement('input'); range.type = 'range'; range.className = 'cm-range'; range.min = min; range.max = maxV; range.step = 1; range.setAttribute('aria-label', 'Somme apportée');
+      const exact = document.createElement('input'); exact.type = 'number'; exact.className = 'cm-exact'; exact.min = min; exact.max = maxV; exact.step = 1; exact.setAttribute('aria-label', 'Somme exacte');
+      const chips = mk('div', 'cm-chips');
+      const show = (v, bump) => {
+        val = Math.max(min, Math.min(maxV, Math.floor(v) || min));
+        amount.textContent = val.toLocaleString('fr-FR');
+        range.value = val; if (document.activeElement !== exact) exact.value = val;
+        range.style.setProperty('--p', ((val - min) / Math.max(1, maxV - min) * 100) + '%');
+        after.textContent = 'Banque : ' + fmtE(wal) + '  →  il te restera ' + fmtE(wal - val);
+        chips.querySelectorAll('button').forEach((b) => b.classList.toggle('on', Number(b.dataset.v) === val));
+        if (bump) { big.classList.remove('bump'); void big.offsetWidth; big.classList.add('bump'); }
+      };
+      [[100, 'c1'], [500, 'c2'], [1000, 'c3'], [2500, 'c4']].filter(([v]) => v >= min && v <= wal).forEach(([v, c]) => {
+        const q = mk('button', 'cm-chip ' + c); q.type = 'button'; q.dataset.v = v;
+        q.append(mk('b', '', v >= 1000 ? (v / 1000) + 'k' : String(v)));
+        q.onclick = () => { show(v, true); if (window.Sfx) Sfx.chips(); };
+        chips.appendChild(q);
       });
-      if (wal >= min) { const q = mk('button', 'cm-q', 'Tout'); q.type = 'button'; q.onclick = () => { inp.value = Math.floor(wal); }; quick.appendChild(q); }
-      const note = mk('p', 'cm-note');
-      const go = mk('button', 'cm-btn gold', 'Jouer pour de vrai');
-      go.type = 'button';
+      if (wal >= min) { const q = mk('button', 'cm-chip c5'); q.type = 'button'; q.dataset.v = Math.floor(wal); q.append(mk('b', '', 'Tout')); q.onclick = () => { show(wal, true); if (window.Sfx) Sfx.chips(); }; chips.appendChild(q); }
+      range.oninput = () => show(range.value);
+      exact.oninput = () => { if (exact.value !== '') show(exact.value); };
+      exact.onchange = () => show(exact.value || min);
+      const go = mk('button', 'cm-cta', '▶ Lancer la partie'); go.type = 'button';
       go.onclick = async () => {
-        const v = Math.floor(Number(inp.value));
-        if (!(v >= min)) { note.textContent = 'Il faut apporter au moins ' + fmtE(min) + '.'; return; }
-        if (v > P.wallet) { note.textContent = 'Ta banque ne contient que ' + fmtE(P.wallet) + '. Gagne du temps contre de l\'argent sur l\'accueil (banque du temps).'; return; }
-        go.disabled = true;
-        note.textContent = '';
-        const r = await Casino.startSession(opts.game, v);
+        if (!(val >= min)) { note.textContent = 'Il faut apporter au moins ' + fmtE(min) + '.'; return; }
+        if (val > P.wallet) { note.textContent = 'Ta banque ne contient que ' + fmtE(P.wallet) + '. Gagne du temps contre de l\'argent sur l\'accueil (banque du temps).'; return; }
+        go.disabled = true; note.textContent = '';
+        const r = await Casino.startSession(opts.game, val);
         go.disabled = false;
         if (!r || r.error) { note.textContent = (r && r.error) || 'Impossible de commencer.'; return; }
         Casino.training = false;
         opts.onStart('real', r.session.stack, !!r.resumed, r);
+        launchFx(opts.game, 'Bonne chance !', fmtE(r.session.stack) + ' sur la table');
       };
-      if (wal < min) { go.disabled = true; note.textContent = 'Ta banque est trop basse (' + fmtE(wal) + '). Récupère ton bonus du jour ou passe par la banque du temps sur l\'accueil.'; }
-      real.append(row, quick, go, note);
+      const exactRow = mk('div', 'cm-exact-row'); exactRow.append(mk('span', '', 'Somme exacte'), exact);
+      panel.append(big, range, chips, after, exactRow, go, note);
+      if (wal < min) { go.disabled = true; range.disabled = true; note.textContent = 'Ta banque est trop basse (' + fmtE(wal) + '). Récupère ton bonus du jour ou passe par la banque du temps sur l\'accueil.'; }
+      show(val);
     }
-    const learnTip = mk('p', 'cm-learn-tip', 'Envie d\'apprendre d\'abord ? Active le mode 🎓 Apprentissage sur l\'accueil : crédit illimité, aides et conseils.');
-    real.appendChild(learnTip);
-    box.append(real);
+    panel.appendChild(mk('p', 'cm-learn-tip', '💰 Partie réelle, sans aides : gains, XP, défis et succès comptent.' + (opts.realNote ? ' ' + opts.realNote : '') + ' Pour apprendre sans risque, active 🎓 Apprentissage sur l\'accueil.'));
+    card.appendChild(panel);
+    box.append(card);
   }
 
   // Classement de fin de partie (utilisé par le blackjack entre amis)
@@ -568,6 +637,8 @@
       });
     },
     modePicker,
+    gameHero,
+    launchFx,
     // ---------- Entre amis ----------
     prizeFor: R.prizeFor,
     prizeText: R.prizeText,
@@ -705,7 +776,83 @@
 .cr-list li.me { outline: 2px solid #4fc3f7; }
 .cr-list small { grid-column: 1 / -1; color: #3fb950; font-weight: 700; }
 .cr-btns { display: flex; gap: .5rem; justify-content: center; }
-.cm-badge.real { background: #f2c14e; color: #2a1d00; }`;
+.cm-badge.real { background: #f2c14e; color: #2a1d00; }
+/* ---------- Écran de lancement ---------- */
+.cm-host { position: relative; display: flex; flex-direction: column; gap: .8rem; }
+.cm-host > .setup-grid { order: 3; width: 100%; max-width: 920px; margin: 0 auto; background: rgba(0,0,0,.2); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: .7rem .9rem; }
+.cm-solo-hero { grid-template-columns: minmax(0, 1fr) !important; margin-bottom: .8rem; width: 100%; }
+.cm-solo-hero .cm-hero { padding: 1.1rem 1rem 1rem; }
+.cm-solo-hero .cm-art { width: 110px; height: 110px; } .cm-solo-hero .cm-icon { font-size: 56px; }
+.cm-host > h2, .cm-host > p.muted, .cm-host > p:not([class]) { display: none; }
+.cm-host.setup, .cm-host.panel, .cm-host.glass { background: transparent; border: 0; box-shadow: none; padding: 0; max-width: none; backdrop-filter: none; }
+.cm-picker { display: block; margin: 0; }
+.cm-launcher { --cm-a: #f2c14e; --cm-b: #4fc3f7; position: relative; overflow: hidden; border-radius: 24px; background: var(--cm-bg, #10151c); border: 1px solid color-mix(in srgb, var(--cm-a) 45%, transparent);
+  box-shadow: 0 24px 60px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.03) inset; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); color: #f3f4f6; font-family: inherit; animation: cm-in .6s cubic-bezier(.2,.9,.3,1.15) both; max-width: 920px; margin: 0 auto; }
+@media (max-width: 760px) { .cm-launcher { grid-template-columns: minmax(0, 1fr); } }
+.cm-launcher::before { content: ''; position: absolute; inset: -40%; background: conic-gradient(from 0deg, transparent, color-mix(in srgb, var(--cm-a) 18%, transparent), transparent 30%, color-mix(in srgb, var(--cm-b) 14%, transparent), transparent 60%); animation: cm-spin 14s linear infinite; pointer-events: none; }
+.cm-hero { position: relative; padding: 1.6rem 1.4rem 1.4rem; display: flex; flex-direction: column; align-items: center; text-align: center; gap: .55rem; }
+.cm-art { position: relative; width: 150px; height: 150px; display: grid; place-items: center; margin-bottom: .3rem; }
+.cm-icon { font-size: 76px; line-height: 1; filter: drop-shadow(0 10px 24px color-mix(in srgb, var(--cm-a) 60%, transparent)); animation: cm-float 3.2s ease-in-out infinite; z-index: 1; }
+.cm-ring { position: absolute; inset: 8px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--cm-a) 60%, transparent); box-shadow: 0 0 30px color-mix(in srgb, var(--cm-a) 40%, transparent), inset 0 0 30px color-mix(in srgb, var(--cm-b) 25%, transparent); animation: cm-pulse 2.6s ease-in-out infinite; }
+.cm-deco { position: absolute; font-size: 22px; opacity: .8; color: var(--cm-b); animation: cm-orbit 7s linear infinite; }
+.cm-deco.d0 { top: 0; left: 8px; } .cm-deco.d1 { top: 6px; right: 0; animation-delay: -1.7s; color: var(--cm-a); } .cm-deco.d2 { bottom: 2px; left: 0; animation-delay: -3.4s; } .cm-deco.d3 { bottom: 8px; right: 6px; animation-delay: -5.1s; color: var(--cm-a); }
+.cm-name { font-size: clamp(1.6rem, 4vw, 2.1rem); font-weight: 900; letter-spacing: -.01em; background: linear-gradient(90deg, var(--cm-a), var(--cm-b)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.cm-tag { color: rgba(243,244,246,.82); max-width: 30ch; line-height: 1.4; }
+.cm-pills { display: flex; flex-wrap: wrap; gap: .35rem; justify-content: center; margin-top: .3rem; }
+.cm-pills span { font-size: .75rem; font-weight: 700; padding: .25rem .65rem; border-radius: 999px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); }
+.cm-panel { position: relative; margin: .8rem; padding: 1.2rem 1.2rem 1rem; border-radius: 18px; background: rgba(5,8,16,.55); border: 1px solid rgba(255,255,255,.08); backdrop-filter: blur(8px); display: flex; flex-direction: column; gap: .7rem; }
+.cm-label { font-size: .78rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: rgba(243,244,246,.7); }
+.cm-big { font-size: clamp(2.4rem, 7vw, 3.2rem); font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; color: #fff; text-shadow: 0 0 26px color-mix(in srgb, var(--cm-a) 55%, transparent); }
+.cm-big.bump { animation: cm-bump .35s cubic-bezier(.2,.9,.3,1.4); }
+.cm-eur { font-size: .5em; opacity: .75; }
+.cm-sub { font-size: .85rem; color: rgba(243,244,246,.72); font-variant-numeric: tabular-nums; white-space: pre-wrap; }
+.cm-range { -webkit-appearance: none; appearance: none; width: 100%; height: 10px; border-radius: 999px; outline: none; cursor: pointer;
+  background: linear-gradient(90deg, var(--cm-a), var(--cm-b)) 0 / var(--p, 50%) 100% no-repeat, rgba(255,255,255,.1); }
+.cm-range::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 4px solid var(--cm-a); box-shadow: 0 0 16px color-mix(in srgb, var(--cm-a) 70%, transparent); }
+.cm-range::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 4px solid var(--cm-a); }
+.cm-chips { display: flex; gap: .5rem; flex-wrap: wrap; }
+.cm-chip { --c: #c62828; width: 54px; height: 54px; border-radius: 50%; border: 0; cursor: pointer; display: grid; place-items: center; color: #fff; font: inherit; font-weight: 900; font-size: .85rem;
+  background: radial-gradient(circle, var(--c) 0 52%, transparent 53%), repeating-conic-gradient(#fff 0 12deg, var(--c) 12deg 30deg); box-shadow: 0 4px 10px rgba(0,0,0,.45), inset 0 0 0 3px rgba(0,0,0,.18); transition: transform .15s; }
+.cm-chip b { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; border: 2px dashed rgba(255,255,255,.55); text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+.cm-chip:hover { transform: translateY(-3px) rotate(-8deg); } .cm-chip.on { transform: translateY(-5px) scale(1.08); box-shadow: 0 0 0 3px #fff, 0 0 20px var(--c); }
+.cm-chip.c1 { --c: #1565c0; } .cm-chip.c2 { --c: #c62828; } .cm-chip.c3 { --c: #2e7d32; } .cm-chip.c4 { --c: #6a1b9a; } .cm-chip.c5 { --c: #b8860b; }
+@media (max-width: 480px) { .cm-chips { gap: .35rem; justify-content: space-between; } .cm-chip { width: 48px; height: 48px; font-size: .78rem; } .cm-chip b { width: 30px; height: 30px; } .cm-panel { margin: .5rem; padding: 1rem .9rem .9rem; } }
+.cm-exact-row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; font-size: .82rem; color: rgba(243,244,246,.7); }
+.cm-exact { width: 8em; font: inherit; font-weight: 700; padding: .35rem .55rem; border-radius: 10px; border: 1px solid rgba(255,255,255,.15); background: rgba(0,0,0,.35); color: #fff; }
+.cm-cta { position: relative; overflow: hidden; font: inherit; font-size: 1.15rem; font-weight: 900; letter-spacing: .04em; border: 0; border-radius: 16px; padding: 1rem; cursor: pointer; color: #0b0b14;
+  background: linear-gradient(135deg, var(--cm-a), var(--cm-b)); box-shadow: 0 10px 30px color-mix(in srgb, var(--cm-a) 45%, transparent); transition: transform .1s, filter .2s; animation: cm-glow 2.4s ease-in-out infinite; }
+.cm-cta::after { content: ''; position: absolute; top: 0; bottom: 0; width: 40%; left: -60%; background: linear-gradient(100deg, transparent, rgba(255,255,255,.55), transparent); transform: skewX(-20deg); animation: cm-shine 2.8s ease-in-out infinite; }
+.cm-cta:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); } .cm-cta:active:not(:disabled) { transform: scale(.98); }
+.cm-cta:disabled { opacity: .5; cursor: not-allowed; animation: none; }
+.cm-wait { text-align: center; opacity: .8; padding: 2rem; }
+.cm-panel .cm-learn-tip { font-size: .78rem !important; opacity: .65 !important; margin: 0 !important; line-height: 1.4; }
+.cm-panel .cm-note:empty { display: none; }
+/* Animation de lancement */
+.cm-launch { position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .4rem; background: var(--cm-bg, #10151c); color: #fff; animation: cm-fade .25s ease-out both; pointer-events: none; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.cm-launch.out { animation: cm-out .38s ease-in both; }
+.cm-l-icon { font-size: 110px; line-height: 1; animation: cm-zoom .7s cubic-bezier(.2,.9,.3,1.5) both; filter: drop-shadow(0 0 40px var(--cm-a)); }
+.cm-l-title { font-size: clamp(1.8rem, 6vw, 2.8rem); font-weight: 900; background: linear-gradient(90deg, var(--cm-a), var(--cm-b)); -webkit-background-clip: text; background-clip: text; color: transparent; animation: cm-up .5s .15s ease-out both; }
+.cm-l-sub { opacity: .8; font-weight: 700; animation: cm-up .5s .25s ease-out both; }
+.cm-burst { position: absolute; left: 50%; top: 45%; width: 0; height: 0; }
+.cm-burst i { position: absolute; left: -9px; top: -9px; width: 18px; height: 18px; border-radius: 50%; font-style: normal; font-size: 18px; display: grid; place-items: center;
+  background: radial-gradient(circle, var(--cm-a), transparent 70%); animation: cm-fly .9s cubic-bezier(.1,.8,.3,1) both; }
+.cm-burst i:nth-child(even) { background: radial-gradient(circle, var(--cm-b), transparent 70%); }
+.cm-burst i:not(:empty) { background: none; color: var(--cm-a); }
+@keyframes cm-in { from { opacity: 0; transform: translateY(18px) scale(.97); } }
+@keyframes cm-spin { to { transform: rotate(360deg); } }
+@keyframes cm-float { 50% { transform: translateY(-10px) rotate(-4deg); } }
+@keyframes cm-pulse { 50% { transform: scale(1.06); opacity: .7; } }
+@keyframes cm-orbit { 0% { transform: translate(0,0) rotate(0); } 50% { transform: translate(6px,-8px) rotate(20deg); } 100% { transform: translate(0,0) rotate(0); } }
+@keyframes cm-bump { 40% { transform: scale(1.12); } }
+@keyframes cm-glow { 50% { box-shadow: 0 10px 40px color-mix(in srgb, var(--cm-b) 55%, transparent); } }
+@keyframes cm-shine { 0%, 55% { left: -60%; } 100% { left: 130%; } }
+@keyframes cm-fade { from { opacity: 0; } }
+@keyframes cm-out { to { opacity: 0; transform: scale(1.08); } }
+@keyframes cm-zoom { 0% { transform: scale(.2) rotate(-25deg); opacity: 0; } 70% { transform: scale(1.15) rotate(6deg); opacity: 1; } 100% { transform: none; } }
+@keyframes cm-up { from { opacity: 0; transform: translateY(14px); } }
+@keyframes cm-fly { 0% { transform: translate(0,0) scale(.3); opacity: 1; } 100% { transform: translate(var(--x), var(--y)) scale(1.1); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .cm-launcher, .cm-launcher::before, .cm-icon, .cm-ring, .cm-deco, .cm-cta, .cm-cta::after, .cm-l-icon, .cm-burst i { animation: none !important; } }
+`;
     document.head.appendChild(s);
   }
 
