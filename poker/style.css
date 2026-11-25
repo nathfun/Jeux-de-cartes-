@@ -177,3 +177,29 @@ input:not([type]), input[type="text"] { font: inherit; background: #10151c; colo
 .dialog .row { margin-top: .9rem; }
 
 .blinds-info { text-align: center; font-size: .85rem; color: var(--gold); margin-bottom: .5rem; font-variant-numeric: tabular-nums; min-height: 1.2em; }
+
+/* ---------- Fin de partie ---------- */
+.recap { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(5, 8, 12, .82); padding: 16px; overflow-y: auto; }
+.recap canvas { position: fixed; inset: 0; pointer-events: none; }
+.recap-card { position: relative; background: radial-gradient(ellipse at top, #1d3a2c, var(--panel) 70%); border: 2px solid var(--gold); border-radius: 18px; padding: 1.4rem 1.2rem; width: min(560px, 100%); text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.6); animation: recap-in .6s cubic-bezier(.2,.9,.3,1.3) both; }
+.recap.lost .recap-card { border-color: #5c6b78; background: var(--panel); }
+.recap-icon { font-size: 4.5rem; line-height: 1; animation: trophy 1.2s ease-out both; }
+.recap h2 { margin: .5rem 0 .2rem; font-size: 1.6rem; color: var(--gold); text-wrap: balance; }
+.recap.lost h2 { color: var(--text); }
+.recap-sub { margin: 0 0 .6rem; color: var(--muted); }
+.recap-details { max-height: 0; opacity: 0; overflow: hidden; transition: max-height .8s ease, opacity .6s ease; }
+.recap.show-stats .recap-details { max-height: 1000px; opacity: 1; }
+.recap-stats { grid-template-columns: repeat(3, 1fr); margin: .8rem 0; }
+.recap-stats .stat span { font-size: 1.05rem; }
+.recap h3 { font-size: .95rem; margin: .8rem 0 .4rem; color: var(--muted); }
+.table-wrap { overflow-x: auto; }
+.recap-table { width: 100%; border-collapse: collapse; font-size: .88rem; font-variant-numeric: tabular-nums; }
+.recap-table th, .recap-table td { padding: .35rem .4rem; border-bottom: 1px solid var(--panel-border); text-align: left; }
+.recap-table th { color: var(--muted); font-weight: 600; font-size: .78rem; }
+.recap-table tr.me td { color: var(--gold); font-weight: 700; }
+.recap-actions { justify-content: center; margin-top: 1rem; }
+@keyframes recap-in { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes trophy { 0% { transform: scale(0) rotate(-30deg); } 60% { transform: scale(1.3) rotate(10deg); } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .recap-card, .recap-icon { animation: none; } }
+@media (max-width: 500px) { .recap-stats { grid-template-columns: repeat(2, 1fr); } }
+.seat.eliminated { opacity: .4; }

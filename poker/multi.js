@@ -24,6 +24,7 @@
   let working = false, hostBusy = false;
   let boardShown = 0, shownHand = -1, revealTimer = null;
   let pending = null, pendingKey = '';
+  let shownGameOver = null;
   const shown = new Map();
   const prevBets = {};
   const now = () => Date.now();
@@ -52,8 +53,12 @@
     st.log = st.log || [];
     st.players = st.players || {};
     if (st.results) { st.results.pots = (st.results.pots || []).map((p) => Object.assign({ winners: [] }, p, { winners: p.winners || [] })); }
-    st.settings = Object.assign({ sb: 10, bb: 20, stack: 2000, turnTime: 30, coach: true, blindEvery: 0 }, st.settings || {});
-    st.level = st.level || 0;
+    st.settings = Object.assign({ sb: 10, bb: 20, stack: 2000, turnTime: 30, coach: true, blindRule: 'h8' }, st.settings || {});
+    st.lv = st.lv || {};
+    if (st.tstats) {
+      st.tstats.eliminated = st.tstats.eliminated || [];
+      st.tstats.players = st.tstats.players || {};
+    }
     return st;
   }
 
@@ -70,8 +75,11 @@
   const handLive = (st) => ['preflop', 'flop', 'turn', 'river'].includes(st.street);
   const seatedCount = (st) => st.seats.filter((s) => s.owner && s.stack > 0).length;
 
+  // Une partie a commencé (au moins une main) et n'est pas terminée : on ne peut plus s'asseoir
+  const gameRunning = (st) => !!(st.tstats && st.tstats.hands > 0 && !st.gameOver) || handLive(st);
+
   function opSit(st, i) {
-    if (st.seats[i].owner || mySeatIn(st) >= 0) return false;
+    if (st.seats[i].owner || mySeatIn(st) >= 0 || gameRunning(st)) return false;
     const bank = st.players[me] && st.players[me].bank;
     st.seats[i] = Object.assign(emptySeat(), { owner: me, name: myName() || 'Joueur', stack: bank > 0 ? bank : st.settings.stack });
     if (!st.nextHandAt && !handLive(st) && seatedCount(st) >= 2) st.nextHandAt = now() + 4000;
@@ -84,11 +92,30 @@
     st.players[me] = { bank: s.stack };
     st.seats[i] = emptySeat();
   }
-  function opRebuy(st) {
-    const i = mySeatIn(st);
-    if (i < 0 || (handLive(st) && P.inHand(st.seats[i])) || st.seats[i].stack >= st.settings.bb) return false;
-    st.seats[i].stack = st.settings.stack;
-    if (!st.nextHandAt && !handLive(st) && seatedCount(st) >= 2) st.nextHandAt = now() + 4000;
+  // Nouvelle partie (hôte) : tous les joueurs assis repartent avec le tapis de départ
+  function opRestart(st) {
+    if (st.host !== me || !st.gameOver) return false;
+    st.seats.forEach((s) => { if (s.owner) { s.stack = st.settings.stack; s.out = false; s.cards = []; s.total = 0; s.bet = 0; } });
+    st.gameOver = null; st.tstats = null; st.lv = {};
+    st.sb = st.settings.sb; st.bb = st.settings.bb;
+    st.street = 'idle'; st.board = []; st.results = null;
+    st.log.push('Nouvelle partie !');
+    st.nextHandAt = seatedCount(st) >= 2 ? now() + 4000 : null;
+  }
+
+  // Fin de main : statistiques, éliminations, fin de partie
+  function finishStats(st) {
+    if (st.street !== 'showdown' || !st.tstats || st.statsHand === st.handNo) return;
+    st.statsHand = st.handNo;
+    const out = Tourney.recordHand(st.tstats, st, (i) => st.seats[i].owner, (i) => st.seats[i].name, now());
+    out.forEach((i) => st.log.push(st.seats[i].name + ' est éliminé(e)'));
+    const alive = st.seats.filter((s) => s.owner && s.stack > 0);
+    if (alive.length <= 1 && st.tstats.hands > 0) {
+      const w = alive[0];
+      st.gameOver = { winner: w ? w.owner : null, name: w ? w.name : '', at: now(), blinds: st.sb + ' / ' + st.bb };
+      st.nextHandAt = null;
+      st.log.push((w ? w.name : 'Personne') + ' remporte la partie !');
+    }
   }
 
   // Après la main, chacun peut choisir de montrer ses cartes (gagnant sans abattage, perdant, joueur couché)
@@ -108,6 +135,7 @@
     if (st.street === 'showdown') {
       st.turnDeadline = null;
       st.nextHandAt = now() + 7000 + st.board.length * CARD_MS;
+      finishStats(st);
     } else if (st.toAct >= 0) {
       st.turnDeadline = now() + st.settings.turnTime * 1000 + (extraMs || 0);
     }
@@ -126,22 +154,23 @@
   let lastSecret = null;
   function hostStartFn(present) {
     return (st) => {
-      if (st.host !== me || handLive(st) || !st.nextHandAt || now() < st.nextHandAt - 300) return false;
+      if (st.host !== me || handLive(st) || st.gameOver || !st.nextHandAt || now() < st.nextHandAt - 300) return false;
       // les joueurs partis libèrent leur place
-      st.seats.forEach((s, i) => { if (s.owner && present && !present[s.owner]) { st.players[s.owner] = { bank: s.stack }; st.seats[i] = emptySeat(); } });
+      st.seats.forEach((s, i) => {
+        if (s.owner && present && !present[s.owner]) {
+          // un joueur parti pendant la partie est éliminé (ses jetons sont perdus)
+          if (st.tstats && s.stack > 0) { s.stack = 0; st.log.push(s.name + ' a quitté la partie'); }
+          st.seats[i] = emptySeat();
+        }
+      });
       if (seatedCount(st) < 2) { st.nextHandAt = null; st.street = 'idle'; return; }
       st.seats.forEach((s) => { s.out = !s.owner || s.stack <= 0; });
       st.external = true;
       st.runoutShown = false;
-      // Montée des blindes (minutes choisies par l'hôte)
-      if (!st.levelStartAt) st.levelStartAt = now();
-      else if (st.settings.blindEvery && now() - st.levelStartAt >= st.settings.blindEvery * 60000 && st.level < P.LEVELS.length - 1) {
-        st.level++;
-        st.levelStartAt = now();
-        const b = P.levelBlinds(st.settings.sb, st.settings.bb, st.level);
-        st.sb = b.sb; st.bb = b.bb;
-        st.log.push('Les blindes augmentent : ' + b.sb + ' / ' + b.bb);
-      }
+      if (!st.tstats) st.tstats = Tourney.createStats(now());
+      // Montée des blindes (au nombre de mains ou de minutes, choisi par l'hôte)
+      const b = Tourney.maybeLevelUp(st.lv, st.settings.blindRule, st.settings.sb, st.settings.bb, now());
+      if (b) { st.sb = b.sb; st.bb = b.bb; st.log.push('Les blindes augmentent : ' + b.sb + ' / ' + b.bb); }
       if (!P.startHand(st)) { st.nextHandAt = null; return; }
       lastSecret = { hand: st.handNo, deck: st.deck, holes: {}, owners: {} };
       delete st.deck;
@@ -382,7 +411,10 @@
       if (!s.owner) {
         const nm = document.createElement('div'); nm.className = 'name'; nm.textContent = 'Libre';
         plate.appendChild(nm);
-        if (mySeat < 0) {
+        if (mySeat < 0 && gameRunning(st)) {
+          const w = document.createElement('div'); w.className = 'last'; w.textContent = 'Partie en cours';
+          plate.appendChild(w);
+        } else if (mySeat < 0) {
           const b = document.createElement('button');
           b.className = 'sit'; b.textContent = 'S\'asseoir'; b.disabled = working;
           b.addEventListener('click', () => {
@@ -397,6 +429,8 @@
         const last = document.createElement('div'); last.className = 'last';
         last.textContent = showdown && boardDone && s.won ? '+' + s.won : showdown && boardDone && s.mucked && !s.shown ? 'Cartes jetées' : s.last || '';
         plate.append(nm, sk, last);
+        const elim = st.tstats && s.stack <= 0 && st.tstats.eliminated.find((e) => e.key === s.owner);
+        if (elim && !(showdown && boardDone && s.won)) { el.classList.add('eliminated'); last.textContent = 'Éliminé · ' + elim.place + 'e'; }
         if (showdown && boardDone && s.handName && s.shown) {
           const hn = document.createElement('div'); hn.className = 'hand-name'; hn.textContent = s.handName; plate.appendChild(hn);
         }
@@ -446,6 +480,21 @@
     $('pm-coach-row').hidden = !st.settings.coach;
     $('pm-opt-coach').checked = coachOn();
     renderActions(mySeat, boardDone);
+    if (PokerApp.fillLog) PokerApp.fillLog($('log'), st.log);
+    // Fin de partie : animation et récapitulatif pour tout le monde (une fois l'abattage affiché)
+    if (st.gameOver && boardDone && shownGameOver !== st.gameOver.at) {
+      shownGameOver = st.gameOver.at;
+      const g = st.gameOver;
+      const won = g.winner === me;
+      const myElim = st.tstats.eliminated.find((e) => e.key === me);
+      setTimeout(() => PokerApp.showRecap({
+        won, T: st.tstats, winnerKey: g.winner, winnerName: g.name, meKey: me, blinds: g.blinds,
+        title: won ? 'Tu as gagné la partie !' : g.name + ' remporte la partie !',
+        subtitle: won ? 'Tous tes adversaires sont éliminés' : myElim ? 'Tu termines ' + myElim.place + 'e' : '',
+        againLabel: st.host === me ? 'Nouvelle partie' : 'Fermer',
+        onAgain: () => { if (pub && pub.host === me) act(opRestart); },
+      }), 1500);
+    }
     endSounds(mySeat, boardDone);
   }
 
@@ -457,8 +506,8 @@
     if (!myTurn) { $('pm-raise-box').hidden = true; pending = null; }
     const s = mySeat >= 0 ? st.seats[mySeat] : null;
     $('pm-leave-seat').hidden = !s || (handLive(st) && P.inHand(s));
-    $('pm-rebuy').hidden = !s || s.stack >= st.settings.bb || (handLive(st) && P.inHand(s));
-    $('pm-rebuy').textContent = 'Se recaver (' + st.settings.stack + ')';
+    $('pm-rebuy').hidden = !(st.gameOver && st.host === me);
+    $('pm-rebuy').textContent = 'Nouvelle partie';
     $('pm-show').hidden = !(s && st.street === 'showdown' && s.cards.length && !s.cards.some((c) => c.rank) && myCards());
     renderBlinds();
     if (!myTurn) return;
@@ -490,12 +539,8 @@
 
   function renderBlinds() {
     if (!pub) return;
-    let t = 'Blindes ' + pub.sb + ' / ' + pub.bb;
-    if (pub.settings.blindEvery && pub.levelStartAt && pub.level < P.LEVELS.length - 1) {
-      const left = Math.max(0, pub.levelStartAt + pub.settings.blindEvery * 60000 - now());
-      t += ' · hausse dans ' + Math.floor(left / 60000) + ':' + String(Math.floor(left / 1000) % 60).padStart(2, '0');
-    }
-    $('pm-blinds-info').textContent = t;
+    const next = pub.tstats ? Tourney.nextLevelText(pub.lv, pub.settings.blindRule, now()) : 'hausse ' + Tourney.ruleLabel(pub.settings.blindRule);
+    $('pm-blinds-info').textContent = 'Niveau ' + ((pub.lv.level || 0) + 1) + ' · Blindes ' + pub.sb + ' / ' + pub.bb + (next ? ' · ' + next : '');
   }
   setInterval(() => { if (pub && tableId) renderBlinds(); }, 1000);
 
@@ -642,7 +687,7 @@
     if (needPseudo()) return;
     const [sb, bb] = $('pm-blinds').value.split('/').map(Number);
     const settings = { sb, bb, stack: bb * parseInt($('pm-stack').value, 10), turnTime: parseInt($('pm-turn').value, 10), coach: $('pm-coach').checked,
-      blindEvery: parseInt($('pm-blindup').value, 10) || 0 };
+      blindRule: $('pm-blindup').value };
     try {
       const id = await net.createTable(initialPub($('pm-name').value.trim().slice(0, 30) || 'Poker de ' + myName(), settings));
       $('pm-name').value = '';
@@ -681,7 +726,7 @@
   }));
   $('pm-confirm').addEventListener('click', () => myAction({ type: 'raise', to: +$('pm-slider').value }));
   $('pm-hint').addEventListener('click', () => { if (pending) PokerApp.showHintRes(pending); });
-  $('pm-rebuy').addEventListener('click', () => act(opRebuy));
+  $('pm-rebuy').addEventListener('click', () => act(opRestart));
   $('pm-show').addEventListener('click', () => act(opShow(myCards())));
   $('pm-leave-seat').addEventListener('click', () => act(opLeaveSeat));
   $('pm-opt-coach').addEventListener('change', (e) => setCoach(e.target.checked));

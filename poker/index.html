@@ -25,7 +25,7 @@
       <!-- Réglages de la partie -->
       <section id="setup" class="panel setup">
         <h2>Partie solo contre des bots</h2>
-        <p class="muted">Texas Hold'em No-Limit. Le coach t'explique chaque décision : force de ta main, position, outs, cotes du pot.</p>
+        <p class="muted">Texas Hold'em No-Limit, façon tournoi : les blindes montent, un joueur sans jetons est éliminé, le dernier en jeu gagne. Le coach t'explique chaque décision : force de ta main, position, outs, cotes du pot.</p>
         <div class="setup-grid">
           <label>Adversaires
             <select id="set-opponents">
@@ -57,10 +57,12 @@
           </label>
           <label>Montée des blindes
             <select id="set-blindup">
+              <option value="h5">Toutes les 5 mains (rapide)</option>
+              <option value="h8" selected>Toutes les 8 mains</option>
+              <option value="h12">Toutes les 12 mains</option>
+              <option value="m3">Toutes les 3 minutes</option>
+              <option value="m5">Toutes les 5 minutes</option>
               <option value="0">Jamais (blindes fixes)</option>
-              <option value="5">Toutes les 5 minutes</option>
-              <option value="10" selected>Toutes les 10 minutes</option>
-              <option value="15">Toutes les 15 minutes</option>
             </select>
           </label>
           <label>Temps de réflexion
@@ -153,7 +155,7 @@
                 <select id="pm-stack"><option value="50">50 grosses blindes</option><option value="100" selected>100 grosses blindes</option><option value="200">200 grosses blindes</option></select>
               </label>
               <label>Montée des blindes
-                <select id="pm-blindup"><option value="0">Jamais</option><option value="5">Toutes les 5 min</option><option value="10" selected>Toutes les 10 min</option><option value="15">Toutes les 15 min</option></select>
+                <select id="pm-blindup"><option value="h5">Toutes les 5 mains (rapide)</option><option value="h8" selected>Toutes les 8 mains</option><option value="h12">Toutes les 12 mains</option><option value="m3">Toutes les 3 minutes</option><option value="m5">Toutes les 5 minutes</option><option value="0">Jamais</option></select>
               </label>
               <label>Temps pour jouer
                 <select id="pm-turn"><option value="15">15 s</option><option value="20">20 s</option><option value="30" selected>30 s</option><option value="60">60 s</option></select>
@@ -262,8 +264,9 @@
           <li><b>Carte haute</b></li>
         </ol>
       </details>
-      <details class="panel">
-        <summary><h2>Journal de la main</h2></summary>
+      <details class="panel" open>
+        <summary><h2>Historique de la main</h2></summary>
+        <p class="muted small">Toutes les actions de la main en cours : blindes, mises, cartes du tableau, gagnant.</p>
         <ol id="log" class="log"></ol>
       </details>
     </aside>
@@ -278,10 +281,34 @@
       <button id="pm-coach-no" type="button">Non, je joue seul</button>
     </div>
   </dialog>
+  <div id="recap" class="recap" hidden role="dialog" aria-modal="true" aria-labelledby="recap-title">
+    <canvas id="confetti" aria-hidden="true"></canvas>
+    <div class="recap-card">
+      <div id="recap-icon" class="recap-icon">🏆</div>
+      <h2 id="recap-title"></h2>
+      <p id="recap-sub" class="recap-sub"></p>
+      <div class="recap-details">
+        <div id="recap-stats" class="stats recap-stats"></div>
+        <h3>Classement</h3>
+        <div class="table-wrap">
+          <table class="recap-table">
+            <thead><tr><th>Place</th><th>Joueur</th><th>Mains gagnées</th><th>Plus gros gain</th><th>Tapis</th></tr></thead>
+            <tbody id="recap-ranking"></tbody>
+          </table>
+        </div>
+        <div class="row recap-actions">
+          <button id="recap-again" class="primary" type="button">Nouvelle partie</button>
+          <button id="recap-close" class="ghost" type="button">Regarder la table</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="../firebase-config.js"></script>
   <script src="../sounds.js"></script>
   <script src="eval.js"></script>
   <script src="engine.js"></script>
+  <script src="tourney.js"></script>
   <script src="coach.js"></script>
   <script src="bots.js"></script>
   <script src="app.js"></script>

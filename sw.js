@@ -1,5 +1,5 @@
 // Service worker : réseau d'abord (pour toujours avoir la dernière version), cache en secours hors ligne.
-const CACHE = 'jeux-de-cartes-v5';
+const CACHE = 'jeux-de-cartes-v6';
 const CORE = [
   './', './index.html', './manifest.webmanifest', './pwa.js', './firebase-config.js', './sounds.js',
   './icons/icon-192.png', './icons/icon-512.png',
@@ -7,7 +7,7 @@ const CORE = [
   './blackjack/count.js', './blackjack/sidebets.js', './blackjack/app.js', './blackjack/coach-chat.js',
   './blackjack/net.js', './blackjack/multi.js',
   './poker/', './poker/index.html', './poker/style.css', './poker/eval.js', './poker/engine.js',
-  './poker/coach.js', './poker/bots.js', './poker/app.js', './poker/multi.js',
+  './poker/coach.js', './poker/bots.js', './poker/app.js', './poker/multi.js', './poker/tourney.js',
 ];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)).then(() => self.skipWaiting()));

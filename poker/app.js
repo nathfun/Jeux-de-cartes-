@@ -9,6 +9,7 @@
   const ME = 0;
 
   let st = null;            // état du moteur
+  let T = null;             // statistiques de la partie (tournoi)
   let cfg = null;           // réglages de la partie
   let busy = false;         // animation ou bot en cours
   let boardShown = 0;       // cartes communes déjà révélées
@@ -41,7 +42,8 @@
     const n = parseInt($('set-opponents').value, 10);
     const styleSel = $('set-style').value;
     cfg = { sb, bb, stack: bb * parseInt($('set-stack').value, 10), coach: $('set-coach').checked, timer: parseInt($('set-timer').value, 10) || 0,
-      blindEvery: parseInt($('set-blindup').value, 10) || 0, level: 0, levelStart: Date.now() };
+      rule: $('set-blindup').value, lv: {} };
+    T = Tourney.createStats(Date.now());
     document.body.classList.toggle('no-coach', !cfg.coach);
     st = P.createTable({ sb, bb });
     P.addSeat(st, { name: 'Toi', stack: cfg.stack, human: true });
@@ -59,21 +61,14 @@
   function newHand() {
     $('next-hand').hidden = true;
     $('summary-panel').hidden = true;
-    st.seats.forEach((s, i) => {
-      if (i !== ME && s.stack <= 0) { s.stack = cfg.stack; s.out = false; s.rebuy = true; }
-    });
-    if (st.seats[ME].stack <= 0) {
-      setMessage('Tu n\'as plus de jetons. Tu te recaves de ' + cfg.stack + '.');
-      st.seats[ME].stack = cfg.stack; st.seats[ME].out = false;
-    }
-    // Montée des blindes : au début d'une main, si le temps du niveau est écoulé
+    // Pas de recave : un joueur sans jetons est éliminé (le moteur le laisse hors du jeu)
+    // Montée des blindes au début de la main
     let blindMsg = '';
-    if (cfg.blindEvery && Date.now() - cfg.levelStart >= cfg.blindEvery * 60000 && cfg.level < P.LEVELS.length - 1) {
-      cfg.level++;
-      cfg.levelStart = Date.now();
-      const b = P.levelBlinds(cfg.sb, cfg.bb, cfg.level);
+    const b = Tourney.maybeLevelUp(cfg.lv, cfg.rule, cfg.sb, cfg.bb, Date.now());
+    if (b) {
       st.sb = b.sb; st.bb = b.bb;
-      blindMsg = 'Les blindes augmentent : ' + b.sb + ' / ' + b.bb + '. ';
+      blindMsg = 'Les blindes augmentent : ' + b.sb + ' / ' + b.bb + ' ! ';
+      st.log.push('Les blindes augmentent : ' + b.sb + ' / ' + b.bb);
     }
     handStartStack = st.seats[ME].stack;
     handLog = [];
@@ -82,9 +77,7 @@
     pending = null;
     if (!P.startHand(st)) { setMessage('Pas assez de joueurs.'); return; }
     stats.hands++;
-    const rebuys = st.seats.filter((s) => s.rebuy).map((s) => s.name);
-    st.seats.forEach((s) => { s.rebuy = false; });
-    setMessage(blindMsg + (rebuys.length ? rebuys.join(', ') + ' se recave' + (rebuys.length > 1 ? 'nt' : '') + '.' : ''));
+    setMessage(blindMsg);
     loop();
   }
 
@@ -235,8 +228,109 @@
     setMessage(msg);
     if (window.Sfx) { if (net > 0) Sfx.win(); else if (net < 0) Sfx.lose(); }
     if (coachOn() && handLog.length) renderSummary(net);
-    $('next-hand').hidden = false;
+    // Statistiques de la partie, éliminations et fin de partie
+    const out = Tourney.recordHand(T, st, (i) => 's' + i, (i) => st.seats[i].name, Date.now());
+    if (out.length) {
+      const names = out.filter((i) => i !== ME).map((i) => st.seats[i].name);
+      if (names.length) setMessage(msg + ' ' + names.join(' et ') + (names.length > 1 ? ' sont éliminés.' : ' est éliminé(e).'));
+    }
+    const alive = st.seats.filter((x) => x.stack > 0);
     render();
+    if (me.stack <= 0) {
+      const place = T.eliminated.find((e) => e.key === 's' + ME).place;
+      setTimeout(() => showRecap({ won: false, title: 'Tu es éliminé', subtitle: place + 'e place sur ' + st.seats.length, winnerKey: null }), 1800);
+      return;
+    }
+    if (alive.length === 1) {
+      setTimeout(() => showRecap({ won: true, title: 'Tu as gagné la partie !', subtitle: 'Tous tes adversaires sont éliminés', winnerKey: 's' + ME }), 1500);
+      return;
+    }
+    $('next-hand').hidden = false;
+  }
+
+  // ---------- Fin de partie : animation et récapitulatif ----------
+  /**
+   * opts : { won, title, subtitle, winnerKey, T (stats), names, blinds, againLabel, onAgain }
+   * Utilisé aussi par le mode « Entre amis ».
+   */
+  function showRecap(opts) {
+    const Ts = opts.T || T;
+    const box = $('recap');
+    box.hidden = false;
+    box.classList.remove('show-stats');
+    box.classList.toggle('lost', !opts.won);
+    $('recap-icon').textContent = opts.won ? '🏆' : '🃏';
+    $('recap-title').textContent = opts.title;
+    $('recap-sub').textContent = opts.subtitle || '';
+    if (window.Sfx) { if (opts.won) { Sfx.win(); setTimeout(() => Sfx.win(), 450); } else Sfx.lose(); }
+    if (opts.won) confetti();
+    // Statistiques
+    const grid = $('recap-stats');
+    grid.innerHTML = '';
+    const add = (label, value) => {
+      const d = document.createElement('div'); d.className = 'stat';
+      const v = document.createElement('span'); v.textContent = value;
+      const l = document.createElement('small'); l.textContent = label;
+      d.append(v, l); grid.appendChild(d);
+    };
+    add('Mains jouées', Ts.hands);
+    add('Durée', Tourney.duration(Date.now() - Ts.startedAt));
+    add('Blindes atteintes', opts.blinds || (st ? st.sb + ' / ' + st.bb : '–'));
+    add('Tapis (all-in)', Ts.allins);
+    add('Abattages', Ts.showdowns);
+    if (Ts.biggestPot) add('Plus gros pot', Ts.biggestPot.amount + ' (' + Ts.biggestPot.name + ')');
+    // Classement
+    const tb = $('recap-ranking');
+    tb.innerHTML = '';
+    const winnerName = opts.winnerName || (opts.winnerKey && Ts.players[opts.winnerKey] ? Ts.players[opts.winnerKey].name : '');
+    const rows = opts.winnerKey ? Tourney.ranking(Ts, opts.winnerKey, winnerName)
+      : Ts.eliminated.slice().sort((a, b) => a.place - b.place).map((e) => Object.assign({}, e, Ts.players[e.key] || {}));
+    rows.forEach((r) => {
+      const tr = document.createElement('tr');
+      if (r.key === opts.meKey || (!opts.meKey && r.key === 's' + ME)) tr.className = 'me';
+      [r.place === 1 ? '🥇' : r.place === 2 ? '🥈' : r.place === 3 ? '🥉' : r.place + 'e', r.name, r.handsWon || 0, r.biggestWin ? '+' + r.biggestWin : '–', r.allins || 0]
+        .forEach((v) => { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); });
+      tb.appendChild(tr);
+    });
+    $('recap-again').textContent = opts.againLabel || 'Nouvelle partie';
+    $('recap-again').onclick = () => { box.hidden = true; (opts.onAgain || backToSetup)(); };
+    $('recap-close').onclick = () => { box.hidden = true; };
+    setTimeout(() => box.classList.add('show-stats'), 2200);
+  }
+
+  function backToSetup() {
+    st = null;
+    stopTimer();
+    $('game').hidden = true;
+    $('setup').hidden = false;
+    $('feedback').className = 'feedback empty';
+    $('feedback').textContent = 'Tes décisions seront analysées ici.';
+  }
+
+  // Confettis dorés (canvas), 4 secondes
+  function confetti() {
+    const c = $('confetti');
+    const ctx2 = c.getContext('2d');
+    const W = c.width = window.innerWidth, H = c.height = window.innerHeight;
+    const colors = ['#f2c14e', '#ffffff', '#c62828', '#2e7d32', '#1565c0'];
+    const parts = Array.from({ length: 160 }, () => ({
+      x: Math.random() * W, y: -20 - Math.random() * H * 0.5, r: 4 + Math.random() * 6,
+      vx: -1.5 + Math.random() * 3, vy: 2 + Math.random() * 4, a: Math.random() * 6, va: -0.2 + Math.random() * 0.4,
+      col: colors[Math.floor(Math.random() * colors.length)],
+    }));
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const t0 = performance.now();
+    function frame(t) {
+      ctx2.clearRect(0, 0, W, H);
+      parts.forEach((p) => {
+        p.x += p.vx; p.y += p.vy; p.a += p.va; p.vy += 0.03;
+        ctx2.save(); ctx2.translate(p.x, p.y); ctx2.rotate(p.a);
+        ctx2.fillStyle = p.col; ctx2.fillRect(-p.r / 2, -p.r / 4, p.r, p.r / 2);
+        ctx2.restore();
+      });
+      if (t - t0 < 4000 && !reduce) requestAnimationFrame(frame); else ctx2.clearRect(0, 0, W, H);
+    }
+    requestAnimationFrame(frame);
   }
 
   function renderSummary(net) {
@@ -330,6 +424,8 @@
       const last = document.createElement('div');
       last.className = 'last';
       last.textContent = showdown && s.won ? '+' + s.won : mucked ? 'Cartes jetées' : s.last || '';
+      const elim = T && T.eliminated.find((e) => e.key === 's' + i);
+      if (s.stack <= 0 && elim && !(showdown && s.won)) { el.classList.add('eliminated'); last.textContent = 'Éliminé · ' + elim.place + 'e'; }
       plate.append(nm, sk, last);
       if (showdown && s.shown && s.handName && !mucked) {
         const hn = document.createElement('div');
@@ -387,12 +483,8 @@
 
   function renderBlinds() {
     if (!st || !cfg) return;
-    let t = 'Blindes ' + st.sb + ' / ' + st.bb;
-    if (cfg.blindEvery && cfg.level < P.LEVELS.length - 1) {
-      const left = Math.max(0, cfg.levelStart + cfg.blindEvery * 60000 - Date.now());
-      t += ' · hausse dans ' + Math.floor(left / 60000) + ':' + String(Math.floor(left / 1000) % 60).padStart(2, '0');
-    }
-    $('blinds-info').textContent = t;
+    const next = Tourney.nextLevelText(cfg.lv, cfg.rule, Date.now());
+    $('blinds-info').textContent = 'Niveau ' + ((cfg.lv.level || 0) + 1) + ' · Blindes ' + st.sb + ' / ' + st.bb + (next ? ' · ' + next : '');
   }
   setInterval(() => { if (st && document.body.dataset.mode !== 'multi') renderBlinds(); }, 1000);
 
@@ -425,7 +517,15 @@
   function renderLog() {
     const ol = $('log');
     ol.innerHTML = '';
-    st.log.slice(-14).forEach((t) => { const li = document.createElement('li'); li.textContent = t; ol.appendChild(li); });
+    fillLog(ol, st.log);
+  }
+  // Historique de la main en cours : tout ce qui s'est passé depuis la distribution
+  function fillLog(ol, log) {
+    ol.innerHTML = '';
+    let start = 0;
+    log.forEach((t, k) => { if (/^Main n°/.test(t)) start = k; });
+    log.slice(start).forEach((t) => { const li = document.createElement('li'); li.textContent = t; ol.appendChild(li); });
+    if (!ol.children.length) { const li = document.createElement('li'); li.textContent = 'La main n\'a pas encore commencé.'; ol.appendChild(li); }
   }
 
   const TIPS = {
@@ -497,12 +597,7 @@
     if (!quitArmed) { quitArmed = true; $('quit').textContent = 'Confirmer ?'; setTimeout(() => { quitArmed = false; $('quit').textContent = 'Nouvelle partie'; }, 3000); return; }
     quitArmed = false;
     $('quit').textContent = 'Nouvelle partie';
-    st = null;
-    stopTimer();
-    $('game').hidden = true;
-    $('setup').hidden = false;
-    $('feedback').className = 'feedback empty';
-    $('feedback').textContent = 'Tes décisions seront analysées ici.';
+    backToSetup();
   });
   let resetArmed = false;
   $('reset-stats').addEventListener('click', () => {
@@ -527,6 +622,8 @@
     record: (res, action, street) => record(res, action, street),
     showHintRes,
     renderStats,
+    showRecap,
+    fillLog,
     cardEl,
   };
 })();
