@@ -96,6 +96,13 @@
         }
       }
     },
+    "saves": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['data', 'at']) && newData.child('data').isString() && newData.child('data').val().length < 200000"
+      }
+    },
     "profiles": {
       "$uid": {
         ".read": "auth != null",

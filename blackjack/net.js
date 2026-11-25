@@ -131,7 +131,9 @@
     ]);
     const app = appMod.getApps().length ? appMod.getApp() : appMod.initializeApp(cfg); // une seule app Firebase par page
     const auth = authMod.getAuth(app);
-    await authMod.signInAnonymously(auth);
+    // on garde le compte du joueur s'il est connecté ; sinon connexion anonyme
+    if (auth.authStateReady) await auth.authStateReady();
+    if (!auth.currentUser) await authMod.signInAnonymously(auth);
     const me = auth.currentUser.uid;
     const d = dbMod.getDatabase(app);
     const R = (p) => dbMod.ref(d, p);

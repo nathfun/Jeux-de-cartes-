@@ -35,6 +35,7 @@
     const [appMod, authMod, dbMod] = await Promise.all([import(FB + 'firebase-app.js'), import(FB + 'firebase-auth.js'), import(FB + 'firebase-database.js')]);
     const app = appMod.getApps().length ? appMod.getApp() : appMod.initializeApp(cfg);
     const auth = authMod.getAuth(app);
+    if (auth.authStateReady) await auth.authStateReady();
     if (!auth.currentUser) await authMod.signInAnonymously(auth);
     const d = dbMod.getDatabase(app);
     const R = (p) => dbMod.ref(d, p);

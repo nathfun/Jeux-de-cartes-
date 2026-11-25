@@ -100,7 +100,8 @@
     if (!P.sessions) P.sessions = {};
     return P;
   }
-  function save() {
+  function save(keepStamp) {
+    if (!keepStamp) P.savedAt = Date.now();
     try { localStorage.setItem(KEY, JSON.stringify(P)); } catch (e) { /* ignore */ }
     listeners.forEach((f) => { try { f(P); } catch (e) { /* ignore */ } });
   }
@@ -504,6 +505,18 @@
       return v;
     },
     showRanking,
+    // ---------- Sauvegarde du compte ----------
+    exportSave() { load(); return JSON.parse(JSON.stringify(P)); },
+    importSave(data) {
+      if (!data || typeof data !== 'object') return;
+      P = Object.assign(fresh(), data);
+      P.totals = Object.assign(fresh().totals, P.totals);
+      if (!P.sessions) P.sessions = {};
+      try { if (P.pseudo) localStorage.setItem('bj-pseudo', P.pseudo); } catch (e) { /* ignore */ }
+      save(true);
+      applyCosmetics();
+    },
+    resetLocal() { P = fresh(); P.pseudo = ''; save(); },
     // ---------- Banque du temps : on « achète » de l'argent avec du temps d'attente ----------
     TIME_PACKS,
     timebank() {

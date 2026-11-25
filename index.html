@@ -77,6 +77,13 @@
     .wallet-row { display: flex; gap: .7rem; align-items: center; flex-wrap: wrap; }
     .wallet { font-size: 1.4rem; font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
     .bonus-btn { font: inherit; font-weight: 700; background: linear-gradient(135deg, #f2c14e, #e89a2c); color: #222; border: 0; border-radius: 10px; padding: .5rem .9rem; cursor: pointer; animation: glow 1.6s ease-in-out infinite; }
+    .acc-tabs { display: flex; gap: .4rem; margin-bottom: .6rem; }
+    .acc-tabs button { font: inherit; font-size: .9rem; background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: .3rem .8rem; cursor: pointer; }
+    .acc-tabs button.on { color: #222; background: var(--gold); border-color: var(--gold); font-weight: 700; }
+    .acc-form { display: flex; gap: .5rem; flex-wrap: wrap; }
+    .acc-form input { font: inherit; flex: 1 1 160px; min-width: 0; padding: .5rem .7rem; border-radius: 10px; border: 1px solid var(--border); background: #0d1117; color: inherit; }
+    .acc-msg { margin: .5rem 0 0; font-size: .9rem; min-height: 0; }
+    .acc-msg.err { color: #ff8a80; } .acc-msg.ok { color: #3fb950; }
     .in-play { margin-top: .5rem; font-size: .9rem; display: flex; gap: .4rem; flex-wrap: wrap; }
     .in-play a { color: inherit; text-decoration: none; background: rgba(242,193,78,.12); border: 1px solid var(--gold); border-radius: 999px; padding: .2rem .6rem; }
     .small-p { font-size: .9rem; margin: .2rem 0 .7rem; }
@@ -143,7 +150,7 @@
       <img src="icons/icon-192.png" alt="">
       <div>
         <h1>Casino</h1>
-        <p>Blackjack, poker et roulette : apprends avec les aides, puis joue entre amis.</p>
+        <p>Blackjack, poker, roulette et machine à sous : apprends en Entraînement, prouve-le en partie réelle, puis affronte tes amis.</p>
       </div>
       <div class="head-btns">
         <button id="music-toggle" class="icon-btn" type="button">🎵</button>
@@ -169,6 +176,28 @@
         <div id="avatars" class="avatars" hidden></div>
         <div id="lifetime" class="stats-row"></div>
       </div>
+    </section>
+
+    <section class="panel account" aria-label="Mon compte">
+      <h2>🔐 Mon compte</h2>
+      <div id="acc-out">
+        <p class="muted small-p">Crée ton compte (un pseudo et un mot de passe, pas besoin d'e-mail) pour garder ta banque, ton niveau, tes succès et tes amis, et les retrouver sur ton téléphone comme sur ton ordinateur.</p>
+        <div class="acc-tabs" role="tablist">
+          <button id="acc-tab-create" class="on" type="button">Créer un compte</button>
+          <button id="acc-tab-login" type="button">J'ai déjà un compte</button>
+        </div>
+        <form id="acc-form" class="acc-form" autocomplete="on">
+          <input id="acc-pseudo" maxlength="16" placeholder="Pseudo" autocomplete="username" aria-label="Pseudo">
+          <input id="acc-pwd" type="password" minlength="6" placeholder="Mot de passe (6 caractères min.)" autocomplete="new-password" aria-label="Mot de passe">
+          <button id="acc-go" type="submit" class="bonus-btn">Créer mon compte</button>
+        </form>
+        <p id="acc-login-warn" class="muted small-p" hidden>En te connectant, la progression de cet appareil est remplacée par celle de ton compte.</p>
+      </div>
+      <div id="acc-in" hidden>
+        <p>Connecté en tant que <b id="acc-name"></b> ✔ <span class="muted">· sauvegarde automatique <span id="acc-sync"></span></span></p>
+        <button id="acc-logout" class="icon-btn" type="button">Se déconnecter</button>
+      </div>
+      <p id="acc-msg" class="acc-msg" role="status"></p>
     </section>
 
     <section class="panel" aria-label="Banque du temps">
@@ -267,6 +296,7 @@
   <script src="sounds.js"></script>
   <script src="profile.js"></script>
   <script src="firebase-config.js"></script>
+  <script src="account.js"></script>
   <script src="social.js"></script>
   <script>
     // ---------- Profil, défis, succès, personnalisation ----------
@@ -424,6 +454,51 @@
         box.appendChild(w);
       }
       setInterval(renderTime, 1000);
+
+      // ---------- Compte ----------
+      let accMode = 'create';
+      function renderAccount() {
+        const a = window.Account && Account.info();
+        $('acc-out').hidden = !!a; $('acc-in').hidden = !a;
+        if (a) {
+          $('acc-name').textContent = a.pseudo;
+          $('acc-sync').textContent = a.syncedAt ? '(dernière : ' + new Date(a.syncedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) + ')' : '';
+        } else if (!$('acc-pseudo').value) $('acc-pseudo').value = Casino.profile.pseudo || '';
+        $('acc-tab-create').classList.toggle('on', accMode === 'create');
+        $('acc-tab-login').classList.toggle('on', accMode === 'login');
+        $('acc-go').textContent = accMode === 'create' ? 'Créer mon compte' : 'Me connecter';
+        $('acc-pwd').autocomplete = accMode === 'create' ? 'new-password' : 'current-password';
+        $('acc-login-warn').hidden = accMode !== 'login';
+      }
+      const accMsg = (t, cls) => { $('acc-msg').textContent = t || ''; $('acc-msg').className = 'acc-msg ' + (cls || ''); };
+      $('acc-tab-create').addEventListener('click', () => { accMode = 'create'; accMsg(''); renderAccount(); });
+      $('acc-tab-login').addEventListener('click', () => { accMode = 'login'; accMsg(''); renderAccount(); });
+      $('acc-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!window.Account) return;
+        const ps = $('acc-pseudo').value.trim(), pw = $('acc-pwd').value;
+        $('acc-go').disabled = true;
+        accMsg(accMode === 'create' ? 'Création du compte…' : 'Connexion…');
+        try {
+          if (accMode === 'create') { await Account.create(ps, pw); accMsg('Compte créé ! Ta progression est sauvegardée en ligne.', 'ok'); }
+          else { await Account.login(ps, pw); accMsg('Bon retour ' + ps + ' ! Ta progression est récupérée.', 'ok'); }
+          $('acc-pwd').value = '';
+          if (window.Social && Social.publish) Social.publish().catch(() => {});
+        } catch (err) {
+          accMsg(err && err.code === 'local' ? err.message : Account.errorText(err), 'err');
+        }
+        $('acc-go').disabled = false;
+        renderAccount(); render();
+      });
+      let outArmed = false;
+      $('acc-logout').addEventListener('click', async () => {
+        if (!outArmed) { outArmed = true; $('acc-logout').textContent = 'Sûr ? Ta progression reste sur ton compte'; setTimeout(() => { outArmed = false; $('acc-logout').textContent = 'Se déconnecter'; }, 3500); return; }
+        await Account.logout();
+        accMsg('Déconnecté. Reconnecte-toi avec ton pseudo et ton mot de passe pour retrouver ta progression.', 'ok');
+        renderAccount(); render();
+      });
+      Casino.onChange(() => renderAccount());
+      renderAccount();
       $('opt-vibrate').addEventListener('change', (e) => { Casino.setSetting('vibrate', e.target.checked); if (e.target.checked) Casino.vibrate(40); });
       Casino.onChange(render);
       render();

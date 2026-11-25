@@ -30,7 +30,11 @@ pas d'installation obligatoire (ils peuvent ajouter l'app à leur écran d'accue
    (pas besoin de Firebase Hosting).
    Firebase affiche un bloc `const firebaseConfig = { apiKey: ..., authDomain: ..., databaseURL: ..., ... }`.
    Vérifie qu'il contient bien `databaseURL` (sinon, recharge la page après l'étape 4).
-7. **Autoriser ton site** : **Authentication** → **Settings** → **Domaines autorisés** →
+7. **Comptes joueurs (pseudo + mot de passe)** : **Authentication** → onglet **Sign-in method** →
+   **Ajouter un fournisseur** → **Adresse e-mail/Mot de passe** → active le premier interrupteur
+   (pas besoin du « lien par e-mail ») → **Enregistrer**. Les joueurs n'entrent jamais de vrai e-mail :
+   l'app fabrique une adresse à partir du pseudo.
+8. **Autoriser ton site** : **Authentication** → **Settings** → **Domaines autorisés** →
    **Ajouter un domaine** → `nathfun.github.io`.
 
 ## 3. Brancher l'app sur Firebase
@@ -76,6 +80,14 @@ elle est supprimée et son code ne fonctionne plus.
 - Limite honnête : sans serveur payant (Cloud Functions, offre Blaze), l'appareil de l'hôte connaît
   le paquet. Un joueur qui fouillerait dans les outils développeur de son navigateur pendant qu'il est
   hôte pourrait le lire. Entre amis, c'est un compromis raisonnable.
+
+## Comptes et sauvegarde
+
+- Sur l'accueil, **Mon compte** : un pseudo et un mot de passe. Le compte garde la banque, le niveau,
+  les succès, les défis, les amis et les parties en cours ; on les retrouve en se connectant sur un autre appareil.
+- `saves/<uid>` : la sauvegarde de chaque joueur, lisible et modifiable par lui seul.
+- Mot de passe oublié : dans la console Firebase, **Authentication** → **Users**, tu peux supprimer
+  le compte (le joueur en recrée un) ; il n'y a pas d'e-mail de récupération puisque l'adresse est fictive.
 
 ## Amis, classement et défis
 
