@@ -19,7 +19,9 @@
   const side = { pp: 0, t213: 0 }; // paris annexes choisis
   let lastSituation = null;        // dernière situation analysée (pour les détails et le chat)
   let stats = loadStats();
-  if (window.Casino) stats.bankroll = Casino.wallet();
+  // Mode de la partie solo : 'train' (crédit illimité + coach), 'real' (somme apportée, sans aides) ou 'defi'
+  let mode = null;
+  const TRAIN_BANK = window.Casino ? Casino.TRAIN_BANK : 10000;
 
   function freshStats() {
     return {
@@ -43,7 +45,7 @@
   }
   function saveStats() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(stats)); } catch (e) { /* ignore */ }
-    if (window.Casino && !defi) Casino.setWallet(stats.bankroll); // le solde du blackjack solo est le portefeuille du Casino
+    if (window.Casino && mode === 'real') Casino.setStack('blackjack', stats.bankroll); // la somme sur la table est sauvegardée en continu
   }
 
   // ---------- Sabot ----------
@@ -494,17 +496,11 @@
       }
     }
 
-    if (stats.bankroll < 5) {
-      if (window.Casino) {
-        stats.bankroll = Casino.wallet();
-        const v = Casino.rescue();
-        if (v > 0) { stats.bankroll = Casino.wallet(); appendFeedbackNote('Portefeuille vide : tu reçois une recharge de secours de 1 000 €.'); }
-        else appendFeedbackNote('Portefeuille vide. Recharge de secours dans ' + Math.ceil(-v / 60000) + ' min, ou récupère ton bonus du jour sur l\'accueil.');
-      } else {
-        appendFeedbackNote('Banque épuisée ! Elle a été remise à ' + START_BANKROLL + ' € pour continuer l\'entraînement.');
-        stats.bankroll = START_BANKROLL;
-      }
+    if (stats.bankroll < MIN_BET && mode === 'train') {
+      appendFeedbackNote('Entraînement : ton crédit est rechargé à ' + TRAIN_BANK + ' €.');
+      stats.bankroll = TRAIN_BANK;
     }
+    if (stats.bankroll < MIN_BET && mode === 'real') setTimeout(() => endSession(true), 2500);
     if (bet > stats.bankroll) bet = Math.max(0, Math.min(bet, stats.bankroll));
     saveStats();
     render();
@@ -588,12 +584,12 @@
     await Social.submitChallenge(d.code, score);
     const ch = await Social.getChallenge(d.code);
     Social.showChallengeResult(ch || { code: d.code, meta: d.meta, results: {}, uid: null }, score);
-    // retour au jeu normal, avec le portefeuille
-    stats.bankroll = window.Casino ? Casino.wallet() : stats.bankroll;
+    // retour à l'écran de choix du mode
     buildShoe();
     $('defi-banner').hidden = true;
     history.replaceState(null, '', location.pathname);
-    render();
+    mode = null;
+    showSolo();
   }
 
   // ---------- Assurance ----------
@@ -757,6 +753,7 @@
   }
 
   function showHint() {
+    if (mode === 'real') return; // partie réelle : pas de conseils
     if (busy || !round || round.phase !== 'playing') return;
     const h = round.hands[round.active];
     const opts = availableActions();
@@ -961,6 +958,7 @@
       const adv = Strategy.insuranceAdvice(insuranceCount());
       showInsuranceFeedback('hint', '💡 Conseil : ' + adv.label, adv.reason);
     },
+    showSolo,
     setCountCtx(ctx) { countCtx = ctx || soloCtx; renderCount(); renderChart(); },
     renderCount,
   };
@@ -1001,8 +999,9 @@
     }
     resetArmed = false;
     btn.textContent = 'Réinitialiser les statistiques';
+    const keep = stats.bankroll; // l'argent sur la table n'est pas remis à zéro
     stats = freshStats();
-    if (window.Casino) stats.bankroll = Casino.wallet(); // le portefeuille n'est pas remis à zéro
+    stats.bankroll = keep;
     saveStats();
     round = null;
     bet = 10;
@@ -1025,6 +1024,74 @@
     }
   });
 
+  // ---------- Choix du mode, encaissement ----------
+  function startMode(m, amount) {
+    mode = m;
+    if (window.Casino) Casino.training = m === 'train';
+    stats.bankroll = amount;
+    bet = Math.min(10, amount);
+    if (m === 'real') ['opt-coach', 'opt-hint', 'opt-tags', 'opt-dev'].forEach((id) => { $(id).checked = false; });
+    else $('opt-coach').checked = true;
+    round = null;
+    buildShoe();
+    $('feedback').className = 'feedback empty';
+    $('feedback').textContent = 'Tes décisions seront analysées ici.';
+    setMessage(m === 'real' ? 'Partie réelle : place ta mise. Pas de coach, mais ta précision est mesurée.' : 'Place ta mise et clique sur « Distribuer ».');
+    saveStats();
+    showSolo();
+  }
+  function showSolo() {
+    if (document.body.dataset.mode === 'multi') return;
+    if (window.Casino) Casino.training = mode === 'train';
+    document.body.classList.toggle('no-coach', mode === 'real');
+    const playing = !!mode;
+    $('bj-setup').hidden = playing;
+    $('solo-view').hidden = !playing;
+    const badge = $('mode-badge');
+    badge.hidden = !playing || mode === 'defi';
+    badge.className = 'cm-badge mode-line' + (mode === 'real' ? ' real' : '');
+    badge.textContent = mode === 'real' ? '💰 Partie réelle · sans aides · « Encaisser » ramène tes jetons à la banque' : '🎓 Entraînement · crédit illimité · ne compte pas pour la progression';
+    $('cashout').hidden = mode === 'defi';
+    $('bank-label').textContent = mode === 'real' ? 'Sur la table' : mode === 'train' ? 'Crédit d\'entraînement' : mode === 'defi' ? 'Jetons de défi' : 'Banque';
+    if (!mode && window.Casino) { $('bankroll').textContent = Casino.wallet(); }
+    $('cashout').textContent = mode === 'train' ? 'Terminer' : 'Encaisser';
+    if (!playing) { renderPicker(); return; }
+    render();
+  }
+  function renderPicker(msg) {
+    if (!window.Casino) { startMode('train', TRAIN_BANK); return; }
+    Casino.modePicker($('mode-picker'), { game: 'blackjack', min: MIN_BET, suggest: 500, onStart: (m, amount) => startMode(m, amount) });
+    if (msg) { const p = document.createElement('p'); p.className = 'end-msg'; p.textContent = msg; $('mode-picker').prepend(p); }
+  }
+  function endSession(broke) {
+    if (busy || (round && round.phase !== 'over')) return;
+    let msg = 'Entraînement terminé.';
+    if (mode === 'real' && window.Casino) {
+      const r = Casino.cashOut('blackjack');
+      const diff = r ? r.diff : 0;
+      msg = broke ? 'Tout est perdu : il ne reste plus assez pour la mise minimale.' :
+        'Tu encaisses ' + (r ? r.end : stats.bankroll) + ' € (' + (diff >= 0 ? '+' : '−') + Math.abs(diff) + ' € par rapport à la somme apportée).';
+      Casino.toast(broke ? 'Partie perdue' : 'Encaissé !', msg, broke ? '💸' : '💰', diff > 0 ? 'gold' : '');
+    }
+    mode = null;
+    round = null;
+    if (window.Casino) Casino.training = false;
+    showSolo();
+    renderPicker(msg);
+  }
+  let cashArmed = false;
+  $('cashout').addEventListener('click', () => {
+    if (busy || (round && round.phase !== 'over')) { setMessage('Termine la main en cours avant d\'encaisser.'); return; }
+    if (!cashArmed) {
+      cashArmed = true;
+      $('cashout').textContent = mode === 'train' ? 'Sûr ?' : 'Encaisser ' + stats.bankroll + ' € ?';
+      setTimeout(() => { cashArmed = false; if (mode) $('cashout').textContent = mode === 'train' ? 'Terminer' : 'Encaisser'; }, 3000);
+      return;
+    }
+    cashArmed = false;
+    endSession(false);
+  });
+
   buildShoe();
   applySpeed();
   // Lien de défi (?defi=CODE) : 10 mains, jetons de défi, même sabot pour tous
@@ -1033,15 +1100,17 @@
     Social.getChallenge(defiCode).then((ch) => {
       if (!ch || ch.meta.game !== 'blackjack') return;
       defi = { code: defiCode, meta: ch.meta, hands: 0 };
+      mode = 'defi';
+      if (window.Casino) Casino.training = false;
       stats.bankroll = ch.meta.bank;
       bet = 10;
       buildShoe(Social.rng(ch.meta.seed));
       $('defi-banner').hidden = false;
       $('defi-text').textContent = 'Défi de ' + ch.meta.by + ' : ' + ch.meta.rounds + ' mains avec ' + ch.meta.bank + ' € de jetons de défi. Tout le monde a le même sabot : fais le meilleur solde final ! (Ton portefeuille n\'est pas touché.)';
       $('defi-count').textContent = 'Main 1 / ' + ch.meta.rounds;
-      render();
+      showSolo();
     });
   }
   renderChart();
-  render();
+  showSolo();
 })();

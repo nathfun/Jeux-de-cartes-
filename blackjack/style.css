@@ -361,3 +361,6 @@ button.spot.side:hover { background: rgba(198, 40, 40, .45); }
 .defi-banner { border-color: var(--gold); }
 .defi-banner b { color: var(--gold); }
 .defi-banner p { margin: .3rem 0 0; }
+.mode-line { display: block; width: fit-content; margin: 0 auto .6rem; }
+.setup-panel h2 { margin-top: 0; }
+.end-msg { grid-column: 1 / -1; margin: 0; padding: .6rem .8rem; border-radius: 10px; background: rgba(0,0,0,.3); border: 1px solid #f2c14e; }

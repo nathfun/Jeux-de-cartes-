@@ -1129,14 +1129,15 @@
     $('tab-multi').classList.toggle('active', mode === 'multi');
     $('tab-solo').setAttribute('aria-selected', mode === 'solo');
     $('tab-multi').setAttribute('aria-selected', mode === 'multi');
-    $('solo-view').hidden = mode !== 'solo';
+    if (mode !== 'solo') { $('solo-view').hidden = true; $('bj-setup').hidden = true; }
     $('multi-view').hidden = mode !== 'multi';
     if (mode === 'solo') {
-      document.body.classList.remove('no-coach');
       $('table-chat-panel').hidden = true;
       BJ.setCountCtx(null);
-      BJ.render();
+      BJ.showSolo();
     } else {
+      if (window.Casino) Casino.training = false; // entre amis : ça compte pour la progression
+      $('bank-label').textContent = 'Jetons';
       startMulti();
     }
   }

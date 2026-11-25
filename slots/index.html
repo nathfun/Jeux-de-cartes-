@@ -12,12 +12,18 @@
 <body>
   <header class="topbar">
     <h1><a id="home-link" class="home-link" href="../index.html" hidden aria-label="Retour au casino">←</a> 🎰 Machine à sous</h1>
-    <div class="bank">Portefeuille : <strong id="wallet">–</strong> € <button id="music-toggle" class="ghost icon-btn" type="button">🎵</button><button id="sound-toggle" class="ghost icon-btn" type="button">🔊</button></div>
+    <div class="bank"><span id="bank-label">Banque</span> : <strong id="wallet">–</strong> € <button id="music-toggle" class="ghost icon-btn" type="button">🎵</button><button id="sound-toggle" class="ghost icon-btn" type="button">🔊</button></div>
   </header>
 
   <main class="layout">
     <div class="main-col">
-      <section class="cabinet" aria-label="Machine à sous">
+      <section id="setup" class="panel setup">
+        <h2>Machine à sous « Casino Royal »</h2>
+        <p class="muted">5 rouleaux, 10 lignes. Choisis ta mise par tour, lance, et encaisse quand tu veux.</p>
+        <div id="mode-picker"></div>
+      </section>
+      <div id="mode-badge" class="cm-badge mode-line" hidden></div>
+      <section id="cabinet" class="cabinet" hidden aria-label="Machine à sous">
         <div class="marquee">
           <div class="bulbs" aria-hidden="true"></div>
           <div class="brand">CASINO ROYAL</div>
@@ -41,13 +47,14 @@
           <div class="toggles">
             <button id="auto" class="small-btn" type="button">Auto ×10</button>
             <label class="small"><input type="checkbox" id="turbo"> Turbo</label>
+            <button id="cashout" class="small-btn" type="button">Encaisser</button>
           </div>
         </div>
       </section>
     </div>
 
     <aside class="side">
-      <section class="panel">
+      <section id="aides-panel" class="panel">
         <h2>Aides <label class="small aides-toggle"><input type="checkbox" id="opt-aides" checked> activées</label></h2>
         <div id="aides" class="aides">
           <p>Cette machine rend en moyenne environ <b>94 %</b> des mises : sur 100 € joués, elle en garde à peu près 6. Les gains arrivent par séries au hasard ; aucun tour n'est « dû ».</p>

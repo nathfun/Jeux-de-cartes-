@@ -203,3 +203,10 @@ input:not([type]), input[type="text"] { font: inherit; background: #10151c; colo
 @media (prefers-reduced-motion: reduce) { .recap-card, .recap-icon { animation: none; } }
 @media (max-width: 500px) { .recap-stats { grid-template-columns: repeat(2, 1fr); } }
 .seat.eliminated { opacity: .4; }
+
+.pk-modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .6rem; margin: .6rem 0 .9rem; }
+.pk-mode { display: flex; gap: .6rem; align-items: flex-start; border: 2px solid #3a4652; border-radius: 12px; padding: .7rem .8rem; cursor: pointer; background: rgba(0,0,0,.2); }
+.pk-mode:has(input:checked) { border-color: #4fc3f7; background: rgba(79,195,247,.08); }
+.pk-mode.real:has(input:checked) { border-color: #f2c14e; background: rgba(242,193,78,.08); }
+.pk-mode span { display: flex; flex-direction: column; gap: .2rem; }
+.pk-mode small { opacity: .85; line-height: 1.4; }

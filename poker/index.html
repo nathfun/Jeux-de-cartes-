@@ -26,6 +26,10 @@
       <section id="setup" class="panel setup">
         <h2>Partie solo contre des bots</h2>
         <p class="muted">Texas Hold'em No-Limit, façon tournoi : les blindes montent, un joueur sans jetons est éliminé, le dernier en jeu gagne. Le coach t'explique chaque décision : force de ta main, position, outs, cotes du pot.</p>
+        <div class="pk-modes" role="radiogroup" aria-label="Mode de jeu">
+          <label class="pk-mode"><input type="radio" name="pk-mode" value="train" checked><span><b>🎓 Entraînement</b><small>Gratuit, coach activé. Ne compte pas pour les niveaux, défis et succès.</small></span></label>
+          <label class="pk-mode real"><input type="radio" name="pk-mode" value="real"><span><b>💰 Tournoi réel</b><small>Droit d'entrée pris sur ta banque, sans coach. La cagnotte revient aux mieux classés.</small></span></label>
+        </div>
         <div class="setup-grid">
           <label>Adversaires
             <select id="set-opponents">
@@ -57,7 +61,6 @@
           </label>
           <label id="buyin-row" hidden>Droit d'entrée (portefeuille)
             <select id="set-buyin">
-              <option value="0">Gratuit (pour s'entraîner)</option>
               <option value="100">100 €</option>
               <option value="500" selected>500 €</option>
               <option value="1000">1 000 €</option>
@@ -82,7 +85,6 @@
             </select>
           </label>
         </div>
-        <label class="check"><input type="checkbox" id="set-coach" checked> Activer le coach (retour après chaque décision)</label>
         <p id="buyin-info" class="small muted" hidden></p>
         <button id="start" class="primary big">Commencer la partie</button>
         <p id="buyin-note" class="small warn" role="status"></p>

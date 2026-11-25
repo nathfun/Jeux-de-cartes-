@@ -764,10 +764,11 @@
     $('multi-view').hidden = mode !== 'multi';
     $('pm-chat-panel').hidden = mode !== 'multi' || !tableId;
     if (mode === 'solo') {
-      const st = PokerApp.state;
-      document.body.classList.remove('no-coach');
+      const st = PokerApp.state, c = PokerApp.cfg;
+      document.body.classList.toggle('no-coach', !!(st && c && !c.coach));
+      if (window.Casino) Casino.training = !!(st && c && !c.real);
       $('my-stack').textContent = st ? st.seats[0].stack : '–';
-    } else start();
+    } else { if (window.Casino) Casino.training = false; start(); }
   }
   $('tab-solo').addEventListener('click', () => setMode('solo'));
   $('tab-multi').addEventListener('click', () => setMode('multi'));

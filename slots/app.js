@@ -8,14 +8,21 @@
   const fmt = (n) => (Math.round(n * 100) / 100).toLocaleString('fr-FR');
   const icon = (id) => E.byId[id].icon;
 
-  // Portefeuille : commun au casino si profile.js est chargé, sinon local à la page
-  let localWallet = 1000;
-  const wallet = () => (window.Casino ? Casino.wallet() : localWallet);
-  const addWallet = (v) => { if (window.Casino) Casino.addWallet(v); else localWallet += v; showWallet(); };
-  function showWallet() { $('wallet').textContent = fmt(wallet()); }
+  // Argent sur la table : entraînement (crédit illimité) ou partie réelle (somme apportée de la banque)
+  const wallet = () => S.stack;
+  const addWallet = (v) => {
+    S.stack = Math.round((S.stack + v) * 100) / 100;
+    if (S.mode === 'real' && window.Casino) Casino.setStack('slots', S.stack);
+    showWallet();
+  };
+  function showWallet() {
+    if (!S.mode) { $('bank-label').textContent = 'Banque'; $('wallet').textContent = window.Casino ? fmt(Casino.wallet()) : '–'; return; }
+    $('bank-label').textContent = S.mode === 'train' ? 'Crédit d\'entraînement' : 'Sur la table';
+    $('wallet').textContent = fmt(S.stack);
+  }
 
   const S = {
-    betIndex: 1, spinning: false, free: 0, freeBet: 0, freeWon: 0, auto: 0,
+    mode: null, stack: 0, start: 0, betIndex: 1, spinning: false, free: 0, freeBet: 0, freeWon: 0, auto: 0,
     grid: E.spinGrid(), spins: 0, staked: 0, won: 0, best: 0,
   };
   const bet = () => BETS[S.betIndex];
@@ -127,9 +134,12 @@
     if (S.spinning) return;
     const free = S.free > 0;
     const b = free ? S.freeBet : bet();
+    if (!S.mode) return;
+    if (!free && wallet() < b && S.mode === 'train') { S.stack = S.start = window.Casino ? Casino.TRAIN_BANK : 10000; showWallet(); }
     if (!free && wallet() < b) {
-      $('win-text').textContent = wallet() < BETS[0] ? 'Portefeuille vide : récupère l\'aide de secours sur l\'accueil.' : 'Mise trop élevée pour ton portefeuille.';
+      $('win-text').textContent = wallet() < BETS[0] ? 'Plus rien sur la table : la partie est perdue.' : 'Mise trop élevée pour ce qui reste sur la table : baisse la mise.';
       stopAuto();
+      if (wallet() < BETS[0]) setTimeout(() => endSession(true), 1500);
       return;
     }
     S.spinning = true;
@@ -195,6 +205,8 @@
   function renderControls() {
     const locked = S.spinning || S.free > 0;
     $('spin').disabled = locked;
+    $('cashout').disabled = locked || S.auto > 0;
+    $('cashout').textContent = S.mode === 'train' ? 'Terminer' : 'Encaisser';
     $('bet-minus').disabled = locked || S.auto > 0 || S.betIndex === 0;
     $('bet-plus').disabled = locked || S.auto > 0 || S.betIndex === BETS.length - 1;
     $('bet').textContent = S.free > 0 ? S.freeBet : bet();
@@ -244,18 +256,71 @@
   });
   const aides = $('opt-aides');
   try { aides.checked = localStorage.getItem('slots-aides') !== '0'; } catch (e) { /* ignore */ }
-  const applyAides = () => { document.body.classList.toggle('no-aides', !aides.checked); try { localStorage.setItem('slots-aides', aides.checked ? '1' : '0'); } catch (e) { /* ignore */ } };
+  const applyAides = () => { document.body.classList.toggle('no-aides', !aides.checked || S.mode === 'real'); try { localStorage.setItem('slots-aides', aides.checked ? '1' : '0'); } catch (e) { /* ignore */ } };
   aides.addEventListener('change', applyAides);
   applyAides();
   try { $('turbo').checked = localStorage.getItem('slots-turbo') === '1'; } catch (e) { /* ignore */ }
   $('turbo').addEventListener('change', () => { try { localStorage.setItem('slots-turbo', $('turbo').checked ? '1' : '0'); } catch (e) { /* ignore */ } });
 
+  // ---------- Début et fin de partie ----------
+  function startGame(mode, amount, resumed) {
+    S.mode = mode;
+    if (window.Casino) Casino.training = mode === 'train';
+    S.stack = amount;
+    S.start = mode === 'real' && window.Casino && Casino.session('slots') ? Casino.session('slots').start : amount;
+    S.spins = 0; S.staked = 0; S.won = 0; S.best = 0;
+    $('setup').hidden = true;
+    $('cabinet').hidden = false;
+    const badge = $('mode-badge');
+    badge.hidden = false;
+    badge.className = 'cm-badge mode-line' + (mode === 'real' ? ' real' : '');
+    badge.textContent = mode === 'real' ? '💰 Partie réelle · sans aides · « Encaisser » ramène tes gains à la banque' : '🎓 Entraînement · crédit illimité · ne compte pas pour la progression';
+    $('aides-panel').hidden = mode !== 'train';
+    document.body.classList.toggle('no-aides', mode !== 'train' || !aides.checked);
+    $('win-text').textContent = resumed ? 'Partie reprise : ' + fmt(S.stack) + ' € sur la table.' : 'Bonne chance !';
+    showWallet(); renderStats(); renderControls();
+  }
+  function endSession(broke) {
+    if (S.spinning || S.free > 0) return;
+    stopAuto();
+    let msg;
+    if (S.mode === 'real' && window.Casino) {
+      const r = Casino.cashOut('slots');
+      const diff = r ? r.diff : 0;
+      msg = broke ? 'Tout est perdu : les ' + fmt(S.start) + ' € apportés sont partis.' :
+        'Tu encaisses ' + fmt(r ? r.end : S.stack) + ' € (' + (diff >= 0 ? '+' : '−') + fmt(Math.abs(diff)) + ' € par rapport à ta mise de départ).';
+      Casino.toast(broke ? 'Partie perdue' : 'Encaissé !', msg, broke ? '💸' : '💰', diff > 0 ? 'gold' : '');
+    } else msg = 'Entraînement terminé : ' + S.spins + ' tours, retour réel ' + (S.staked ? Math.round(S.won / S.staked * 100) : 0) + ' %.';
+    S.mode = null;
+    if (window.Casino) Casino.training = false;
+    clearWins();
+    $('cabinet').hidden = true;
+    $('mode-badge').hidden = true;
+    $('setup').hidden = false;
+    $('aides-panel').hidden = false;
+    renderPicker(msg);
+    showWallet();
+  }
+  function renderPicker(msg) {
+    const box = $('mode-picker');
+    if (!window.Casino) { startGame('train', 10000); return; }
+    Casino.modePicker(box, { game: 'slots', min: BETS[0], suggest: 500, onStart: startGame });
+    if (msg) { const p = document.createElement('p'); p.className = 'end-msg'; p.textContent = msg; box.prepend(p); }
+  }
+  $('cashout').addEventListener('click', () => {
+    if ($('cashout').dataset.confirm) { delete $('cashout').dataset.confirm; endSession(false); return; }
+    $('cashout').dataset.confirm = '1';
+    $('cashout').textContent = S.mode === 'train' ? 'Sûr ?' : 'Encaisser ' + fmt(S.stack) + ' € ?';
+    setTimeout(() => { delete $('cashout').dataset.confirm; renderControls(); }, 3000);
+  });
+
   buildReels();
+  renderPicker();
   renderPaytable();
   renderControls();
   renderStats();
   showWallet();
-  if (window.Casino) Casino.onChange(showWallet);
+  if (window.Casino) Casino.onChange(() => { if (!S.mode) showWallet(); });
   $('explain').textContent = '';
   window.Slots = { get state() { return S; }, spin };
 })();

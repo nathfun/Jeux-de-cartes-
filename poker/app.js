@@ -42,10 +42,13 @@
     const n = parseInt($('set-opponents').value, 10);
     const styleSel = $('set-style').value;
     // Droit d'entrée prélevé sur le portefeuille du Casino ; les mieux classés se partagent la cagnotte
-    const buyIn = window.Casino ? parseInt($('set-buyin').value, 10) || 0 : 0;
-    if (buyIn && Casino.wallet() < buyIn) { $('buyin-note').textContent = 'Portefeuille insuffisant pour ce droit d\'entrée (' + Casino.wallet().toLocaleString('fr-FR') + ' €).'; return; }
+    // Entraînement : gratuit avec coach ; tournoi réel : droit d'entrée, sans coach, compte pour la progression
+    const real = !!window.Casino && pkMode() === 'real';
+    const buyIn = real ? parseInt($('set-buyin').value, 10) || 0 : 0;
+    if (buyIn && Casino.wallet() < buyIn) { $('buyin-note').textContent = 'Ta banque est insuffisante pour ce droit d\'entrée (' + Casino.wallet().toLocaleString('fr-FR') + ' €). Passe par la banque du temps sur l\'accueil.'; return; }
     if (buyIn) Casino.addWallet(-buyIn);
-    cfg = { sb, bb, stack: bb * parseInt($('set-stack').value, 10), coach: $('set-coach').checked, timer: parseInt($('set-timer').value, 10) || 0,
+    if (window.Casino) Casino.training = !real;
+    cfg = { sb, bb, stack: bb * parseInt($('set-stack').value, 10), coach: !real, real, timer: parseInt($('set-timer').value, 10) || 0,
       rule: $('set-blindup').value, lv: {}, buyIn, players: n + 1 };
     T = Tourney.createStats(Date.now());
     document.body.classList.toggle('no-coach', !cfg.coach);
@@ -593,17 +596,21 @@
 
   // ---------- Événements ----------
   $('start').addEventListener('click', start);
+  function pkMode() { const r = document.querySelector('input[name="pk-mode"]:checked'); return r ? r.value : 'train'; }
   // Droit d'entrée et cagnotte (avec le portefeuille du Casino)
   if (window.Casino) {
-    $('buyin-row').hidden = false;
-    $('buyin-info').hidden = false;
     const info = () => {
+      const real = pkMode() === 'real';
+      $('buyin-row').hidden = !real;
+      $('buyin-info').hidden = !real;
+      $('start').textContent = real ? 'Payer et commencer le tournoi' : 'Commencer l\'entraînement';
       const b = parseInt($('set-buyin').value, 10) || 0, n = parseInt($('set-opponents').value, 10) + 1;
       if (!b) { $('buyin-info').textContent = 'Partie gratuite : pas de cagnotte. Portefeuille : ' + Casino.wallet().toLocaleString('fr-FR') + ' €.'; return; }
       const pool = b * n;
       $('buyin-info').textContent = 'Cagnotte : ' + pool.toLocaleString('fr-FR') + ' € — ' + (n <= 3 ? 'le vainqueur remporte tout.' : '1er ' + Math.round(pool * 0.65).toLocaleString('fr-FR') + ' €, 2e ' + Math.round(pool * 0.25).toLocaleString('fr-FR') + ' €, 3e ' + Math.round(pool * 0.1).toLocaleString('fr-FR') + ' €.') + ' Portefeuille : ' + Casino.wallet().toLocaleString('fr-FR') + ' €.';
     };
     ['set-buyin', 'set-opponents'].forEach((id) => $(id).addEventListener('change', info));
+    document.querySelectorAll('input[name="pk-mode"]').forEach((r) => r.addEventListener('change', info));
     Casino.onChange(info);
     info();
   }
@@ -661,6 +668,7 @@
   // Partagé avec le mode « Entre amis » (multi.js) et les tests
   window.PokerApp = {
     get state() { return st; },
+    get cfg() { return cfg; },
     record: (res, action, street) => record(res, action, street),
     showHintRes,
     renderStats,
