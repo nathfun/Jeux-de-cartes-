@@ -27,16 +27,12 @@
         <h2>Roulette européenne</h2>
         <p class="muted">Un seul zéro, règles françaises : si le 0 sort, les chances simples (rouge, noir, pair, impair, manque, passe) ne perdent que la moitié de la mise. Pose tes jetons, le compte à rebours démarre, puis « Rien ne va plus » !</p>
         <div class="setup-grid">
-          <label id="set-bank-row">Solde de départ
-            <select id="set-bank"><option value="500">500 €</option><option value="1000" selected>1 000 €</option><option value="5000">5 000 €</option></select>
-          </label>
-          <div id="wallet-row" class="wallet-info" hidden>Tu joues avec ton portefeuille du Casino : <b id="wallet-amount"></b></div>
           <label>Temps pour miser
             <select id="set-bettime"><option value="15">15 secondes</option><option value="25" selected>25 secondes</option><option value="40">40 secondes</option></select>
           </label>
         </div>
-        <label class="check"><input type="checkbox" id="set-coach" checked> Activer les aides (probabilités, gains, conseils)</label>
-        <button id="start" class="primary big">Ouvrir la table</button>
+        <div id="mode-picker"></div>
+        <button id="start" class="primary big" hidden>Relever le défi</button>
         <p id="wallet-note" class="small warn" role="status"></p>
       </section>
 
@@ -81,6 +77,7 @@
 
       <!-- Table de jeu (solo et entre amis) -->
       <section id="game" hidden>
+        <div id="mode-badge" class="cm-badge mode-line" hidden></div>
         <div class="stage">
           <div class="wheel-box">
             <canvas id="wheel" aria-label="Roue de la roulette"></canvas>

@@ -216,3 +216,4 @@ input:not([type]), input[type="text"] { font: inherit; background: #10151c; colo
 .defi-banner { border-color: var(--gold); margin-bottom: 1rem; }
 .defi-banner b { color: var(--gold); }
 .defi-banner p { margin: .3rem 0 0; }
+.mode-line { display: block; width: fit-content; margin: 0 auto .5rem; }

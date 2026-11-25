@@ -352,7 +352,7 @@
     }
     tableId = id; st = null; myLog = []; lastBets = {}; T = UI.createStats(); animatedSpin = null; recordedSpin = null; saidBets = null;
     $('rm-note').textContent = '';
-    $('rm-lobby').hidden = true; $('rm-head').hidden = false; $('game').hidden = false; $('chat-panel').hidden = false;
+    $('rm-lobby').hidden = true; $('rm-head').hidden = false; $('game').hidden = false; $('mode-badge').hidden = true; $('chat-panel').hidden = false;
     UI.setHandlers(handlers);
     UI.renderStats(T);
     setUrl(id);
@@ -437,6 +437,8 @@
       $('chat-panel').hidden = true;
       RouletteSolo.activate();
     } else {
+      if (window.Casino) Casino.training = false; // entre amis : ça compte pour la progression
+      $('mode-badge').hidden = true;
       $('setup').hidden = true;
       $('game').hidden = !tableId;
       $('chat-panel').hidden = !tableId;

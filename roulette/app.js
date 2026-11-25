@@ -455,17 +455,23 @@
   let soloTimer = null;
 
   let defi = null; // défi entre amis en cours : { code, meta, rng }
-  function startSolo() {
-    // Avec le profil du Casino, on joue avec le portefeuille commun (sauf en défi : jetons de défi)
-    const bank = defi ? defi.meta.bank : window.Casino ? Casino.wallet() : parseInt($('set-bank').value, 10);
-    if (bank < 1) { $('wallet-note').textContent = 'Ton portefeuille est vide : récupère ton bonus du jour ou la recharge de secours sur l\'accueil.'; return; }
+  // mode : 'train' (crédit illimité + aides), 'real' (somme apportée de la banque, sans aides) ou 'defi'
+  function startSolo(mode, amount, resumed) {
+    mode = defi ? 'defi' : mode || 'train';
+    if (window.Casino) Casino.training = mode === 'train';
+    const bank = defi ? defi.meta.bank : amount || 10000;
+    const start = mode === 'real' && window.Casino && Casino.session('roulette') ? Casino.session('roulette').start : bank;
     S = {
-      bankroll: bank, start: bank, betTime: parseInt($('set-bettime').value, 10), coach: $('set-coach').checked,
+      mode, bankroll: bank, start, betTime: parseInt($('set-bettime').value, 10), coach: mode === 'train',
       bets: {}, log: [], lastBets: {}, history: [], phase: 'waiting', deadline: null, result: null,
       T: createStats(), startedAt: now(), maxBank: bank, defi,
     };
     applyAides(S.coach);
-    $('aides-row').hidden = false;
+    const badge = $('mode-badge');
+    badge.hidden = mode === 'defi';
+    badge.className = 'cm-badge mode-line' + (mode === 'real' ? ' real' : '');
+    badge.textContent = mode === 'real' ? '💰 Partie réelle · sans aides · « Encaisser » ramène tes jetons à la banque' : '🎓 Entraînement · crédit illimité · ne compte pas pour la progression';
+    $('aides-row').hidden = mode !== 'train'; // en partie réelle : pas d'aides, on teste ce qu'on a appris
     $('setup').hidden = true;
     $('game').hidden = false;
     ensureWheel();
@@ -492,7 +498,8 @@
   }
   function soloRender() {
     if (!S) return;
-    if (window.Casino && S.phase !== 'over' && !S.defi) Casino.setWallet(S.bankroll); // le solde suit le portefeuille commun
+    // partie réelle : la somme sur la table (mises pas encore jouées comprises) est sauvegardée en continu
+    if (window.Casino && S.phase !== 'over' && S.mode === 'real') Casino.setStack('roulette', S.bankroll + (S.phase === 'spinning' ? 0 : S.log.reduce((a, l) => a + l.amount, 0)));
     render(soloView());
   }
 
@@ -563,7 +570,7 @@
       S.bets = {}; S.log = [];
       soloRender();
       if (S.defi) { endDefi(); return; }
-      if (window.Casino) Casino.track('rl-cashout', { diff: S.bankroll - S.start });
+      if (window.Casino && S.mode === 'real') { Casino.cashOut('roulette'); Casino.track('rl-cashout', { diff: S.bankroll - S.start }); }
       soloRecap(false, true);
     },
   };
@@ -621,7 +628,8 @@
     S.phase = 'waiting'; S.deadline = null; S.result = null;
     ensureWheel().clear();
     if (S.defi && (S.T.spins >= S.defi.meta.rounds || S.bankroll < 1)) { endDefi(); return; }
-    if (S.bankroll < 1) { soloRender(); soloRecap(true); return; }
+    if (S.bankroll < 1 && S.mode === 'train') { S.bankroll = S.start = window.Casino ? Casino.TRAIN_BANK : 10000; coachRound(['Entraînement : ton crédit est rechargé à ' + fmt(S.bankroll) + ' €.'], 'hint'); }
+    if (S.bankroll < 1) { if (window.Casino && S.mode === 'real') Casino.cashOut('roulette'); soloRender(); soloRecap(true); return; }
     if (window.Sfx) Sfx.say('Faites vos jeux');
     soloRender();
   }
@@ -638,6 +646,7 @@
     S = null;
     $('game').hidden = true; $('setup').hidden = false; $('defi-banner').hidden = true;
     history.replaceState(null, '', location.pathname);
+    renderPicker();
   }
 
   function soloRecap(broke, cashout) {
@@ -648,18 +657,24 @@
     const diff = S.bankroll - S.start;
     showRecap({
       won, icon: cashout ? (won ? '💰' : '🎡') : undefined,
-      title: broke ? 'Solde épuisé' : cashout ? 'Tu encaisses ' + fmt(S.bankroll) + ' €' : won ? 'Bravo, tu repars gagnant !' : 'Fin de la partie',
+      title: broke ? 'Tout est perdu' : cashout ? (S.mode === 'train' ? 'Fin de l\'entraînement' : 'Tu encaisses ' + fmt(S.bankroll) + ' €') : won ? 'Bravo, tu repars gagnant !' : 'Fin de la partie',
       subtitle: diff > 0 ? 'Tu repars avec ' + fmt(diff) + ' € de plus qu\'au départ !' : diff < 0 ? 'Tu repars avec ' + fmt(-diff) + ' € de moins qu\'au départ.' : 'Tu repars avec ton solde de départ.',
       stats: bilanStats(T, S.start, S.bankroll),
       ranking: [{ name: 'Toi', me: true, bankroll: S.bankroll, biggestWin: T.biggestWin, wagered: T.wagered }],
       rankTitle: 'Ton bilan',
       againLabel: 'Nouvelle partie', closeLabel: 'Fermer',
-      onAgain: () => { S = null; $('game').hidden = true; $('setup').hidden = false; },
-      onClose: () => { S = null; $('game').hidden = true; $('setup').hidden = false; },
+      onAgain: backToSetup,
+      onClose: backToSetup,
     });
   }
 
-  $('start').addEventListener('click', startSolo);
+  function backToSetup() { S = null; $('game').hidden = true; $('setup').hidden = false; renderPicker(); }
+  function renderPicker() {
+    if (!window.Casino || defi) { $('mode-picker').hidden = true; $('start').hidden = false; return; }
+    $('mode-picker').hidden = false;
+    Casino.modePicker($('mode-picker'), { game: 'roulette', min: 1, suggest: 500, onStart: startSolo });
+  }
+  $('start').addEventListener('click', () => startSolo(defi ? 'defi' : 'train'));
   // Lien de défi (?defi=CODE)
   const defiCode = new URLSearchParams(location.search).get('defi');
   if (defiCode && window.Social) {
@@ -669,23 +684,18 @@
       $('defi-banner').hidden = false;
       $('defi-text').textContent = 'Défi de ' + ch.meta.by + ' : ' + ch.meta.rounds + ' tours avec ' + ch.meta.bank + ' € de jetons de défi. Tout le monde reçoit les mêmes numéros : fais le meilleur solde final ! (Ton portefeuille n\'est pas touché.)';
       $('start').textContent = 'Relever le défi';
+      renderPicker();
     });
   }
-  // Portefeuille commun : on remplace le choix du solde de départ
-  if (window.Casino) {
-    $('set-bank-row').hidden = true;
-    $('wallet-row').hidden = false;
-    const showWallet = () => { $('wallet-amount').textContent = fmt(Casino.wallet()) + ' €'; };
-    showWallet();
-    Casino.onChange(showWallet);
-  }
+  renderPicker();
   window.RouletteSolo = {
     get state() { return S; },
     // retour sur l'onglet Solo : on reprend la partie en cours ou on affiche les réglages
     activate() {
+      if (window.Casino) Casino.training = !!S && S.mode === 'train';
       document.body.classList.toggle('no-coach', !!S && !S.coach);
       $('opt-info').checked = !S || S.coach;
-      $('aides-row').hidden = false;
+      $('aides-row').hidden = !!S && S.mode !== 'train';
       if (S) { $('setup').hidden = true; $('game').hidden = false; setHandlers(soloHandlers); soloRender(); renderStats(S.T); }
       else { $('setup').hidden = false; $('game').hidden = true; }
     },

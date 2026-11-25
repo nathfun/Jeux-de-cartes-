@@ -87,7 +87,7 @@
     return {
       pseudo, avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)], wallet: 5000, xp: 0,
       totals: { hands: 0, wins: 0, bjHands: 0, bjBlackjacks: 0, pkHands: 0, rlSpins: 0, slSpins: 0, biggestWin: 0, challenges: 0 },
-      achievements: {}, daily: null, bonus: { last: null, streak: 0 }, rescueAt: 0,
+      achievements: {}, daily: null, bonus: { last: null, streak: 0 }, rescueAt: 0, sessions: {}, timebank: null,
       equipped: { felt: 'vert', back: 'bleu' }, settings: { music: false, vibrate: true }, createdAt: Date.now(),
     };
   }
@@ -97,6 +97,7 @@
     try { const raw = localStorage.getItem(KEY); if (raw) P = Object.assign(fresh(), JSON.parse(raw)); } catch (e) { /* ignore */ }
     if (!P) P = fresh();
     P.totals = Object.assign(fresh().totals, P.totals);
+    if (!P.sessions) P.sessions = {};
     return P;
   }
   function save() {
@@ -225,6 +226,7 @@
    *  multi { game }
    */
   function track(type, d) {
+    if (Casino.training) return; // mode Entraînement : rien ne compte (ni XP, ni défis, ni succès)
     load();
     d = d || {};
     const T = P.totals;
@@ -272,6 +274,78 @@
     });
     checkWallet();
     save();
+  }
+
+
+  // ---------- Banque du temps ----------
+  const TIME_PACKS = [
+    { id: 'cafe', icon: '☕', name: 'Pause café', minutes: 5, amount: 250 },
+    { id: 'repas', icon: '🍔', name: 'Pause repas', minutes: 30, amount: 1000 },
+    { id: 'soiree', icon: '🌙', name: 'Soirée', minutes: 120, amount: 3000 },
+    { id: 'nuit', icon: '🛌', name: 'Nuit complète', minutes: 480, amount: 8000 },
+  ];
+
+  // ---------- Choix du mode avant une partie solo ----------
+  /**
+   * Affiche dans `box` le choix entre Entraînement (crédit illimité, aides) et Partie réelle
+   * (somme apportée de la banque, sans aides, compte pour la progression).
+   * opts : { game, min, suggest, realNote, onStart(mode, amount, resumed) }
+   */
+  function modePicker(box, opts) {
+    injectStyle();
+    load();
+    const fmtE = (n) => Math.round(n).toLocaleString('fr-FR') + ' €';
+    box.innerHTML = '';
+    box.className = 'cm-picker';
+    const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+    const train = mk('div', 'cm-card cm-train');
+    train.append(mk('div', 'cm-title', '🎓 Entraînement'),
+      mk('p', '', 'Crédit illimité et toutes les aides pour apprendre. Ne compte pas pour les niveaux, les défis et les succès.'));
+    const tb = mk('button', 'cm-btn', 'S\'entraîner');
+    tb.type = 'button';
+    tb.onclick = () => { Casino.training = true; opts.onStart('train', Casino.TRAIN_BANK, false); };
+    train.appendChild(tb);
+
+    const real = mk('div', 'cm-card cm-real');
+    real.append(mk('div', 'cm-title', '💰 Partie réelle'));
+    const cur = P.sessions[opts.game];
+    if (cur) {
+      real.append(mk('p', '', 'Tu as une partie en cours : ' + fmtE(cur.stack) + ' sur la table (apporté : ' + fmtE(cur.start) + ').'));
+      const rb = mk('button', 'cm-btn gold', 'Reprendre la partie');
+      rb.type = 'button';
+      rb.onclick = () => { Casino.training = false; opts.onStart('real', cur.stack, true); };
+      real.appendChild(rb);
+    } else {
+      real.append(mk('p', '', 'Tu apportes une somme de ta banque, sans aides : c\'est là que tu vois si tu as bien appris. Gains, XP, défis et succès comptent. Tu encaisses quand tu veux ; si tu perds tout, c\'est perdu.' + (opts.realNote ? ' ' + opts.realNote : '')));
+      const min = opts.min || 1;
+      const wal = P.wallet;
+      const row = mk('div', 'cm-amount');
+      const lab = mk('label', '', 'Somme apportée ');
+      const inp = document.createElement('input');
+      inp.type = 'number'; inp.min = min; inp.max = Math.max(min, Math.floor(wal)); inp.step = 1;
+      inp.value = Math.max(min, Math.min(Math.floor(wal), opts.suggest || 500));
+      lab.appendChild(inp);
+      row.append(lab, mk('span', 'cm-bank', 'Banque : ' + fmtE(wal)));
+      const quick = mk('div', 'cm-quick');
+      [100, 500, 1000, 2500].filter((v) => v >= min && v <= wal).forEach((v) => {
+        const q = mk('button', 'cm-q', fmtE(v)); q.type = 'button'; q.onclick = () => { inp.value = v; }; quick.appendChild(q);
+      });
+      if (wal >= min) { const q = mk('button', 'cm-q', 'Tout'); q.type = 'button'; q.onclick = () => { inp.value = Math.floor(wal); }; quick.appendChild(q); }
+      const note = mk('p', 'cm-note');
+      const go = mk('button', 'cm-btn gold', 'Jouer pour de vrai');
+      go.type = 'button';
+      go.onclick = () => {
+        const v = Math.floor(Number(inp.value));
+        if (!(v >= min)) { note.textContent = 'Il faut apporter au moins ' + fmtE(min) + '.'; return; }
+        if (v > P.wallet) { note.textContent = 'Ta banque ne contient que ' + fmtE(P.wallet) + '. Gagne du temps contre de l\'argent sur l\'accueil (banque du temps).'; return; }
+        if (!Casino.startSession(opts.game, v)) return;
+        Casino.training = false;
+        opts.onStart('real', v, false);
+      };
+      if (wal < min) { go.disabled = true; note.textContent = 'Ta banque est trop basse (' + fmtE(wal) + '). Récupère ton bonus du jour ou passe par la banque du temps sur l\'accueil.'; }
+      real.append(row, quick, go, note);
+    }
+    box.append(train, real);
   }
 
   // ---------- API ----------
@@ -349,6 +423,72 @@
       applyCosmetics();
       return true;
     },
+
+    // ---------- Parties réelles : on apporte une somme, on encaisse quand on veut ----------
+    training: false,
+    TRAIN_BANK: 10000,
+    GAMES: { blackjack: 'Blackjack', poker: 'Poker', roulette: 'Roulette', slots: 'Machine à sous' },
+    session(game) { return load().sessions[game] || null; },
+    sessions() { return Object.assign({}, load().sessions); },
+    startSession(game, amount) {
+      load();
+      amount = Math.floor(amount);
+      if (P.sessions[game]) return P.sessions[game];
+      if (!(amount > 0) || amount > P.wallet) return null;
+      P.wallet -= amount;
+      P.sessions[game] = { stack: amount, start: amount, at: Date.now() };
+      save();
+      return P.sessions[game];
+    },
+    setStack(game, v) {
+      load();
+      const ss = P.sessions[game];
+      if (!ss) return;
+      ss.stack = Math.max(0, Math.round(v * 100) / 100);
+      save();
+    },
+    // Fin de partie : la somme sur la table revient à la banque (rien si tout a été perdu)
+    cashOut(game) {
+      load();
+      const ss = P.sessions[game];
+      if (!ss) return null;
+      delete P.sessions[game];
+      P.wallet += ss.stack;
+      const diff = Math.round((ss.stack - ss.start) * 100) / 100;
+      if (diff > 0) { P.totals.cashouts = (P.totals.cashouts || 0) + 1; addXP(Math.min(80, 10 + diff / 50)); }
+      checkWallet();
+      save();
+      return { start: ss.start, end: ss.stack, diff };
+    },
+    modePicker,
+    // ---------- Banque du temps : on « achète » de l'argent avec du temps d'attente ----------
+    TIME_PACKS,
+    timebank() {
+      load();
+      const t = P.timebank;
+      if (!t) return null;
+      const pack = TIME_PACKS.find((x) => x.id === t.pack);
+      return { pack, start: t.start, end: t.end, left: Math.max(0, t.end - Date.now()), ready: Date.now() >= t.end };
+    },
+    startTime(id) {
+      load();
+      const pack = TIME_PACKS.find((x) => x.id === id);
+      if (!pack || P.timebank) return false;
+      P.timebank = { pack: id, start: Date.now(), end: Date.now() + pack.minutes * 60000 };
+      save();
+      return true;
+    },
+    claimTime() {
+      const t = Casino.timebank();
+      if (!t || !t.ready) return 0;
+      P.timebank = null;
+      P.wallet += t.pack.amount;
+      checkWallet();
+      save();
+      vibrate([30, 30, 60]);
+      return t.pack.amount;
+    },
+    cancelTime() { load(); P.timebank = null; save(); },
     track, toast, bigWin, vibrate, unlock, applyCosmetics,
   };
 
@@ -387,7 +527,23 @@
 @keyframes cb-zoom { from { transform: scale(0) rotate(-8deg); } to { transform: none; } }
 @keyframes cb-pulse { 50% { transform: scale(1.06); } }
 @keyframes cb-fall { to { transform: translateY(110vh) rotate(540deg); } }
-@media (prefers-reduced-motion: reduce) { .cb-coin { display: none; } .cb-title { animation: none; } }`;
+@media (prefers-reduced-motion: reduce) { .cb-coin { display: none; } .cb-title { animation: none; } }
+.cm-picker { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: .8rem; margin: .8rem 0; }
+.cm-card { background: rgba(0,0,0,.25); border: 2px solid #3a4652; border-radius: 14px; padding: .9rem 1rem; display: flex; flex-direction: column; gap: .5rem; }
+.cm-card p { margin: 0; font-size: .9rem; line-height: 1.45; opacity: .9; }
+.cm-real { border-color: #f2c14e; }
+.cm-title { font-weight: 800; font-size: 1.15rem; }
+.cm-btn { font: inherit; font-weight: 700; border-radius: 10px; padding: .6rem 1rem; border: 0; cursor: pointer; background: #4fc3f7; color: #06202c; margin-top: auto; }
+.cm-btn.gold { background: #f2c14e; color: #2a1d00; }
+.cm-btn:disabled { opacity: .5; cursor: not-allowed; }
+.cm-amount { display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
+.cm-amount input { width: 7.5em; font: inherit; padding: .35rem .5rem; border-radius: 8px; border: 1px solid #556; background: #0d1117; color: #fff; }
+.cm-bank { font-size: .85rem; opacity: .8; }
+.cm-quick { display: flex; gap: .35rem; flex-wrap: wrap; }
+.cm-q { font: inherit; font-size: .82rem; padding: .25rem .55rem; border-radius: 999px; border: 1px solid #f2c14e; background: transparent; color: #f2c14e; cursor: pointer; }
+.cm-note { color: #ffb4a8; font-size: .85rem; min-height: 0; }
+.cm-badge { display: inline-block; font-size: .75rem; font-weight: 700; padding: .15rem .55rem; border-radius: 999px; background: #4fc3f7; color: #06202c; vertical-align: middle; }
+.cm-badge.real { background: #f2c14e; color: #2a1d00; }`;
     document.head.appendChild(s);
   }
 
