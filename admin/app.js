@@ -13,7 +13,13 @@
   const get = async (p) => (await D.get(ref(p))).val();
   const me = f.auth.currentUser.uid;
   $('my-uid').textContent = me;
-  const isAdmin = await get('admins/' + me).catch(() => null);
+  // Compte du propriétaire du casino : il s'inscrit tout seul comme administrateur à sa première visite
+  const OWNER = 'pJ5ScZ8Y3QfdgosmUdve22LmSmt1';
+  let isAdmin = await get('admins/' + me).catch(() => null);
+  if (isAdmin !== true && me === OWNER) {
+    try { await D.set(ref('admins/' + me), true); isAdmin = true; }
+    catch (e) { $('denied').insertAdjacentHTML('beforeend', '<p style="color:#f85149">Inscription automatique refusée : recolle database.rules.json dans Firebase (Règles → Publier) puis recharge.</p>'); }
+  }
   if (isAdmin !== true) { $('denied').hidden = false; return; }
   $('list-panel').hidden = false;
 

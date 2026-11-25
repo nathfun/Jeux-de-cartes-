@@ -214,7 +214,8 @@
     "admins": {
       ".read": "auth != null",
       "$uid": {
-        ".write": false
+        ".write": "auth != null && auth.uid === 'pJ5ScZ8Y3QfdgosmUdve22LmSmt1' && $uid === auth.uid",
+        ".validate": "newData.val() === true"
       }
     }
   }
