@@ -41,8 +41,12 @@
     const [sb, bb] = $('set-blinds').value.split('/').map(Number);
     const n = parseInt($('set-opponents').value, 10);
     const styleSel = $('set-style').value;
+    // Droit d'entrée prélevé sur le portefeuille du Casino ; les mieux classés se partagent la cagnotte
+    const buyIn = window.Casino ? parseInt($('set-buyin').value, 10) || 0 : 0;
+    if (buyIn && Casino.wallet() < buyIn) { $('buyin-note').textContent = 'Portefeuille insuffisant pour ce droit d\'entrée (' + Casino.wallet().toLocaleString('fr-FR') + ' €).'; return; }
+    if (buyIn) Casino.addWallet(-buyIn);
     cfg = { sb, bb, stack: bb * parseInt($('set-stack').value, 10), coach: $('set-coach').checked, timer: parseInt($('set-timer').value, 10) || 0,
-      rule: $('set-blindup').value, lv: {} };
+      rule: $('set-blindup').value, lv: {}, buyIn, players: n + 1 };
     T = Tourney.createStats(Date.now());
     document.body.classList.toggle('no-coach', !cfg.coach);
     st = P.createTable({ sb, bb });
@@ -227,6 +231,11 @@
     msg += net > 0 ? ' — tu gagnes ' + net + ' !' : net < 0 ? ' — tu perds ' + (-net) + '.' : '.';
     setMessage(msg);
     if (window.Sfx) { if (net > 0) Sfx.win(); else if (net < 0) Sfx.lose(); }
+    if (window.Casino) {
+      const cat = me.score ? Math.floor(me.score / 759375) : -1; // catégorie de la main (0 = hauteur … 8 = quinte flush)
+      Casino.track('pk', { won: me.won > 0, net, cat: me.won > 0 && !r.uncontested ? cat : -1, allinWon: me.allin && me.won > 0 });
+      if (net >= cfg.stack * 0.8) setTimeout(() => Casino.bigWin(net, 'GROS POT !'), 1200);
+    }
     if (coachOn() && handLog.length) renderSummary(net);
     // Statistiques de la partie, éliminations et fin de partie
     const out = Tourney.recordHand(T, st, (i) => 's' + i, (i) => st.seats[i].name, Date.now());
@@ -238,14 +247,33 @@
     render();
     if (me.stack <= 0) {
       const place = T.eliminated.find((e) => e.key === 's' + ME).place;
-      setTimeout(() => showRecap({ won: false, title: 'Tu es éliminé', subtitle: place + 'e place sur ' + st.seats.length, winnerKey: null }), 1800);
+      const prize = payPrize(place);
+      setTimeout(() => showRecap({ won: false, title: 'Tu es éliminé', subtitle: place + 'e place sur ' + st.seats.length + (prize ? ' — tu gagnes ' + prize.toLocaleString('fr-FR') + ' € !' : ''), winnerKey: null }), 1800);
       return;
     }
     if (alive.length === 1) {
-      setTimeout(() => showRecap({ won: true, title: 'Tu as gagné la partie !', subtitle: 'Tous tes adversaires sont éliminés', winnerKey: 's' + ME }), 1500);
+      const prize = payPrize(1);
+      setTimeout(() => showRecap({ won: true, title: 'Tu as gagné la partie !', subtitle: 'Tous tes adversaires sont éliminés' + (prize ? ' — cagnotte : +' + prize.toLocaleString('fr-FR') + ' €' : ''), winnerKey: 's' + ME }), 1500);
       return;
     }
     $('next-hand').hidden = false;
+  }
+
+  // Cagnotte du tournoi : droit d'entrée × nombre de joueurs ; seul le 1er gagne à 2 ou 3 joueurs,
+  // sinon 65 % / 25 % / 10 % pour les trois premiers
+  function prizeFor(place) {
+    if (!cfg.buyIn) return 0;
+    const pool = cfg.buyIn * cfg.players;
+    const split = cfg.players <= 3 ? [1] : [0.65, 0.25, 0.1];
+    return Math.round(pool * (split[place - 1] || 0));
+  }
+  function payPrize(place) {
+    if (!window.Casino) return 0;
+    const prize = prizeFor(place);
+    if (prize) Casino.addWallet(prize);
+    Casino.track('pk-tourney', { place, players: cfg.players });
+    if (prize >= cfg.buyIn * 3) setTimeout(() => Casino.bigWin(prize, place === 1 ? 'VICTOIRE !' : 'BELLE PLACE !'), 4500);
+    return prize;
   }
 
   // ---------- Fin de partie : animation et récapitulatif ----------
@@ -565,6 +593,20 @@
 
   // ---------- Événements ----------
   $('start').addEventListener('click', start);
+  // Droit d'entrée et cagnotte (avec le portefeuille du Casino)
+  if (window.Casino) {
+    $('buyin-row').hidden = false;
+    $('buyin-info').hidden = false;
+    const info = () => {
+      const b = parseInt($('set-buyin').value, 10) || 0, n = parseInt($('set-opponents').value, 10) + 1;
+      if (!b) { $('buyin-info').textContent = 'Partie gratuite : pas de cagnotte. Portefeuille : ' + Casino.wallet().toLocaleString('fr-FR') + ' €.'; return; }
+      const pool = b * n;
+      $('buyin-info').textContent = 'Cagnotte : ' + pool.toLocaleString('fr-FR') + ' € — ' + (n <= 3 ? 'le vainqueur remporte tout.' : '1er ' + Math.round(pool * 0.65).toLocaleString('fr-FR') + ' €, 2e ' + Math.round(pool * 0.25).toLocaleString('fr-FR') + ' €, 3e ' + Math.round(pool * 0.1).toLocaleString('fr-FR') + ' €.') + ' Portefeuille : ' + Casino.wallet().toLocaleString('fr-FR') + ' €.';
+    };
+    ['set-buyin', 'set-opponents'].forEach((id) => $(id).addEventListener('change', info));
+    Casino.onChange(info);
+    info();
+  }
   $('a-fold').addEventListener('click', () => humanAct({ type: 'fold' }));
   $('a-check').addEventListener('click', () => {
     const L = P.legal(st, ME);

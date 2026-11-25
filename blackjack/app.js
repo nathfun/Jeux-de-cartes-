@@ -19,6 +19,7 @@
   const side = { pp: 0, t213: 0 }; // paris annexes choisis
   let lastSituation = null;        // dernière situation analysée (pour les détails et le chat)
   let stats = loadStats();
+  if (window.Casino) stats.bankroll = Casino.wallet();
 
   function freshStats() {
     return {
@@ -42,6 +43,7 @@
   }
   function saveStats() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(stats)); } catch (e) { /* ignore */ }
+    if (window.Casino) Casino.setWallet(stats.bankroll); // le solde du blackjack solo est le portefeuille du Casino
   }
 
   // ---------- Sabot ----------
@@ -466,6 +468,14 @@
       if (hasBJ) Sfx.blackjack();
       else if (net > 0) Sfx.win(); else if (net < 0) Sfx.lose(); else Sfx.push();
     }
+    // Profil du Casino : expérience, défis, succès
+    if (window.Casino) {
+      Casino.track('bj', {
+        net, bet: round.hands.reduce((a, h) => a + (h.doubled ? h.bet / 2 : h.bet), 0),
+        blackjack: round.hands.length === 1 && !round.hands[0].split && isBlackjack(round.hands[0].cards),
+        doubledWin: round.hands.some((h) => h.doubled && h.resultClass === 'win'),
+      });
+    }
     if (d > 21) msg = 'Le croupier saute ! ' + msg;
     setMessage(msg);
 
@@ -482,8 +492,15 @@
     }
 
     if (stats.bankroll < 5) {
-      appendFeedbackNote('Banque épuisée ! Elle a été remise à ' + START_BANKROLL + ' € pour continuer l\'entraînement.');
-      stats.bankroll = START_BANKROLL;
+      if (window.Casino) {
+        stats.bankroll = Casino.wallet();
+        const v = Casino.rescue();
+        if (v > 0) { stats.bankroll = Casino.wallet(); appendFeedbackNote('Portefeuille vide : tu reçois une recharge de secours de 1 000 €.'); }
+        else appendFeedbackNote('Portefeuille vide. Recharge de secours dans ' + Math.ceil(-v / 60000) + ' min, ou récupère ton bonus du jour sur l\'accueil.');
+      } else {
+        appendFeedbackNote('Banque épuisée ! Elle a été remise à ' + START_BANKROLL + ' € pour continuer l\'entraînement.');
+        stats.bankroll = START_BANKROLL;
+      }
     }
     if (bet > stats.bankroll) bet = Math.max(0, Math.min(bet, stats.bankroll));
     saveStats();
@@ -962,6 +979,7 @@
     resetArmed = false;
     btn.textContent = 'Réinitialiser les statistiques';
     stats = freshStats();
+    if (window.Casino) stats.bankroll = Casino.wallet(); // le portefeuille n'est pas remis à zéro
     saveStats();
     round = null;
     bet = 10;

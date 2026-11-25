@@ -16,7 +16,7 @@
       <button id="tab-solo" class="tab active" role="tab" aria-selected="true">Solo</button>
       <button id="tab-multi" class="tab" role="tab" aria-selected="false">Entre amis</button>
     </nav>
-    <div class="bank">Solde : <strong id="bankroll">–</strong> <button id="sound-toggle" class="ghost icon-btn" type="button">🔊</button></div>
+    <div class="bank">Solde : <strong id="bankroll">–</strong> <button id="music-toggle" class="ghost icon-btn" type="button">🎵</button><button id="sound-toggle" class="ghost icon-btn" type="button">🔊</button></div>
   </header>
 
   <main class="layout">
@@ -26,15 +26,17 @@
         <h2>Roulette européenne</h2>
         <p class="muted">Un seul zéro, règles françaises : si le 0 sort, les chances simples (rouge, noir, pair, impair, manque, passe) ne perdent que la moitié de la mise. Pose tes jetons, le compte à rebours démarre, puis « Rien ne va plus » !</p>
         <div class="setup-grid">
-          <label>Solde de départ
+          <label id="set-bank-row">Solde de départ
             <select id="set-bank"><option value="500">500 €</option><option value="1000" selected>1 000 €</option><option value="5000">5 000 €</option></select>
           </label>
+          <div id="wallet-row" class="wallet-info" hidden>Tu joues avec ton portefeuille du Casino : <b id="wallet-amount"></b></div>
           <label>Temps pour miser
             <select id="set-bettime"><option value="15">15 secondes</option><option value="25" selected>25 secondes</option><option value="40">40 secondes</option></select>
           </label>
         </div>
         <label class="check"><input type="checkbox" id="set-coach" checked> Activer les aides (probabilités, gains, conseils)</label>
         <button id="start" class="primary big">Ouvrir la table</button>
+        <p id="wallet-note" class="small warn" role="status"></p>
       </section>
 
       <!-- Entre amis : accueil -->
@@ -204,6 +206,7 @@
 
   <script src="../firebase-config.js"></script>
   <script src="../sounds.js"></script>
+  <script src="../profile.js"></script>
   <script src="bets.js"></script>
   <script src="wheel.js"></script>
   <script src="app.js"></script>

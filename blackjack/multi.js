@@ -815,6 +815,18 @@
     }));
     if (anyBJ) Sfx.blackjack();
     else if (mineAny) { if (net > 0) Sfx.win(); else if (net < 0) Sfx.lose(); else Sfx.push(); }
+    if (window.Casino && mineAny) {
+      let money = 0, bj = false, dbl = false;
+      st.seats.forEach((s) => s.hands.forEach((h) => {
+        if (s.owner !== me) return;
+        if (h.resultClass === 'win') money += /^Blackjack/.test(h.result) ? h.bet * 1.5 : h.bet;
+        else if (h.resultClass === 'lose') money -= h.surrendered ? h.bet / 2 : h.bet;
+        if (/^Blackjack !/.test(h.result || '')) bj = true;
+        if (h.doubled && h.resultClass === 'win') dbl = true;
+      }));
+      if (!window.__multiTracked) { window.__multiTracked = true; Casino.track('multi', { game: 'blackjack' }); }
+      Casino.track('bj', { net: money, blackjack: bj, doubledWin: dbl });
+    }
   }
 
   function currentSituation() {

@@ -151,7 +151,7 @@ input:not([type]), input[type="text"] { font: inherit; background: #10151c; colo
 .players i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 
 /* Tapis */
-.tapis-wrap { position: relative; margin-top: 1rem; background: radial-gradient(ellipse at center, #13693f, var(--felt) 55%, var(--felt-dark)); border: 8px solid var(--rail); border-radius: 16px; padding: 10px; box-shadow: inset 0 0 30px rgba(0,0,0,.4); }
+.tapis-wrap { position: relative; margin-top: 1rem; background: radial-gradient(ellipse at center, color-mix(in srgb, var(--felt) 78%, #ffffff 10%), var(--felt) 55%, var(--felt-dark)); border: 8px solid var(--rail); border-radius: 16px; padding: 10px; box-shadow: inset 0 0 30px rgba(0,0,0,.4); }
 .tapis { position: relative; width: 100%; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
 .spot { position: absolute; border: 1px solid rgba(255,255,255,.55); color: #fff; font: inherit; font-weight: 700; padding: 0; background: transparent; border-radius: 0; display: grid; place-items: center; cursor: pointer; }
 .spot:hover:not(:disabled), .spot:focus-visible { background: rgba(255,255,255,.15); outline: none; }

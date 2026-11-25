@@ -187,6 +187,10 @@
         const myBets = (st.bets && st.bets[me]) || {};
         const r = UI.recordSpin(T, myBets, n);
         if (st.players[me]) T.peak = Math.max(T.peak || 0, st.players[me].bankroll);
+        if (prev && r.staked) {
+          UI.trackSpin(myBets, n, r);
+          if (window.Casino && !window.__multiTracked) { window.__multiTracked = true; Casino.track('multi', { game: 'roulette' }); }
+        }
         if (prev) UI.announceResult(n);
         if (r.staked && prev) setTimeout(() => UI.showOutcome(r.net, r.staked), 700);
         if (r.staked) {

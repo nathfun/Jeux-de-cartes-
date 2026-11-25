@@ -58,6 +58,49 @@
     .install p { margin: .3rem 0; color: var(--muted); font-size: .92rem; }
     #install-btn { font: inherit; background: var(--gold); color: #222; border: 0; border-radius: 8px; padding: .55rem 1rem; font-weight: 600; cursor: pointer; margin-top: .4rem; }
     @media (prefers-reduced-motion: reduce) { .game { transition: none; } }
+    .head-btns { margin-left: auto; display: flex; gap: .3rem; }
+    .icon-btn { font: inherit; font-size: 1.15rem; background: transparent; border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: .25rem .5rem; cursor: pointer; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 1rem 1.1rem; }
+    .panel h2 { margin: 0 0 .7rem; font-size: 1.1rem; }
+    .profile { display: grid; grid-template-columns: auto 1fr; gap: 1rem; align-items: center; }
+    .avatar { width: 72px; height: 72px; border-radius: 50%; font-size: 2.6rem; display: grid; place-items: center; background: radial-gradient(circle at 35% 35%, #2b3540, #141a21); border: 3px solid var(--gold); cursor: pointer; padding: 0; }
+    .profile-main { display: flex; flex-direction: column; gap: .45rem; min-width: 0; }
+    .pseudo-row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+    #pseudo { font: inherit; font-weight: 700; font-size: 1.15rem; background: transparent; color: var(--text); border: 1px dashed transparent; border-radius: 6px; padding: .1rem .3rem; min-width: 0; width: 12ch; }
+    #pseudo:hover, #pseudo:focus { border-color: var(--border); outline: none; }
+    .lvl { background: var(--gold); color: #222; font-weight: 800; font-size: .8rem; padding: .15rem .55rem; border-radius: 999px; }
+    .xpbar { height: 10px; background: #0b0f14; border-radius: 999px; overflow: hidden; border: 1px solid var(--border); }
+    .xpbar > div { height: 100%; background: linear-gradient(90deg, #4fc3f7, #a78bfa); transition: width .6s ease; }
+    .xp-text { font-size: .78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .wallet-row { display: flex; gap: .7rem; align-items: center; flex-wrap: wrap; }
+    .wallet { font-size: 1.4rem; font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
+    .bonus-btn { font: inherit; font-weight: 700; background: linear-gradient(135deg, #f2c14e, #e89a2c); color: #222; border: 0; border-radius: 10px; padding: .5rem .9rem; cursor: pointer; animation: glow 1.6s ease-in-out infinite; }
+    .bonus-btn:disabled { animation: none; background: #2b3540; color: var(--muted); cursor: default; }
+    @keyframes glow { 50% { box-shadow: 0 0 18px rgba(242,193,78,.75); } }
+    .avatars { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .4rem; }
+    .avatars button { font-size: 1.5rem; background: #141a21; border: 1px solid var(--border); border-radius: 10px; padding: .2rem .35rem; cursor: pointer; }
+    .challenges { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .7rem; }
+    .chal { background: #141a21; border: 1px solid var(--border); border-radius: 12px; padding: .7rem .8rem; display: flex; flex-direction: column; gap: .4rem; }
+    .chal.done { border-color: #3fb950; }
+    .chal .game-tag { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+    .chal .reward { font-size: .82rem; color: var(--gold); }
+    .chal .bar { height: 8px; background: #0b0f14; border-radius: 999px; overflow: hidden; }
+    .chal .bar > div { height: 100%; background: #3fb950; }
+    .chal button { font: inherit; font-weight: 700; background: #3fb950; color: #08130b; border: 0; border-radius: 8px; padding: .4rem; cursor: pointer; }
+    .chal .claimed { color: #3fb950; font-weight: 700; font-size: .85rem; }
+    .achievements { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .5rem; }
+    .ach { display: flex; gap: .5rem; align-items: center; background: #141a21; border-radius: 10px; padding: .45rem .55rem; font-size: .8rem; border: 1px solid var(--border); }
+    .ach .i { font-size: 1.4rem; }
+    .ach.locked { opacity: .38; filter: grayscale(1); }
+    .ach b { display: block; font-size: .82rem; }
+    .swatches { display: flex; gap: .6rem; flex-wrap: wrap; margin: .3rem 0 .8rem; }
+    .sw { width: 64px; display: flex; flex-direction: column; align-items: center; gap: .25rem; font-size: .7rem; color: var(--muted); background: none; border: 0; cursor: pointer; padding: 0; font-family: inherit; }
+    .sw i { width: 56px; height: 40px; border-radius: 10px; border: 3px solid transparent; display: block; }
+    .sw.on i { border-color: var(--gold); }
+    .sw:disabled { cursor: not-allowed; opacity: .45; }
+    .stats-row { display: flex; gap: 1rem; flex-wrap: wrap; font-size: .85rem; color: var(--muted); }
+    .stats-row b { color: var(--text); }
+    .muted { color: var(--muted); }
   </style>
 </head>
 <body>
@@ -68,7 +111,36 @@
         <h1>Casino</h1>
         <p>Blackjack, poker et roulette : apprends avec les aides, puis joue entre amis.</p>
       </div>
+      <div class="head-btns">
+        <button id="music-toggle" class="icon-btn" type="button">🎵</button>
+        <button id="sound-toggle" class="icon-btn" type="button">🔊</button>
+      </div>
     </header>
+
+    <section class="panel profile" aria-label="Mon profil">
+      <button id="avatar" class="avatar" type="button" aria-label="Changer d'avatar">🎩</button>
+      <div class="profile-main">
+        <div class="pseudo-row">
+          <input id="pseudo" maxlength="16" placeholder="Ton pseudo" aria-label="Ton pseudo">
+          <span id="lvl" class="lvl">Niv. 1</span>
+          <span id="lvl-title" class="muted"></span>
+        </div>
+        <div class="xpbar" aria-hidden="true"><div id="xpfill"></div></div>
+        <div id="xp-text" class="xp-text"></div>
+        <div class="wallet-row">
+          <span class="wallet">💰 <span id="wallet">0</span> €</span>
+          <button id="bonus" class="bonus-btn" type="button">🎁 Bonus du jour</button>
+          <button id="rescue" class="icon-btn" type="button" hidden>🆘 Recharge de secours</button>
+        </div>
+        <div id="avatars" class="avatars" hidden></div>
+        <div id="lifetime" class="stats-row"></div>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Défis du jour">
+      <h2>Défis du jour <span id="chal-reset" class="muted" style="font-size:.8rem;font-weight:400"></span></h2>
+      <div id="challenges" class="challenges"></div>
+    </section>
 
     <section class="games" aria-label="Jeux">
       <a class="game" href="blackjack/index.html">
@@ -91,6 +163,21 @@
       </a>
     </section>
 
+    <section class="panel" aria-label="Succès">
+      <h2>Succès <span id="ach-count" class="muted" style="font-size:.85rem;font-weight:400"></span></h2>
+      <div id="achievements" class="achievements"></div>
+    </section>
+
+    <section class="panel" aria-label="Personnalisation">
+      <h2>Personnalisation</h2>
+      <div class="muted" style="font-size:.85rem">Tapis (débloqués avec les niveaux)</div>
+      <div id="felts" class="swatches"></div>
+      <div class="muted" style="font-size:.85rem">Dos des cartes</div>
+      <div id="backs" class="swatches"></div>
+      <label style="font-size:.9rem"><input type="checkbox" id="opt-vibrate"> Vibrations sur téléphone</label>
+      <p class="muted" style="font-size:.78rem;margin:.6rem 0 0">Tout se joue avec des jetons virtuels : aucun argent réel, rien à acheter.</p>
+    </section>
+
     <section class="install" id="install">
       <h3>Installer l'app Casino sur ton téléphone</h3>
       <p><b>iPhone</b> (Safari) : bouton Partager, puis « Sur l'écran d'accueil ».</p>
@@ -98,7 +185,108 @@
       <button id="install-btn" type="button" hidden>Installer l'app</button>
     </section>
   </main>
+  <script src="sounds.js"></script>
+  <script src="profile.js"></script>
   <script>
+    // ---------- Profil, défis, succès, personnalisation ----------
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      const fmt = (n) => Math.round(n).toLocaleString('fr-FR');
+      function render() {
+        const P = Casino.profile;
+        const lv = Casino.levelOf(P.xp), cur = Casino.need(lv), nxt = Casino.need(lv + 1);
+        $('avatar').textContent = P.avatar;
+        if (document.activeElement !== $('pseudo')) $('pseudo').value = P.pseudo || '';
+        $('lvl').textContent = 'Niv. ' + lv;
+        $('lvl-title').textContent = Casino.title(lv);
+        $('xpfill').style.width = Math.round(((P.xp - cur) / (nxt - cur)) * 100) + '%';
+        $('xp-text').textContent = fmt(P.xp - cur) + ' / ' + fmt(nxt - cur) + ' XP jusqu\'au niveau ' + (lv + 1);
+        $('wallet').textContent = fmt(P.wallet);
+        const b = Casino.bonusInfo();
+        $('bonus').disabled = !b.available;
+        $('bonus').textContent = b.available ? '🎁 Bonus du jour : +' + fmt(b.amount) + ' €' + (b.streak > 1 ? ' (série de ' + b.streak + ' jours)' : '') : '✔ Bonus récupéré · série de ' + b.streak + ' jour' + (b.streak > 1 ? 's' : '') + ' · reviens demain';
+        $('rescue').hidden = P.wallet >= 50;
+        const T = P.totals;
+        $('lifetime').innerHTML = '';
+        [['Mains et tours joués', T.hands], ['Gagnés', T.wins], ['Plus gros gain', fmt(T.biggestWin) + ' €'], ['Défis réussis', T.challenges]].forEach(([k, v]) => {
+          const s = document.createElement('span'); const bb = document.createElement('b'); bb.textContent = v; s.append(k + ' : ', bb); $('lifetime').appendChild(s);
+        });
+        // défis
+        const d = Casino.daily();
+        const box = $('challenges'); box.innerHTML = '';
+        d.list.forEach((c) => {
+          const def = Casino.CHALLENGES.find((x) => x.id === c.id);
+          const el = document.createElement('div'); el.className = 'chal' + (c.done ? ' done' : '');
+          const g = document.createElement('div'); g.className = 'game-tag'; g.textContent = def.game;
+          const t = document.createElement('div'); t.textContent = def.text;
+          const bar = document.createElement('div'); bar.className = 'bar'; const f = document.createElement('div'); f.style.width = (c.progress / def.target * 100) + '%'; bar.appendChild(f);
+          const r = document.createElement('div'); r.className = 'reward'; r.textContent = fmt(c.progress) + ' / ' + fmt(def.target) + ' · récompense ' + fmt(def.reward) + ' € et ' + def.xp + ' XP';
+          el.append(g, t, bar, r);
+          if (c.claimed) { const k = document.createElement('div'); k.className = 'claimed'; k.textContent = '✔ Récompense récupérée'; el.appendChild(k); }
+          else if (c.done) {
+            const btn = document.createElement('button'); btn.type = 'button'; btn.textContent = 'Récupérer +' + fmt(def.reward) + ' €';
+            btn.addEventListener('click', () => { const v = Casino.claimChallenge(c.id); if (v) Casino.toast('Récompense', '+' + fmt(v) + ' € dans ton portefeuille', '🎉', 'challenge'); render(); });
+            el.appendChild(btn);
+          }
+          box.appendChild(el);
+        });
+        const mid = new Date(); mid.setHours(24, 0, 0, 0);
+        const h = Math.floor((mid - new Date()) / 3600000), m = Math.floor(((mid - new Date()) % 3600000) / 60000);
+        $('chal-reset').textContent = '· nouveaux défis dans ' + h + ' h ' + String(m).padStart(2, '0');
+        // succès
+        const ach = $('achievements'); ach.innerHTML = '';
+        let n = 0;
+        Casino.ACHIEVEMENTS.forEach((a) => {
+          const got = !!P.achievements[a.id]; if (got) n++;
+          const el = document.createElement('div'); el.className = 'ach' + (got ? '' : ' locked'); el.title = a.text;
+          const i = document.createElement('span'); i.className = 'i'; i.textContent = a.icon;
+          const tx = document.createElement('div'); const bb = document.createElement('b'); bb.textContent = a.name; tx.append(bb, a.text);
+          el.append(i, tx); ach.appendChild(el);
+        });
+        $('ach-count').textContent = '· ' + n + ' / ' + Casino.ACHIEVEMENTS.length;
+        // personnalisation
+        [['felt', Casino.FELTS, 'felts'], ['back', Casino.BACKS, 'backs']].forEach(([kind, list, id]) => {
+          const box2 = $(id); box2.innerHTML = '';
+          list.forEach((it) => {
+            const b2 = document.createElement('button'); b2.type = 'button';
+            const ok = lv >= it.level;
+            b2.className = 'sw' + (P.equipped[kind] === it.id ? ' on' : '');
+            b2.disabled = !ok;
+            const i = document.createElement('i');
+            i.style.background = kind === 'felt' ? 'radial-gradient(circle, ' + it.a + ', ' + it.b + ')' : 'repeating-linear-gradient(45deg, ' + it.a + ', ' + it.a + ' 5px, ' + it.b + ' 5px, ' + it.b + ' 10px)';
+            b2.append(i, ok ? it.name : '🔒 Niv. ' + it.level);
+            b2.addEventListener('click', () => { Casino.equip(kind, it.id); render(); });
+            box2.appendChild(b2);
+          });
+        });
+        $('opt-vibrate').checked = P.settings.vibrate;
+      }
+      $('pseudo').addEventListener('change', (e) => { Casino.setPseudo(e.target.value); render(); });
+      $('avatar').addEventListener('click', () => {
+        const box = $('avatars');
+        box.hidden = !box.hidden;
+        if (!box.hidden && !box.children.length) Casino.AVATARS.forEach((a) => {
+          const b = document.createElement('button'); b.type = 'button'; b.textContent = a; b.setAttribute('aria-label', 'Avatar ' + a);
+          b.addEventListener('click', () => { Casino.setAvatar(a); box.hidden = true; render(); });
+          box.appendChild(b);
+        });
+      });
+      $('bonus').addEventListener('click', () => {
+        const v = Casino.claimBonus();
+        if (v) { Casino.bigWin(v, 'BONUS DU JOUR'); }
+        render();
+      });
+      $('rescue').addEventListener('click', () => {
+        const v = Casino.rescue();
+        if (v < 0) Casino.toast('Recharge de secours', 'Disponible dans ' + Math.ceil(-v / 60000) + ' min', '⏳');
+        render();
+      });
+      $('opt-vibrate').addEventListener('change', (e) => { Casino.setSetting('vibrate', e.target.checked); if (e.target.checked) Casino.vibrate(40); });
+      Casino.onChange(render);
+      render();
+      setInterval(render, 30000);
+    })();
+
     // Bouton d'installation direct quand le navigateur le propose (Android, Chrome ordinateur)
     let deferred = null;
     window.addEventListener('beforeinstallprompt', (e) => {

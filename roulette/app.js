@@ -326,6 +326,15 @@
     list.forEach((t) => { const li = document.createElement('li'); li.textContent = t; tips.appendChild(li); });
   }
 
+  // Profil du Casino : expérience, défis, succès, effet « gros gain »
+  function trackSpin(bets, n, r) {
+    if (!window.Casino || !r.staked) return;
+    const pleinHit = Object.keys(bets).some((k) => B.byKey[k].type === 'plein' && B.byKey[k].numbers[0] === n);
+    const zeroWin = n === 0 && Object.keys(bets).some((k) => B.byKey[k].numbers.includes(0));
+    Casino.track('rl', { staked: r.staked, bet: r.staked, net: r.net, pleinHit, zeroWin });
+    if (r.net >= 9 * r.staked && r.net >= 50) setTimeout(() => Casino.bigWin(r.net, pleinHit ? 'EN PLEIN !' : 'GROS GAIN !'), 1500);
+  }
+
   // ---------- Bilan de partie (encaissement, fin de partie) ----------
   function bilanStats(T, startBank, finalBank) {
     const counts = {};
@@ -435,7 +444,7 @@
   buildChips();
 
   window.RouletteUI = {
-    render, setHandlers, ensureWheel, showOutcome, limitText, applyAides, rienNeVaPlus, announceResult, coachInfo, coachRound,
+    render, setHandlers, ensureWheel, showOutcome, limitText, applyAides, trackSpin, rienNeVaPlus, announceResult, coachInfo, coachRound,
     createStats, analyseBets, recordSpin, renderStats, showRecap, bilanStats,
     get chip() { return selected; },
     SPIN_MS, RESULT_MS, fmt,
@@ -446,7 +455,9 @@
   let soloTimer = null;
 
   function startSolo() {
-    const bank = parseInt($('set-bank').value, 10);
+    // Avec le profil du Casino, on joue avec le portefeuille commun
+    const bank = window.Casino ? Casino.wallet() : parseInt($('set-bank').value, 10);
+    if (bank < 1) { $('wallet-note').textContent = 'Ton portefeuille est vide : récupère ton bonus du jour ou la recharge de secours sur l\'accueil.'; return; }
     S = {
       bankroll: bank, start: bank, betTime: parseInt($('set-bettime').value, 10), coach: $('set-coach').checked,
       bets: {}, log: [], lastBets: {}, history: [], phase: 'waiting', deadline: null, result: null,
@@ -477,7 +488,11 @@
       readyLabel: 'Lancer la bille', readyDisabled: s.phase !== 'betting',
     };
   }
-  function soloRender() { if (S) render(soloView()); }
+  function soloRender() {
+    if (!S) return;
+    if (window.Casino && S.phase !== 'over') Casino.setWallet(S.bankroll); // le solde suit le portefeuille commun
+    render(soloView());
+  }
 
   function addBet(key, amount) {
     if (!S || !(S.phase === 'waiting' || S.phase === 'betting')) return false;
@@ -545,6 +560,7 @@
       S.log.forEach((l) => { S.bankroll += l.amount; });
       S.bets = {}; S.log = [];
       soloRender();
+      if (window.Casino) Casino.track('rl-cashout', { diff: S.bankroll - S.start });
       soloRecap(false, true);
     },
   };
@@ -577,6 +593,7 @@
       (n === 0 && Object.keys(S.bets).some((k) => B.byKey[k].type === 'simple') ? ' (partage : la moitié de tes chances simples t\'est rendue)' : '') : '';
     announceResult(n);
     setTimeout(() => showOutcome(r.net, r.staked), 700);
+    trackSpin(S.bets, n, r);
     if (window.Sfx && r.staked) setTimeout(() => { if (r.net > 0) Sfx.win(); else if (r.net < 0) Sfx.lose(); }, 900);
     if (r.staked) {
       coachRound([
@@ -621,6 +638,14 @@
   }
 
   $('start').addEventListener('click', startSolo);
+  // Portefeuille commun : on remplace le choix du solde de départ
+  if (window.Casino) {
+    $('set-bank-row').hidden = true;
+    $('wallet-row').hidden = false;
+    const showWallet = () => { $('wallet-amount').textContent = fmt(Casino.wallet()) + ' €'; };
+    showWallet();
+    Casino.onChange(showWallet);
+  }
   window.RouletteSolo = {
     get state() { return S; },
     // retour sur l'onglet Solo : on reprend la partie en cours ou on affiche les réglages

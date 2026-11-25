@@ -561,6 +561,10 @@
     const s = st.seats[mySeat];
     if (!window.Sfx || !s.cards.length) return;
     if (s.won > 0) Sfx.win(); else if (s.total > 0) Sfx.lose();
+    if (window.Casino) {
+      if (!window.__multiTracked) { window.__multiTracked = true; Casino.track('multi', { game: 'poker' }); }
+      Casino.track('pk', { won: s.won > 0, net: (s.won || 0) - s.total, cat: s.won > 0 && s.score ? Math.floor(s.score / 759375) : -1, allinWon: s.allin && s.won > 0 });
+    }
   }
 
   function toast(text) {

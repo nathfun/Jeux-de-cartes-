@@ -90,7 +90,7 @@ button.small { font-size: .85rem; padding: .35rem .7rem; margin-top: .8rem; }
 .card .br { position: absolute; bottom: 5px; right: 7px; line-height: 1; font-size: 1rem; transform: rotate(180deg); text-align: center; }
 .card .mid { position: absolute; inset: 0; display: grid; place-items: center; font-size: 2rem; }
 .card.back {
-  background: repeating-linear-gradient(45deg, #1c3d7a, #1c3d7a 6px, #24519e 6px, #24519e 12px);
+  background: repeating-linear-gradient(45deg, var(--back1, #1c3d7a), var(--back1, #1c3d7a) 6px, var(--back2, #24519e) 6px, var(--back2, #24519e) 12px);
   border: 3px solid #fff;
 }
 /* Les cartes partent du sabot (en haut à droite) et glissent jusqu'à leur place */
@@ -117,7 +117,7 @@ button.small { font-size: .85rem; padding: .35rem .7rem; margin-top: .8rem; }
 }
 .shoe-cards {
   width: 46px; height: 64px; border-radius: 6px; border: 2px solid #fff;
-  background: repeating-linear-gradient(45deg, #1c3d7a, #1c3d7a 5px, #24519e 5px, #24519e 10px);
+  background: repeating-linear-gradient(45deg, var(--back1, #1c3d7a), var(--back1, #1c3d7a) 5px, var(--back2, #24519e) 5px, var(--back2, #24519e) 10px);
   box-shadow: 3px 3px 0 #ddd, 6px 6px 0 #bbb;
 }
 .hand-info b.bust { color: #ffa198; }

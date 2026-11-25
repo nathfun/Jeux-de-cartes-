@@ -16,7 +16,7 @@
       <button id="tab-solo" class="tab active" role="tab" aria-selected="true">Solo</button>
       <button id="tab-multi" class="tab" role="tab" aria-selected="false">Entre amis</button>
     </nav>
-    <div class="bank">Tapis : <strong id="my-stack">–</strong> <button id="sound-toggle" class="ghost icon-btn" type="button">🔊</button></div>
+    <div class="bank">Tapis : <strong id="my-stack">–</strong> <button id="music-toggle" class="ghost icon-btn" type="button">🎵</button><button id="sound-toggle" class="ghost icon-btn" type="button">🔊</button></div>
   </header>
 
   <main class="layout">
@@ -55,6 +55,15 @@
               <option value="200">200 grosses blindes</option>
             </select>
           </label>
+          <label id="buyin-row" hidden>Droit d'entrée (portefeuille)
+            <select id="set-buyin">
+              <option value="0">Gratuit (pour s'entraîner)</option>
+              <option value="100">100 €</option>
+              <option value="500" selected>500 €</option>
+              <option value="1000">1 000 €</option>
+              <option value="2500">2 500 €</option>
+            </select>
+          </label>
           <label>Montée des blindes
             <select id="set-blindup">
               <option value="h5">Toutes les 5 mains (rapide)</option>
@@ -74,7 +83,9 @@
           </label>
         </div>
         <label class="check"><input type="checkbox" id="set-coach" checked> Activer le coach (retour après chaque décision)</label>
+        <p id="buyin-info" class="small muted" hidden></p>
         <button id="start" class="primary big">Commencer la partie</button>
+        <p id="buyin-note" class="small warn" role="status"></p>
       </section>
 
       <!-- Table -->
@@ -306,6 +317,7 @@
 
   <script src="../firebase-config.js"></script>
   <script src="../sounds.js"></script>
+  <script src="../profile.js"></script>
   <script src="eval.js"></script>
   <script src="engine.js"></script>
   <script src="tourney.js"></script>

@@ -52,7 +52,7 @@ body.no-coach .coach-only { display: none !important; }
 .felt-wrap { padding: 14px; background: var(--rail); border-radius: 200px / 160px; box-shadow: inset 0 0 0 3px #6b4423, 0 10px 30px rgba(0,0,0,.45); }
 .felt {
   position: relative; width: 100%; aspect-ratio: 16 / 10;
-  background: radial-gradient(ellipse at center, #13693f 0%, var(--felt) 45%, var(--felt-dark) 100%);
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--felt) 78%, #ffffff 10%) 0%, var(--felt) 45%, var(--felt-dark) 100%);
   border-radius: 190px / 150px; box-shadow: inset 0 0 40px rgba(0,0,0,.45);
 }
 @media (max-width: 640px) {
@@ -71,7 +71,7 @@ body.no-coach .coach-only { display: none !important; }
 .card.red { color: var(--red); }
 .card .tl { position: absolute; top: 4px; left: 5px; line-height: 1; font-size: .92rem; text-align: center; }
 .card .mid { position: absolute; inset: 0; display: grid; place-items: center; font-size: 1.6rem; padding-top: 10px; }
-.card.back { background: repeating-linear-gradient(45deg, #1c3d7a, #1c3d7a 5px, #24519e 5px, #24519e 10px); border: 2px solid #fff; }
+.card.back { background: repeating-linear-gradient(45deg, var(--back1, #1c3d7a), var(--back1, #1c3d7a) 5px, var(--back2, #24519e) 5px, var(--back2, #24519e) 10px); border: 2px solid #fff; }
 .card.dealt { animation: deal .4s cubic-bezier(.2,.8,.25,1) both; }
 .card.flip { animation: flip .45s ease-out both; }
 .card.win { box-shadow: 0 0 0 3px var(--gold), 0 2px 6px rgba(0,0,0,.4); }
