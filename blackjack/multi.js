@@ -593,14 +593,25 @@
     const others = $('seats-others'), mine = $('seats-mine');
     others.innerHTML = ''; mine.innerHTML = '';
     const turnSeat = st.phase === 'playing' && st.turn && !anim ? st.turn.seat : -1;
+    const playingNow = inPlay(st) || anim;
     st.seats.forEach((s, i) => {
       const own = s.owner === me;
+      if (!s.owner && playingNow) return; // places vides cachées pendant la main
       const el = seatEl(st, s, i, anim);
       if (!own && i !== turnSeat) el.classList.add('compact');
       if (!own && i === turnSeat) el.classList.add('spotlight');
       (own ? mine : others).appendChild(el);
     });
     mine.hidden = !mine.children.length;
+    // Étape de la main en cours, et qui passe en premier sur téléphone (le joueur dont c'est le tour)
+    const hasResults = st.phase === 'over' && st.seats.some((x) => x.hands.some((h) => h.result));
+    const step = anim ? (st.phase === 'playing' ? 'play' : 'dealer') : st.phase === 'playing' || st.phase === 'insurance' ? 'play' : hasResults ? 'result' : 'bet';
+    document.querySelectorAll('#m-steps li').forEach((li) => {
+      const order = ['bet', 'play', 'dealer', 'result'];
+      li.className = li.dataset.step === step ? 'on' : order.indexOf(li.dataset.step) < order.indexOf(step) ? 'done' : '';
+    });
+    const myTurn = turnSeat >= 0 && st.seats[turnSeat].owner === me;
+    $('mtable').classList.toggle('others-first', turnSeat >= 0 && !myTurn);
 
     // Message
     const msg = $('m-message');
@@ -616,7 +627,10 @@
       } else if (st.phase === 'insurance') msg.textContent = 'Le croupier montre un As : assurance ?';
       else if (st.gameEnd) msg.textContent = (st.msg || '') + ' Partie terminée !';
       else if (st.players[me] && st.players[me].out) msg.textContent = (st.msg || '') + ' Tu es éliminé : tu regardes la fin de la partie.';
-      else if (st.phase === 'over') msg.textContent = (st.msg || 'Main terminée.') + (st.note ? ' ' + st.note : '') + ' Misez pour la manche suivante.';
+      else if (st.phase === 'over') {
+        const mineRes = st.seats.filter((x) => x.owner === me).flatMap((x) => x.hands.map((h) => h.result)).filter(Boolean);
+        msg.textContent = (st.msg || 'Main terminée.') + (mineRes.length ? ' Toi : ' + mineRes.join(' / ') + '.' : '') + (st.note ? ' ' + st.note : '') + ' Misez pour la suivante.';
+      }
       else msg.textContent = (st.msg || '') + (st.note ? ' ' + st.note : '');
     }
 
@@ -692,10 +706,23 @@
       el.appendChild(sd);
     }
 
-    // Emplacements de mise sur le tapis (mise principale + paris annexes en rouge)
+    // Emplacements de mise sur le tapis : seulement pendant les mises (pendant la main, la mise est écrite sous les cartes)
     const betting = s.owner === me && !inPlay(st) && !working;
     const inRound = s.hands.length > 0;
     const shownBet = inRound ? s.hands.reduce((a, h) => a + h.bet, 0) : s.bet;
+    // Résultat de la main bien visible sur la place
+    if (st.phase === 'over' && !anim && inRound && s.hands.some((h) => h.resultClass)) {
+      const cls = s.hands.map((h) => h.resultClass);
+      el.classList.add(cls.includes('win') ? 'res-win' : cls.every((c) => c === 'push') ? 'res-push' : 'res-lose');
+    }
+    if (inPlay(st) || anim || (inRound && st.phase === 'over' && s.owner !== me)) {
+      if ((s.pp || s.t213) && !s.side && st.settings.sides) {
+        const sd = document.createElement('div'); sd.className = 'side-result';
+        sd.textContent = 'Paris annexes : ' + [s.t213 ? '21+3 ' + s.t213 + ' €' : '', s.pp ? 'Paire ' + s.pp + ' €' : ''].filter(Boolean).join(' · ');
+        el.appendChild(sd);
+      }
+      return el;
+    }
     el.appendChild(BJ.spotsEl({
       main: shownBet, pp: s.pp || 0, t213: s.t213 || 0,
       sides: st.settings.sides,
