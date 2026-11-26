@@ -61,10 +61,9 @@
     box.appendChild(st);
     const acts = el('div', 'acts'), msg = el('p', 'msg');
     if (n) {
-      let armed = false;
       const sell = el('button', 'btn', '💰 Vendre au Casino : +' + fmt(instant) + ' €'); sell.type = 'button';
       sell.onclick = async () => {
-        if (!armed) { armed = true; sell.textContent = '👉 Confirmer : +' + fmt(instant) + ' € tout de suite ?'; setTimeout(() => { armed = false; sell.textContent = '💰 Vendre au Casino : +' + fmt(instant) + ' €'; }, 4000); return; }
+        if (!(await Casino.confirm({ icon: '💰', title: 'Vendre « ' + c.name + ' » au Casino ?', text: 'Tu encaisses ' + fmt(instant) + ' € tout de suite. Sur le marché, un joueur pourrait la payer jusqu\'à sa cote (' + fmt(cote) + ' €).', price: -instant, ok: 'Vendre pour ' + fmt(instant) + ' €' }))) return;
         sell.disabled = true;
         const r = await Casino.sellInstant(k, 1);
         if (r.error) { msg.textContent = r.error; sell.disabled = false; return; }
@@ -74,6 +73,7 @@
       const row = el('div', 'row'), price = el('input'); price.type = 'number'; price.min = 10; price.step = 10; price.value = Math.max(10, Math.round(cote));
       const list = el('button', 'btn ghost', '🏷️ Mettre sur le marché'); list.type = 'button';
       list.onclick = async () => {
+        if (!(await Casino.confirm({ icon: '🏷️', title: 'Mettre « ' + c.name + ' » en vente ?', text: 'Prix : ' + fmt(+price.value) + ' €. Tu touches tout quand un joueur l\'achète (aucun frais).', ok: 'Mettre en vente' }))) return;
         list.disabled = true;
         const r = await Casino.deal('mk.list', { item: k, price: +price.value });
         if (r.error) { msg.textContent = r.error; list.disabled = false; return; }
@@ -82,7 +82,7 @@
       };
       row.append(price, list);
       acts.append(sell, row);
-      acts.appendChild(el('p', 'note', 'Sur le marché, tu fixes ton prix (le Casino prend ' + Math.round((Casino.isVip() ? Casino.MARKET_FEE_VIP : Casino.MARKET_FEE) * 100) + ' % à la vente). La vente au Casino, elle, est immédiate.'));
+      acts.appendChild(el('p', 'note', 'Sur le marché, tu fixes ton prix et tu touches tout (aucun frais), dès qu\'un joueur l\'achète. La vente au Casino, elle, est immédiate.'));
     } else {
       acts.appendChild(el('p', 'note', 'Tu n\'as pas encore cette carte : trouve-la dans les boosters ou achète-la à un autre joueur sur le marché.'));
       const go = el('a', 'btn', '🏪 Voir le marché'); go.href = '../index.html#shop'; acts.appendChild(go);
@@ -92,13 +92,12 @@
     box.appendChild(acts); o.appendChild(box); document.body.appendChild(o);
   }
   // vendre tous les doublons (on garde 1 exemplaire de chaque)
-  let dupArmed = false;
   $('sell-dups').onclick = async () => {
     const dups = Casino.COLLECTION.filter((c) => Casino.colCount(c.id) > 1);
     const total = dups.reduce((a, c) => a + (Casino.colCount(c.id) - 1) * ((cotes[key(c)] && cotes[key(c)].instant) || Casino.instantPrice(key(c))), 0);
-    const b = $('sell-dups');
-    if (!dupArmed) { dupArmed = true; b.textContent = '👉 Vendre ' + dups.reduce((a, c) => a + Casino.colCount(c.id) - 1, 0) + ' doublons pour ' + fmt(total) + ' € ?'; setTimeout(() => { dupArmed = false; b.textContent = '💰 Vendre mes doublons au Casino'; }, 5000); return; }
-    dupArmed = false; b.disabled = true;
+    const b = $('sell-dups'), nb = dups.reduce((a, c) => a + Casino.colCount(c.id) - 1, 0);
+    if (!(await Casino.confirm({ icon: '💰', title: 'Vendre ' + nb + ' doublon' + (nb > 1 ? 's' : '') + ' au Casino ?', text: 'Tu gardes un exemplaire de chaque carte.', price: -total, ok: 'Vendre pour ' + fmt(total) + ' €' }))) return;
+    b.disabled = true;
     let got = 0;
     for (const c of dups) { const r = await Casino.sellInstant(key(c), Casino.colCount(c.id) - 1); if (!r.error) got += r.price; }
     Casino.toast('Doublons vendus', '+' + fmt(got) + ' € sur ta banque', '💰', 'gold');

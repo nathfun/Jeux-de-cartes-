@@ -392,7 +392,7 @@
     { icon: '⭐', text: '+25 % d\'XP sur tout ce que tu fais' },
     { icon: '🃏', text: 'Une carte de booster offerte en plus chaque jour' },
     { icon: '🥂', text: 'Clubs privés en multijoueur : prix doublés' },
-    { icon: '🏷️', text: 'Frais du marché divisés par deux' },
+    { icon: '🃏', text: 'Boosters 10 % moins chers' },
     { icon: '👑', text: 'Couronne, cadre, titre et thème VIP réservés aux membres' },
   ];
   const isVip = (P, now) => !!(P && P.vipUntil && P.vipUntil > (now || Date.now()));
@@ -839,9 +839,10 @@
   const tradeable = (kind, id) => { if (kind === 'col') return !!COL_BY_ID[id]; const it = itemOf(kind, id); return !!(it && (it.card || it.daily)); };
   /** Nombre d'exemplaires possédés (cartes Légendes : plusieurs ; objets : 0 ou 1). */
   const countOf = (P, key) => { const i = key.indexOf(':'); if (key.slice(0, i) === 'col') return (P.col && P.col[key.slice(i + 1)]) || 0; return P.owned && P.owned[key] ? 1 : 0; };
-  const MARKET_FEE = 0.10, MARKET_FEE_VIP = 0.05;
+  const MARKET_FEE = 0, MARKET_FEE_VIP = 0; // pas de frais sur le marché : le vendeur touche tout
   // ---------- Boosters ----------
-  const BOOSTER = { FREE: 2, FREE_VIP: 3, TIME_MS: 4 * 3600000, TIME_CAP: 2, PRICE1: 150, PRICE5: 600 };
+  const BOOSTER = { FREE: 2, FREE_VIP: 3, TIME_MS: 4 * 3600000, TIME_CAP: 2, PRICE1: 180, PRICE5: 750 };
+  const boosterPrice = (P, src, now) => Math.round((src === 'buy5' ? BOOSTER.PRICE5 : BOOSTER.PRICE1) * (isVip(P, now) ? 0.9 : 1));
   const CARD_POOL = () => { const out = COLLECTION.map((c) => ({ kind: 'col', id: c.id, rarity: c.rarity })); Object.keys(SHOP).forEach((k) => SHOP[k].forEach((it) => { if (it.card) out.push({ kind: k, id: it.id, rarity: it.card }); })); return out; };
   function cardsOf(P, now) {
     P.cards = P.cards || {};
@@ -858,7 +859,7 @@
     const pool = CARD_POOL(), owned = pool.filter((x) => countOf(P, ownKey(x.kind, x.id)) > 0);
     const by = {}; RARITY_ORDER.forEach((r) => { by[r] = { have: owned.filter((x) => x.rarity === r).length, all: pool.filter((x) => x.rarity === r).length }; });
     return { freeLeft, freeMax, tokens, tokenCap: BOOSTER.TIME_CAP, nextIn: tokens >= BOOSTER.TIME_CAP ? 0 : BOOSTER.TIME_MS - (since % BOOSTER.TIME_MS), shards: c.shards, opened: c.opened || 0,
-      price1: BOOSTER.PRICE1, price5: BOOSTER.PRICE5, have: owned.length, all: pool.length, by };
+      price1: boosterPrice(P, 'buy1', now), price5: boosterPrice(P, 'buy5', now), have: owned.length, all: pool.length, by };
   }
   function drawRarity(rnd, min) {
     const ok = RARITY_ORDER.slice(RARITY_ORDER.indexOf(min || 'commun'));
@@ -874,7 +875,7 @@
     if (source === 'free') { if (!info.freeLeft) return { error: 'Plus de carte offerte aujourd\'hui : reviens demain !' }; c.freeUsed = (c.freeDay === d ? c.freeUsed || 0 : 0) + 1; c.freeDay = d; }
     else if (source === 'time') { if (!info.tokens) return { error: 'Le sablier n\'est pas encore prêt.' }; c.timeAt = Math.max(c.timeAt, now - BOOSTER.TIME_MS * BOOSTER.TIME_CAP) + BOOSTER.TIME_MS; }
     else if (source === 'buy1' || source === 'buy5') {
-      const price = source === 'buy5' ? BOOSTER.PRICE5 : BOOSTER.PRICE1; n = source === 'buy5' ? 5 : 1;
+      const price = boosterPrice(P, source, now); n = source === 'buy5' ? 5 : 1;
       if (P.wallet < price) return { error: 'Il te manque ' + Math.ceil(price - P.wallet).toLocaleString('fr-FR') + ' €.' };
       P.wallet -= price;
     } else return { error: 'Booster inconnu.' };

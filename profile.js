@@ -30,6 +30,8 @@
   // ---------- Stockage ----------
   let P = null;
   function localDefaults() { return { equipped: Object.assign({}, R.DEFAULT_EQUIP), settings: { music: false, vibrate: true } }; }
+  let lastWallet = null, txReason = null;
+  const bootAt = Date.now();
   function load() {
     if (P) return P;
     let raw = null;
@@ -37,10 +39,49 @@
     P = Object.assign(localDefaults(), R.normalize(raw, Date.now()), raw ? pick(raw, LOCAL_KEYS) : {});
     if (P._econMigrated) { delete P._econMigrated; setTimeout(() => { try { save(); } catch (e) { /* ignore */ } }, 0); }
     if (!raw || !raw.pseudo) { try { P.pseudo = P.pseudo || localStorage.getItem('bj-pseudo') || ''; } catch (e) { /* ignore */ } }
+    if (lastWallet === null) lastWallet = Math.round((P.wallet || 0) * 100) / 100;
     return P;
   }
   function pick(o, keys) { const r = {}; keys.forEach((k) => { if (o[k] !== undefined) r[k] = o[k]; }); return r; }
   const listeners = [];
+  const TX_LABEL = { 'session.start': 'mis sur la table', 'session.cashout': 'encaissés de la table', 'shop.buy': 'achat en boutique', 'booster.open': 'achat de cartes', 'mk.buy': 'achat sur le marché',
+    'col.sell': 'vente au Casino', 'bonus.claim': 'bonus du jour', 'chest.claim': 'coffre', 'wheel.spin': 'roue du jour', 'vip.buy': 'pass VIP', 'challenge.claim': 'défi du jour', 'rescue.claim': 'aide de secours',
+    'multi.prize': 'prix entre amis', 'duel.new': 'mise du duel', 'duel.accept': 'mise du duel', 'duel.decline': 'mise rendue', 'duel.settle': 'duel', 'trade.new': 'échange', 'trade.accept': 'échange', 'trade.decline': 'échange annulé', 'mk.cancel': 'vente retirée', 'deals.list': 'marché et duels', 'ref.link': 'parrainage' };
+  function txBanner(delta, why) {
+    injectStyle();
+    const c = container(), el = document.createElement('div');
+    el.className = 'casino-tx ' + (delta > 0 ? 'plus' : 'minus');
+    const amt = Math.abs(delta).toLocaleString('fr-FR', { maximumFractionDigits: 2 });
+    el.textContent = (delta > 0 ? '+' + amt + ' € crédités sur ton compte' : '−' + amt + ' € débités de ton compte') + (why ? ' · ' + why : '');
+    c.insertBefore(el, c.firstChild);
+    setTimeout(() => el.classList.add('out'), 3000);
+    setTimeout(() => el.remove(), 3500);
+  }
+  /** Fenêtre de confirmation (achats) : renvoie une promesse vrai / faux. */
+  function confirmBox(opts) {
+    injectStyle();
+    return new Promise((resolve) => {
+      const o = document.createElement('div'); o.className = 'casino-confirm';
+      const b = document.createElement('div'); b.className = 'ccf-box';
+      if (opts.icon) { const i = document.createElement('div'); i.className = 'ccf-icon'; i.textContent = opts.icon; b.appendChild(i); }
+      const t = document.createElement('h3'); t.textContent = opts.title || 'Confirmer ?'; b.appendChild(t);
+      if (opts.text) { const p = document.createElement('p'); p.textContent = opts.text; b.appendChild(p); }
+      if (typeof opts.price === 'number') {
+        const w = load().wallet || 0, row = document.createElement('div'); row.className = 'ccf-bank';
+        row.innerHTML = '<span>Ta banque</span><b></b>';
+        row.querySelector('b').textContent = Math.round(w).toLocaleString('fr-FR') + ' € → ' + Math.round(w - opts.price).toLocaleString('fr-FR') + ' €';
+        b.appendChild(row);
+      }
+      const btns = document.createElement('div'); btns.className = 'ccf-btns';
+      const no = document.createElement('button'); no.type = 'button'; no.className = 'ccf-no'; no.textContent = opts.cancel || 'Annuler';
+      const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'ccf-ok'; ok.textContent = opts.ok || 'Confirmer';
+      btns.append(no, ok); b.appendChild(btns); o.appendChild(b);
+      const done = (v) => { o.remove(); resolve(v); };
+      no.onclick = () => done(false); ok.onclick = () => done(true);
+      o.onclick = (e) => { if (e.target === o) done(false); };
+      document.body.appendChild(o); ok.focus();
+    });
+  }
   function save(keepStamp) {
     if (!keepStamp) P.savedAt = Date.now();
     // historique de la banque : dernière valeur de chaque jour (31 jours)
@@ -52,6 +93,10 @@
     }
     try { localStorage.setItem(KEY, JSON.stringify(P)); } catch (e) { /* ignore */ }
     try { document.documentElement.classList.toggle("is-vip", R.isVip(P, Date.now())); } catch (e) { /* ignore */ }
+    // bandeau de transaction : chaque mouvement de la banque est annoncé en haut de l'écran
+    const w = Math.round((P.wallet || 0) * 100) / 100;
+    if (lastWallet !== null && Math.abs(w - lastWallet) >= 0.5 && Date.now() - bootAt > 2500 && typeof document !== 'undefined') { try { txBanner(w - lastWallet, txReason); } catch (e) { /* ignore */ } }
+    lastWallet = w; txReason = null;
     listeners.forEach((f) => { try { f(P); } catch (e) { /* ignore */ } });
   }
 
@@ -114,6 +159,7 @@
         if (!r.ok) return { error: j.error || 'Erreur du serveur (' + r.status + ').' };
         res = j;
       } else res = (await f.fn({ op, data: data || {} })).data;
+      txReason = TX_LABEL[op] || null;
       applyServer(res);
       return res.result || {};
     } catch (e) {
@@ -840,7 +886,7 @@
       if (v > 0) setTimeout(() => bigWin(v, place === 1 ? 'VICTOIRE ENTRE AMIS !' : '2e PLACE !'), 2200);
       return v;
     },
-    showRanking, celebrate,
+    showRanking, celebrate, confirm: confirmBox,
     // ---------- Banque du temps ----------
     // ---------- Coffre (se remplit tout seul) et aide de secours ----------
     chest() { return R.chestInfo(load(), Date.now()); },
@@ -1012,6 +1058,7 @@
 .lg-card .lg-fact { font-size: .78em; line-height: 1.3; text-align: center; margin-top: 6px; background: rgba(0,0,0,.35); border-radius: 8px; padding: 6px; }
 .lg-card .lg-cote { font-size: .78em; font-weight: 800; color: #fde68a; margin-top: 4px; }
 .lg-card .lg-count { position: absolute; top: 18px; right: 4px; background: #f2c14e; color: #2a1d00; font-weight: 900; font-size: .75em; border-radius: 999px; padding: 1px 6px; }
+.lg-card.xs { width: 84px; height: 120px; font-size: 9px; padding: 4px; border-width: 2px; } .lg-card.xs .lg-count { top: 13px; }
 .lg-card.big { width: 250px; height: 380px; font-size: 17px; padding: 12px; border-width: 4px; }
 .lg-card.big .lg-art { font-size: 4.4em; flex: 0 0 150px; }
 .lg-card.locked { filter: grayscale(1) brightness(.55); }
@@ -1033,7 +1080,16 @@
 @keyframes cc-pop { from { transform: scale(.2) rotate(-25deg); opacity: 0; } } @keyframes cc-up { from { transform: translateY(14px); opacity: 0; } }
 @keyframes cc-fall { to { transform: translateY(110vh) rotate(300deg); } }
 .salon-pill { display: inline-block; margin-left: .5rem; padding: .05rem .5rem; border-radius: 999px; background: rgba(245,197,66,.15); border: 1px solid rgba(245,197,66,.6); color: #f5c542; font-weight: 700; font-size: .85em; white-space: nowrap; }
-#casino-toasts { position: fixed; top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 100; display: flex; flex-direction: column; gap: .5rem; width: min(420px, calc(100vw - 24px)); pointer-events: none; }
+.casino-tx { align-self: center; font-weight: 800; font-size: 14px; padding: .5rem 1rem; border-radius: 999px; box-shadow: 0 8px 24px rgba(0,0,0,.5); animation: ct-in .4s cubic-bezier(.2,.9,.3,1.3) both; font-family: system-ui, sans-serif; text-align: center; }
+.casino-tx.plus { background: #14532d; color: #bbf7d0; border: 2px solid #22c55e; } .casino-tx.minus { background: #450a0a; color: #fecaca; border: 2px solid #ef4444; }
+.casino-tx.out { opacity: 0; transform: translateY(-10px); transition: .4s; }
+.casino-confirm { position: fixed; inset: 0; z-index: 140; background: rgba(0,0,0,.72); display: grid; place-items: center; padding: 1rem; animation: cc-fade .2s both; font-family: system-ui, sans-serif; }
+.casino-confirm .ccf-box { background: #161c24; color: #e8ecef; border: 1px solid #2f3a47; border-radius: 18px; padding: 1.2rem; width: min(360px, 100%); text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,.6); animation: cc-pop .3s cubic-bezier(.2,1.4,.4,1) both; }
+.casino-confirm .ccf-icon { font-size: 2.6rem; } .casino-confirm h3 { margin: .3rem 0 .4rem; font-size: 1.15rem; } .casino-confirm p { margin: 0 0 .6rem; color: #b6c0cc; font-size: .92rem; line-height: 1.4; }
+.casino-confirm .ccf-bank { display: flex; justify-content: space-between; gap: .5rem; background: #0d1117; border-radius: 10px; padding: .5rem .7rem; margin: .4rem 0 .8rem; font-size: .9rem; } .casino-confirm .ccf-bank b { color: #f2c14e; }
+.casino-confirm .ccf-btns { display: flex; gap: .5rem; } .casino-confirm button { flex: 1; font: inherit; font-weight: 800; border-radius: 999px; padding: .65rem; cursor: pointer; }
+.casino-confirm .ccf-no { background: transparent; color: #e8ecef; border: 1px solid #3a4655; } .casino-confirm .ccf-ok { background: linear-gradient(135deg, #f2c14e, #e89a2c); color: #222; border: 0; }
+#casino-toasts { position: fixed; top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 150; display: flex; flex-direction: column; gap: .5rem; width: min(420px, calc(100vw - 24px)); pointer-events: none; }
 .casino-toast { display: flex; gap: .7rem; align-items: center; background: #1a2129; color: #e8ecef; border: 2px solid #f2c14e; border-radius: 14px; padding: .6rem .8rem; box-shadow: 0 10px 30px rgba(0,0,0,.55); animation: ct-in .45s cubic-bezier(.2,.9,.3,1.3) both; font: 14px system-ui, sans-serif; }
 .casino-toast.out { animation: ct-out .5s ease-in forwards; }
 .casino-toast .ct-icon { font-size: 1.8rem; }

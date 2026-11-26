@@ -96,7 +96,7 @@ module.exports = function makeDeals({ db, serial, R, core, rtdb, TABLES, pushTo,
       fee = Math.ceil(l.price * (R.isVip(P[l.seller]) ? R.MARKET_FEE_VIP : R.MARKET_FEE));
       giveMoney(P[l.seller], l.price - fee);
       giveItem(P[uid], key);
-      inbox(P[l.seller], '🏪 Vendu !', nameOf(P[uid]) + ' a acheté « ' + itemName(l.kind, l.item) + ' » : +' + (l.price - fee).toLocaleString('fr-FR') + ' € (frais ' + fee + ' €).', '💰');
+      inbox(P[l.seller], '🏪 Vendu !', nameOf(P[uid]) + ' a acheté « ' + itemName(l.kind, l.item) + ' » : +' + (l.price - fee).toLocaleString('fr-FR') + ' € sur ton compte.', '💰');
       db.marketSet(l.id, { status: 'sold', buyer: uid, soldAt: Date.now() });
       coteCache = null;
     });

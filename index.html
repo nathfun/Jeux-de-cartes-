@@ -368,6 +368,16 @@
     .mk-card button { font: inherit; font-size: .82rem; font-weight: 700; border-radius: 999px; padding: .3rem .8rem; border: 0; background: var(--gold); color: #222; cursor: pointer; }
     .mk-card button.armed { background: #22c55e; } .mk-card button:disabled { opacity: .5; }
     .mk-card.col .lg-card { margin-bottom: .2rem; }
+    .lx-box.sell-box { width: min(640px, 100%); }
+    .sp-search { font: inherit; background: #0d1117; color: var(--text); border: 1px solid var(--border); border-radius: 999px; padding: .55rem .9rem; width: 100%; }
+    .sp-chips { display: flex; gap: .3rem; overflow-x: auto; scrollbar-width: none; } .sp-chips button { flex: none; font: inherit; font-size: .8rem; font-weight: 700; background: #0d1117; color: var(--text); border: 1px solid var(--border); border-radius: 999px; padding: .25rem .65rem; cursor: pointer; } .sp-chips button.on { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
+    .sp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: .45rem; max-height: 46vh; overflow-y: auto; padding: .2rem; justify-items: center; }
+    .sp-item { background: none; border: 2px solid transparent; border-radius: 12px; padding: .2rem; display: flex; flex-direction: column; align-items: center; gap: .15rem; cursor: pointer; color: var(--text); font: inherit; }
+    .sp-item.sel { border-color: var(--gold); background: rgba(242,193,78,.12); } .sp-item small { font-size: .68rem; color: var(--muted); }
+    .sp-obj { width: 84px; height: 120px; border: 3px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .2rem; padding: .3rem; background: #111827; } .sp-obj .pv { width: 64px; height: 50px; border-radius: 8px; display: grid; place-items: center; font-size: 1.5rem; overflow: hidden; } .sp-obj .pv-title { font-size: .55rem !important; } .sp-obj b { font-size: .68rem; text-align: center; line-height: 1.1; }
+    .sp-form { border-top: 1px solid var(--border); padding-top: .6rem; display: flex; flex-direction: column; gap: .45rem; }
+    .sp-price { display: flex; align-items: center; gap: .5rem; } .sp-price input { font: inherit; font-size: 1.2rem; font-weight: 800; width: 8em; background: #0d1117; color: var(--gold); border: 1px solid var(--border); border-radius: 10px; padding: .4rem .6rem; }
+    .sp-quick { display: flex; gap: .3rem; flex-wrap: wrap; } .sp-quick button { font-size: .78rem; }
     .mk-mine { margin-bottom: .6rem; }
     .lx-dlg { position: fixed; inset: 0; z-index: 105; background: rgba(0,0,0,.7); display: grid; place-items: center; padding: 1rem; }
     .lx-box { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 1rem; width: min(520px, 100%); max-height: 88vh; overflow-y: auto; display: flex; flex-direction: column; gap: .6rem; }
@@ -741,7 +751,7 @@
 
     <section class="panel market" data-tab="shop" aria-label="Marché">
       <div class="bo-head"><h2>🏪 Marché des joueurs</h2><button id="mk-refresh" class="icon-btn" type="button" aria-label="Actualiser">↻</button></div>
-      <p class="muted small-p">Achète les cartes et objets rares mis en vente par les autres joueurs, ou vends les tiens. Le Casino prend <span id="mk-fee">10 %</span> sur chaque vente.</p>
+      <p class="muted small-p">Achète les cartes et objets rares mis en vente par les autres joueurs, ou vends les tiens : <b>aucun frais</b>, le vendeur touche tout.</p>
       <div class="mk-filters">
         <select id="mk-kind" aria-label="Catégorie"><option value="">Toutes les catégories</option></select>
         <select id="mk-rar" aria-label="Rareté"><option value="">Toutes les raretés</option></select>
@@ -1013,8 +1023,8 @@
           b.append(n, pr, sm);
           b.disabled = P.wallet < ps.price;
           b.addEventListener('click', async () => {
-            if (vipArmed !== ps.id) { vipArmed = ps.id; vipKey = ''; renderVip(); setTimeout(() => { if (vipArmed === ps.id) { vipArmed = null; vipKey = ''; renderVip(); } }, 4000); return; }
-            vipArmed = null; b.disabled = true;
+            if (!(await Casino.confirm({ icon: '👑', title: (vip ? 'Prolonger' : 'Prendre') + ' le pass VIP ' + ps.days + ' jours ?', text: 'Tous les avantages du club pendant ' + ps.days + ' jours' + (vip ? ', ajoutés à ton pass actuel.' : '.'), price: ps.price, ok: 'Payer ' + fmt(ps.price) + ' €' }))) return;
+            b.disabled = true;
             const r = await Casino.buyVip(ps.id);
             if (r.error) Casino.toast('Club VIP', r.error, '👑');
             vipKey = ''; render();
@@ -1203,10 +1213,10 @@
           const cost = Casino.RARITY[it.card].craft, sh = Casino.boosters().shards, ck = 'craft:' + kind + ':' + it.id;
           if (sh < cost) { act.textContent = '🃏 Carte ' + Casino.RARITY[it.card].name.toLowerCase() + ' : à trouver dans les boosters (ou ' + fmt(cost) + ' ✨, tu en as ' + fmt(sh) + ')'; act.disabled = true; return; }
           act.classList.add('buy');
-          act.textContent = armedBuy === ck ? '👉 Confirmer : ' + fmt(cost) + ' éclats ?' : '✨ Fabriquer pour ' + fmt(cost) + ' éclats';
+          act.textContent = '✨ Fabriquer pour ' + fmt(cost) + ' éclats';
           act.onclick = async () => {
-            if (armedBuy !== ck) { armedBuy = ck; clearTimeout(armedTimer); armedTimer = setTimeout(() => { armedBuy = null; renderAction(); }, 4000); renderAction(); return; }
-            armedBuy = null; act.disabled = true;
+            if (!(await Casino.confirm({ icon: '✨', title: 'Fabriquer « ' + it.name + ' » ?', text: 'Coût : ' + fmt(cost) + ' éclats (tu en as ' + fmt(sh) + ').', ok: 'Fabriquer' }))) return;
+            act.disabled = true;
             const r = await Casino.craftCard(kind, it.id);
             if (r.error) { Casino.toast('Fabrication impossible', r.error, '⚠️'); renderShop(); return; }
             celebrate('−' + fmt(cost) + ' ✨'); Casino.toast('Carte fabriquée !', it.name + ' rejoint ta collection.', '🃏', 'gold'); wear(kind, it, true);
@@ -1217,10 +1227,9 @@
         const key = kind + ':' + it.id;
         if (P.wallet < it.price) { act.textContent = 'Il te manque ' + fmt(it.price - P.wallet) + ' €'; act.disabled = true; return; }
         act.classList.add('buy');
-        act.textContent = armedBuy === key ? '👉 Confirmer l\'achat : ' + fmt(it.price) + ' € ?' : '🛒 Acheter ' + fmt(it.price) + ' €';
+        act.textContent = '🛒 Acheter ' + fmt(it.price) + ' €';
         act.onclick = async () => {
-          if (armedBuy !== key) { armedBuy = key; clearTimeout(armedTimer); armedTimer = setTimeout(() => { armedBuy = null; renderAction(); }, 4000); renderAction(); return; }
-          armedBuy = null; clearTimeout(armedTimer);
+          if (!(await Casino.confirm({ icon: '🛍️', title: 'Acheter « ' + it.name + ' » ?', text: Casino.SHOP_LABELS[kind] + ' · il sera équipé tout de suite.', price: it.price, ok: 'Acheter pour ' + fmt(it.price) + ' €' }))) return;
           act.disabled = true; act.textContent = '…';
           const r = await Casino.buy(kind, it.id);
           if (r.error) { Casino.toast('Achat impossible', r.error, '⚠️'); renderShop(); return; }
@@ -1277,6 +1286,11 @@
       }
       setInterval(() => { if (document.body.dataset.hubtab === 'shop') renderBoosters(); }, 30000);
       async function openCards(src, btn) {
+        if (src === 'buy1' || src === 'buy5') {
+          const b = Casino.boosters(), price = src === 'buy5' ? b.price5 : b.price1;
+          const ok = await Casino.confirm({ icon: src === 'buy5' ? '📦' : '🃏', title: src === 'buy5' ? 'Acheter un paquet de 5 cartes ?' : 'Acheter une carte ?', text: src === 'buy5' ? '5 cartes au hasard, dont au moins une rare ou mieux.' : 'Une carte au hasard : Légende ou objet de style.', price, ok: 'Acheter pour ' + fmt(price) + ' €' });
+          if (!ok) return;
+        }
         btn.disabled = true;
         if (window.Sfx && Sfx.unlock) Sfx.unlock();
         const r = await Casino.openBooster(src);
@@ -1895,7 +1909,6 @@
       let armed = null, avg = {};
       async function renderMarket() {
         const list = $('mk-list'); if (!list) return;
-        $('mk-fee').textContent = Math.round((Casino.isVip() ? Casino.MARKET_FEE_VIP : Casino.MARKET_FEE) * 100) + ' %' + (Casino.isVip() ? ' (tarif VIP 👑)' : '');
         if (!Casino.server) { list.innerHTML = ''; list.appendChild(el('p', 'muted small-p', 'Le marché demande le serveur du Casino.')); $('mk-sell').disabled = true; return; }
         const [r, mine] = await Promise.all([Casino.deal('mk.browse', { kind: $('mk-kind').value, rarity: $('mk-rar').value }), Casino.deal('deals.list')]);
         if (r.error) { list.textContent = r.error; return; }
@@ -1912,11 +1925,11 @@
           const it = l.kind === 'col' ? Casino.COL_BY_ID[l.item] : (Casino.SHOP[l.kind] || []).find((x) => x.id === l.item); if (!it) return;
           const c = el('div', 'mk-card' + (l.kind === 'col' ? ' col' : '')); c.style.setProperty('--rc', RC(l.rarity));
           c.append(l.kind === 'col' ? Casino.cardEl(l.item, {}) : window.LoungePreview(l.kind, it), el('b', '', it.name), el('small', '', (l.rarity ? Casino.RARITY[l.rarity].name + ' · ' : '') + Casino.SHOP_LABELS[l.kind]), el('span', 'pr', fmt(l.price) + ' €'), el('small', '', 'par ' + l.seller));
-          const have = l.kind !== 'col' && Casino.owns(l.kind, l.item), b = el('button', armed === l.id ? 'armed' : '', have ? 'Déjà à toi' : armed === l.id ? 'Confirmer ?' : 'Acheter'); b.type = 'button';
+          const have = l.kind !== 'col' && Casino.owns(l.kind, l.item), b = el('button', '', have ? 'Déjà à toi' : 'Acheter'); b.type = 'button';
           b.disabled = have || Casino.profile.wallet < l.price;
           b.onclick = async () => {
-            if (armed !== l.id) { armed = l.id; renderMarket(); setTimeout(() => { if (armed === l.id) { armed = null; renderMarket(); } }, 4000); return; }
-            armed = null; b.disabled = true; const x = await Casino.deal('mk.buy', { id: l.id });
+            if (!(await Casino.confirm({ icon: '🛍️', title: 'Acheter « ' + it.name + ' » ?', text: 'Vendu par ' + l.seller + '.', price: l.price, ok: 'Acheter pour ' + fmt(l.price) + ' €' }))) return;
+            b.disabled = true; const x = await Casino.deal('mk.buy', { id: l.id });
             if (!toastErr(x, 'Achat')) Casino.toast('Acheté !', it.name + ' rejoint ta collection (Mon style).', '🛍️', 'gold');
             renderMarket(); if (window.renderShopExt) window.renderShopExt();
           };
@@ -1925,18 +1938,61 @@
       }
       window.renderMarket = renderMarket;
       $('mk-kind').onchange = renderMarket; $('mk-rar').onchange = renderMarket; $('mk-refresh').onclick = renderMarket;
-      $('mk-sell').addEventListener('click', () => {
-        const items = myTradeables(), dl = dialog('💰 Vendre un objet');
+      // ----- vendre : on choisit visuellement (recherche, filtres, cartes), puis le prix -----
+      $('mk-sell').addEventListener('click', async () => {
+        const items = myTradeables(), dl = dialog('💰 Mettre en vente');
+        dl.box.classList.add('sell-box');
         if (!items.length) { dl.box.appendChild(el('p', 'muted', 'Tu n\'as pas encore de carte ou d\'objet rare à vendre. Ouvre des boosters !')); return; }
-        const si = el('select'); items.forEach((it) => { const o = el('option', '', it.name + (it.rarity ? ' (' + Casino.RARITY[it.rarity].name + ')' : '')); o.value = it.key; si.appendChild(o); });
-        const pi = el('input'); pi.type = 'number'; pi.min = 10; pi.step = 10;
-        const hint = el('small', 'muted');
-        const upd = () => { const it = items.find((x) => x.key === si.value), a = avg[si.value], base = it && it.rarity ? (si.value.startsWith('col:') ? Casino.COTE_BASE[it.rarity] : Casino.RARITY[it.rarity].craft * 2) : 500; if (!pi.value || pi.dataset.auto) { pi.value = a || base; pi.dataset.auto = '1'; } const fee = Math.ceil((+pi.value || 0) * (Casino.isVip() ? Casino.MARKET_FEE_VIP : Casino.MARKET_FEE)); hint.textContent = (a ? 'Prix moyen des ventes (30 j) : ' + fmt(a) + ' €. ' : '') + 'Tu toucheras ' + fmt((+pi.value || 0) - fee) + ' € (frais ' + fmt(fee) + ' €).'; };
-        si.onchange = () => { pi.dataset.auto = '1'; pi.value = ''; upd(); }; pi.oninput = () => { delete pi.dataset.auto; upd(); }; upd();
-        const L = (t, x) => { const l = el('label', '', t); l.appendChild(x); return l; };
-        const go = el('button', 'bonus-btn', '🏷️ Mettre en vente'); go.type = 'button';
-        dl.box.append(L('Objet', si), L('Prix (€)', pi), hint, el('small', 'muted', 'L\'objet quitte ta collection pendant la vente (tu peux le retirer à tout moment).'), dl.err, go);
-        go.onclick = async () => { go.disabled = true; const r = await Casino.deal('mk.list', { item: si.value, price: +pi.value }); if (r.error) { dl.err.textContent = r.error; go.disabled = false; return; } dl.close(); Casino.toast('En vente !', 'Tu seras prévenu dès qu\'il est vendu.', '🏷️', 'gold'); renderMarket(); };
+        const cotes = await Casino.cotes().catch(() => ({}));
+        const coteOf = (k) => (cotes[k] && cotes[k].cote) || (k.startsWith('col:') ? Casino.COTE_BASE[Casino.rarityOfKey(k)] : (Casino.RARITY[Casino.rarityOfKey(k) || 'rare'].craft * 2));
+        let sel = null, q = '', f = 'all';
+        const search = el('input', 'sp-search'); search.type = 'search'; search.placeholder = '🔎 Chercher une carte (ex. France, Zeus…)';
+        const chips = el('div', 'sp-chips');
+        const FILTERS = [['all', 'Tout'], ['col', '🃏 Légendes'], ['obj', '🎨 Objets']].concat(Casino.RARITY_ORDER.map((r) => [r, Casino.RARITY[r].name]));
+        FILTERS.forEach(([id, lbl]) => { const b = el('button', id === f ? 'on' : '', lbl); b.type = 'button'; if (Casino.RARITY[id]) b.style.color = Casino.RARITY[id].color; b.onclick = () => { f = id; chips.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); draw(); }; chips.appendChild(b); });
+        const grid = el('div', 'sp-grid'), form = el('div', 'sp-form');
+        const draw = () => {
+          grid.innerHTML = '';
+          const list = items.filter((it) => {
+            const isCol = it.key.startsWith('col:');
+            if (f === 'col' && !isCol) return false; if (f === 'obj' && isCol) return false;
+            if (Casino.RARITY[f] && it.rarity !== f) return false;
+            return !q || it.name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').includes(q);
+          }).sort((x, y) => coteOf(y.key) - coteOf(x.key));
+          if (!list.length) grid.appendChild(el('p', 'muted', 'Aucune carte ne correspond.'));
+          list.forEach((it) => {
+            const o = itemOf(it.key), b = el('button', 'sp-item' + (sel === it.key ? ' sel' : '')); b.type = 'button';
+            if (o.kind === 'col') { const card = Casino.cardEl(o.id, { count: Casino.colCount(o.id) }); card.classList.add('xs'); b.appendChild(card); }
+            else { const w = el('div', 'sp-obj'); if (it.rarity) w.style.borderColor = Casino.RARITY[it.rarity].color; w.append(window.LoungePreview(o.kind, o.it), el('b', '', o.it.name)); b.appendChild(w); }
+            b.appendChild(el('small', '', 'cote ' + fmt(coteOf(it.key)) + ' €'));
+            b.onclick = () => { sel = it.key; draw(); showForm(); form.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); };
+            grid.appendChild(b);
+          });
+        };
+        search.oninput = () => { q = search.value.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim(); draw(); };
+        const showForm = () => {
+          form.innerHTML = '';
+          if (!sel) { form.appendChild(el('p', 'muted small-p', '👆 Touche la carte que tu veux vendre.')); return; }
+          const o = itemOf(sel), name = o.it ? o.it.name : sel, cote = coteOf(sel), a = avg[sel];
+          form.appendChild(el('b', '', 'Vendre « ' + name + ' »'));
+          const row = el('div', 'sp-price'), pi = el('input'); pi.type = 'number'; pi.min = 10; pi.step = 10; pi.value = Math.max(10, Math.round(a || cote));
+          const quick = el('div', 'sp-quick');
+          [['Cote', cote], ['+20 %', cote * 1.2], ['+50 %', cote * 1.5]].forEach(([l, v]) => { const b = el('button', 'icon-btn', l + ' · ' + fmt(v) + ' €'); b.type = 'button'; b.onclick = () => { pi.value = Math.max(10, Math.round(v)); }; quick.appendChild(b); });
+          row.append(el('span', '', 'Prix'), pi, el('span', '', '€'));
+          const go = el('button', 'bonus-btn', '🏷️ Mettre en vente'); go.type = 'button';
+          go.onclick = async () => {
+            const price = Math.round(+pi.value || 0);
+            if (price < 10) { dl.err.textContent = 'Prix minimum : 10 €.'; return; }
+            if (!(await Casino.confirm({ icon: '🏷️', title: 'Mettre en vente « ' + name + ' » ?', text: 'Prix : ' + fmt(price) + ' €. Tu toucheras la totalité quand un joueur l\'achètera (aucun frais). Tu peux retirer l\'annonce à tout moment.', ok: 'Mettre en vente' }))) return;
+            go.disabled = true;
+            const r = await Casino.deal('mk.list', { item: sel, price });
+            if (r.error) { dl.err.textContent = r.error; go.disabled = false; return; }
+            dl.close(); Casino.toast('En vente !', name + ' à ' + fmt(price) + ' €. Tu seras prévenu dès qu\'il est vendu.', '🏷️', 'gold'); renderMarket();
+          };
+          form.append(el('small', 'muted', (a ? 'Prix moyen des ventes (30 j) : ' + fmt(a) + ' € · ' : '') + 'Cote : ' + fmt(cote) + ' € · aucun frais : tu touches tout.'), row, quick, dl.err, go);
+        };
+        dl.box.append(search, chips, grid, form);
+        draw(); showForm();
       });
       if (document.body.dataset.hubtab === 'multi') renderDeals();
       if (document.body.dataset.hubtab === 'shop') renderMarket();
