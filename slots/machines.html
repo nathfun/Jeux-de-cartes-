@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Machines à sous</title>
+  <meta name="theme-color" content="#140f3d">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../icons/icon-192.png">
+  <script src="../firebase-config.js"></script>
+  <script src="../gate.js"></script>
+  <style>
+    :root { --bg: #0b0a1a; --text: #f3f4f6; --muted: #a5a9c4; --gold: #f2c14e; color-scheme: dark; }
+    * { box-sizing: border-box; } [hidden] { display: none !important; }
+    body { margin: 0; color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; min-height: 100vh;
+      background: radial-gradient(900px 500px at 50% -10%, #3b1a78 0%, transparent 60%), var(--bg); }
+    header { display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .8rem max(16px, env(safe-area-inset-right)) .8rem max(16px, env(safe-area-inset-left)); }
+    header h1 { margin: 0; font-size: 1.25rem; } header a { color: var(--gold); text-decoration: none; }
+    .bank b { color: var(--gold); }
+    main { max-width: 980px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-right)) 2rem max(16px, env(safe-area-inset-left)); }
+    /* ----- bannière du record du mois ----- */
+    .record { position: relative; overflow: hidden; border-radius: 22px; padding: 1.1rem 1.2rem; margin: .4rem 0 1.2rem; text-align: center;
+      background: linear-gradient(120deg, #3a2306, #7a4a0c 30%, #f2c14e 50%, #7a4a0c 70%, #3a2306); background-size: 300% 100%; animation: shine 6s linear infinite;
+      border: 2px solid #f2c14e; box-shadow: 0 0 40px rgba(242,193,78,.35), inset 0 0 30px rgba(0,0,0,.35); }
+    .record::before { content: ''; position: absolute; inset: 6px; border-radius: 16px; background: rgba(10,6,2,.78); }
+    .record > * { position: relative; }
+    .bulbs { position: absolute; inset: 0; pointer-events: none; }
+    .bulbs i { position: absolute; width: 8px; height: 8px; border-radius: 50%; background: #fff3b0; box-shadow: 0 0 8px #fde047; animation: blink 1s steps(2) infinite; }
+    .rec-kicker { font-size: .75rem; font-weight: 900; letter-spacing: .22em; color: #fde68a; text-transform: uppercase; }
+    .rec-main { display: flex; align-items: center; justify-content: center; gap: .8rem; flex-wrap: wrap; margin: .45rem 0 .2rem; }
+    .rec-crown { font-size: 2.2rem; animation: bob 2s ease-in-out infinite; }
+    .rec-name { font-size: clamp(1.3rem, 5vw, 1.9rem); font-weight: 900; }
+    .rec-amount { font-size: clamp(1.8rem, 8vw, 3rem); font-weight: 900; color: #fde047; text-shadow: 0 0 24px rgba(253,224,71,.6); font-variant-numeric: tabular-nums; }
+    .rec-sub { color: #e9d5a3; font-size: .9rem; }
+    .rec-empty .rec-name { font-size: 1.15rem; font-weight: 700; }
+    /* ----- les machines ----- */
+    h2 { font-size: 1rem; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; margin: 0 0 .6rem; }
+    .machines { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+    .machine { position: relative; display: flex; flex-direction: column; gap: .7rem; text-decoration: none; color: var(--text); border-radius: 22px; padding: 1.1rem; overflow: hidden;
+      border: 2px solid var(--c); background: var(--bgm); box-shadow: 0 16px 40px rgba(0,0,0,.45); transition: transform .2s, box-shadow .2s; }
+    .machine:hover { transform: translateY(-4px); box-shadow: 0 22px 50px rgba(0,0,0,.55), 0 0 30px color-mix(in srgb, var(--c) 40%, transparent); }
+    .machine:active { transform: scale(.99); }
+    .machine .new { position: absolute; top: 14px; right: -34px; transform: rotate(35deg); background: #ef4444; color: #fff; font-weight: 900; font-size: .72rem; padding: .25rem 2.4rem; letter-spacing: .1em; }
+    .m-title { font-size: 1.5rem; font-weight: 900; color: var(--c); }
+    .m-reels { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; padding: .5rem; border-radius: 14px; background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.08); }
+    .m-reels span { aspect-ratio: 1; display: grid; place-items: center; font-size: clamp(1.3rem, 5vw, 1.8rem); border-radius: 10px; background: rgba(255,255,255,.05); }
+    .machine:hover .m-reels span { animation: roll .5s ease-in-out; } .machine:hover .m-reels span:nth-child(2) { animation-delay: .06s; } .machine:hover .m-reels span:nth-child(3) { animation-delay: .12s; } .machine:hover .m-reels span:nth-child(4) { animation-delay: .18s; } .machine:hover .m-reels span:nth-child(5) { animation-delay: .24s; }
+    .m-desc { color: #d1d5db; font-size: .92rem; line-height: 1.45; margin: 0; }
+    .m-tags { display: flex; gap: .35rem; flex-wrap: wrap; } .m-tags span { font-size: .75rem; font-weight: 700; padding: .2rem .6rem; border-radius: 999px; background: rgba(255,255,255,.08); }
+    .m-go { margin-top: auto; text-align: center; font-weight: 900; letter-spacing: .06em; padding: .8rem; border-radius: 14px; color: #1a1000; background: linear-gradient(90deg, var(--c), var(--c2)); }
+    .royal { --c: #c084fc; --c2: #f2c14e; --bgm: radial-gradient(ellipse at 50% 0%, #4c1d6b, #1d0d2a 70%); }
+    .gold { --c: #fbbf24; --c2: #fde047; --bgm: radial-gradient(ellipse at 50% 0%, #6b3a12, #1c0e05 70%); }
+    @keyframes shine { to { background-position: -300% 0; } } @keyframes blink { 50% { opacity: .25; } }
+    @keyframes bob { 50% { transform: translateY(-5px) rotate(-6deg); } } @keyframes roll { 50% { transform: translateY(-30%); filter: blur(2px); } }
+    @media (prefers-reduced-motion: reduce) { .record, .bulbs i, .rec-crown, .m-reels span { animation: none !important; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1><a id="home-link" href="../index.html" aria-label="Retour à l'accueil">←</a> 🎰 Machines à sous</h1>
+    <div class="bank">🏦 <b id="wallet">–</b> €</div>
+  </header>
+  <main>
+    <section id="record" class="record" aria-live="polite">
+      <div class="bulbs" id="bulbs" aria-hidden="true"></div>
+      <div class="rec-kicker">🏆 Record du mois · <span id="rec-month"></span></div>
+      <div id="rec-body" class="rec-main rec-empty"><span class="rec-name">Chargement…</span></div>
+      <div id="rec-sub" class="rec-sub"></div>
+    </section>
+
+    <h2>Choisis ta machine</h2>
+    <div class="machines">
+      <a class="machine royal" href="index.html">
+        <div class="m-title">Casino Royal</div>
+        <div class="m-reels" aria-hidden="true"><span>7️⃣</span><span>💎</span><span>🍒</span><span>⭐</span><span>🔔</span></div>
+        <p class="m-desc">La classique : 5 rouleaux, 10 lignes, jokers et tours gratuits à gains doublés. Cinq 7️⃣ = jackpot.</p>
+        <div class="m-tags"><span>10 lignes</span><span>Tours gratuits ×2</span><span>Jackpot 5 000×</span></div>
+        <div class="m-go">JOUER ›</div>
+      </a>
+      <a class="machine gold" href="../gold/index.html">
+        <span class="new">NOUVEAU</span>
+        <div class="m-title">Ruée vers l'Or</div>
+        <div class="m-reels" aria-hidden="true"><span>🤠</span><span>🟡</span><span>🧨</span><span>🟡</span><span>💰</span></div>
+        <p class="m-desc">243 façons de gagner, coups de grisou et le bonus <b>Le Filon</b> : les pépites restent, les relances repartent à 3… jusqu'au GRAND jackpot.</p>
+        <div class="m-tags"><span>243 façons</span><span>Bonus Le Filon</span><span>4 jackpots</span></div>
+        <div class="m-go">JOUER ›</div>
+      </a>
+    </div>
+  </main>
+  <script src="../casino-rules.js"></script>
+  <script src="../profile.js"></script>
+  <script src="../account.js"></script>
+  <script>
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      const fmt = (n) => Math.round(n).toLocaleString('fr-FR');
+      try { $('wallet').textContent = fmt(Casino.wallet()); } catch (e) { /* ignore */ }
+      // ampoules autour de la bannière
+      const bl = $('bulbs');
+      for (let i = 0; i < 28; i++) {
+        const b = document.createElement('i'), t = i / 28;
+        const per = t < .35 ? [t / .35 * 100, 0] : t < .5 ? [100, (t - .35) / .15 * 100] : t < .85 ? [100 - (t - .5) / .35 * 100, 100] : [0, 100 - (t - .85) / .15 * 100];
+        b.style.left = 'calc(' + per[0] + '% - 4px)'; b.style.top = 'calc(' + per[1] + '% - 4px)'; b.style.animationDelay = (i % 2) * .5 + 's';
+        bl.appendChild(b);
+      }
+      const months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+      $('rec-month').textContent = months[new Date().getMonth()] + ' ' + new Date().getFullYear();
+      const JP = { grand: 'GRAND JACKPOT', major: 'jackpot MAJEUR', minor: 'jackpot MINEUR', mini: 'jackpot MINI', jackpot: 'JACKPOT 5 × 7️⃣' };
+      function empty(t) { $('rec-body').className = 'rec-main rec-empty'; $('rec-body').innerHTML = '<span class="rec-crown">👑</span><span class="rec-name"></span>'; $('rec-body').lastChild.textContent = t; }
+      const api = String(window.CASINO_API || '').replace(/\/+$/, '');
+      if (!api) { empty('Le record du mois s\'affiche avec le serveur du Casino.'); return; }
+      fetch(api + '/api/hall').then((r) => r.json()).then((j) => {
+        const r = j && j.slots;
+        if (!r) { empty('Personne pour l\'instant : sois le premier à marquer le mois !'); return; }
+        const body = $('rec-body'); body.className = 'rec-main'; body.innerHTML = '<span class="rec-crown">👑</span><span class="rec-name"></span><span class="rec-amount"></span>';
+        body.children[1].textContent = r.name;
+        // le montant défile jusqu'au record
+        const el = body.children[2], t0 = performance.now();
+        (function step(t) { const u = Math.min(1, (t - t0) / 1600); el.textContent = '+' + fmt(r.amount * (1 - Math.pow(1 - u, 3))) + ' €'; if (u < 1) requestAnimationFrame(step); })(t0);
+        $('rec-sub').textContent = 'sur ' + r.machine + (r.jackpot && JP[r.jackpot] ? ' · ' + JP[r.jackpot] : '') + ' · le ' + new Date(r.at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) + ' · à toi de le battre !';
+      }).catch(() => empty('Record indisponible (serveur injoignable).'));
+    })();
+  </script>
+</body>
+</html>

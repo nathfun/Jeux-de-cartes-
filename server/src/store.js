@@ -34,6 +34,17 @@ function open(dir) {
       table_after REAL NOT NULL
     );
     CREATE INDEX IF NOT EXISTS ledger_uid ON ledger(uid, at);
+    CREATE TABLE IF NOT EXISTS hall (
+      month TEXT NOT NULL,
+      board TEXT NOT NULL,
+      uid TEXT NOT NULL,
+      name TEXT NOT NULL,
+      amount REAL NOT NULL,
+      machine TEXT NOT NULL,
+      jackpot TEXT,
+      at INTEGER NOT NULL,
+      PRIMARY KEY (month, board)
+    );
   `);
   const get = db.prepare('SELECT state FROM players WHERE uid = ?');
   const ins = db.prepare('INSERT INTO players (uid, state, created, updated) VALUES (?, ?, ?, ?) ON CONFLICT(uid) DO UPDATE SET state = excluded.state, updated = excluded.updated');
@@ -59,6 +70,15 @@ function open(dir) {
     all() { return db.prepare('SELECT uid, state, created, updated FROM players ORDER BY updated DESC').all().map((r) => ({ uid: r.uid, state: JSON.parse(r.state), created: r.created, updated: r.updated })); },
     remove(uid) { db.prepare('DELETE FROM players WHERE uid = ?').run(uid); },
     ledgerOf(uid, n) { return db.prepare('SELECT at, op, wallet_before, wallet_after, table_before, table_after FROM ledger WHERE uid = ? ORDER BY id DESC LIMIT ?').all(uid, n || 50).map((r) => Object.assign({}, r)); },
+    /** Record du mois (le plus gros gain) : remplacé seulement s'il est battu. */
+    record(board, month, rec) {
+      const cur = db.prepare('SELECT amount FROM hall WHERE month = ? AND board = ?').get(month, board);
+      if (cur && cur.amount >= rec.amount) return false;
+      db.prepare('INSERT INTO hall (month, board, uid, name, amount, machine, jackpot, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(month, board) DO UPDATE SET uid = excluded.uid, name = excluded.name, amount = excluded.amount, machine = excluded.machine, jackpot = excluded.jackpot, at = excluded.at')
+        .run(month, board, rec.uid, rec.name, rec.amount, rec.machine, rec.jackpot || null, rec.at);
+      return true;
+    },
+    hall(board, month) { const r = db.prepare('SELECT name, amount, machine, jackpot, at FROM hall WHERE month = ? AND board = ?').get(month, board); return r ? Object.assign({}, r) : null; },
     stats() {
       return {
         players: db.prepare('SELECT COUNT(*) AS n FROM players').get().n,

@@ -19,6 +19,7 @@ const SB = require('./shared/sidebets.js');
 const PK = require('./poker.js');
 const PL = require('./shared/plinko-engine.js');
 const MN = require('./shared/mines-engine.js');
+const GD = require('./shared/gold-engine.js');
 const nodeCrypto = require('crypto');
 const hmacHex = (key, msg) => nodeCrypto.createHmac('sha256', key).update(msg).digest('hex');
 const sha256Hex = (t) => nodeCrypto.createHash('sha256').update(t).digest('hex');
@@ -404,7 +405,7 @@ function handle(state, ctx) {
         if (game === 'slots' && S.sl) { result.free = S.sl.free; result.freeBet = S.sl.freeBet; }
         result.session = P.sessions[game]; result.resumed = true; break;
       }
-      const min = game === 'blackjack' ? MIN_BET : game === 'slots' ? 10 : 1; // crash : 1 €
+      const min = game === 'blackjack' ? MIN_BET : game === 'slots' || game === 'gold' ? 10 : 1; // crash : 1 €
       if (!(int(d.amount) >= min)) fail('Il faut apporter au moins ' + min + ' €.');
       if (!R.startSession(P, game, d.amount, now)) fail('Ta banque ne contient pas assez d\'argent.');
       result.session = P.sessions[game];
@@ -485,6 +486,19 @@ function handle(state, ctx) {
     // ----- Rocket Crash : le serveur tire la manche, encaisse la mise et juge chaque retrait -----
     case 'cr.round': case 'cr.cashout': case 'cr.status': case 'cr.seed': {
       result = crashOp(P, S, ctx, sess, track, fail);
+      break;
+    }
+
+    // ----- Ruée vers l'Or : le serveur tire la grille et joue le bonus « Le Filon » en entier -----
+    case 'gd.spin': {
+      const ss = sess('gold');
+      const bet = int(d.bet);
+      if (!GD.BETS.includes(bet)) fail('Mise invalide.');
+      if (bet > ss.stack) fail('Pas assez d\'argent sur la table.');
+      const r = GD.play(bet, () => ctx.rnd(1 << 30) / (1 << 30));
+      ss.stack = round2(ss.stack - bet + r.total);
+      track('sl', { bet, net: round2(r.total - bet), jackpot: r.jackpot === 'grand', freeTrigger: !!r.bonus });
+      result = Object.assign(r, { stack: ss.stack });
       break;
     }
 

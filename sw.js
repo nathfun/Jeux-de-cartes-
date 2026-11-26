@@ -1,5 +1,5 @@
 // Service worker : réseau d'abord (pour toujours avoir la dernière version), cache en secours hors ligne.
-const CACHE = 'casino-v38';
+const CACHE = 'casino-v40';
 const CORE = [
   './', './index.html', './manifest.webmanifest', './pwa.js', './firebase-config.js', './sounds.js', './casino-rules.js', './profile.js', './social.js', './account.js', './gate.js',
   './icons/icon-192.png', './icons/icon-512.png',
@@ -14,6 +14,7 @@ const CORE = [
   './plinko/', './plinko/index.html', './plinko/style.css', './plinko/engine.js', './plinko/scene.js', './plinko/app.js',
   './trader/', './trader/index.html', './trader/style.css', './trader/engine.js', './trader/scene.js', './trader/app.js',
   './mines/', './mines/index.html', './mines/style.css', './mines/engine.js', './mines/app.js',
+  './gold/', './gold/index.html', './gold/style.css', './gold/engine.js', './gold/app.js', './slots/machines.html',
   './slots/', './slots/index.html', './slots/style.css', './slots/engine.js', './slots/app.js',
 ];
 self.addEventListener('install', (e) => {

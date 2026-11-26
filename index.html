@@ -466,10 +466,10 @@
         <div class="tags"><span>Nouveau</span><span>Jusqu'à ×24 000</span><span>RTP 97 %</span></div>
         <div class="mini-mines" aria-hidden="true"><i class="g">💎</i><i></i><i class="g">💎</i><i></i><i>💣</i></div>
       </a>
-      <a class="game slots" href="slots/index.html">
-        <h2>Machine à sous</h2>
-        <p>5 rouleaux, 10 lignes, jokers, tours gratuits à gains doublés et un jackpot pour cinq 7️⃣. Les aides expliquent chaque gain et le vrai taux de retour.</p>
-        <div class="tags"><span>Solo</span><span>Tours gratuits</span><span>Jackpot</span></div>
+      <a class="game slots" href="slots/machines.html">
+        <h2>Machines à sous</h2>
+        <p>Deux machines : la classique <b>Casino Royal</b> et la nouvelle <b>Ruée vers l'Or</b> avec son bonus Le Filon et ses 4 jackpots. Bats le record du mois !</p>
+        <div class="tags"><span>Nouveau</span><span>2 machines</span><span>Record du mois</span></div>
         <div class="mini-reels" aria-hidden="true"><span>7️⃣</span><span>7️⃣</span><span>7️⃣</span></div>
       </a>
     </section>
@@ -710,7 +710,7 @@
         $('bonus').textContent = b.available ? '🎁 Bonus du jour : +' + fmt(b.amount) + ' €' + (b.streak > 1 ? ' (série de ' + b.streak + ' jours)' : '') : '✔ Bonus récupéré · série de ' + b.streak + ' jour' + (b.streak > 1 ? 's' : '') + ' · reviens demain';
         const ses = Casino.sessions();
         const ip = $('in-play'); ip.innerHTML = '';
-        const paths = { blackjack: 'blackjack/index.html', poker: 'poker/index.html', roulette: 'roulette/index.html', slots: 'slots/index.html', crash: 'crash/index.html', plinko: 'plinko/index.html', trader: 'trader/index.html', mines: 'mines/index.html' };
+        const paths = { blackjack: 'blackjack/index.html', poker: 'poker/index.html', roulette: 'roulette/index.html', slots: 'slots/index.html', gold: 'gold/index.html', crash: 'crash/index.html', plinko: 'plinko/index.html', trader: 'trader/index.html', mines: 'mines/index.html' };
         Object.keys(ses).forEach((g) => {
           const a = document.createElement('a'); a.href = paths[g] || '#';
           a.textContent = '🎲 ' + (Casino.GAMES[g] || g) + ' : ' + fmt(ses[g].stack) + ' € sur la table';

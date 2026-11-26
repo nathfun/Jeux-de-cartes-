@@ -158,6 +158,11 @@ async function casino(uid, token, op, data) {
       P.refInbox = [];
     }
     db.save(uid, op, before, out.state, ctx.now);
+    // record du mois des machines à sous (affiché sur la page de choix des machines)
+    if (op === 'sl.spin' || op === 'gd.spin') {
+      const won = op === 'gd.spin' ? out.result.total : out.result.res && out.result.res.total;
+      if (won > 0) db.record('slots', R.seasonOf(ctx.now), { uid, name: P.pseudo || 'Un joueur', amount: won, machine: op === 'gd.spin' ? 'Ruée vers l\'Or' : 'Casino Royal', jackpot: op === 'gd.spin' ? out.result.jackpot : (out.result.res && out.result.res.jackpot ? 'jackpot' : null), at: ctx.now });
+    }
     if (rtdb) rtdb.ref('profiles/' + uid).update(R.publicProfile(P, P.friendCode)).catch((e) => console.error('[casino] profil', e.message));
     return { result: out.result, notes: out.notes, player: P };
   });
@@ -284,6 +289,11 @@ const server = http.createServer(async (req, res) => {
   try {
     if (req.method === 'OPTIONS') { res.writeHead(204, headers(req)); res.end(); return; }
     const url = new URL(req.url, 'http://x');
+    if (req.method === 'GET' && url.pathname === '/api/hall') {
+      const month = R.seasonOf(Date.now());
+      send(req, res, 200, { month, slots: db.hall('slots', month) });
+      return;
+    }
     if (req.method === 'GET' && url.pathname === '/health') { send(req, res, 200, Object.assign({ ok: true, at: Date.now() }, db.stats())); return; }
     if (req.method !== 'POST' || (url.pathname !== '/api/casino' && url.pathname !== '/api/admin')) { send(req, res, 404, { error: 'Introuvable.' }); return; }
     if (req.headers.origin && !ORIGINS.includes(req.headers.origin) && !ORIGINS.includes('*')) { send(req, res, 403, { error: 'Origine non autorisée.' }); return; }

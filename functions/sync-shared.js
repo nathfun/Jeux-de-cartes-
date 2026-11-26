@@ -10,6 +10,7 @@ const files = {
   'crash/engine.js': 'crash-engine.js',
   'plinko/engine.js': 'plinko-engine.js',
   'mines/engine.js': 'mines-engine.js',
+  'gold/engine.js': 'gold-engine.js',
   'blackjack/strategy.js': 'strategy.js',
   'blackjack/sidebets.js': 'sidebets.js',
   'poker/eval.js': 'eval.js',

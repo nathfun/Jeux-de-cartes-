@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Ruée vers l'Or</title>
+  <meta name="theme-color" content="#2a160a">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+  <script src="../firebase-config.js"></script>
+  <script src="../gate.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1><a id="home-link" class="home-link" href="../slots/machines.html" hidden aria-label="Retour aux machines">←</a> 🤠 Ruée vers l'Or</h1>
+    <div class="bank"><span id="bank-label">Banque</span> : <strong id="wallet">–</strong> € <button id="music-toggle" class="ghost icon-btn" type="button">🎵</button><button id="sound-toggle" class="ghost icon-btn" type="button">🔊</button></div>
+  </header>
+
+  <main class="layout">
+    <div class="main-col">
+      <section id="setup" class="panel setup">
+        <h2>Ruée vers l'Or</h2>
+        <p class="muted">5 rouleaux, 243 façons de gagner, et le bonus « Le Filon ».</p>
+        <div id="mode-picker"></div>
+      </section>
+      <div id="mode-badge" class="mode-badge" hidden></div>
+
+      <section id="cabinet" class="cabinet" hidden aria-label="Machine à sous Ruée vers l'Or">
+        <div class="jackpots" id="jackpots"></div>
+        <div class="sign"><span class="sign-l">⛏️</span><b>RUÉE VERS L'OR</b><span class="sign-r">⛏️</span></div>
+        <div id="window" class="window">
+          <div id="grid" class="grid"></div>
+          <div id="bonus-head" class="bonus-head" hidden>
+            <b>⛏️ LE FILON</b>
+            <span class="lamps" id="lamps"><i></i><i></i><i></i></span>
+            <span id="bonus-sum" class="bonus-sum">0 €</span>
+          </div>
+          <div id="banner" class="banner" hidden></div>
+        </div>
+        <div class="win-bar"><div id="win-text" class="win-text" role="status">Bonne chance, prospecteur !</div></div>
+        <div class="controls">
+          <div class="bet-box">
+            <button id="bet-minus" class="round" type="button" aria-label="Baisser la mise">−</button>
+            <div class="bet-val"><small>Mise</small><b id="bet">20</b> €</div>
+            <button id="bet-plus" class="round" type="button" aria-label="Augmenter la mise">+</button>
+          </div>
+          <button id="spin" class="spin" type="button" aria-label="Lancer">JOUER</button>
+          <div class="toggles">
+            <button id="auto" class="small-btn" type="button">Auto ×10</button>
+            <label class="small"><input type="checkbox" id="turbo"> Turbo</label>
+            <button id="cashout" class="small-btn" type="button">Encaisser</button>
+          </div>
+        </div>
+        <div class="table-line"><span id="stack-label">Sur la table</span> <b id="stack">–</b></div>
+      </section>
+    </div>
+
+    <aside class="side">
+      <section id="aides" class="panel">
+        <h2>🎓 Aides</h2>
+        <div id="aides-body" class="aides-body"></div>
+      </section>
+      <section class="panel">
+        <h2>Ta session</h2>
+        <div class="stats">
+          <div class="stat"><span id="s-spins">0</span><small>Tours</small></div>
+          <div class="stat"><span id="s-bet">0 €</span><small>Misé</small></div>
+          <div class="stat"><span id="s-won">0 €</span><small>Gagné</small></div>
+          <div class="stat"><span id="s-bonus">0</span><small>Filons</small></div>
+        </div>
+        <p id="s-best" class="small muted"></p>
+      </section>
+      <details class="panel" open>
+        <summary><h2>Table des gains</h2></summary>
+        <p class="small muted">243 façons : un symbole paie s'il apparaît sur des rouleaux qui se suivent depuis la gauche, multiplié par le nombre de combinaisons. Gains en × la mise, pour une combinaison.</p>
+        <table class="pays"><thead><tr><th></th><th>×3</th><th>×4</th><th>×5</th></tr></thead><tbody id="pays"></tbody></table>
+        <p class="small"><b>🧨 Dynamite</b> : remplace tout (rouleaux 2 à 4). <b>Coup de grisou</b> : au hasard, des rouleaux entiers explosent en dynamite.</p>
+        <p class="small"><b>🟡 Pépites</b> : 6 ou plus lancent <b>Le Filon</b>. Les pépites restent, 3 relances, chaque nouvelle pépite remet les relances à 3.
+          <b>🚃 Wagon</b> ramasse toutes les pépites, <b>💥 Filon</b> les double. Grille pleine : <b>GRAND jackpot 1 000×</b>.</p>
+      </details>
+    </aside>
+  </main>
+
+  <script src="../sounds.js"></script>
+  <script src="../casino-rules.js"></script>
+  <script src="../profile.js"></script>
+  <script src="../account.js"></script>
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+  <script src="../pwa.js"></script>
+</body>
+</html>

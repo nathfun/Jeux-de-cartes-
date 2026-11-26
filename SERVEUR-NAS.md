@@ -108,18 +108,17 @@ L'argent laissé sur une table en cours leur est rendu dans leur banque.
 | Redémarrer | `sudo docker compose restart` |
 | Arrêter | `sudo docker compose down` |
 
-**Mettre à jour** : télécharge le nouveau ZIP de la branche et décompresse-le dans `/volume1/docker/casino`
-(il s'appelle `Jeux-de-cartes--claude-blackjack-app-feedback-appqgy`). Puis copie-colle tout ce bloc :
+**Mettre à jour (une seule commande)** : la première fois, copie le script de mise à jour à côté de ton installation :
 ```bash
-cd /volume1/docker/casino
-if [ -f app/server/.env ]; then (cd app/server && sudo docker compose down); sudo rm -rf app-old; sudo mv app app-old; else sudo rm -rf app app-new; fi
-sudo mv Jeux-de-cartes--claude-blackjack-app-feedback-appqgy app
-sudo cp -a app-old/server/.env app-old/server/secrets app-old/server/data app/server/
-sudo mkdir -p app/server/tailscale && sudo cp -a app-old/server/tailscale/state app/server/tailscale/
-cd app/server && sudo docker compose up -d --build
+sudo cp /volume1/docker/casino/app/server/update-nas.sh /volume1/docker/casino/update.sh
 ```
-Ta configuration, ta clé, la base des joueurs et l'identité Tailscale sont reprises de l'ancienne version (`app-old`).
-Une fois que tout marche, tu peux supprimer `app-old` avec `sudo rm -rf /volume1/docker/casino/app-old`.
+Ensuite, à chaque nouvelle version du serveur :
+```bash
+sudo sh /volume1/docker/casino/update.sh
+```
+Le script télécharge la dernière version et garde ta config, ta clé, la base des joueurs et Tailscale.
+Si le serveur n'a pas changé, il ne fait rien. Il se met aussi à jour lui-même.
+Tu n'as besoin de le lancer que quand je te dis que **le serveur** a changé : le reste de l'app (jeux, écrans) se met à jour tout seul.
 
 **Sauvegarde** : toute la base tient dans `server/data/` (fichier `casino.db`).
 Ajoute ce dossier à une tâche de sauvegarde UGOS (quotidienne, vers un autre disque ou le cloud).
