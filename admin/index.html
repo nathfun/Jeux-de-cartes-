@@ -36,6 +36,17 @@
     .tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
     .tools h3 { margin-top: 0; }
     .tag-ban { color: var(--bad); font-weight: 700; font-size: .8rem; }
+    .dash { --s1: #338ced; --s2: #e76624; }
+    .dash-head { display: flex; align-items: center; gap: .6rem; } .dash-head h2 { margin: 0; } .dash-head button { margin-left: auto; }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .6rem; margin: .8rem 0; }
+    .kpi { background: #0d1117; border: 1px solid var(--border); border-radius: 12px; padding: .7rem .8rem; } .kpi small { color: var(--muted); font-size: .75rem; display: block; } .kpi b { font-size: 1.45rem; font-variant-numeric: tabular-nums; } .kpi span { color: var(--muted); font-size: .78rem; display: block; }
+    .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: .8rem; }
+    .card { background: #0d1117; border: 1px solid var(--border); border-radius: 12px; padding: .8rem; min-width: 0; } .card h3 { margin: 0 0 .6rem; color: var(--text); }
+    .chart { position: relative; } .chart svg { width: 100%; height: auto; display: block; }
+    .chart .tip { position: absolute; pointer-events: none; background: #1f2937; border: 1px solid var(--border); border-radius: 8px; padding: .3rem .5rem; font-size: .78rem; white-space: nowrap; transform: translate(-50%, -110%); }
+    .legend { display: flex; gap: .9rem; flex-wrap: wrap; font-size: .78rem; color: var(--muted); margin-bottom: .3rem; } .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: .35rem; vertical-align: -1px; }
+    table.mini { font-size: .85rem; } table.mini td, table.mini th { padding: .3rem .35rem; } .pos { color: var(--good); } .neg { color: var(--bad); }
+    .alert { background: rgba(248,81,73,.1); border: 1px solid var(--bad); border-radius: 12px; padding: .6rem .8rem; margin-bottom: .8rem; font-size: .9rem; }
     .stats { display: flex; gap: .8rem; flex-wrap: wrap; margin-bottom: .6rem; font-size: .9rem; } .stats b { color: var(--gold); }
   </style>
 </head>
@@ -54,6 +65,18 @@
       <div class="stats" id="stats"></div>
       <div class="row2"><input id="search" placeholder="Rechercher un pseudo…" style="flex:1"><button id="reload" type="button">↻ Actualiser</button></div>
       <table><thead><tr><th data-k="pseudo">Joueur</th><th data-k="level">Niv.</th><th data-k="wallet" class="num">Banque</th><th data-k="updatedAt">Vu</th></tr></thead><tbody id="rows"></tbody></table>
+    </section>
+    <section id="dash-panel" class="panel dash" hidden style="grid-column:1/-1">
+      <div class="dash-head"><h2>📊 Tableau de bord</h2><span id="dash-at" class="small muted"></span><button id="dash-reload" type="button">↻</button></div>
+      <div id="dash-kpis" class="kpis"></div>
+      <div id="dash-alerts"></div>
+      <div class="dash-grid">
+        <div class="card"><h3>Joueurs actifs par jour <small class="muted">(30 derniers jours)</small></h3><div id="ch-active" class="chart"></div></div>
+        <div class="card"><h3>Argent créé et détruit par jour</h3><div class="legend"><span><i style="background:var(--s1)"></i>Créé (gains, bonus, cadeaux…)</span><span><i style="background:var(--s2)"></i>Détruit (pertes, achats)</span></div><div id="ch-money" class="chart"></div></div>
+        <div class="card"><h3>D'où vient l'argent <small class="muted">(30 jours, solde par source)</small></h3><table class="mini" id="tb-cats"></table></div>
+        <div class="card"><h3>Jeux <small class="muted">(30 jours)</small></h3><table class="mini" id="tb-games"></table><p class="small muted">« Résultat des joueurs » : ce que les joueurs ont gagné (+) ou perdu (−) au total. Négatif = le casino gagne, c'est normal.</p></div>
+        <div class="card"><h3>Les plus riches</h3><table class="mini" id="tb-rich"></table></div>
+      </div>
     </section>
     <section id="tools-panel" class="panel" hidden style="grid-column:1/-1">
       <h2>Outils</h2>

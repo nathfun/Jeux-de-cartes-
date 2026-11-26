@@ -233,6 +233,53 @@ function adminEdit(target, op, fn) {
     return brief(target, after);
   });
 }
+// ---------- Tableau de bord (page admin) : activité, économie, jeux, alertes ----------
+const GAME_OF = { bj: 'Blackjack', pk: 'Poker', rl: 'Roulette', sl: 'Casino Royal', gd: 'Ruée vers l\'Or', cr: 'Rocket Crash', pl: 'Plinko', mn: 'Mines', tr: 'Bourse Flash' };
+function categoryOf(r) {
+  if (!r.wb && !r.tb) return 'Nouveaux comptes';
+  const op = r.op, pre = op.split('.')[0];
+  if (op.startsWith('admin:')) return 'Admin';
+  if (op === 'ref') return 'Parrainage';
+  if (GAME_OF[pre] && op !== 'session.start') return 'Jeux';
+  return { 'bonus.claim': 'Bonus du jour', 'challenge.claim': 'Défis', 'time.claim': 'Banque du temps', 'multi.prize': 'Entre amis', 'shop.buy': 'Boutique', 'session.start': 'Tables (aller)', 'session.cashout': 'Tables (retour)' }[op] || 'Autre';
+}
+function dashboard() {
+  const now = Date.now(), DAY = 864e5, day = (t) => R.today(t);
+  const all = db.all();
+  const days = []; for (let k = 29; k >= 0; k--) days.push(day(now - k * DAY));
+  const active = Object.fromEntries(days.map((d) => [d, new Set()])), fresh = Object.fromEntries(days.map((d) => [d, 0]));
+  const rows = db.ledgerSince(now - 30 * DAY);
+  rows.forEach((r) => { const d = day(r.at); if (active[d]) active[d].add(r.uid); });
+  all.forEach((p) => { const d = day(p.created); if (fresh[d] !== undefined) fresh[d]++; });
+  // économie : argent créé / détruit par catégorie, par jour
+  const cats = {}, perDay = Object.fromEntries(days.map((d) => [d, { created: 0, destroyed: 0 }]));
+  const games = {}, gain24 = {};
+  rows.forEach((r) => {
+    const delta = (r.wa + r.ta) - (r.wb + r.tb);
+    const c = categoryOf(r);
+    cats[c] = (cats[c] || 0) + delta;
+    const d = day(r.at);
+    if (perDay[d]) { if (delta > 0) perDay[d].created += delta; else perDay[d].destroyed += -delta; }
+    const pre = r.op.split('.')[0];
+    if (GAME_OF[pre] && r.op !== 'session.start') { const g = games[pre] = games[pre] || { name: GAME_OF[pre], ops: 0, net: 0, players: new Set() }; g.ops++; g.net += delta; g.players.add(r.uid); }
+    if (r.at >= now - DAY && delta > 0 && c !== 'Nouveaux comptes' && c !== 'Tables (retour)') gain24[r.uid] = (gain24[r.uid] || 0) + delta;
+  });
+  const name = Object.fromEntries(all.map((p) => [p.uid, (p.state.player && p.state.player.pseudo) || '(sans pseudo)']));
+  const money = (p) => { const P = p.state.player || {}; return (P.wallet || 0) + Object.values(P.sessions || {}).reduce((a, s) => a + (s.stack || 0), 0); };
+  const total = all.reduce((a, p) => a + money(p), 0);
+  const ALERT = 50000;
+  const alerts = Object.entries(gain24).filter(([, v]) => v >= ALERT).sort((a, b) => b[1] - a[1]).map(([uid, v]) => ({ uid, name: name[uid] || uid.slice(0, 6), gained: r2(v) }));
+  return {
+    at: now,
+    players: { total: all.length, active1: all.filter((p) => now - p.updated < DAY).length, active7: all.filter((p) => now - p.updated < 7 * DAY).length, active30: all.filter((p) => now - p.updated < 30 * DAY).length },
+    money: { total: r2(total), avg: all.length ? r2(total / all.length) : 0 },
+    days: days.map((d) => ({ d, active: active[d].size, fresh: fresh[d], created: r2(perDay[d].created), destroyed: r2(perDay[d].destroyed) })),
+    categories: Object.entries(cats).map(([k, v]) => ({ k, v: r2(v) })).sort((a, b) => b.v - a.v),
+    games: Object.values(games).map((g) => ({ name: g.name, ops: g.ops, net: r2(g.net), players: g.players.size })).sort((a, b) => b.ops - a.ops),
+    richest: all.map((p) => ({ uid: p.uid, name: name[p.uid], money: r2(money(p)), level: R.levelOf((p.state.player || {}).xp || 0) })).sort((a, b) => b.money - a.money).slice(0, 10),
+    alerts, alertThreshold: ALERT,
+  };
+}
 async function adminOp(uid, op, d) {
   if (!(await isAdmin(uid))) throw userError('Réservé aux administrateurs.');
   const target = typeof d.uid === 'string' ? d.uid : '';
@@ -248,6 +295,7 @@ async function adminOp(uid, op, d) {
       if (!st.player) throw userError('Joueur introuvable sur le serveur.');
       return { brief: brief(target, st), owned: st.player.owned || {}, achievements: st.player.achievements || {}, ledger: db.ledgerOf(target, 40) };
     }
+    case 'dashboard': return dashboard();
     case 'wallet': {
       const v = Math.max(0, Math.min(1e9, Math.round(Number(d.wallet))));
       if (!Number.isFinite(v)) throw userError('Montant invalide.');

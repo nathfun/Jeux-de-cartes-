@@ -23,6 +23,7 @@
   if (isAdmin !== true) { $('denied').hidden = false; return; }
   $('list-panel').hidden = false;
   $('tools-panel').hidden = false;
+  $('dash-panel').hidden = !String(window.CASINO_API || '');
   // Avec le serveur du Casino (NAS) : la banque et la progression des joueurs sont sur le serveur, on passe par lui
   const API = String(window.CASINO_API || '').replace(/\/+$/, '');
   async function adm(op, data) {
@@ -257,5 +258,62 @@
     catch (e) { tmsg('Refusé : ' + e.message, 'err'); }
   });
 
+  // ---------- Tableau de bord ----------
+  const fmt2 = (n) => (n >= 0 ? '+' : '−') + fmt(Math.abs(n));
+  function barChart(box, items, series, opts) {
+    // items : [{ label, values: [..] }] ; series : [{ name, color }]
+    const W = 600, H = 220, padL = 60, padB = 30, padT = 10, n = items.length, k = series.length;
+    const max = Math.max(1, ...items.flatMap((x) => x.values));
+    const step = (W - padL) / n, bw = Math.max(2, (step - 2) / k - 2);
+    const y = (v) => H - padB - (v / max) * (H - padB - padT);
+    let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + opts.aria + '">';
+    [0, .5, 1].forEach((f) => { const v = max * f, yy = y(v); svg += '<line x1="' + padL + '" x2="' + W + '" y1="' + yy + '" y2="' + yy + '" stroke="#2a333d" stroke-width="1"/><text x="' + (padL - 6) + '" y="' + (yy + 4) + '" fill="#9aa5b1" font-size="18" text-anchor="end">' + (opts.short ? opts.short(v) : fmt(v)) + '</text>'; });
+    items.forEach((it, i) => {
+      it.values.forEach((v, j) => {
+        const x = padL + i * step + 1 + j * (bw + 2), yy = y(v), h = Math.max(0, H - padB - yy);
+        svg += '<rect data-i="' + i + '" x="' + x + '" y="' + yy + '" width="' + bw + '" height="' + h + '" rx="' + Math.min(4, bw / 2) + '" fill="' + series[j].color + '"/>';
+      });
+      if (i % 5 === 0 || i === n - 1) svg += '<text x="' + (padL + i * step + step / 2) + '" y="' + (H - 8) + '" fill="#9aa5b1" font-size="18" text-anchor="middle">' + it.label + '</text>';
+    });
+    // zones de survol (plus larges que les barres)
+    items.forEach((it, i) => { svg += '<rect class="hit" data-i="' + i + '" x="' + (padL + i * step) + '" y="0" width="' + step + '" height="' + (H - padB) + '" fill="transparent"/>'; });
+    box.innerHTML = svg + '</svg><div class="tip" hidden></div>';
+    const tip = box.querySelector('.tip'), sv = box.querySelector('svg');
+    sv.addEventListener('mousemove', (e) => {
+      const t = e.target.closest('rect.hit'); if (!t) { tip.hidden = true; return; }
+      const it = items[+t.dataset.i], r = box.getBoundingClientRect();
+      tip.innerHTML = '<b>' + it.title + '</b><br>' + series.map((s, j) => s.name + ' : ' + (opts.fmt ? opts.fmt(it.values[j]) : fmt(it.values[j]))).join('<br>');
+      tip.style.left = (e.clientX - r.left) + 'px'; tip.style.top = (e.clientY - r.top) + 'px'; tip.hidden = false;
+    });
+    sv.addEventListener('mouseleave', () => { tip.hidden = true; });
+  }
+  function table(el, head, rows) {
+    el.innerHTML = '<thead><tr>' + head.map((h, i) => '<th' + (i ? ' class="num"' : '') + '>' + h + '</th>').join('') + '</tr></thead><tbody></tbody>';
+    const tb = el.querySelector('tbody');
+    rows.forEach((r) => { const tr = document.createElement('tr'); r.forEach((c, i) => { const td = document.createElement('td'); if (i) td.className = 'num'; if (c && typeof c === 'object') { td.textContent = c.t; if (c.cls) td.classList.add(c.cls); } else td.textContent = c; tr.appendChild(td); }); tb.appendChild(tr); });
+  }
+  async function loadDash() {
+    if (!API) return;
+    let d;
+    try { d = await adm('dashboard'); } catch (e) { $('dash-kpis').textContent = 'Tableau de bord indisponible : ' + e.message; return; }
+    $('dash-at').textContent = 'mis à jour à ' + new Date(d.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const created30 = d.days.reduce((a, x) => a + x.created - x.destroyed, 0);
+    const kpi = (label, val, sub) => '<div class="kpi"><small>' + label + '</small><b>' + val + '</b>' + (sub ? '<span>' + sub + '</span>' : '') + '</div>';
+    $('dash-kpis').innerHTML = kpi('Joueurs', fmt(d.players.total), '+' + fmt(d.days.reduce((a, x) => a + x.fresh, 0)) + ' en 30 jours')
+      + kpi('Actifs aujourd\'hui', fmt(d.players.active1), fmt(d.players.active7) + ' sur 7 j · ' + fmt(d.players.active30) + ' sur 30 j')
+      + kpi('Argent en circulation', fmt(d.money.total) + ' €', 'moyenne ' + fmt(d.money.avg) + ' € par joueur')
+      + kpi('Création nette (30 j)', fmt2(created30) + ' €', created30 > 0 ? 'il entre plus d\'argent qu\'il n\'en sort' : 'il sort plus d\'argent qu\'il n\'en entre');
+    $('dash-alerts').innerHTML = '';
+    d.alerts.forEach((a) => { const x = document.createElement('div'); x.className = 'alert'; x.textContent = '⚠️ ' + a.name + ' a gagné ' + fmt(a.gained) + ' € en 24 h (seuil d\'alerte : ' + fmt(d.alertThreshold) + ' €). Vérifie son journal de l\'argent.'; $('dash-alerts').appendChild(x); });
+    const lbl = (s) => s.slice(8) + '/' + s.slice(5, 7);
+    barChart($('ch-active'), d.days.map((x) => ({ label: lbl(x.d), title: new Date(x.d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }), values: [x.active] })), [{ name: 'Joueurs actifs', color: 'var(--s1)' }], { aria: 'Joueurs actifs par jour' });
+    const kshort = (v) => (v >= 1000 ? Math.round(v / 1000) + 'k' : fmt(v));
+    barChart($('ch-money'), d.days.map((x) => ({ label: lbl(x.d), title: new Date(x.d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }), values: [x.created, x.destroyed] })), [{ name: 'Créé', color: 'var(--s1)' }, { name: 'Détruit', color: 'var(--s2)' }], { aria: 'Argent créé et détruit par jour', short: kshort, fmt: (v) => fmt(v) + ' €' });
+    table($('tb-cats'), ['Source', 'Solde'], d.categories.filter((c) => Math.abs(c.v) >= 1).map((c) => [c.k, { t: fmt2(c.v) + ' €', cls: c.v >= 0 ? 'pos' : 'neg' }]));
+    table($('tb-games'), ['Jeu', 'Coups', 'Joueurs', 'Résultat des joueurs'], d.games.map((g) => [g.name, fmt(g.ops), fmt(g.players), { t: fmt2(g.net) + ' €', cls: g.net >= 0 ? 'pos' : 'neg' }]));
+    table($('tb-rich'), ['Joueur', 'Niv.', 'Argent'], d.richest.map((r) => [r.name, String(r.level), fmt(r.money) + ' €']));
+  }
+  $('dash-reload').addEventListener('click', loadDash);
+  loadDash();
   load();
 })();

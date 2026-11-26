@@ -79,6 +79,8 @@ function open(dir) {
       return true;
     },
     hall(board, month) { const r = db.prepare('SELECT name, amount, machine, jackpot, at FROM hall WHERE month = ? AND board = ?').get(month, board); return r ? Object.assign({}, r) : null; },
+    /** Mouvements d'argent depuis `since` (tableau de bord). */
+    ledgerSince(since) { return db.prepare('SELECT uid, at, op, wallet_before wb, wallet_after wa, table_before tb, table_after ta FROM ledger WHERE at >= ? ORDER BY at').all(since).map((r) => Object.assign({}, r)); },
     stats() {
       return {
         players: db.prepare('SELECT COUNT(*) AS n FROM players').get().n,
