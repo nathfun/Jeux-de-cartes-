@@ -25,7 +25,7 @@
     <div class="main-col">
       <section id="setup" class="glass setup">
         <h2>🎱 Loto Express</h2>
-        <p class="muted">Coche de 1 à 8 numéros sur 40. La sphère tire 10 boules : plus tu trouves de bons numéros, plus tu gagnes. Avec 8 numéros, le carton plein paie ×16 000 !</p>
+        <p class="muted">Coche de 1 à 8 numéros sur 30. La sphère tire 10 boules (chaque numéro a une chance sur trois de sortir) : plus tu trouves de bons numéros, plus tu gagnes. Avec 8 numéros, le carton plein paie ×3 500 !</p>
         <div id="mode-picker"></div>
       </section>
 
@@ -43,7 +43,7 @@
             </div>
           </div>
           <div id="tray" class="lo-tray" aria-label="Boules tirées"></div>
-          <div id="grid" class="lo-grid" role="group" aria-label="Grille de 40 numéros"></div>
+          <div id="grid" class="lo-grid" role="group" aria-label="Grille de 30 numéros"></div>
           <div class="lo-tools">
             <span class="muted small">Grille flash :</span>
             <div class="seg" id="flash"><button type="button" data-k="3">3</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button><button type="button" data-k="8">8</button></div>
@@ -98,7 +98,7 @@
       </section>
       <details class="glass fair">
         <summary><h2>🔐 Équité vérifiable</h2></summary>
-        <p class="small muted">Les 10 boules sont tirées avant l'animation : mélange des 40 numéros piloté par HMAC-SHA256(<i>server seed</i>, « <i>client seed</i>:<i>nonce</i>:0 » puis « …:1 »). L'empreinte du server seed est publiée avant le tirage. En partie réelle, c'est le serveur du Casino qui tire les boules.</p>
+        <p class="small muted">Les 10 boules sont tirées avant l'animation : mélange des 30 numéros piloté par HMAC-SHA256(<i>server seed</i>, « <i>client seed</i>:<i>nonce</i>:0 » puis « …:1 »). L'empreinte du server seed est publiée avant le tirage. En partie réelle, c'est le serveur du Casino qui tire les boules.</p>
         <div class="fair-grid">
           <span>Empreinte du server seed</span><code id="pf-hash">–</code>
           <span>Nonce (tirage)</span><code id="pf-nonce">0</code>

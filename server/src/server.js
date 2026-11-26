@@ -24,6 +24,8 @@ const ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nathfun.github.io').spl
 const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'jeux-de-cartes-81cdf';
 const DB_URL = process.env.FIREBASE_DATABASE_URL || 'https://jeux-de-cartes-81cdf-default-rtdb.europe-west1.firebasedatabase.app';
 const MAX_BODY = 32 * 1024;
+// version du serveur (affichée dans l'admin et sur /health) : à changer à chaque mise à jour du serveur
+const SERVER_VERSION = '2026.11.27-1';
 const TABLES = { blackjack: 'tables/', poker: 'ptables/', roulette: 'rtables/', loto: 'ltables/' };
 
 // ---------- Firebase (vérification des comptes, profil public, lecture des tables entre amis) ----------
@@ -181,7 +183,7 @@ function status() {
   const mem = process.memoryUsage();
   const online = (ms) => [...M.seen.values()].filter((v) => t - v <= ms).length;
   return {
-    at: t, uptime: t - M.start, node: process.version, firebase: !!rtdb,
+    at: t, version: SERVER_VERSION, uptime: t - M.start, node: process.version, firebase: !!rtdb,
     memory: { rss: mem.rss, heap: mem.heapUsed, limit: Number(process.env.MEM_LIMIT_MB || 256) * 1048576 },
     load: os.loadavg().map((x) => Math.round(x * 100) / 100), cpus: os.cpus().length,
     db: Object.assign({ size: dbSize, push: db.pushCount() }, db.stats()),
@@ -540,7 +542,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (req.method === 'GET' && url.pathname === '/api/push-key') { send(req, res, 200, { key: vapid.publicKey }); return; }
-    if (req.method === 'GET' && url.pathname === '/health') { send(req, res, 200, Object.assign({ ok: true, at: Date.now() }, db.stats())); return; }
+    if (req.method === 'GET' && url.pathname === '/health') { send(req, res, 200, Object.assign({ ok: true, version: SERVER_VERSION, at: Date.now() }, db.stats())); return; }
     if (req.method !== 'POST' || (url.pathname !== '/api/casino' && url.pathname !== '/api/admin')) { send(req, res, 404, { error: 'Introuvable.' }); return; }
     if (req.headers.origin && !ORIGINS.includes(req.headers.origin) && !ORIGINS.includes('*')) { send(req, res, 403, { error: 'Origine non autorisée.' }); return; }
     if (!perIp(clientIp(req))) { send(req, res, 429, { error: 'Trop de requêtes : ralentis un peu.' }); return; }

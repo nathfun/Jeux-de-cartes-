@@ -156,7 +156,7 @@
         let r = await send(false);
         if (r.status === 401) r = await send(true); // jeton expiré : on le renouvelle une fois
         const j = await r.json().catch(() => ({}));
-        if (!r.ok) return { error: j.error || 'Erreur du serveur (' + r.status + ').' };
+        if (!r.ok) return { error: j.error === 'Opération inconnue.' ? 'Le serveur du Casino n\'est pas à jour pour cette fonction : l\'administrateur doit lancer la mise à jour du NAS (sudo sh /volume1/docker/casino/update.sh).' : j.error || 'Erreur du serveur (' + r.status + ').' };
         res = j;
       } else res = (await f.fn({ op, data: data || {} })).data;
       txReason = TX_LABEL[op] || null;
@@ -486,7 +486,7 @@
     plinko: { icon: '🔮', deco: ['●', '•', '◦', '✦'], name: 'Plinko', tag: 'Lâche des billes et vise les cases du bord.', a: '#f472b6', b: '#a78bfa', bg: 'radial-gradient(ellipse at 50% 0%, #3b1a6e 0%, #0b1440 55%, #050816 100%)', pills: ['Jusqu\'à ×1 000', '3 niveaux de risque', 'Mode auto'] },
     gold: { icon: '🤠', deco: ['🟡', '🧨', '⛏️', '💰'], name: 'Ruée vers l\'Or', tag: 'Fais exploser la mine et décroche le Filon !', a: '#f59e0b', b: '#fde047', bg: 'radial-gradient(ellipse at 50% 0%, #6b3a12 0%, #2a160a 60%, #120904 100%)', pills: ['243 façons de gagner', 'Bonus Le Filon', 'Jackpot 1 000×'] },
     mines: { icon: '💎', deco: ['💣', '💎', '✦', '⭐'], name: 'Mines', tag: 'Retourne des diamants… et encaisse avant la mine !', a: '#38bdf8', b: '#f472b6', bg: 'radial-gradient(ellipse at 50% 0%, #123a5c 0%, #0b1440 55%, #050816 100%)', pills: ['1 à 24 mines', 'Jusqu\'à ×24 000', 'RTP 97 %'] },
-    loto: { icon: '🎱', deco: ['🎱', '🍀', '✨', '⭐'], name: 'Loto Express', tag: 'Coche tes numéros… et regarde les boules tomber !', a: '#facc15', b: '#22c55e', bg: 'radial-gradient(ellipse at 50% 0%, #14532d 0%, #052e16 55%, #020a05 100%)', pills: ['1 à 8 numéros', 'Jusqu\'à ×16 000', '10 boules tirées'] },
+    loto: { icon: '🎱', deco: ['🎱', '🍀', '✨', '⭐'], name: 'Loto Express', tag: 'Coche tes numéros… et regarde les boules tomber !', a: '#facc15', b: '#22c55e', bg: 'radial-gradient(ellipse at 50% 0%, #14532d 0%, #052e16 55%, #020a05 100%)', pills: ['1 à 8 numéros sur 30', 'Jusqu\'à ×3 500', '10 boules tirées'] },
     trader: { icon: '📈', deco: ['▲', '▼', '💹', '₿'], name: 'Bourse Flash', tag: 'Achète, vends, et clôture au bon moment.', a: '#34d399', b: '#22d3ee', bg: 'radial-gradient(ellipse at 50% 0%, #0f3b4a 0%, #0b1440 55%, #050816 100%)', pills: ['Effet de levier', 'Krachs et envolées', '3 actions en direct'] },
   };
   const themeOf = (g) => LAUNCH[g] || { icon: '🎲', deco: ['✦'], name: (R.GAMES[g] || 'Jeu'), tag: '', a: '#f2c14e', b: '#4fc3f7', bg: '#10151c', pills: [] };

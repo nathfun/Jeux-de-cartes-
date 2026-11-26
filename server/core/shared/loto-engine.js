@@ -1,28 +1,29 @@
 /*
  * Loto Express — mathématiques du jeu (table des gains, tirage vérifiable).
  *
- * On coche de 1 à 8 numéros parmi 40 ; la sphère tire 10 boules. Le gain dépend du nombre de numéros cochés
+ * On coche de 1 à 8 numéros parmi 30 ; la sphère tire 10 boules (chaque numéro sort une fois sur trois). Le gain dépend du nombre de numéros cochés
  * et du nombre de bons numéros. Chance d'avoir m bons numéros sur k cochés :
- *   P(k, m) = C(k, m) × C(40 − k, 10 − m) / C(40, 10)
- * Les tables ci-dessous rendent entre 94 et 96 % des mises en moyenne, quel que soit le nombre de numéros joués.
+ *   P(k, m) = C(k, m) × C(30 − k, 10 − m) / C(30, 10)
+ * Les tables ci-dessous rendent environ 94 à 96 % des mises en moyenne, quel que soit le nombre de numéros joués.
  *
  * Tirage « Provably Fair » : les 10 boules viennent d'un mélange (Fisher-Yates) piloté par
  * HMAC-SHA256(server seed, « client seed:nonce:0 ») ; l'empreinte du server seed est publiée avant.
  */
 (function (root) {
   'use strict';
-  const CONFIG = { N: 40, DRAW: 10, MAX_PICK: 8, MIN_BET: 1, MAX_BET: 500, MAX_WIN: 10000 };
+  const CONFIG = { N: 30, DRAW: 10, MAX_PICK: 8, MIN_BET: 1, MAX_BET: 500, MAX_WIN: 10000 };
   // PAY[k][m] : multiplicateur de la mise (gain total rendu) avec k numéros cochés et m bons numéros
   const PAY = {
-    1: { 1: 3.8 },
-    2: { 1: 1.4, 2: 7.3 },
-    3: { 2: 3.7, 3: 37 },
-    4: { 2: 2.1, 3: 7.5, 4: 90 },
-    5: { 2: 0.7, 3: 4.5, 4: 27, 5: 380 },
-    6: { 3: 2.8, 4: 12, 5: 110, 6: 1800 },
-    7: { 3: 1.7, 4: 7, 5: 30, 6: 340, 7: 7000 },
-    8: { 3: 0.8, 4: 4, 5: 19, 6: 115, 7: 1650, 8: 16000 },
+    1: { 1: 2.85 },
+    2: { 1: 1, 2: 4.7 },
+    3: { 1: 0.5, 2: 1.6, 3: 12 },
+    4: { 2: 1.2, 3: 4.2, 4: 27 },
+    5: { 2: 0.6, 3: 1.8, 4: 10, 5: 80 },
+    6: { 3: 1.3, 4: 4.6, 5: 28, 6: 300 },
+    7: { 3: 0.8, 4: 2.4, 5: 9.5, 6: 80, 7: 1000 },
+    8: { 3: 0.4, 4: 1.4, 5: 5, 6: 28, 7: 300, 8: 3500 },
   };
+
   const comb = (n, k) => { if (k < 0 || k > n) return 0; let r = 1; for (let i = 1; i <= k; i++) r = r * (n - k + i) / i; return r; };
   const prob = (k, m) => comb(k, m) * comb(CONFIG.N - k, CONFIG.DRAW - m) / comb(CONFIG.N, CONFIG.DRAW);
   const rtp = (k) => Object.keys(PAY[k]).reduce((a, m) => a + prob(k, +m) * PAY[k][m], 0);

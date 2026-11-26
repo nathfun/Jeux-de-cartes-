@@ -1,5 +1,5 @@
 /*
- * Loto Express — interface : grille de 40 numéros, sphère animée, tirage de 10 boules, table des gains.
+ * Loto Express — interface : grille de 30 numéros, sphère animée, tirage de 10 boules, table des gains.
  * En partie réelle, c'est le serveur du Casino qui tire les boules ; l'app les fait sortir une à une.
  */
 (function () {
@@ -13,8 +13,10 @@
 
   // ---------- Données enregistrées ----------
   const blankStats = () => ({ rounds: 0, wagered: 0, won: 0, best: 0 });
-  let store = { picks: [7, 13, 21, 33, 40], hist: [], seeds: null, stats: { real: blankStats(), train: blankStats() }, bets: { real: [], train: [] } };
+  let store = { picks: [3, 9, 14, 22, 27], hist: [], seeds: null, stats: { real: blankStats(), train: blankStats() }, bets: { real: [], train: [] } };
   try { const raw = JSON.parse(localStorage.getItem(KEY)); if (raw) store = Object.assign(store, raw); } catch (e) { /* ignore */ }
+  // grilles enregistrées avant le passage à 30 numéros : on retire ce qui dépasse
+  store.picks = (store.picks || []).filter((n) => Number.isInteger(n) && n >= 1 && n <= C.N).slice(0, C.MAX_PICK);
   const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) { /* ignore */ } };
   async function ensureSeeds() {
     if (store.seeds && store.seeds.server) return store.seeds;

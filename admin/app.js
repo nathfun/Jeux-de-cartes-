@@ -331,7 +331,7 @@
     $('st-at').textContent = '🟢 en ligne · mis à jour à ' + new Date(d.at).toLocaleTimeString('fr-FR');
     const kpi = (label, val, sub, warn) => '<div class="kpi' + (warn ? ' warn' : '') + '"><small>' + label + '</small><b>' + val + '</b>' + (sub ? '<span>' + sub + '</span>' : '') + '</div>';
     const memPct = Math.round(d.memory.rss / d.memory.limit * 100);
-    $('st-kpis').innerHTML = kpi('Allumé depuis', ago(d.uptime), 'Node ' + d.node + (d.firebase ? ' · Firebase ✓' : ' · ⚠️ Firebase absent'), !d.firebase)
+    $('st-kpis').innerHTML = kpi('Allumé depuis', ago(d.uptime), 'version ' + (d.version || 'ancienne (à mettre à jour)') + ' · Node ' + d.node + (d.firebase ? ' · Firebase ✓' : ' · ⚠️ Firebase absent'), !d.firebase)
       + kpi('Joueurs connectés', fmt(d.online.m5), fmt(d.online.h1) + ' sur la dernière heure')
       + kpi('Requêtes', fmt(d.requests.m5) + ' / 5 min', fmt(d.requests.h1) + ' sur 1 h · ' + fmt(d.requests.rejected) + ' refusées (règles)')
       + kpi('Temps de réponse', d.latency.p50 + ' ms', 'moyenne ' + d.latency.avg + ' ms · 95 % sous ' + d.latency.p95 + ' ms · max ' + d.latency.max + ' ms', d.latency.p95 > 800)
