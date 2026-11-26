@@ -260,6 +260,54 @@
   }
 
   // Effet « gros gain » : montant qui défile, pièces qui tombent
+  // ---------- Partage d'un gros gain (image + lien d'invitation) ----------
+  const SITE = (() => { try { const src = (document.currentScript && document.currentScript.src) || ''; return src ? src.replace(/profile\.js(\?.*)?$/, '') : location.href.replace(/[^/]*$/, ''); } catch (e) { return location.href.replace(/[^/]*$/, ''); } })();
+  const GAME_ICON = { blackjack: '🂡', poker: '♠', roulette: '🎡', slots: '🎰', crash: '🚀', plinko: '🔮', trader: '📈', mines: '💎' };
+  function gameHere() { const m = /\/(blackjack|poker|roulette|slots|crash|plinko|trader|mines)\//.exec(location.pathname); return m ? m[1] : null; }
+  function loadImg(src) { return new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; }); }
+  async function winCard(o, noIcon) {
+    const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H;
+    const x = c.getContext('2d');
+    const bg = x.createRadialGradient(W / 2, 260, 60, W / 2, 600, 1100); bg.addColorStop(0, '#3b1a78'); bg.addColorStop(.55, '#140f3d'); bg.addColorStop(1, '#07091a');
+    x.fillStyle = bg; x.fillRect(0, 0, W, H);
+    // pluie de pièces / étoiles
+    const fx = R.itemOf('effect', Casino.equipped ? Casino.equipped('effect') : 'pieces') || R.SHOP.effect[0];
+    x.globalAlpha = .35; x.font = '56px serif'; x.textAlign = 'center';
+    // décor sur les bords seulement, pour ne pas gêner le texte
+    for (let k = 0; k < 16; k++) { const left = k % 2 === 0; x.fillText(fx.emojis[k % fx.emojis.length], left ? 60 + (k * 37) % 70 : W - 60 - (k * 41) % 70, 90 + k * 78); }
+    x.globalAlpha = 1;
+    const icon = noIcon ? null : await loadImg(SITE + 'icons/icon-192.png');
+    if (icon) { x.save(); x.beginPath(); x.roundRect ? x.roundRect(W / 2 - 110, 120, 220, 220, 56) : x.rect(W / 2 - 110, 120, 220, 220); x.clip(); x.drawImage(icon, W / 2 - 110, 120, 220, 220); x.restore(); }
+    const grad = (y0, y1) => { const g = x.createLinearGradient(140, y0, W - 140, y1); g.addColorStop(0, '#f2c14e'); g.addColorStop(.55, '#f472b6'); g.addColorStop(1, '#22d3ee'); return g; };
+    x.fillStyle = grad(0, 0); x.font = '900 72px system-ui, sans-serif'; x.fillText('Lucky Lounge', W / 2, 430);
+    x.fillStyle = '#e5e7eb'; x.font = '600 44px system-ui, sans-serif';
+    x.fillText((o.icon ? o.icon + '  ' : '') + (o.game || ''), W / 2, 560);
+    x.fillStyle = '#fff'; x.font = '900 86px system-ui, sans-serif'; x.fillText(o.title || 'GROS GAIN !', W / 2, 680, W - 120);
+    x.shadowColor = 'rgba(242,193,78,.8)'; x.shadowBlur = 40; x.fillStyle = '#f2c14e'; x.font = '900 170px system-ui, sans-serif';
+    x.fillText('+' + Math.round(o.amount).toLocaleString('fr-FR') + ' €', W / 2, 880, W - 80); x.shadowBlur = 0;
+    x.fillStyle = '#cbd5e1'; x.font = '600 44px system-ui, sans-serif';
+    x.fillText((P.avatar || '🎩') + '  ' + (P.pseudo || 'Un joueur') + ' · niveau ' + levelOf(P.xp), W / 2, 990);
+    x.fillStyle = 'rgba(255,255,255,.08)'; x.beginPath(); x.roundRect ? x.roundRect(110, 1080, W - 220, 170, 40) : x.rect(110, 1080, W - 220, 170); x.fill();
+    x.fillStyle = '#fff'; x.font = '800 48px system-ui, sans-serif'; x.fillText('Viens jouer avec moi !', W / 2, 1155);
+    x.fillStyle = '#a5b4fc'; x.font = '600 34px system-ui, sans-serif'; x.fillText('Le casino entre amis · 100 % fun, 0 € réel', W / 2, 1210);
+    // une image d'une autre origine « salit » le dessin : on le refait sans l'icône
+    try { x.getImageData(0, 0, 1, 1); } catch (e) { return winCard(o, true); }
+    return new Promise((res) => c.toBlob(res, 'image/png'));
+  }
+  async function shareWin(o) {
+    const code = P.friendCode;
+    const url = SITE + 'index.html' + (code ? '?ref=' + code : '');
+    const text = (o.title || 'Gros gain') + ' : +' + Math.round(o.amount).toLocaleString('fr-FR') + ' € sur Lucky Lounge 🎰' + (code ? ' — rejoins-moi, +2 000 € offerts pour toi et moi !' : '');
+    try {
+      const blob = await winCard(o);
+      const file = blob && new File([blob], 'lucky-lounge-gain.png', { type: 'image/png' });
+      if (file && navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text: text + ' ' + url }); return; }
+      if (navigator.share) { await navigator.share({ title: 'Lucky Lounge', text, url }); return; }
+      if (blob) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'lucky-lounge-gain.png'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
+      try { await navigator.clipboard.writeText(text + ' ' + url); toast('Image enregistrée', 'Le lien est copié : colle-le avec l\'image dans ta conversation.', '📤'); } catch (e) { /* ignore */ }
+    } catch (e) { /* partage annulé */ }
+  }
+
   function bigWin(amount, label) {
     injectStyle();
     const o = document.createElement('div');
@@ -288,9 +336,16 @@
       v.textContent = '+' + Math.round(amount * (1 - Math.pow(1 - u, 3))).toLocaleString('fr-FR') + ' €';
       if (u < 1) requestAnimationFrame(step);
     })(t0);
+    // bouton « Partager » : une image du gain + ton lien d'invitation
+    const g = gameHere();
+    const sh = document.createElement('button'); sh.type = 'button'; sh.className = 'cb-share'; sh.textContent = '📤 Partager ce gain';
+    let kept = false;
+    sh.addEventListener('click', (e) => { e.stopPropagation(); kept = true; o.classList.remove('out'); sh.disabled = true; sh.textContent = 'Préparation…';
+      shareWin({ amount, title: label || 'GROS GAIN !', game: g ? R.GAMES[g] : '', icon: g ? GAME_ICON[g] : '🎰' }).finally(() => { sh.disabled = false; sh.textContent = '📤 Partager ce gain'; setTimeout(() => o.remove(), 1500); }); });
+    box.appendChild(sh);
     o.addEventListener('click', () => o.remove());
-    setTimeout(() => o.classList.add('out'), 3600);
-    setTimeout(() => o.remove(), 4200);
+    setTimeout(() => { if (!kept) o.classList.add('out'); }, 5200);
+    setTimeout(() => { if (!kept) o.remove(); }, 5800);
   }
 
 
@@ -532,6 +587,9 @@
       if (SERVER) call('profile.set', { pseudo: P.pseudo });
     },
     setAvatar(a) { load(); if (AVATARS.includes(a) || R.canUse(P, 'avatar', a)) { P.avatar = a; save(); if (SERVER) call('profile.set', { avatar: a }); } },
+    /** Parrainage : lie ce compte (nouveau joueur) au code ami de son parrain. */
+    async refLink(code) { if (!SERVER) return { error: 'Le parrainage a besoin du serveur du Casino.' }; return call('ref.link', { code }); },
+    REF_BONUS: R.REF_BONUS, REF_MIN_HANDS: R.REF_MIN_HANDS, REF_MAX: R.REF_MAX,
     setFriendCode(code) { if (SERVER) call('profile.set', { code }); },
     setSetting(k, v) { load(); P.settings[k] = v; save(); },
     save() { load(); save(); },
@@ -678,6 +736,8 @@
       });
     },
     modePicker,
+    shareWin,
+    winCard,
     gameHero,
     styleLobby,
     launchFx,
@@ -819,6 +879,8 @@
 .cr-list small { grid-column: 1 / -1; color: #3fb950; font-weight: 700; }
 .cr-btns { display: flex; gap: .5rem; justify-content: center; }
 .cm-badge.real { background: #f2c14e; color: #2a1d00; }
+.cb-share { pointer-events: auto; margin-top: 1rem; font: 800 1rem system-ui, sans-serif; border: 0; border-radius: 999px; padding: .7rem 1.3rem; cursor: pointer; color: #1a1200; background: linear-gradient(90deg, #f2c14e, #f472b6); box-shadow: 0 8px 24px rgba(0,0,0,.4); animation: cb-zoom .5s .8s cubic-bezier(.2,.9,.3,1.3) both; }
+.cb-share:disabled { opacity: .7; }
 /* ---------- Écran de lancement ---------- */
 .cm-host { position: relative; display: flex; flex-direction: column; gap: .8rem; }
 .cm-host > .setup-grid { order: 3; width: 100%; max-width: 920px; margin: 0 auto; background: rgba(0,0,0,.2); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: .7rem .9rem; }

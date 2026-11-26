@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>Casino</title>
+  <title>Lucky Lounge</title>
   <meta name="casino-hub" content="1">
   <meta name="description" content="Blackjack, poker et roulette : en solo avec des aides, ou entre amis avec un code de table.">
-  <meta name="theme-color" content="#0f5132">
+  <meta name="theme-color" content="#140f3d">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -207,12 +207,25 @@
     .week-rank li { display: flex; justify-content: space-between; background: #141a21; border-radius: 10px; padding: .45rem .7rem; font-size: .9rem; }
     .week-rank li.me { outline: 1px solid var(--gold); } .week-rank b { color: var(--gold); white-space: nowrap; margin-left: .5rem; }
     .acc-welcome { display: none; text-align: center; }
-    .acc-welcome .aw-logo { font-size: 3rem; }
-    .acc-welcome h2 { font-size: 1.5rem; margin: .2rem 0 .4rem; }
+    .brand { background: linear-gradient(90deg, #f2c14e, #f472b6 55%, #22d3ee); -webkit-background-clip: text; background-clip: text; color: transparent; letter-spacing: -.01em; }
+    .acc-welcome .aw-logo { width: 96px; height: 96px; border-radius: 26px; box-shadow: 0 0 40px rgba(167,139,250,.55); animation: awFloat 3s ease-in-out infinite; }
+    .acc-welcome h2 { font-size: 2rem; font-weight: 900; margin: .5rem 0 .2rem; }
     .acc-welcome p { color: var(--muted); margin: 0 0 1rem; line-height: 1.45; }
+    .acc-welcome .aw-tag { font-size: 1.05rem; color: var(--text); margin-bottom: .8rem; }
+    .aw-games { display: flex; justify-content: center; gap: .45rem; margin: .2rem 0 1rem; flex-wrap: wrap; }
+    .aw-games span { width: 40px; height: 40px; display: grid; place-items: center; font-size: 1.3rem; border-radius: 12px; background: rgba(167,139,250,.12); border: 1px solid rgba(167,139,250,.35); animation: awPop 3.2s ease-in-out infinite; }
+    .aw-games span:nth-child(2n) { animation-delay: .4s; } .aw-games span:nth-child(3n) { animation-delay: .8s; } .aw-games span:nth-child(5n) { animation-delay: 1.2s; }
+    .aw-points { list-style: none; padding: 0; margin: 0 0 1rem; display: grid; gap: .45rem; text-align: left; }
+    .aw-points li { display: flex; gap: .6rem; align-items: baseline; background: rgba(255,255,255,.04); border: 1px solid var(--border); border-radius: 12px; padding: .5rem .7rem; font-size: .88rem; }
+    .aw-points b { white-space: nowrap; color: var(--gold); } .aw-points span { color: var(--muted); }
+    .aw-ref { background: linear-gradient(90deg, rgba(242,193,78,.18), rgba(244,114,182,.18)); border: 1px solid var(--gold); border-radius: 12px; padding: .6rem .8rem; margin-bottom: 1rem; font-size: .92rem; }
+    .acc-welcome .aw-note { font-size: .8rem; margin: 0 0 .8rem; }
+    @keyframes awFloat { 50% { transform: translateY(-6px) rotate(-3deg); } } @keyframes awPop { 0%, 80%, 100% { transform: none; } 88% { transform: translateY(-6px) scale(1.12); } }
+    body.gated { background: radial-gradient(900px 500px at 50% -10%, #2a1660 0%, transparent 60%), var(--bg); }
     body.gated main > *:not(.account) { display: none !important; }
-    body.gated .account { max-width: 460px; margin: 2rem auto; padding: 1.4rem; border-color: var(--gold); }
+    body.gated .account { max-width: 480px; margin: 1.5rem auto; padding: 1.4rem; border-color: rgba(167,139,250,.55); box-shadow: 0 20px 60px rgba(0,0,0,.45), 0 0 40px rgba(167,139,250,.15); }
     body.gated .acc-welcome { display: block; }
+    body.gated .acc-extra { display: none; }
     body.gated .acc-title, body.gated #acc-out > .small-p { display: none; }
     body.gated .acc-form { flex-direction: column; }
     body.gated .acc-form input, body.gated .acc-form button { flex: none; width: 100%; }
@@ -286,6 +299,23 @@
     .defis li { background: #141a21; border-radius: 10px; padding: .5rem .7rem; display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; justify-content: space-between; }
     .defis a { color: var(--gold); }
 
+    /* ---------- Visite guidée ---------- */
+    .tour { position: fixed; inset: 0; z-index: 95; }
+    .tour-spot { position: fixed; border-radius: 16px; box-shadow: 0 0 0 9999px rgba(4,6,12,.78), 0 0 0 3px var(--gold), 0 0 30px rgba(242,193,78,.6); transition: all .35s cubic-bezier(.2,.9,.3,1.1); pointer-events: none; }
+    .tour-tip { position: fixed; left: 50%; transform: translateX(-50%); width: min(380px, calc(100vw - 32px)); background: linear-gradient(160deg, #2a1660, #141a2e); border: 1px solid rgba(167,139,250,.6); border-radius: 18px; padding: 1rem 1.1rem; color: #fff; box-shadow: 0 20px 50px rgba(0,0,0,.6); }
+    .tour-tip.in { animation: tourIn .35s cubic-bezier(.2,.9,.3,1.3); }
+    .tour-tip b { font-size: 1.1rem; } .tour-tip p { margin: .4rem 0 .8rem; color: #d1d5db; line-height: 1.45; font-size: .92rem; }
+    .tour-row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+    .tour-dots { display: flex; gap: 5px; } .tour-dots i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.25); } .tour-dots i.on { background: var(--gold); width: 18px; border-radius: 999px; }
+    .tour-skip { font: inherit; font-size: .85rem; background: none; border: 0; color: #9ca3af; cursor: pointer; }
+    .tour-next { font: inherit; font-weight: 800; border: 0; border-radius: 12px; padding: .55rem 1rem; cursor: pointer; color: #1a1200; background: linear-gradient(90deg, #f2c14e, #f472b6); }
+    @keyframes tourIn { from { opacity: 0; transform: translate(-50%, 10px) scale(.96); } }
+    /* ---------- Parrainage ---------- */
+    .referral { border-color: rgba(242,193,78,.5); background: linear-gradient(160deg, rgba(242,193,78,.08), transparent 60%), var(--panel); }
+    .ref-lead { margin: 0 0 .6rem; font-size: .92rem; } .ref-lead b { color: var(--gold); }
+    .ref-link { display: flex; gap: .4rem; flex-wrap: wrap; } .ref-link input { flex: 1 1 200px; min-width: 0; font: inherit; font-size: .85rem; background: #0b0f14; color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: .45rem .6rem; }
+    .ref-stats { display: flex; gap: 1rem; flex-wrap: wrap; font-size: .85rem; color: var(--muted); margin: .6rem 0 .3rem; } .ref-stats b { color: var(--gold); }
+    .ref-me { font-size: .85rem; } .ref-prog span { display: block; margin-bottom: .3rem; } .ref-prog .xpbar div { height: 100%; background: linear-gradient(90deg, var(--gold), #f472b6); border-radius: 999px; }
     /* ---------- Mon style ---------- */
     .style .st-top { display: flex; justify-content: space-between; align-items: center; gap: .5rem; } .style .st-top h2 { margin: 0; }
     .st-meta { font-size: .9rem; color: var(--muted); } .st-meta b { color: var(--gold); }
@@ -349,8 +379,8 @@
     <header>
       <img src="icons/icon-192.png" alt="">
       <div>
-        <h1>Casino</h1>
-        <p>Joue avec ta banque, apprends sans risque, défie tes amis.</p>
+        <h1 class="brand">Lucky Lounge</h1>
+        <p>Le casino entre amis · 100 % fun, 0 € réel.</p>
       </div>
       <div class="head-btns">
         <a id="admin-link" class="icon-btn" href="admin/index.html" hidden title="Administration">🛠️</a>
@@ -525,6 +555,14 @@
       </div>
     </section>
 
+    <section class="panel referral" data-tab="multi" aria-label="Parrainage">
+      <h2>🎁 Parrainage</h2>
+      <p class="ref-lead">Invite tes amis : quand ils ont joué leurs <b>10 premières parties</b>, vous recevez <b>+2 000 € chacun</b>.</p>
+      <div class="ref-link"><input id="ref-url" readonly aria-label="Ton lien de parrainage"><button id="ref-share" type="button" class="bonus-btn">📤 Inviter</button><button id="ref-copy" type="button" class="icon-btn">Copier</button></div>
+      <div class="ref-stats"><span>Filleuls récompensés : <b id="ref-count">0</b></span><span>Gagné : <b id="ref-earned">0 €</b></span></div>
+      <div id="ref-me" class="ref-me"></div>
+    </section>
+
     <section class="panel" data-tab="multi" aria-label="Défis entre amis">
       <h2>Défis entre amis</h2>
       <p class="muted" style="font-size:.88rem;margin:0 0 .6rem">10 tours avec 1 000 € de jetons de défi (ta banque n'est pas touchée). Tout le monde reçoit exactement les mêmes numéros à la roulette, ou le même sabot au blackjack : le meilleur solde final gagne.</p>
@@ -585,10 +623,17 @@
 
     <section class="panel account" aria-label="Mon compte">
       <div id="acc-welcome" class="acc-welcome">
-        <div class="aw-logo">🎰</div>
-        <h2>Bienvenue au Casino</h2>
-        <p>Pour jouer, crée ton compte ou connecte-toi : ta banque, ton niveau et tes amis te suivent sur tous tes appareils.
-          Tout se joue en argent virtuel (aucun argent réel).</p>
+        <img class="aw-logo" src="icons/icon-192.png" alt="">
+        <h2 class="brand">Lucky Lounge</h2>
+        <p class="aw-tag">Le casino entre amis. 100 % fun, 0 € réel.</p>
+        <div class="aw-games" aria-hidden="true"><span>🂡</span><span>♠</span><span>🎡</span><span>🚀</span><span>🔮</span><span>💎</span><span>📈</span><span>🎰</span></div>
+        <ul class="aw-points">
+          <li><b>🎁 10 000 €</b><span>offerts pour commencer</span></li>
+          <li><b>🎰 9 jeux</b><span>blackjack, poker, roulette, Rocket Crash, Plinko, Mines…</span></li>
+          <li><b>👥 Entre amis</b><span>tables privées, défis, classement</span></li>
+        </ul>
+        <div id="aw-ref" class="aw-ref" hidden></div>
+        <p class="aw-note">Crée ton compte en 10 secondes : un pseudo et un mot de passe, pas d'e-mail. Argent 100 % virtuel, rien à payer.</p>
       </div>
       <h2 class="acc-title">🔐 Mon compte</h2>
       <div id="acc-out">
@@ -609,7 +654,10 @@
         <button id="acc-logout" class="icon-btn" type="button">Se déconnecter</button>
       </div>
       <p id="acc-msg" class="acc-msg" role="status"></p>
-      <label style="font-size:.9rem;display:block;margin-top:.6rem"><input type="checkbox" id="opt-vibrate"> Vibrations sur téléphone</label>
+      <div class="acc-extra">
+        <label style="font-size:.9rem;display:block;margin-top:.6rem"><input type="checkbox" id="opt-vibrate"> Vibrations sur téléphone</label>
+        <button id="tour-again" type="button" class="icon-btn" style="margin-top:.5rem">🧭 Revoir la visite guidée</button>
+      </div>
     </section>
 
     <section class="install" id="install">
@@ -793,7 +841,7 @@
         ['play', 'multi', 'shop'].forEach((k) => { $('tab-' + k).classList.toggle('on', t === k); $('tab-' + k).setAttribute('aria-selected', t === k); });
         const h = t === 'play' ? '' : '#' + t;
         if (location.hash !== h) history.replaceState(null, '', location.pathname + location.search + h);
-        if (t === 'multi') refreshLobby();
+        if (t === 'multi') { refreshLobby(); renderReferral().catch(() => {}); }
         if (t === 'shop') renderShop();
         window.scrollTo({ top: 0 });
       }
@@ -1140,6 +1188,95 @@
       const accMsg = (t, cls) => { $('acc-msg').textContent = t || ''; $('acc-msg').className = 'acc-msg ' + (cls || ''); };
       $('acc-tab-create').addEventListener('click', () => { accMode = 'create'; accMsg(''); renderAccount(); });
       $('acc-tab-login').addEventListener('click', () => { accMode = 'login'; accMsg(''); renderAccount(); });
+      // ---------- Visite guidée (première fois) ----------
+      const TOUR_KEY = 'casino-tour-v1';
+      const TOUR = [
+        { sel: '.profile', tab: 'play', title: 'Bienvenue sur Lucky Lounge ! 🎉', text: 'Voici ton profil : ta banque de départ (10 000 € virtuels), ton niveau et ton bonus du jour. Rien à payer, jamais.' },
+        { sel: '.games', tab: 'play', title: 'Choisis un jeu', text: 'Touche un jeu pour jouer avec ta banque. Chaque partie te rapporte de l\'XP, fait avancer tes défis et peut débloquer des succès.' },
+        { sel: '.learn-switch', tab: 'play', title: 'Envie d\'apprendre d\'abord ?', text: 'Passe en 🎓 Apprentissage : crédit illimité, aides et conseils du coach dans tous les jeux. Reviens en 💰 Partie réelle quand tu es prêt.' },
+        { sel: '#challenges', tab: 'play', title: 'Reviens chaque jour', text: 'Trois défis du jour à relever et un bonus quotidien qui grimpe si tu viens plusieurs jours d\'affilée.' },
+        { sel: '#tab-shop', tab: 'play', title: '🎨 Mon style', text: 'Tapis, cartes, avatars, cadres, fusées… Touche un objet pour l\'essayer, puis équipe-le ou achète-le avec ta banque.' },
+        { sel: '#tab-multi', tab: 'play', title: '👥 Entre amis', text: 'Crée une table et invite tes amis. Avec ton lien de parrainage, vous gagnez +2 000 € chacun !' },
+      ];
+      function startTour(force) {
+        try { if (!force && localStorage.getItem(TOUR_KEY)) return; } catch (e) { /* ignore */ }
+        if (document.body.classList.contains('gated') || document.querySelector('.tour')) return;
+        let k = 0;
+        const ov = document.createElement('div'); ov.className = 'tour';
+        const spot = document.createElement('div'); spot.className = 'tour-spot';
+        const tip = document.createElement('div'); tip.className = 'tour-tip'; tip.setAttribute('role', 'dialog');
+        ov.append(spot, tip); document.body.appendChild(ov);
+        const end = () => { ov.remove(); window.removeEventListener('resize', place); try { localStorage.setItem(TOUR_KEY, '1'); } catch (e) { /* ignore */ } };
+        function place() {
+          const st = TOUR[k], el = document.querySelector(st.sel); if (!el) return;
+          const r = el.getBoundingClientRect(), pad = 8;
+          Object.assign(spot.style, { left: (r.left - pad) + 'px', top: (r.top - pad) + 'px', width: (r.width + pad * 2) + 'px', height: (r.height + pad * 2) + 'px' });
+          const below = r.bottom + 16 + 200 < innerHeight || r.top < 220;
+          tip.style.top = below ? Math.min(innerHeight - 200, r.bottom + 16) + 'px' : 'auto';
+          tip.style.bottom = below ? 'auto' : (innerHeight - r.top + 16) + 'px';
+        }
+        function show() {
+          const st = TOUR[k];
+          if (st.tab && document.body.dataset.hubtab !== st.tab) setHubTab(st.tab);
+          const el = document.querySelector(st.sel);
+          if (el) el.scrollIntoView({ block: 'center', behavior: 'instant' in document.documentElement.style ? 'instant' : 'auto' });
+          tip.innerHTML = '';
+          const h = document.createElement('b'); h.textContent = st.title;
+          const p = document.createElement('p'); p.textContent = st.text;
+          const dots = document.createElement('div'); dots.className = 'tour-dots'; TOUR.forEach((_, i) => { const d = document.createElement('i'); if (i === k) d.className = 'on'; dots.appendChild(d); });
+          const row = document.createElement('div'); row.className = 'tour-row';
+          const skip = document.createElement('button'); skip.type = 'button'; skip.className = 'tour-skip'; skip.textContent = 'Passer'; skip.onclick = end;
+          const next = document.createElement('button'); next.type = 'button'; next.className = 'tour-next'; next.textContent = k === TOUR.length - 1 ? 'C\'est parti ! 🎰' : 'Suivant ›';
+          next.onclick = () => { if (window.Sfx) Sfx.chips(); if (k === TOUR.length - 1) { end(); return; } k++; show(); };
+          row.append(skip, dots, next);
+          tip.append(h, p, row);
+          tip.classList.remove('in'); void tip.offsetWidth; tip.classList.add('in');
+          setTimeout(place, 60); place();
+        }
+        window.addEventListener('resize', place);
+        show();
+      }
+      $('tour-again').addEventListener('click', () => startTour(true));
+      setTimeout(() => startTour(false), 900);
+
+      // ---------- Parrainage ----------
+      const REF_KEY = 'casino-ref';
+      try { const q = new URLSearchParams(location.search).get('ref'); if (q && /^[A-Za-z0-9]{6}$/.test(q)) localStorage.setItem(REF_KEY, q.toUpperCase()); } catch (e) { /* ignore */ }
+      const pendingRef = () => { try { return localStorage.getItem(REF_KEY); } catch (e) { return null; } };
+      if (pendingRef()) { const r = $('aw-ref'); r.hidden = false; r.innerHTML = '🎁 <b>Un ami t\'invite !</b> Crée ton compte : après tes 10 premières parties, vous recevez <b>+2 000 € chacun</b>.'; }
+      async function applyRef() {
+        const code = pendingRef();
+        if (!code || !Casino.server || !Casino.refLink) return;
+        const r = await Casino.refLink(code);
+        try { localStorage.removeItem(REF_KEY); } catch (e) { /* ignore */ }
+        if (r && !r.error) {
+          Casino.toast('Parrainé par ' + r.name, 'Joue tes ' + r.need + ' premières parties pour débloquer +2 000 € (pour toi et pour ' + r.name + ').', '🎁', 'gold');
+          if (window.Social && Social.addFriendUid) Social.addFriendUid(r.uid);
+        } else if (r && r.error && !/déjà un parrain/.test(r.error)) Casino.toast('Parrainage', r.error, '🎁');
+      }
+      async function renderReferral() {
+        if (!window.Social) return;
+        const code = await Social.myCode().catch(() => null);
+        const base = location.href.split(/[?#]/)[0];
+        $('ref-url').value = code ? base + '?ref=' + code : 'Connecte-toi pour avoir ton lien';
+        const P = Casino.profile, n = Math.min(P.refCount || 0, Casino.REF_MAX || 25);
+        $('ref-count').textContent = String(P.refCount || 0);
+        $('ref-earned').textContent = fmt(n * (Casino.REF_BONUS || 2000)) + ' €';
+        const me = $('ref-me'); me.innerHTML = '';
+        if (P.refBy && !P.refPaid) {
+          const left = Math.max(0, (Casino.REF_MIN_HANDS || 10) - (P.totals.hands || 0));
+          me.innerHTML = '<div class="ref-prog"><span></span><div class="xpbar"><div></div></div></div>';
+          me.querySelector('span').textContent = 'Parrainé par ' + (P.refByName || 'un ami') + ' : encore ' + left + ' partie' + (left > 1 ? 's' : '') + ' en mode réel pour débloquer +2 000 €';
+          me.querySelector('.xpbar div').style.width = Math.round(Math.min(1, (P.totals.hands || 0) / (Casino.REF_MIN_HANDS || 10)) * 100) + '%';
+        } else if (P.refPaid) me.textContent = '✔ Parrainage de ' + (P.refByName || 'ton ami') + ' débloqué.';
+        else if (Casino.server && (P.totals.hands || 0) < (Casino.REF_MIN_HANDS || 10)) {
+          me.innerHTML = '<form class="inline-form" id="ref-form"><input id="ref-code" maxlength="6" placeholder="Code d\'un parrain" aria-label="Code de ton parrain" autocapitalize="characters"><button type="submit" class="icon-btn">Valider</button></form>';
+          $('ref-form').addEventListener('submit', async (e) => { e.preventDefault(); try { localStorage.setItem(REF_KEY, $('ref-code').value.trim().toUpperCase()); } catch (er) { /* ignore */ } await applyRef(); renderReferral(); });
+        }
+      }
+      $('ref-copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('ref-url').value); $('ref-copy').textContent = 'Copié ✓'; setTimeout(() => { $('ref-copy').textContent = 'Copier'; }, 1500); } catch (e) { $('ref-url').select(); } });
+      $('ref-share').addEventListener('click', () => Social.shareLink($('ref-url').value, 'Viens jouer avec moi sur Lucky Lounge 🎰 : +2 000 € offerts pour toi et moi quand tu as joué tes 10 premières parties !'));
+
       $('acc-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         if (!window.Account) return;
@@ -1151,6 +1288,8 @@
           else { await Account.login(ps, pw); accMsg('Bon retour ' + ps + ' ! Ta progression est récupérée.', 'ok'); }
           $('acc-pwd').value = '';
           if (window.Social && Social.publish) Social.publish().catch(() => {});
+          applyRef().catch(() => {});
+          setTimeout(() => startTour(false), 800);
           // retour vers la page demandée (lien d'invitation, de défi…)
           const next = new URLSearchParams(location.search).get('next');
           if (next && /^\/[^/\\]/.test(next)) { setTimeout(() => { location.href = next; }, 600); }

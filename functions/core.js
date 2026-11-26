@@ -378,6 +378,16 @@ function handle(state, ctx) {
       result.price = r.price;
       break;
     }
+    // ----- Parrainage : un nouveau joueur indique le code ami de son parrain (le paiement est fait par le serveur) -----
+    case 'ref.link': {
+      if (P.refBy) fail('Tu as déjà un parrain.');
+      if (!ctx.refUid) fail('Code de parrainage inconnu.');
+      if (ctx.refUid === ctx.uid) fail('Tu ne peux pas être ton propre parrain.');
+      if ((P.totals.hands || 0) >= R.REF_MIN_HANDS) fail('Le parrainage est réservé aux nouveaux joueurs.');
+      P.refBy = ctx.refUid; P.refByName = String(ctx.refName || 'Un ami').slice(0, 16); P.refAt = now;
+      result = { uid: ctx.refUid, name: P.refByName, need: R.REF_MIN_HANDS };
+      break;
+    }
     case 'bonus.claim': result.amount = R.claimBonus(P, now, N); break;
     case 'challenge.claim': result.amount = R.claimChallenge(P, String(d.id), now, N); break;
     case 'time.start': if (!R.startTime(P, String(d.pack), now)) fail('Une attente est déjà en cours.'); break;

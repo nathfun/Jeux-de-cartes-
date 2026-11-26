@@ -124,22 +124,59 @@ async function casino(uid, token, op, data) {
     const t = rtdb ? (await rtdb.ref(TABLES[game] + id).get()).val() : null;
     ctx.table = t ? Object.assign({ id }, t) : null;
   }
+  if (op === 'ref.link') {
+    const code = String(ctx.data.code || '').trim().toUpperCase();
+    if (rtdb && /^[A-Z0-9]{6}$/.test(code)) {
+      ctx.refUid = (await rtdb.ref('friendcodes/' + code).get()).val() || null;
+      if (ctx.refUid) ctx.refName = (await rtdb.ref('profiles/' + ctx.refUid + '/pseudo').get()).val() || 'Un ami';
+      if (ctx.refUid && !db.has(ctx.refUid)) ctx.refUid = null; // le parrain doit être un vrai joueur du serveur
+    }
+  }
   if (op === 'profile.set' && typeof ctx.data.code === 'string' && /^[A-Z0-9]{6}$/.test(ctx.data.code)) {
     ctx.codeOk = rtdb ? (await rtdb.ref('friendcodes/' + ctx.data.code).get()).val() === uid : false;
   }
   // premier passage d'un joueur sur ce serveur : on reprend sa progression depuis Firebase (une seule fois)
   const imported = db.has(uid) ? null : await importFromFirebase(uid);
-  return serial(uid, async () => {
+  let payReferrer = null;
+  const res = await serial(uid, async () => {
     let before = db.load(uid);
     if (!before.player && imported) before = { player: imported, secret: {} };
     const copy = JSON.parse(JSON.stringify(before));
     ctx.now = Date.now();
     const out = core.handle(copy, ctx);          // lève une GameError si l'action est refusée : rien n'est enregistré
-    db.save(uid, op, before, out.state, ctx.now);
     const P = out.state.player;
+    // parrainage : le filleul a assez joué → +REF_BONUS pour lui (et pour son parrain juste après)
+    if (P.refBy && !P.refPaid && (P.totals.hands || 0) >= R.REF_MIN_HANDS) {
+      P.refPaid = ctx.now;
+      P.wallet = Math.round((P.wallet + R.REF_BONUS) * 100) / 100;
+      out.notes.push({ title: 'Parrainage débloqué !', text: '+' + R.REF_BONUS.toLocaleString('fr-FR') + ' € grâce à ' + (P.refByName || 'ton parrain') + '. Il reçoit la même chose !', icon: '🎁', kind: 'gold' });
+      payReferrer = { uid: P.refBy, name: P.pseudo || 'Un ami' };
+    }
+    // avis au parrain : ses filleuls qui ont débloqué la récompense depuis sa dernière visite
+    if (Array.isArray(P.refInbox) && P.refInbox.length) {
+      P.refInbox.forEach((x) => out.notes.push({ title: 'Ton filleul a débloqué le parrainage', text: x.name + ' a joué ses premières parties : +' + R.REF_BONUS.toLocaleString('fr-FR') + ' € pour toi !', icon: '🎁', kind: 'gold' }));
+      P.refInbox = [];
+    }
+    db.save(uid, op, before, out.state, ctx.now);
     if (rtdb) rtdb.ref('profiles/' + uid).update(R.publicProfile(P, P.friendCode)).catch((e) => console.error('[casino] profil', e.message));
     return { result: out.result, notes: out.notes, player: P };
   });
+  if (payReferrer && payReferrer.uid !== uid && db.has(payReferrer.uid)) {
+    await serial(payReferrer.uid, async () => {
+      const before = db.load(payReferrer.uid);
+      if (!before.player) return;
+      const after = JSON.parse(JSON.stringify(before)), Q = R.normalize(after.player, Date.now());
+      Q.refCount = (Q.refCount || 0) + 1;
+      if (Q.refCount <= R.REF_MAX) {
+        Q.wallet = Math.round((Q.wallet + R.REF_BONUS) * 100) / 100;
+        Q.refInbox = (Q.refInbox || []).concat([{ name: payReferrer.name, at: Date.now() }]).slice(-10);
+      }
+      after.player = Q;
+      db.save(payReferrer.uid, 'ref', before, after, Date.now());
+      if (rtdb) rtdb.ref('profiles/' + payReferrer.uid).update(R.publicProfile(Q, Q.friendCode)).catch(() => {});
+    }).catch((e) => console.error('[casino] parrainage', e.message));
+  }
+  return res;
 }
 /**
  * Reprise d'un joueur qui jouait avant le serveur du NAS : sa sauvegarde de compte (saves/<uid> : niveau, succès,

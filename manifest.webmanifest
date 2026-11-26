@@ -1,14 +1,14 @@
 {
-  "name": "Casino",
-  "short_name": "Casino",
-  "description": "Blackjack, poker et roulette : en solo avec des aides, ou entre amis avec un code de table.",
+  "name": "Lucky Lounge",
+  "short_name": "Lucky Lounge",
+  "description": "Le casino entre amis : blackjack, poker, roulette, Rocket Crash, Plinko, Mines… 100 % fun, 0 € réel.",
   "lang": "fr",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#10151c",
-  "theme_color": "#0f5132",
+  "background_color": "#07091a",
+  "theme_color": "#140f3d",
   "icons": [
     {
       "src": "icons/icon-192.png",
