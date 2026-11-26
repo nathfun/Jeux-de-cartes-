@@ -108,16 +108,18 @@ L'argent laissé sur une table en cours leur est rendu dans leur banque.
 | Redémarrer | `sudo docker compose restart` |
 | Arrêter | `sudo docker compose down` |
 
-**Mettre à jour** : télécharge le nouveau ZIP, décompresse-le dans `/volume1/docker/casino` et renomme-le `app-new`, puis :
+**Mettre à jour** : télécharge le nouveau ZIP de la branche et décompresse-le dans `/volume1/docker/casino`
+(il s'appelle `Jeux-de-cartes--claude-blackjack-app-feedback-appqgy`). Puis copie-colle tout ce bloc :
 ```bash
 cd /volume1/docker/casino
-cp -a app/server/.env app/server/secrets app/server/data app-new/server/
-mkdir -p app-new/server/tailscale && cp -a app/server/tailscale/state app-new/server/tailscale/
-cd app/server && sudo docker compose down && cd ../..
-mv app app-old && mv app-new app
+if [ -f app/server/.env ]; then (cd app/server && sudo docker compose down); sudo rm -rf app-old; sudo mv app app-old; else sudo rm -rf app app-new; fi
+sudo mv Jeux-de-cartes--claude-blackjack-app-feedback-appqgy app
+sudo cp -a app-old/server/.env app-old/server/secrets app-old/server/data app/server/
+sudo mkdir -p app/server/tailscale && sudo cp -a app-old/server/tailscale/state app/server/tailscale/
 cd app/server && sudo docker compose up -d --build
 ```
-(Une fois que tout marche, tu peux supprimer `app-old`.)
+Ta configuration, ta clé, la base des joueurs et l'identité Tailscale sont reprises de l'ancienne version (`app-old`).
+Une fois que tout marche, tu peux supprimer `app-old` avec `sudo rm -rf /volume1/docker/casino/app-old`.
 
 **Sauvegarde** : toute la base tient dans `server/data/` (fichier `casino.db`).
 Ajoute ce dossier à une tâche de sauvegarde UGOS (quotidienne, vers un autre disque ou le cloud).
