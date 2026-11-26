@@ -55,6 +55,10 @@ function open(dir) {
         db.exec('COMMIT');
       } catch (e) { db.exec('ROLLBACK'); throw e; }
     },
+    /** Liste de tous les joueurs (pour l'administration). */
+    all() { return db.prepare('SELECT uid, state, created, updated FROM players ORDER BY updated DESC').all().map((r) => ({ uid: r.uid, state: JSON.parse(r.state), created: r.created, updated: r.updated })); },
+    remove(uid) { db.prepare('DELETE FROM players WHERE uid = ?').run(uid); },
+    ledgerOf(uid, n) { return db.prepare('SELECT at, op, wallet_before, wallet_after, table_before, table_after FROM ledger WHERE uid = ? ORDER BY id DESC LIMIT ?').all(uid, n || 50).map((r) => Object.assign({}, r)); },
     stats() {
       return {
         players: db.prepare('SELECT COUNT(*) AS n FROM players').get().n,

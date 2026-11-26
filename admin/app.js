@@ -23,6 +23,15 @@
   if (isAdmin !== true) { $('denied').hidden = false; return; }
   $('list-panel').hidden = false;
   $('tools-panel').hidden = false;
+  // Avec le serveur du Casino (NAS) : la banque et la progression des joueurs sont sur le serveur, on passe par lui
+  const API = String(window.CASINO_API || '').replace(/\/+$/, '');
+  async function adm(op, data) {
+    const r = await fetch(API + '/api/admin', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (await f.auth.currentUser.getIdToken()) }, body: JSON.stringify({ op, data: data || {} }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || 'erreur ' + r.status);
+    return j;
+  }
+  if (API) document.querySelector('#list-panel h2').textContent = 'Comptes (serveur du Casino)';
   const tmsg = (t, cls) => { $('tools-msg').textContent = t || ''; $('tools-msg').className = 'msg ' + (cls || ''); };
   let banned = {};
 
@@ -31,6 +40,18 @@
     const [profiles, banks, bans, lobby] = await Promise.all([get('profiles').catch(() => null), get('bank').catch(() => null), get('banned').catch(() => null), get('lobby').catch(() => null)]);
     banned = bans || {};
     $('lobby-count').textContent = Object.keys(lobby || {}).length + ' partie(s) dans la liste du Multijoueur.';
+    if (API) {
+      let r;
+      try { r = await adm('list'); } catch (e) { $('stats').textContent = 'Serveur du Casino injoignable : ' + e.message; return; }
+      players = r.players.map((p) => ({ uid: p.uid, pseudo: p.pseudo, avatar: p.avatar, level: p.level, xp: p.xp, wallet: p.wallet, onTables: p.onTables, updatedAt: p.updated, ses: Object.keys(p.sessions).length ? p.sessions : null }));
+      r.players.forEach((p) => { if (p.banned) banned[p.uid] = banned[p.uid] || true; });
+      const total = players.reduce((a, p) => a + p.wallet + (p.onTables || 0), 0);
+      const notYet = Object.keys(profiles || {}).filter((u) => !players.some((p) => p.uid === u)).length;
+      $('stats').innerHTML = '<span>Comptes sur le serveur : <b>' + players.length + '</b></span><span>Argent total (banques + tables) : <b>' + fmt(total) + ' €</b></span><span>Actifs (7 j) : <b>' + players.filter((p) => Date.now() - p.updatedAt < 7 * 864e5).length + '</b></span>'
+        + (notYet ? '<span>Pas encore passés sur le serveur : <b>' + notYet + '</b> (repris à leur prochaine connexion)</span>' : '') + '<span>Mouvements au journal : <b>' + fmt(r.stats.ledger) + '</b></span>';
+      draw();
+      return;
+    }
     const ids = new Set(Object.keys(profiles || {}).concat(Object.keys(banks || {})));
     players = [...ids].map((uid) => {
       const p = (profiles || {})[uid] || {}, b = (banks || {})[uid] || {};
@@ -65,9 +86,23 @@
     $('ed-uid').textContent = p.uid;
     $('ed-wallet').value = Math.round(p.wallet);
     $('act-ban').textContent = banned[p.uid] ? '✅ Débloquer' : '⛔ Bloquer';
-    $('ed-sessions').textContent = p.ses ? 'Parties réelles en cours : ' + Object.entries(p.ses).map(([g, v]) => g + ' (' + fmt(v) + ' € apportés)').join(', ') : '';
-    const sv = await get('saves/' + p.uid).catch(() => null);
-    saveData = sv && sv.data ? JSON.parse(sv.data) : null;
+    $('ed-sessions').textContent = p.ses ? 'Parties réelles en cours : ' + Object.entries(p.ses).map(([g, v]) => g + ' (' + fmt(v) + ' €' + (API ? ' sur la table' : ' apportés') + ')').join(', ') : '';
+    let led = $('ed-ledger');
+    if (!led) { led = document.createElement('details'); led.id = 'ed-ledger'; led.className = 'small'; $('ed-sessions').after(led); }
+    led.hidden = !API; led.innerHTML = '';
+    if (API) {
+      let r;
+      try { r = await adm('get', { uid: p.uid }); } catch (e) { msg('Serveur : ' + e.message, 'err'); return; }
+      saveData = { pseudo: r.brief.pseudo, xp: r.brief.xp, owned: r.owned, achievements: r.achievements };
+      const sm = document.createElement('summary'); sm.textContent = '📒 Journal de l\'argent (' + r.ledger.length + ' derniers mouvements)'; led.appendChild(sm);
+      const ul = document.createElement('ul'); ul.style.cssText = 'margin:.4rem 0;padding-left:1rem;max-height:220px;overflow:auto';
+      r.ledger.forEach((x) => { const li = document.createElement('li'); const dw = x.wallet_after - x.wallet_before, dt = x.table_after - x.table_before;
+        li.textContent = new Date(x.at).toLocaleString('fr-FR') + ' · ' + x.op + ' · banque ' + (dw >= 0 ? '+' : '') + fmt(dw) + ' → ' + fmt(x.wallet_after) + ' €' + (dt ? ' · table ' + (dt >= 0 ? '+' : '') + fmt(dt) : ''); ul.appendChild(li); });
+      led.appendChild(ul);
+    } else {
+      const sv = await get('saves/' + p.uid).catch(() => null);
+      saveData = sv && sv.data ? JSON.parse(sv.data) : null;
+    }
     $('save-zone').hidden = !saveData; $('no-save').hidden = !!saveData;
     if (!saveData) return;
     $('ed-pseudo').value = saveData.pseudo || p.pseudo;
@@ -96,6 +131,7 @@
   $('save-wallet').addEventListener('click', async () => {
     if (!sel) return;
     const v = Math.max(0, Math.round(Number($('ed-wallet').value) || 0));
+    if (API) { try { await adm('wallet', { uid: sel.uid, wallet: v }); await refresh('Banque mise à jour : ' + fmt(v) + ' €. Le joueur la voit à sa prochaine action.', 'ok'); } catch (e) { msg('Refusé : ' + e.message, 'err'); } return; }
     try {
       await D.runTransaction(ref('bank/' + sel.uid), (cur) => {
         const o = cur ? Object.assign({}, cur) : {};
@@ -119,6 +155,11 @@
     document.querySelectorAll('#ed-ach input').forEach((c) => { if (c.checked) ach[c.dataset.id] = (saveData.achievements || {})[c.dataset.id] || Date.now(); });
     saveData.achievements = ach;
     saveData.savedAt = Date.now();
+    if (API) {
+      try { await adm('profile', { uid: sel.uid, pseudo: saveData.pseudo, level: lvl, owned, achievements: ach }); await refresh('Profil enregistré sur le serveur : le joueur le voit à sa prochaine action (ou en rechargeant l\'app).', 'ok'); }
+      catch (e) { msg('Refusé : ' + e.message, 'err'); }
+      return;
+    }
     try {
       await D.set(ref('saves/' + sel.uid), { data: JSON.stringify(saveData), at: saveData.savedAt, adminAt: saveData.savedAt });
       const pub = (await get('profiles/' + sel.uid).catch(() => null)) || {};
@@ -143,6 +184,7 @@
 
   $('act-close').addEventListener('click', async () => {
     if (!sel) return;
+    if (API) { try { await adm('close', { uid: sel.uid }); await refresh('Parties fermées : l\'argent des tables est revenu dans sa banque.', 'ok'); } catch (e) { msg('Refusé : ' + e.message, 'err'); } return; }
     try {
       let back = 0;
       await bankSet(sel.uid, (o) => { back = sesTotal(o.ses); o.wallet = Math.round((o.wallet + back) * 100) / 100; delete o.ses; });
@@ -153,6 +195,7 @@
 
   $('act-reset').addEventListener('click', async () => {
     if (!sel || !sure('Remettre ' + sel.pseudo + ' à zéro ? Banque à ' + fmt(R.START_WALLET) + ' €, niveau 1, objets et succès retirés. Le pseudo et le compte sont gardés.')) return;
+    if (API) { try { await adm('reset', { uid: sel.uid }); await refresh('Compte remis à zéro.', 'ok'); } catch (e) { msg('Refusé : ' + e.message, 'err'); } return; }
     try {
       const now = Date.now();
       await D.set(ref('bank/' + sel.uid), { wallet: R.START_WALLET, why: 'admin', at: D.serverTimestamp(), x: 0 });
@@ -180,6 +223,7 @@
     if (!sure('Supprimer définitivement le compte de ' + sel.pseudo + ' (banque, progression, profil) ?' + (block ? '\nIl sera aussi bloqué.' : ''))) return;
     try {
       if (block) await D.set(ref('banned/' + sel.uid), Date.now());
+      if (API) await adm('delete', { uid: sel.uid });
       await Promise.all(['bank/', 'saves/', 'profiles/', 'invites/'].map((p) => D.remove(ref(p + sel.uid))));
       msg('Compte supprimé. Son pseudo reste réservé : pour le libérer, supprime aussi l\'utilisateur dans Firebase → Authentication.', 'ok');
       $('edit-panel').hidden = true; sel = null; await load();
@@ -202,6 +246,7 @@
     const list = players.filter((p) => !banned[p.uid]);
     if (!sure('Créditer ' + fmt(v) + ' € à ' + list.length + ' compte(s) ?')) return;
     $('gift-go').disabled = true;
+    if (API) { try { const r = await adm('gift', { amount: v }); tmsg(fmt(v) + ' € crédités à ' + r.count + ' compte(s).', 'ok'); load(); } catch (e) { tmsg('Refusé : ' + e.message, 'err'); } $('gift-go').disabled = false; return; }
     let ok = 0;
     for (const p of list) { try { await bankSet(p.uid, (o) => { o.wallet = Math.round(((o.wallet || 0) + v) * 100) / 100; }); ok++; } catch (e) { /* compte suivant */ } }
     $('gift-go').disabled = false;

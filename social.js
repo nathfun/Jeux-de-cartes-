@@ -43,6 +43,7 @@
       get uid() { return auth.currentUser ? auth.currentUser.uid : null; }, // suit la connexion au compte
       get: async (p) => (await dbMod.get(R(p))).val(),
       set: (p, v) => dbMod.set(R(p), v),
+      update: (p, v) => dbMod.update(R(p), v),
       remove: (p) => dbMod.remove(R(p)),
       on: (p, cb) => dbMod.onValue(R(p), (snap) => cb(snap.val()), () => {}),
       createOnce: async (p, v) => {
@@ -118,6 +119,7 @@
   }
 
   let lastPub = null;
+  let lastExtra = '';
   async function publish() {
     const b = await backend();
     if (!b) return false;
@@ -125,9 +127,15 @@
     // Avec le serveur du Casino, c'est lui qui écrit le profil public (impossible d'y mettre une fausse banque)
     if (window.Casino && Casino.server) {
       const key = (p.friendCode || '') + '|' + (p.pseudo || '');
-      if (key === lastPub) return true; // le serveur republie déjà le profil après chaque partie
-      lastPub = key;
-      await Casino.call('profile.set', { code: p.friendCode || undefined, pseudo: p.pseudo });
+      if (key !== lastPub) { lastPub = key; await Casino.call('profile.set', { code: p.friendCode || undefined, pseudo: p.pseudo }); }
+      // le serveur écrit la banque et le niveau ; l'appareil ajoute l'apparence et la vitrine du profil public
+      const extra = {
+        frame: Casino.equipped ? Casino.equipped('frame') : 'none', card: publicCard(p),
+        pokerWeek: Casino.pokerWeek ? Casino.pokerWeek() : null, pokerWeekPrev: p.pokerWeekPrev || null,
+        titleName: (() => { const t = Casino.itemOf && Casino.itemOf('title', Casino.equipped('title')); return t && t.id ? t.name : null; })(),
+      };
+      const sig = JSON.stringify(extra);
+      if (sig !== lastExtra && b.update) { lastExtra = sig; await b.update('profiles/' + b.uid, extra).catch(() => {}); }
       return true;
     }
     await b.set('profiles/' + b.uid, {

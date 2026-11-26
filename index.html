@@ -951,7 +951,7 @@
         location.href = Social.tableLink(g, c);
       });
       // lien vers l'administration, visible seulement par les comptes admins
-      if (Casino.bank && Casino.firebase) Casino.firebase().then(async (f) => { if (!f || !f.auth.currentUser) return; const v = (await f.dbMod.get(f.dbMod.ref(f.db, 'admins/' + f.auth.currentUser.uid)).catch(() => null)); if (v && v.val() === true) $('admin-link').hidden = false; }).catch(() => {});
+      if ((Casino.bank || Casino.server) && Casino.firebase) Casino.firebase().then(async (f) => { if (!f || !f.auth.currentUser) return; const v = (await f.dbMod.get(f.dbMod.ref(f.db, 'admins/' + f.auth.currentUser.uid)).catch(() => null)); if (v && v.val() === true) $('admin-link').hidden = false; }).catch(() => {});
       // annonce de l'administrateur et compte bloqué
       if (Casino.bank && Casino.firebase) Casino.firebase().then(async (f) => {
         if (!f || !f.auth.currentUser) return;

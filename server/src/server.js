@@ -96,7 +96,23 @@ function readBody(req) {
 }
 
 // ---------- Opération d'un joueur ----------
+// Comptes bloqués par l'administrateur (banned/<uid> dans Firebase), relus au plus toutes les 30 s
+const banCache = new Map();
+async function isBanned(uid) {
+  if (!rtdb) return false;
+  const c = banCache.get(uid);
+  if (c && Date.now() - c.t < 30000) return c.v;
+  const v = !!(await rtdb.ref('banned/' + uid).get().then((x) => x.val()).catch(() => null));
+  banCache.set(uid, { v, t: Date.now() });
+  return v;
+}
+// Administrateurs : admins/<uid> = true dans Firebase
+async function isAdmin(uid) { return !!rtdb && (await rtdb.ref('admins/' + uid).get().then((x) => x.val()).catch(() => null)) === true; }
+
 async function casino(uid, token, op, data) {
+  // un visiteur sans compte (connexion anonyme) ne crée rien sur le serveur : il faut un compte pour jouer
+  if (token.firebase && token.firebase.sign_in_provider === 'anonymous') throw userError('Connecte-toi à ton compte pour jouer.');
+  if (await isBanned(uid)) throw userError('Ton compte a été bloqué par l\'administrateur du Casino.');
   const ctx = {
     uid, op, data: data || {}, anon: token.firebase && token.firebase.sign_in_provider === 'anonymous',
     rnd: (n) => crypto.randomInt(n),
@@ -121,7 +137,7 @@ async function casino(uid, token, op, data) {
     const out = core.handle(copy, ctx);          // lève une GameError si l'action est refusée : rien n'est enregistré
     db.save(uid, op, before, out.state, ctx.now);
     const P = out.state.player;
-    if (rtdb) rtdb.ref('profiles/' + uid).set(R.publicProfile(P, P.friendCode)).catch((e) => console.error('[casino] profil', e.message));
+    if (rtdb) rtdb.ref('profiles/' + uid).update(R.publicProfile(P, P.friendCode)).catch((e) => console.error('[casino] profil', e.message));
     return { result: out.result, notes: out.notes, player: P };
   });
 }
@@ -153,13 +169,86 @@ async function importFromFirebase(uid) {
 }
 const userError = (msg) => Object.assign(new Error(msg), { userMessage: msg });
 
+// ---------- Administration (page admin/) ----------
+const sum = (o) => Object.values(o || {}).reduce((a, s) => a + (s.stack || 0), 0);
+const r2 = (v) => Math.round(v * 100) / 100;
+function brief(uid, st, created, updated) {
+  const P = st.player || {};
+  return { uid, pseudo: P.pseudo || '(sans pseudo)', avatar: P.avatar || '🎩', xp: P.xp || 0, level: R.levelOf(P.xp || 0), wallet: r2(P.wallet || 0), onTables: r2(sum(P.sessions)),
+    sessions: Object.fromEntries(Object.entries(P.sessions || {}).map(([g, x]) => [g, x.stack])), achievements: Object.keys(P.achievements || {}).length, owned: Object.keys(P.owned || {}).length,
+    hands: (P.totals && P.totals.hands) || 0, created, updated };
+}
+// applique une modification de l'administrateur à un joueur, avec une ligne au journal de l'argent
+function adminEdit(target, op, fn) {
+  return serial(target, async () => {
+    const before = db.load(target);
+    if (!before.player) throw userError('Joueur introuvable sur le serveur.');
+    const after = JSON.parse(JSON.stringify(before));
+    after.player = R.normalize(after.player, Date.now());
+    fn(after.player, after);
+    db.save(target, 'admin:' + op, before, after, Date.now());
+    if (rtdb) rtdb.ref('profiles/' + target).update(R.publicProfile(after.player, after.player.friendCode)).catch(() => {});
+    return brief(target, after);
+  });
+}
+async function adminOp(uid, op, d) {
+  if (!(await isAdmin(uid))) throw userError('Réservé aux administrateurs.');
+  const target = typeof d.uid === 'string' ? d.uid : '';
+  const now = Date.now();
+  switch (op) {
+    case 'list': {
+      const bans = rtdb ? ((await rtdb.ref('banned').get()).val() || {}) : {};
+      const players = db.all().map((r) => Object.assign(brief(r.uid, r.state, r.created, r.updated), { banned: !!bans[r.uid] }));
+      return { players, stats: db.stats() };
+    }
+    case 'get': {
+      const st = db.load(target);
+      if (!st.player) throw userError('Joueur introuvable sur le serveur.');
+      return { brief: brief(target, st), owned: st.player.owned || {}, achievements: st.player.achievements || {}, ledger: db.ledgerOf(target, 40) };
+    }
+    case 'wallet': {
+      const v = Math.max(0, Math.min(1e9, Math.round(Number(d.wallet))));
+      if (!Number.isFinite(v)) throw userError('Montant invalide.');
+      return adminEdit(target, 'wallet', (P) => { P.wallet = v; });
+    }
+    case 'profile': {
+      return adminEdit(target, 'profile', (P) => {
+        if (typeof d.pseudo === 'string' && d.pseudo.trim()) P.pseudo = d.pseudo.trim().slice(0, 16);
+        if (Number.isInteger(d.level) && d.level >= 1 && d.level <= 99 && R.levelOf(P.xp || 0) !== d.level) P.xp = R.need(d.level);
+        if (d.owned && typeof d.owned === 'object') { const o = {}; Object.keys(d.owned).forEach((k) => { if (/^[a-z]+:[^:]{1,40}$/.test(k)) o[k] = (P.owned || {})[k] || now; }); P.owned = o; }
+        if (d.achievements && typeof d.achievements === 'object') { const a = {}; R.ACHIEVEMENTS.forEach((x) => { if (d.achievements[x.id]) a[x.id] = (P.achievements || {})[x.id] || now; }); P.achievements = a; }
+      });
+    }
+    case 'close': return adminEdit(target, 'close', (P, st) => { P.wallet = r2((P.wallet || 0) + sum(P.sessions)); P.sessions = {}; st.secret = {}; });
+    case 'reset': return adminEdit(target, 'reset', (P, st) => {
+      const keep = { pseudo: P.pseudo, avatar: P.avatar, friendCode: P.friendCode };
+      Object.keys(P).forEach((k) => delete P[k]); Object.assign(P, R.fresh(now), keep); st.secret = {};
+    });
+    case 'delete': {
+      if (target === uid) throw userError('Tu ne peux pas supprimer ton propre compte.');
+      await serial(target, async () => { db.remove(target); });
+      if (rtdb) await Promise.all(['profiles/', 'saves/', 'bank/', 'invites/'].map((p) => rtdb.ref(p + target).remove().catch(() => {})));
+      return { deleted: true };
+    }
+    case 'gift': {
+      const v = Math.round(Number(d.amount));
+      if (!(v > 0 && v <= 1e6)) throw userError('Montant invalide.');
+      const bans = rtdb ? ((await rtdb.ref('banned').get()).val() || {}) : {};
+      let n = 0;
+      for (const r of db.all()) { if (bans[r.uid]) continue; await adminEdit(r.uid, 'gift', (P) => { P.wallet = r2((P.wallet || 0) + v); }); n++; }
+      return { count: n };
+    }
+    default: throw userError('Opération inconnue.');
+  }
+}
+
 // ---------- Serveur HTTP ----------
 const server = http.createServer(async (req, res) => {
   try {
     if (req.method === 'OPTIONS') { res.writeHead(204, headers(req)); res.end(); return; }
     const url = new URL(req.url, 'http://x');
     if (req.method === 'GET' && url.pathname === '/health') { send(req, res, 200, Object.assign({ ok: true, at: Date.now() }, db.stats())); return; }
-    if (req.method !== 'POST' || url.pathname !== '/api/casino') { send(req, res, 404, { error: 'Introuvable.' }); return; }
+    if (req.method !== 'POST' || (url.pathname !== '/api/casino' && url.pathname !== '/api/admin')) { send(req, res, 404, { error: 'Introuvable.' }); return; }
     if (req.headers.origin && !ORIGINS.includes(req.headers.origin) && !ORIGINS.includes('*')) { send(req, res, 403, { error: 'Origine non autorisée.' }); return; }
     if (!perIp(clientIp(req))) { send(req, res, 429, { error: 'Trop de requêtes : ralentis un peu.' }); return; }
     const auth = String(req.headers.authorization || '');
@@ -171,6 +260,12 @@ const server = http.createServer(async (req, res) => {
     try { body = JSON.parse(await readBody(req) || '{}'); } catch (e) { send(req, res, e.status || 400, { error: 'Requête invalide.' }); return; }
     if (!body || typeof body.op !== 'string' || body.op.length > 40) { send(req, res, 400, { error: 'Opération manquante.' }); return; }
     if (body.data !== undefined && (typeof body.data !== 'object' || Array.isArray(body.data))) { send(req, res, 400, { error: 'Données invalides.' }); return; }
+    if (url.pathname === '/api/admin') {
+      const out = await adminOp(token.uid, body.op, body.data || {});
+      console.log('[casino] admin ' + token.uid.slice(0, 6) + '… ' + body.op + (body.data && body.data.uid ? ' → ' + String(body.data.uid).slice(0, 6) + '…' : ''));
+      send(req, res, 200, out);
+      return;
+    }
     const out = await casino(token.uid, token, body.op, body.data);
     send(req, res, 200, out);
   } catch (e) {

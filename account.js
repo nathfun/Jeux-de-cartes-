@@ -59,7 +59,11 @@
     // ne jamais écraser une modification de l'administrateur que cet appareil n'a pas encore reçue
     const cur = (await f.dbMod.get(f.ref('saves/' + a.uid))).val();
     if (cur && cur.adminAt && cur.adminAt > (data.adminSeen || 0)) { await pull(true); return false; }
-    await f.dbMod.set(f.ref('saves/' + a.uid), { data: JSON.stringify(data), at: data.savedAt || Date.now() });
+    // avec le serveur du Casino, l'appareil n'envoie que ses réglages : on les fusionne dans la sauvegarde existante
+    // (sans jamais effacer le niveau, les succès ou les objets qui s'y trouvent)
+    let out = data;
+    if (Casino.server && cur && cur.data) { try { out = Object.assign(JSON.parse(cur.data), data); } catch (e) { out = data; } }
+    await f.dbMod.set(f.ref('saves/' + a.uid), { data: JSON.stringify(out), at: data.savedAt || Date.now() });
     a.syncedAt = Date.now();
     setInfo(a);
     return true;
