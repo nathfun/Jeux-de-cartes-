@@ -139,6 +139,94 @@ module.exports = function makeDeals({ db, serial, R, core, rtdb, TABLES, pushTo,
     return out;
   }
 
+  // ===================== Loto entre amis : cagnotte =====================
+  // Chaque joueur paie son pack de cartons au serveur (argent bloqué) ; à la fin, la cagnotte est partagée entre
+  // les gagnants des lots (quines, double quine, carton plein), sans frais. Salle abandonnée : tout est remboursé.
+  async function lotoTable(tid) {
+    if (!/^[A-Z0-9]{4,8}$/.test(tid)) fail('Salle invalide.');
+    const t = rtdb ? (await rtdb.ref(TABLES.loto + tid).get()).val() : null;
+    return t;
+  }
+  const listOf = (v) => (Array.isArray(v) ? v : v && typeof v === 'object' ? Object.values(v) : []).filter(Boolean);
+  async function lotoBuy(uid, d) {
+    const tid = String(d.table || ''), t = await lotoTable(tid);
+    if (!t) fail('Salle introuvable.');
+    if (t.started) fail('La partie a déjà commencé.');
+    const sets = t.settings || {}, price = Number(sets.price || 0), style = sets.style === 'classique' ? 'classique' : 'serie';
+    if (!R.LOTO.PRICES.includes(price)) fail('Prix de carton invalide.');
+    const n = Math.floor(Number(d.pack));
+    if (!R.LOTO.PACKS[style].includes(n)) fail('Pack invalide.');
+    const cost = R.lotoPackCost(price, n);
+    const prev = db.lotoGet(tid).find((r) => r.uid === uid && r.status === 'paid');
+    await edit([uid], 'loto.buy', (P) => {
+      const diff = Math.round((cost - (prev ? prev.paid : 0)) * 100) / 100;
+      if (diff > 0) takeMoney(P[uid], diff); else giveMoney(P[uid], -diff);
+      db.lotoPut({ tid, uid, name: nameOf(P[uid]), paid: cost, cards: n, at: Date.now(), status: 'paid' });
+    });
+    return { paid: cost, cards: n, pot: db.lotoGet(tid).filter((r) => r.status === 'paid').reduce((a, r) => a + r.paid, 0) };
+  }
+  async function lotoRefundOne(uid, d) {
+    const tid = String(d.table || ''), t = await lotoTable(tid);
+    if (t && t.started && t.phase !== 'over') fail('La partie est en cours : impossible de se faire rembourser.');
+    const row = db.lotoGet(tid).find((r) => r.uid === uid && r.status === 'paid');
+    if (!row) return { refunded: 0 };
+    if (t && t.phase === 'over') return lotoSettle(uid, d);
+    await edit([uid], 'loto.refund', (P) => { const cur = db.lotoGet(tid).find((r) => r.uid === uid); if (!cur || cur.status !== 'paid') fail('Déjà remboursé.'); giveMoney(P[uid], row.paid); db.lotoPut(Object.assign({}, row, { status: 'refunded' })); });
+    return { refunded: row.paid };
+  }
+  async function lotoRefundAll(tid, why) {
+    const rows = db.lotoGet(tid).filter((r) => r.status === 'paid');
+    if (!rows.length) return;
+    await edit(rows.map((r) => r.uid), 'loto.refund', (P) => {
+      if (!db.lotoGet(tid).some((r) => r.status === 'paid')) fail('Déjà réglé.');
+      rows.forEach((r) => { giveMoney(P[r.uid], r.paid); inbox(P[r.uid], '🎱 Loto remboursé', (why || 'La salle a été abandonnée') + ' : tes ' + r.paid.toLocaleString('fr-FR') + ' € te sont rendus.', '↩️'); });
+      db.lotoSetStatus(tid, 'refunded');
+    });
+  }
+  async function lotoSettle(uid, d) {
+    const tid = String(d.table || ''), t = await lotoTable(tid);
+    if (!t) fail('Salle introuvable.');
+    if (t.phase !== 'over') fail('Le loto n\'est pas fini.');
+    const rows = db.lotoGet(tid).filter((r) => r.status === 'paid');
+    if (!rows.length) return { settled: false, already: db.lotoGet(tid).some((r) => r.status === 'settled') };
+    const pot = rows.reduce((a, r) => a + r.paid, 0), games = Math.max(1, Number((t.settings || {}).games) || 1);
+    const payers = new Set(rows.map((r) => r.uid)), gain = {};
+    let orphan = 0;
+    listOf(t.winners).forEach((w) => {
+      const share = Math.floor(pot / games * (R.LOTO.SHARES[w.stage] || 0) * 100) / 100;
+      if (payers.has(w.uid)) gain[w.uid] = (gain[w.uid] || 0) + share; else orphan += share;
+    });
+    const paidOut = Object.values(gain).reduce((a, v) => a + v, 0) + orphan;
+    orphan += Math.max(0, Math.round((pot - paidOut) * 100) / 100); // arrondis et lots non attribués
+    // la part des gagnants qui n'avaient pas payé (et les arrondis) est rendue aux joueurs, au prorata
+    rows.forEach((r) => { gain[r.uid] = Math.round(((gain[r.uid] || 0) + orphan * r.paid / pot) * 100) / 100; });
+    await edit(rows.map((r) => r.uid), (u) => (gain[u] > (rows.find((r) => r.uid === u) || {}).paid ? 'loto.win' : 'loto.lose'), (P) => {
+      if (!db.lotoGet(tid).some((r) => r.status === 'paid')) fail('Déjà réglé.');
+      rows.forEach((r) => {
+        const g = gain[r.uid] || 0;
+        giveMoney(P[r.uid], g);
+        inbox(P[r.uid], g > r.paid ? '🎱 Loto : tu gagnes !' : '🎱 Loto terminé', 'Cagnotte de ' + Math.round(pot).toLocaleString('fr-FR') + ' € : tu récupères ' + g.toLocaleString('fr-FR') + ' € (tu avais payé ' + r.paid.toLocaleString('fr-FR') + ' €).', g > r.paid ? '🏆' : '🎱');
+      });
+      db.lotoSetStatus(tid, 'settled');
+    });
+    rows.forEach((r) => { if ((gain[r.uid] || 0) > r.paid) notify(r.uid, { title: '🎱 Tu gagnes au loto !', body: '+' + (gain[r.uid] || 0).toLocaleString('fr-FR') + ' € sur ta banque.', tag: 'loto' }); });
+    return { settled: true, pot, gains: gain };
+  }
+  function lotoInfo(uid, d) {
+    const tid = String(d.table || ''), rows = db.lotoGet(tid);
+    const paid = rows.filter((r) => r.status === 'paid');
+    return { pot: paid.reduce((a, r) => a + r.paid, 0), players: paid.map((r) => ({ uid: r.uid, name: r.name, cards: r.cards, paid: r.paid })), status: rows.length ? rows[0].status : 'none' };
+  }
+  async function lotoExpire() {
+    for (const tid of db.lotoStale(Date.now() - 12 * 3600000)) {
+      try {
+        const t = await lotoTable(tid);
+        if (t && t.phase === 'over') await lotoSettle('', { table: tid });
+        else await lotoRefundAll(tid, 'Le loto ne s\'est pas terminé');
+      } catch (e) { /* ignore */ }
+    }
+  }
+
   // ===================== Échanges =====================
   function side(o) {
     o = o || {};
@@ -270,6 +358,7 @@ module.exports = function makeDeals({ db, serial, R, core, rtdb, TABLES, pushTo,
   }
   /** Duels acceptés mais jamais joués (48 h) et propositions trop vieilles (7 jours) : tout est rendu. */
   async function expire() {
+    await lotoExpire().catch(() => {});
     const now = Date.now();
     for (const t of db.dealsStale(now - 2 * DAY, now - 7 * DAY)) {
       try {
@@ -300,6 +389,7 @@ module.exports = function makeDeals({ db, serial, R, core, rtdb, TABLES, pushTo,
     'duel.new': duelNew, 'duel.accept': (u, d) => duelAnswer(u, d, true), 'duel.decline': (u, d) => duelAnswer(u, d, false), 'duel.settle': duelSettle,
     'deals.list': list,
     'col.cotes': () => ({ cotes: cotes() }), 'col.sell': instantSell,
+    'loto.buy': lotoBuy, 'loto.refund': lotoRefundOne, 'loto.settle': lotoSettle, 'loto.info': lotoInfo,
   };
   return { OPS, expire, isDealOp: (op) => Object.prototype.hasOwnProperty.call(OPS, op) };
 };

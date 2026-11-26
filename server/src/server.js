@@ -24,7 +24,7 @@ const ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nathfun.github.io').spl
 const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'jeux-de-cartes-81cdf';
 const DB_URL = process.env.FIREBASE_DATABASE_URL || 'https://jeux-de-cartes-81cdf-default-rtdb.europe-west1.firebasedatabase.app';
 const MAX_BODY = 32 * 1024;
-const TABLES = { blackjack: 'tables/', poker: 'ptables/', roulette: 'rtables/' };
+const TABLES = { blackjack: 'tables/', poker: 'ptables/', roulette: 'rtables/', loto: 'ltables/' };
 
 // ---------- Firebase (vérification des comptes, profil public, lecture des tables entre amis) ----------
 const admin = require('firebase-admin');
@@ -426,6 +426,7 @@ function categoryOf(r) {
   if (op.startsWith('mk.')) return 'Marché (frais)';
   if (op.startsWith('trade')) return 'Échanges';
   if (op.startsWith('duel')) return 'Duels';
+  if (op.startsWith('loto')) return 'Loto entre amis';
   if (GAME_OF[pre] && op !== 'session.start') return 'Jeux';
   return { 'bonus.claim': 'Bonus du jour', 'challenge.claim': 'Défis', 'time.claim': 'Banque du temps', 'chest.claim': 'Coffre', 'wheel.spin': 'Roue du jour', 'vip.buy': 'Pass VIP', 'rescue.claim': 'Aide de secours', 'multi.prize': 'Entre amis', 'shop.buy': 'Boutique', 'session.start': 'Tables (aller)', 'session.cashout': 'Tables (retour)' }[op] || 'Autre';
 }

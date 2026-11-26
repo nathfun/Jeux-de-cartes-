@@ -23,15 +23,17 @@
     <!-- ===== Accueil : créer ou rejoindre ===== -->
     <section id="lobby" class="card">
       <h2>Le loto, comme à la salle des fêtes 🎉</h2>
-      <p class="muted">Chacun reçoit ses cartons (3 lignes, 15 numéros de 1 à 90). Les boules sortent une par une, annoncées à voix haute. À chaque partie : <b>2 quines</b> (une ligne complète), <b>1 double quine</b> (deux lignes sur le même carton) puis le <b>carton plein</b>. Le premier qui appuie sur le bouton gagne ! Il faut au moins <b>3 joueurs</b>. Pour le plaisir : on joue aux points, pas d'argent.</p>
+      <p class="muted">Chacun achète son pack de cartons. Les boules sortent une par une, annoncées à voix haute : <b>tamponne tes numéros</b> en les touchant ! Dès que tout le monde a tamponné, la boule suivante sort (sinon au bout de quelques secondes). À chaque partie : <b>2 quines</b> (une ligne), <b>1 double quine</b> (deux lignes sur un carton) puis le <b>carton plein</b>. Le premier qui annonce gagne sa part de la cagnotte. Il faut au moins <b>3 joueurs</b>.</p>
       <div class="form">
         <label>Nom de la salle <input id="f-name" maxlength="30" placeholder="Loto de …"></label>
         <label>Nombre de parties
           <select id="f-games"><option value="1">1</option><option value="3" selected>3</option><option value="5">5</option><option value="8">8</option><option value="10">10</option></select></label>
-        <label>Cartons par joueur
-          <select id="f-cards"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option></select></label>
-        <label>Vitesse du tirage
-          <select id="f-speed"><option value="6000">Tranquille (6 s)</option><option value="4000" selected>Normale (4 s)</option><option value="2500">Rapide (2,5 s)</option></select></label>
+        <label>Type de cartons
+          <select id="f-style"><option value="serie" selected>Séries (les 90 numéros, une fois chacun par série de 6)</option><option value="classique">Classiques (au hasard, numéros en double possibles)</option></select></label>
+        <label>Prix d'un carton
+          <select id="f-price"><option value="0">Gratuit (pour le fun)</option><option value="1">1 €</option><option value="2" selected>2 €</option><option value="5">5 €</option></select></label>
+        <label>Temps max. entre deux boules
+          <select id="f-timeout"><option value="6000">6 s</option><option value="10000" selected>10 s</option><option value="15000">15 s</option></select></label>
         <label class="check"><input id="f-public" type="checkbox" checked> Salle publique (visible dans Multijoueur)</label>
         <button id="create" class="big" type="button">🎱 Ouvrir la salle</button>
       </div>
@@ -42,6 +44,7 @@
     <!-- ===== La salle ===== -->
     <section id="room" hidden>
       <div id="wait-host" class="card"></div>
+      <div id="packs" class="card packs" hidden></div>
       <div class="caller card">
         <div class="ball-zone">
           <div id="ball" class="ball"><span>–</span></div>
@@ -56,12 +59,13 @@
       </div>
       <div class="cols">
         <div>
+          <div id="call-tip" class="call-tip" hidden></div>
           <h3>Mes cartons <small class="muted" id="mine-info"></small></h3>
           <div id="cards" class="cards"></div>
-          <label class="check small"><input id="auto-mark" type="checkbox" checked> Marquer mes numéros automatiquement</label>
+          <label class="check small"><input id="auto-mark" type="checkbox"> Tamponner mes numéros automatiquement (moins fun, mais pratique)</label>
         </div>
         <div>
-          <h3>Joueurs</h3>
+          <h3>Joueurs <small id="pot" class="muted"></small></h3>
           <ol id="players" class="players"></ol>
           <h3>Tableau des 90 numéros</h3>
           <div id="board" class="board"></div>

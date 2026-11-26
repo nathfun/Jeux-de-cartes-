@@ -76,3 +76,17 @@ input, select { font: inherit; background: #06180d; color: var(--text); border: 
 .flash-win div { font-size: clamp(2rem, 10vw, 4rem); font-weight: 900; color: var(--gold); text-shadow: 0 6px 30px rgba(0,0,0,.8); animation: winSlam 2s ease-out both; text-align: center; }
 .flash-win small { display: block; font-size: .4em; color: #fff; }
 @keyframes winSlam { 0% { transform: scale(3); opacity: 0; } 15% { transform: scale(1); opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-30px); } }
+
+/* ----- packs de cartons ----- */
+.packs h3 { margin-top: 0; } .pack-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: .5rem; }
+.pack { border: 2px solid var(--line); background: #08200f; color: var(--text); border-radius: 14px; padding: .6rem; display: flex; flex-direction: column; align-items: center; gap: .1rem; }
+.pack b { font-size: 1.3rem; } .pack span { color: var(--gold); font-weight: 900; } .pack small { color: var(--muted); font-size: .72rem; }
+.pack.on { border-color: var(--gold); background: rgba(250,204,21,.12); box-shadow: 0 0 16px rgba(250,204,21,.35); }
+.pack:disabled { opacity: .5; }
+.call-tip { position: sticky; top: 58px; z-index: 4; margin-bottom: .6rem; padding: .55rem .8rem; border-radius: 12px; font-weight: 800; text-align: center; background: linear-gradient(135deg, #b45309, #f59e0b); color: #1f1300; box-shadow: 0 6px 20px rgba(0,0,0,.4); animation: claimPulse 1s ease-in-out infinite; }
+.call-tip.ok { background: #14532d; color: #bbf7d0; animation: none; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: .6rem; }
+.carton .c.call { background: #fde047 !important; box-shadow: 0 0 0 3px #f59e0b; animation: callPulse .7s ease-in-out infinite; }
+@keyframes callPulse { 50% { transform: scale(1.12); } }
+.carton.many .c { font-size: clamp(.72rem, 2.6vw, .95rem); }
+.timer { height: 5px; border-radius: 999px; background: rgba(255,255,255,.1); overflow: hidden; margin-top: .5rem; } .timer div { height: 100%; background: var(--gold); transition: width .25s linear; }

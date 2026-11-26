@@ -963,6 +963,7 @@
     },
     // ---------- Entre joueurs : marché, échanges, duels (serveur uniquement) ----------
     async deal(op, data) { if (!SERVER) return { error: 'Le marché, les échanges et les duels demandent le serveur du Casino.' }; return call(op, data || {}); },
+    LOTO: R.LOTO, lotoPackCost: R.lotoPackCost,
     tradeable: R.tradeable, MARKET_FEE: R.MARKET_FEE, MARKET_FEE_VIP: R.MARKET_FEE_VIP,
     // ---------- Cartes Légendes ----------
     COLLECTION: R.COLLECTION, COL_CATS: R.COL_CATS, COL_BY_ID: R.COL_BY_ID, COTE_BASE: R.COTE_BASE,

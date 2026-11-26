@@ -844,6 +844,15 @@
     const s = sales.slice().sort((a, b) => a - b), med = s[Math.floor(s.length / 2)];
     return Math.round(Math.max(base * 0.5, Math.min(base * 5, 0.4 * base + 0.6 * med)));
   }
+  // ---------- Loto entre amis : packs de cartons, cagnotte ----------
+  const LOTO = {
+    PRICES: [0, 1, 2, 5],                                   // prix d'un carton (0 = pour le fun)
+    PACKS: { serie: [6, 12, 18, 24], classique: [6, 10, 14, 24] },
+    SHARES: { q1: 0.15, q2: 0.15, dq: 0.25, cp: 0.45 },     // partage de la cagnotte de chaque partie
+  };
+  const lotoDiscount = (n) => (n >= 24 ? 0.25 : n >= 14 ? 0.15 : n >= 10 ? 0.1 : 0);
+  /** Prix d'un pack de n cartons (remise sur les gros packs). */
+  const lotoPackCost = (price, n) => Math.round(price * n * (1 - lotoDiscount(n)) * 100) / 100;
   // Objets qu'on peut vendre, échanger ou mettre en jeu entre joueurs : les cartes de booster et les objets rares du jour
   const tradeable = (kind, id) => { if (kind === 'col') return !!COL_BY_ID[id]; const it = itemOf(kind, id); return !!(it && (it.card || it.daily)); };
   /** Nombre d'exemplaires possédés (cartes Légendes : plusieurs ; objets : 0 ou 1). */
@@ -1051,6 +1060,7 @@
     bonusInfo, claimBonus, claimChallenge, timeInfo, startTime, claimTime, startSession, cashOut,
     prizeFor, prizeText, applyPrize, publicProfile, REF_BONUS, REF_MIN_HANDS, REF_MAX,
     COL_CATS, COLLECTION, COL_BY_ID, COTE_BASE, INSTANT_RATE, instantPrice, coteOf, rarityOfKey, countOf, instantSell,
+    LOTO, lotoDiscount, lotoPackCost,
     tradeable, MARKET_FEE, MARKET_FEE_VIP, RARITY, RARITY_ORDER, BOOSTER, boosterInfo, openBooster, craftCard,
     VIP_PASS, VIP_PERKS, isVip, buyVip, grantVip, WHEEL, wheelInfo, spinWheel,
     CHEST_RATE, CHEST_CAP, RESCUE_BELOW, RESCUE_AMOUNT, VIP, vipOf, maxBet, chestInfo, claimChest, rescueInfo, claimRescue, challengeReward, dailyOffer,

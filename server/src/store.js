@@ -55,6 +55,8 @@ function open(dir) {
     CREATE INDEX IF NOT EXISTS market_open ON market(status, kind, price);
     CREATE TABLE IF NOT EXISTS deals (id TEXT PRIMARY KEY, a TEXT NOT NULL, b TEXT NOT NULL, status TEXT NOT NULL, created INTEGER NOT NULL, obj TEXT NOT NULL);
     CREATE INDEX IF NOT EXISTS deals_a ON deals(a, status); CREATE INDEX IF NOT EXISTS deals_b ON deals(b, status);`);
+  // loto entre amis : ce que chaque joueur a payé pour ses cartons (cagnotte d'une salle)
+  db.exec(`CREATE TABLE IF NOT EXISTS loto (tid TEXT NOT NULL, uid TEXT NOT NULL, name TEXT, paid REAL NOT NULL, cards INTEGER NOT NULL, at INTEGER NOT NULL, status TEXT NOT NULL, PRIMARY KEY (tid, uid));`);
   // nouvelle économie (÷ 10) : les records déjà enregistrés sont convertis une seule fois
   db.exec('CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)');
   if (!db.prepare("SELECT v FROM meta WHERE k = 'econ'").get()) {
@@ -125,6 +127,10 @@ function open(dir) {
     dealsStale(acceptedBefore, openBefore) { return db.prepare("SELECT obj FROM deals WHERE status IN ('open', 'accepted')").all().map((r) => JSON.parse(r.obj)).filter((t) => (t.status === 'accepted' ? (t.acceptedAt || t.created) < acceptedBefore : t.created < openBefore)); },
     /** Copie complète et cohérente de la base (même pendant que le serveur tourne). */
     backup(file) { const q = String(file).replace(/'/g, "''"); db.exec("VACUUM INTO '" + q + "'"); },
+    lotoGet(tid) { return db.prepare('SELECT tid, uid, name, paid, cards, at, status FROM loto WHERE tid = ?').all(tid).map((r) => Object.assign({}, r)); },
+    lotoPut(r) { db.prepare('INSERT INTO loto (tid, uid, name, paid, cards, at, status) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(tid, uid) DO UPDATE SET name = excluded.name, paid = excluded.paid, cards = excluded.cards, at = excluded.at, status = excluded.status').run(r.tid, r.uid, r.name || '', r.paid, r.cards, r.at, r.status); },
+    lotoSetStatus(tid, status) { db.prepare('UPDATE loto SET status = ? WHERE tid = ?').run(status, tid); },
+    lotoStale(before) { return db.prepare("SELECT DISTINCT tid FROM loto WHERE status = 'paid' AND at < ?").all(before).map((r) => r.tid); },
     close() { db.close(); },
   };
 }
