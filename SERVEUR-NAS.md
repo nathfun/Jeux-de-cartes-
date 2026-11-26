@@ -45,15 +45,16 @@ ssh ton-utilisateur@ip-du-nas
 ```
 
 ### b) Récupérer le projet
+`git` n'est pas installé sur UGOS : on passe par le ZIP.
+1. Sur GitHub, choisis la branche `claude/blackjack-app-feedback-appqgy`, puis **Code → Download ZIP**.
+2. Avec le gestionnaire de fichiers UGOS, décompresse-le dans `/volume1/docker/casino`.
+3. En SSH, renomme le dossier pour simplifier :
 ```bash
-cd /volume1/docker            # ou le dossier où sont tes autres projets Docker
-git clone https://github.com/nathfun/Jeux-de-cartes-.git casino
-cd casino
-git checkout claude/blackjack-app-feedback-appqgy
-cd server
+cd /volume1/docker/casino
+mv Jeux-de-cartes--claude-blackjack-app-feedback-appqgy app
+cd app/server
+ls -a            # tu dois voir .env.example, Dockerfile, docker-compose.yml, src…
 ```
-Si `git` n'est pas installé : télécharge le ZIP du projet depuis GitHub (bouton **Code → Download ZIP**, sur la bonne branche),
-décompresse-le dans `/volume1/docker/casino` avec le gestionnaire de fichiers, puis `cd /volume1/docker/casino/server`.
 
 ### c) La configuration
 ```bash
@@ -99,13 +100,24 @@ L'argent laissé sur une table en cours leur est rendu dans leur banque.
 
 ## 4. Au quotidien
 
-| Action | Commande (dans `/volume1/docker/casino/server`) |
+| Action | Commande (dans `/volume1/docker/casino/app/server`) |
 |---|---|
 | Voir l'état | `sudo docker compose ps` |
 | Voir les journaux | `sudo docker compose logs -f casino` |
-| Mettre à jour (après une nouvelle version) | `git pull && sudo docker compose up -d --build` |
+| Mettre à jour (après une nouvelle version) | voir « Mettre à jour » ci-dessous |
 | Redémarrer | `sudo docker compose restart` |
 | Arrêter | `sudo docker compose down` |
+
+**Mettre à jour** : télécharge le nouveau ZIP, décompresse-le dans `/volume1/docker/casino` et renomme-le `app-new`, puis :
+```bash
+cd /volume1/docker/casino
+cp -a app/server/.env app/server/secrets app/server/data app/server/tailscale/state app-new/server/ 2>/dev/null
+mkdir -p app-new/server/tailscale && cp -a app/server/tailscale/state app-new/server/tailscale/
+cd app/server && sudo docker compose down && cd ../..
+mv app app-old && mv app-new app
+cd app/server && sudo docker compose up -d --build
+```
+(Une fois que tout marche, tu peux supprimer `app-old`.)
 
 **Sauvegarde** : toute la base tient dans `server/data/` (fichier `casino.db`).
 Ajoute ce dossier à une tâche de sauvegarde UGOS (quotidienne, vers un autre disque ou le cloud).
