@@ -453,9 +453,6 @@
     .games a.game.live { position: relative; border-color: #f59e0b !important; box-shadow: 0 0 0 2px rgba(245,158,11,.6), 0 0 28px rgba(245,158,11,.45); animation: liveGlow 1.8s ease-in-out infinite; }
     @keyframes liveGlow { 50% { box-shadow: 0 0 0 2px rgba(245,158,11,.9), 0 0 42px rgba(245,158,11,.7); } }
     .live-badge { position: absolute; top: -11px; left: 12px; right: 12px; z-index: 2; text-align: center; font-size: .74rem; font-weight: 900; color: #2a1d00; background: linear-gradient(135deg, #fde047, #f59e0b); border-radius: 999px; padding: .2rem .6rem; box-shadow: 0 4px 12px rgba(0,0,0,.4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .live-banner { margin: 0 0 1rem; padding: .8rem 1rem; border-radius: 16px; border: 2px solid #f59e0b; background: linear-gradient(135deg, rgba(245,158,11,.18), rgba(245,158,11,.05)); display: flex; flex-direction: column; gap: .35rem; }
-    .live-banner .lb-title { font-weight: 900; color: #fde68a; } .live-banner small { color: var(--muted); }
-    .live-banner .lb-row { display: flex; gap: .4rem; flex-wrap: wrap; } .live-banner .lb-row a { text-decoration: none; color: #2a1d00; font-weight: 800; font-size: .85rem; background: linear-gradient(135deg, #fde047, #f59e0b); border-radius: 999px; padding: .3rem .8rem; }
     .vip-badge { font: inherit; font-size: .72rem; font-weight: 700; border-radius: 999px; padding: .12rem .55rem; border: 1px solid var(--border); background: #141a21; color: var(--text); cursor: pointer; }
     .vip-badge.v-argent { border-color: #cbd5e1; color: #e2e8f0; } .vip-badge.v-or { border-color: var(--gold); color: var(--gold); }
     .vip-badge.v-diamant { border-color: #67e8f9; color: #a5f3fc; box-shadow: 0 0 10px rgba(103,232,249,.35); }
@@ -596,7 +593,6 @@
       </div>
     </section>
 
-    <section id="live-banner" class="live-banner" hidden aria-live="polite"></section>
     <section class="panel learn-switch" aria-label="Mode de jeu">
       <div class="ls-seg" role="radiogroup" aria-label="Mode de jeu">
         <button id="ls-real" type="button" role="radio">💰 Partie réelle</button>
@@ -990,16 +986,7 @@
           const tot = Object.keys(ses).filter((k) => TILE[k] === TILE[g]).reduce((x, k) => x + (ses[k].stack || 0), 0);
           bd.textContent = '⏸ Partie en cours · ' + fmt(tot) + ' € sur la table · Reprendre ›';
         });
-        const lb = $('live-banner'), n = Object.keys(ses).length;
-        lb.hidden = !n;
-        if (n) {
-          lb.innerHTML = '';
-          const t = document.createElement('div'); t.className = 'lb-title'; t.textContent = '⏸ Tu as ' + n + ' partie' + (n > 1 ? 's' : '') + ' en cours'; lb.appendChild(t);
-          const sm = document.createElement('small'); sm.textContent = 'L\'argent apporté reste sur la table tant que tu n\'encaisses pas : reprends la partie ou encaisse.'; lb.appendChild(sm);
-          const row = document.createElement('div'); row.className = 'lb-row';
-          Object.keys(ses).forEach((g) => { const a = document.createElement('a'); a.href = paths[g] || '#'; a.textContent = (Casino.GAMES[g] || g) + ' · ' + fmt(ses[g].stack) + ' € ›'; row.appendChild(a); });
-          lb.appendChild(row);
-        }
+
         renderTime();
         const T = P.totals;
         $('lifetime').innerHTML = '';
