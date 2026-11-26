@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Loto entre amis</title>
+  <meta name="theme-color" content="#06180d">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../icons/icon-192.png">
+  <link rel="stylesheet" href="salle.css">
+  <script src="../firebase-config.js"></script>
+  <script src="../gate.js"></script>
+</head>
+<body>
+  <header class="top">
+    <a id="back" href="../index.html#multi" aria-label="Retour au Lounge">←</a>
+    <h1>🎱 Loto entre amis</h1>
+    <span id="code-box" class="code" hidden>Table <b id="code"></b></span>
+    <button id="sound-toggle" class="icon" type="button" aria-label="Son">🔊</button>
+  </header>
+
+  <main>
+    <!-- ===== Accueil : créer ou rejoindre ===== -->
+    <section id="lobby" class="card">
+      <h2>Le loto, comme à la salle des fêtes 🎉</h2>
+      <p class="muted">Chacun reçoit ses cartons (3 lignes, 15 numéros de 1 à 90). Les boules sortent une par une, annoncées à voix haute. À chaque partie : <b>2 quines</b> (une ligne complète), <b>1 double quine</b> (deux lignes sur le même carton) puis le <b>carton plein</b>. Le premier qui appuie sur le bouton gagne ! Il faut au moins <b>3 joueurs</b>. Pour le plaisir : on joue aux points, pas d'argent.</p>
+      <div class="form">
+        <label>Nom de la salle <input id="f-name" maxlength="30" placeholder="Loto de …"></label>
+        <label>Nombre de parties
+          <select id="f-games"><option value="1">1</option><option value="3" selected>3</option><option value="5">5</option><option value="8">8</option><option value="10">10</option></select></label>
+        <label>Cartons par joueur
+          <select id="f-cards"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option></select></label>
+        <label>Vitesse du tirage
+          <select id="f-speed"><option value="6000">Tranquille (6 s)</option><option value="4000" selected>Normale (4 s)</option><option value="2500">Rapide (2,5 s)</option></select></label>
+        <label class="check"><input id="f-public" type="checkbox" checked> Salle publique (visible dans Multijoueur)</label>
+        <button id="create" class="big" type="button">🎱 Ouvrir la salle</button>
+      </div>
+      <form id="join" class="join"><input id="join-code" maxlength="6" placeholder="Code d'une salle (ex. KQ7P)" autocapitalize="characters" autocomplete="off"><button type="submit">Rejoindre</button></form>
+      <p id="note" class="note" role="status"></p>
+    </section>
+
+    <!-- ===== La salle ===== -->
+    <section id="room" hidden>
+      <div id="wait-host" class="card"></div>
+      <div class="caller card">
+        <div class="ball-zone">
+          <div id="ball" class="ball"><span>–</span></div>
+          <div class="caller-info">
+            <div id="stage" class="stage">En attente…</div>
+            <div id="gameno" class="muted small"></div>
+            <div id="last" class="last" aria-label="Derniers numéros"></div>
+          </div>
+        </div>
+        <button id="claim" class="claim" type="button" disabled>QUINE !</button>
+        <div id="feed" class="feed" role="status"></div>
+      </div>
+      <div class="cols">
+        <div>
+          <h3>Mes cartons <small class="muted" id="mine-info"></small></h3>
+          <div id="cards" class="cards"></div>
+          <label class="check small"><input id="auto-mark" type="checkbox" checked> Marquer mes numéros automatiquement</label>
+        </div>
+        <div>
+          <h3>Joueurs</h3>
+          <ol id="players" class="players"></ol>
+          <h3>Tableau des 90 numéros</h3>
+          <div id="board" class="board"></div>
+          <div class="row"><button id="invite" type="button">📨 Inviter</button><button id="leave" type="button">Quitter la salle</button></div>
+          <div id="chat-panel" class="chat">
+            <div id="chat" class="chat-log"></div>
+            <form id="chat-form"><input id="chat-input" maxlength="300" placeholder="Message…"><button type="submit">Envoyer</button></form>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="podium" class="podium" hidden></div>
+
+  <script src="../firebase-config.js"></script>
+  <script src="../social.js"></script>
+  <script src="../sounds.js"></script>
+  <script src="../casino-rules.js"></script>
+  <script src="../profile.js"></script>
+  <script src="../account.js"></script>
+  <script src="../blackjack/net.js"></script>
+  <script src="multi.js"></script>
+  <script src="../pwa.js"></script>
+</body>
+</html>

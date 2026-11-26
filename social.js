@@ -430,8 +430,8 @@
 
   // ---------- Multijoueur : parties ouvertes ----------
   // lobby/<jeu>_<code> (partie publique, code visible) ou lobby/<jeu>_<clé> (privée : le code reste secret)
-  const TABLE_PATHS = { blackjack: 'tables/', poker: 'ptables/', roulette: 'rtables/' };
-  const LOCAL_NS = { blackjack: '', poker: 'p', roulette: 'r' };
+  const TABLE_PATHS = { blackjack: 'tables/', poker: 'ptables/', roulette: 'rtables/', loto: 'ltables/' };
+  const LOCAL_NS = { blackjack: '', poker: 'p', roulette: 'r', loto: 'l' };
   const lobbyLast = {};
   async function lobbyBeat(game, code, info) {
     const key = info.pub ? game + '_' + code : info.lk ? game + '_' + info.lk : null;
@@ -528,11 +528,11 @@
   }
 
   // ---------- Invitations à une table ----------
-  const GAME_NAMES = { blackjack: 'Blackjack', poker: 'Poker', roulette: 'Roulette' };
+  const GAME_NAMES = { blackjack: 'Blackjack', poker: 'Poker', roulette: 'Roulette', loto: 'Loto' };
   function tableLink(game, code) {
-    const m = /^(.*\/)(blackjack|poker|roulette|slots)\/[^/]*$/.exec(location.pathname);
+    const m = /^(.*\/)(blackjack|poker|roulette|slots|loto|crash|plinko|mines|gold|trader|cartes)\/[^/]*$/.exec(location.pathname);
     const root = m ? m[1] : location.pathname.replace(/[^/]*$/, '');
-    const u = new URL(root + game + '/index.html', location.href);
+    const u = new URL(root + game + (game === 'loto' ? '/salle.html' : '/index.html'), location.href);
     if (code) u.searchParams.set('table', code);
     if (/[?&]backend=local\b/.test(location.search)) u.searchParams.set('backend', 'local');
     return u.toString();

@@ -1,0 +1,78 @@
+/* Loto entre amis — salle des fêtes en vert et or */
+:root { --bg: #04120a; --panel: #0b2216; --line: #1f4d33; --text: #ecfdf5; --muted: #9cc8b0; --gold: #facc15; --red: #ef4444; color-scheme: dark; }
+* { box-sizing: border-box; } [hidden] { display: none !important; }
+body { margin: 0; min-height: 100vh; color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: radial-gradient(900px 500px at 50% -10%, #14532d 0%, transparent 60%), radial-gradient(600px 400px at 100% 40%, rgba(250,204,21,.08), transparent 60%), var(--bg); }
+.top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: .7rem; padding: max(.6rem, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) .6rem max(16px, env(safe-area-inset-left)); background: rgba(4,18,10,.88); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.top a { color: var(--gold); text-decoration: none; font-size: 1.3rem; font-weight: 800; } .top h1 { margin: 0; font-size: 1.1rem; flex: 1; }
+.code { font-size: .85rem; color: var(--muted); } .code b { color: var(--gold); letter-spacing: .12em; }
+button { font: inherit; cursor: pointer; } .icon { background: none; border: 1px solid var(--line); color: var(--text); border-radius: 10px; padding: .25rem .5rem; }
+main { max-width: 1100px; margin: 0 auto; padding: 1rem max(16px, env(safe-area-inset-right)) 3rem max(16px, env(safe-area-inset-left)); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 1rem; margin-bottom: 1rem; }
+.muted { color: var(--muted); } .small { font-size: .82rem; }
+h2 { margin: 0 0 .5rem; } h3 { margin: 1rem 0 .5rem; font-size: .95rem; letter-spacing: .04em; }
+.form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .6rem; margin: .8rem 0; }
+.form label { display: flex; flex-direction: column; gap: .25rem; font-size: .85rem; color: var(--muted); }
+input, select { font: inherit; background: #06180d; color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: .5rem .6rem; }
+.check { flex-direction: row !important; align-items: center; gap: .45rem; }
+.big, .join button, .row button, #chat-form button { border: 0; border-radius: 999px; padding: .65rem 1.1rem; font-weight: 800; background: linear-gradient(135deg, #facc15, #f59e0b); color: #2a1d00; }
+.row button, #chat-form button { padding: .45rem .9rem; background: #12351f; color: var(--text); border: 1px solid var(--line); font-weight: 600; }
+.join { display: flex; gap: .5rem; } .join input { flex: 1; text-transform: uppercase; }
+.note { color: #fca5a5; min-height: 1.2em; }
+
+/* ----- l'annonceur ----- */
+.caller { position: relative; overflow: hidden; }
+.ball-zone { display: flex; align-items: center; gap: 1rem; }
+.ball { flex: none; width: 112px; height: 112px; border-radius: 50%; display: grid; place-items: center; font-size: 2.8rem; font-weight: 900; color: #1f2937;
+  background: radial-gradient(circle at 32% 28%, #fff, #fde68a 40%, #f59e0b 75%, #b45309); box-shadow: 0 10px 30px rgba(0,0,0,.5), inset -6px -8px 16px rgba(0,0,0,.25), 0 0 30px rgba(250,204,21,.35); }
+.ball span { display: grid; place-items: center; width: 64%; height: 64%; border-radius: 50%; background: #fff; box-shadow: inset 0 -3px 6px rgba(0,0,0,.15); }
+.ball.pop { animation: ballPop .7s cubic-bezier(.2,1.6,.4,1); }
+@keyframes ballPop { from { transform: translateY(-60px) scale(.3) rotate(-90deg); opacity: 0; } }
+.caller-info { flex: 1; min-width: 0; }
+.stage { font-weight: 900; font-size: 1.15rem; color: var(--gold); }
+.last { display: flex; gap: .3rem; flex-wrap: wrap; margin-top: .4rem; }
+.last span { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: .85rem; color: #1f2937; background: radial-gradient(circle at 35% 30%, #fff, #d1d5db 55%, #9ca3af); }
+.claim { display: block; width: 100%; margin-top: .9rem; padding: .9rem; border: 0; border-radius: 16px; font-size: 1.5rem; font-weight: 900; letter-spacing: .06em; color: #4b5563; background: #12351f; }
+.claim.ready { color: #2a1d00; background: linear-gradient(135deg, #fde047, #f59e0b); box-shadow: 0 0 30px rgba(250,204,21,.6); animation: claimPulse .8s ease-in-out infinite; }
+@keyframes claimPulse { 50% { transform: scale(1.03); box-shadow: 0 0 50px rgba(250,204,21,.9); } }
+.feed { min-height: 1.4em; margin-top: .6rem; font-weight: 700; color: #bbf7d0; text-align: center; }
+
+/* ----- les cartons ----- */
+.cols { display: grid; grid-template-columns: 1.4fr 1fr; gap: 1rem; }
+@media (max-width: 820px) { .cols { grid-template-columns: 1fr; } }
+.cards { display: flex; flex-direction: column; gap: .7rem; }
+.carton { background: #fffbeb; border-radius: 12px; padding: 6px; box-shadow: 0 8px 20px rgba(0,0,0,.4); border: 3px solid var(--cc, #16a34a); }
+.carton.win { box-shadow: 0 0 26px rgba(250,204,21,.9); }
+.carton .ct-head { display: flex; justify-content: space-between; font-size: .72rem; font-weight: 800; color: #14532d; padding: 0 4px 4px; }
+.carton .ct-grid { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 3px; }
+.carton .c { aspect-ratio: 1; border-radius: 6px; display: grid; place-items: center; font-weight: 900; font-size: clamp(.8rem, 3.4vw, 1.2rem); color: #14532d; background: #fef3c7; position: relative; user-select: none; }
+.carton .c.e { background: repeating-linear-gradient(45deg, #fde68a 0 4px, #fef3c7 4px 8px); }
+.carton .c.n { background: #fff; border: 1px solid #fcd34d; cursor: pointer; }
+.carton .c.m::after { content: ''; position: absolute; inset: 12%; border-radius: 50%; background: rgba(239,68,68,.72); box-shadow: 0 0 0 2px rgba(127,29,29,.4) inset; animation: dab .25s ease-out; }
+.carton .c.m { color: #fff; } .carton .c.m b { position: relative; z-index: 1; }
+@keyframes dab { from { transform: scale(1.6); opacity: 0; } }
+.carton .row-done .c.n { background: #bbf7d0; }
+
+/* ----- joueurs, tableau ----- */
+.players { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: .3rem; }
+.players li { display: flex; align-items: center; gap: .5rem; padding: .4rem .6rem; border-radius: 10px; background: #08200f; border: 1px solid var(--line); }
+.players li .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; } .players li b { margin-left: auto; color: var(--gold); font-variant-numeric: tabular-nums; }
+.players li small { color: var(--muted); }
+.board { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; }
+.board span { aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; font-size: .72rem; font-weight: 800; color: #4b7a5f; background: #06180d; border: 1px solid #123322; }
+.board span.on { color: #1f2937; background: radial-gradient(circle at 35% 30%, #fff, #fde68a 60%, #f59e0b); border-color: transparent; }
+.board span.just { box-shadow: 0 0 10px #facc15; }
+.row { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .8rem; }
+.chat { margin-top: .8rem; } .chat-log { max-height: 160px; overflow-y: auto; font-size: .85rem; display: flex; flex-direction: column; gap: .2rem; margin-bottom: .4rem; }
+.chat-log b { color: var(--gold); } #chat-form { display: flex; gap: .4rem; } #chat-form input { flex: 1; min-width: 0; }
+
+/* ----- podium de fin ----- */
+.podium { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.82); display: grid; place-items: center; padding: 1rem; }
+.podium .box { background: var(--panel); border: 2px solid var(--gold); border-radius: 20px; padding: 1.3rem; width: min(420px, 100%); text-align: center; }
+.podium ol { list-style: none; padding: 0; text-align: left; } .podium li { display: flex; gap: .6rem; padding: .45rem .6rem; border-radius: 10px; } .podium li:first-child { background: rgba(250,204,21,.15); font-size: 1.15rem; }
+.podium li b { margin-left: auto; color: var(--gold); }
+.podium button { margin-top: .6rem; border: 0; border-radius: 999px; padding: .6rem 1.2rem; font-weight: 800; background: linear-gradient(135deg, #facc15, #f59e0b); color: #2a1d00; }
+.flash-win { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; pointer-events: none; }
+.flash-win div { font-size: clamp(2rem, 10vw, 4rem); font-weight: 900; color: var(--gold); text-shadow: 0 6px 30px rgba(0,0,0,.8); animation: winSlam 2s ease-out both; text-align: center; }
+.flash-win small { display: block; font-size: .4em; color: #fff; }
+@keyframes winSlam { 0% { transform: scale(3); opacity: 0; } 15% { transform: scale(1); opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-30px); } }

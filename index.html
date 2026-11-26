@@ -129,7 +129,7 @@
     body.learning .games .game { border-color: #4fc3f7; }
     .mp h2 { display: flex; align-items: center; gap: .5rem; margin-top: 1rem; }
     .mp h2:first-child { margin-top: 0; }
-    .mp-games { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
+    .mp-games { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; }
     .mp-games a { display: flex; flex-direction: column; align-items: center; gap: .2rem; padding: .8rem .4rem; border-radius: 12px; text-decoration: none; color: inherit; font-size: 1.8rem;
       background: radial-gradient(ellipse at 30% 20%, var(--felt) 0%, var(--felt-dark) 100%); border: 2px solid #5b3a1e; }
     .mp-games a span { font-size: .9rem; font-weight: 700; }
@@ -714,6 +714,7 @@
         <a id="mp-new-blackjack" href="blackjack/index.html?multi=create">🂡<span>Blackjack</span></a>
         <a id="mp-new-poker" href="poker/index.html?multi=create">♠<span>Poker</span></a>
         <a id="mp-new-roulette" href="roulette/index.html?multi=create">🎡<span>Roulette</span></a>
+        <a id="mp-new-loto" href="loto/salle.html">🎱<span>Loto</span></a>
       </div>
       <h2>Rejoindre avec un code</h2>
       <form id="mp-join" class="mp-join">
@@ -1598,8 +1599,8 @@
       $('ls-learn').addEventListener('click', () => { Casino.setLearn(true); renderLearn(); });
       renderLearn();
       // ---------- Multijoueur ----------
-      const GAME_ICON = { blackjack: '🂡', poker: '♠', roulette: '🎡' };
-      const GAME_NAME = { blackjack: 'Blackjack', poker: 'Poker', roulette: 'Roulette' };
+      const GAME_ICON = { blackjack: '🂡', poker: '♠', roulette: '🎡', loto: '🎱' };
+      const GAME_NAME = { blackjack: 'Blackjack', poker: 'Poker', roulette: 'Roulette', loto: 'Loto' };
       ['blackjack', 'poker', 'roulette'].forEach((g) => { if (window.Social) { const u = new URL(Social.tableLink(g)); u.searchParams.set('multi', 'create'); $('mp-new-' + g).href = u.toString(); } });
       let lobbyTimer = null;
       async function refreshLobby() {
