@@ -18,6 +18,7 @@ const ST = require('./shared/strategy.js');
 const SB = require('./shared/sidebets.js');
 const PK = require('./poker.js');
 const PL = require('./shared/plinko-engine.js');
+const LO = require('./shared/loto-engine.js');
 const MN = require('./shared/mines-engine.js');
 const GD = require('./shared/gold-engine.js');
 const nodeCrypto = require('crypto');
@@ -306,6 +307,25 @@ function plinkoOp(P, S, ctx, sess, track) {
   return { path, slot, mult: res.mult, payout: res.payout, net: res.net, nonce: C.nonce, hash: C.hash, stack: ss.stack };
 }
 
+// ---------- Loto Express : le serveur tire les 10 boules ----------
+function lotoOp(P, S, ctx, sess, track) {
+  const d = ctx.data || {};
+  if (ctx.op === 'lo.seed') return rotateSeeds(S, 'lo', d.client, ctx.rnd);
+  const ss = sess('loto');
+  const bet = int(d.bet), picks = Array.isArray(d.picks) ? d.picks.map(Number) : [];
+  if (!LO.validPicks(picks)) fail('Coche de 1 à ' + LO.CONFIG.MAX_PICK + ' numéros différents entre 1 et ' + LO.CONFIG.N + '.');
+  if (!(bet >= LO.CONFIG.MIN_BET && bet <= Math.min(LO.CONFIG.MAX_BET, MAX_BET))) fail('Mise entre ' + LO.CONFIG.MIN_BET + ' et ' + Math.min(LO.CONFIG.MAX_BET, MAX_BET) + ' € dans ton salon.');
+  if (bet > ss.stack) fail('Pas assez d\'argent sur la table.');
+  const C = seedsOf(S, 'lo', ctx.rnd);
+  C.nonce++;
+  const base = C.client + ':' + C.nonce;
+  const drawn = LO.drawFromHex(hmacHex(C.seed, base + ':0') + hmacHex(C.seed, base + ':1'));
+  const res = LO.settle(bet, picks, drawn);
+  ss.stack = round2(ss.stack - bet + res.payout);
+  track('lo', { bet, net: res.net, mult: res.mult, hits: res.hits.length, picks: picks.length, jackpot: res.jackpot });
+  return { drawn, hits: res.hits, mult: res.mult, payout: res.payout, net: res.net, jackpot: res.jackpot, nonce: C.nonce, hash: C.hash, stack: ss.stack };
+}
+
 // ---------- Mines : les mines restent cachées sur le serveur jusqu'à la fin de la manche ----------
 function minesOp(P, S, ctx, sess, track) {
   const d = ctx.data || {};
@@ -514,6 +534,7 @@ function handle(state, ctx) {
 
     // ----- Plinko et Mines -----
     case 'pl.drop': case 'pl.seed': result = plinkoOp(P, S, ctx, sess, track); break;
+    case 'lo.draw': case 'lo.seed': result = lotoOp(P, S, ctx, sess, track); break;
     case 'mn.start': case 'mn.reveal': case 'mn.cashout': case 'mn.seed': result = minesOp(P, S, ctx, sess, track); break;
 
     // ----- Blackjack : le sabot reste sur le serveur -----

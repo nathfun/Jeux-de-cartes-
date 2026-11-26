@@ -123,6 +123,8 @@ function open(dir) {
     dealsOpenOf(uid) { return db.prepare("SELECT obj FROM deals WHERE (a = ? OR b = ?) AND status IN ('open', 'accepted')").all(uid, uid).map((r) => JSON.parse(r.obj)); },
     dealsOf(uid, since) { return db.prepare("SELECT obj FROM deals WHERE (a = ? OR b = ?) AND (status IN ('open', 'accepted') OR created >= ?) ORDER BY created DESC LIMIT 60").all(uid, uid, since).map((r) => JSON.parse(r.obj)); },
     dealsStale(acceptedBefore, openBefore) { return db.prepare("SELECT obj FROM deals WHERE status IN ('open', 'accepted')").all().map((r) => JSON.parse(r.obj)).filter((t) => (t.status === 'accepted' ? (t.acceptedAt || t.created) < acceptedBefore : t.created < openBefore)); },
+    /** Copie complète et cohérente de la base (même pendant que le serveur tourne). */
+    backup(file) { const q = String(file).replace(/'/g, "''"); db.exec("VACUUM INTO '" + q + "'"); },
     close() { db.close(); },
   };
 }

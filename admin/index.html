@@ -88,6 +88,10 @@
         <div style="flex:1;min-width:240px"><h3>Actions les plus fréquentes (1 h)</h3><table id="tb-ops" class="mini"></table></div>
         <div style="flex:1;min-width:240px"><h3>Dernières erreurs</h3><div id="st-errors" class="small"></div></div>
       </div>
+      <h3>💾 Sauvegardes de la base</h3>
+      <p class="small muted">Une copie complète chaque nuit vers 4 h (7 derniers jours + 4 dimanches). Sur le NAS : <code>/volume1/docker/casino/app/server/data/backups</code>. Pour plus de sécurité, copie ce dossier sur un autre disque ou dans le cloud (application de sauvegarde du NAS).</p>
+      <div class="row2"><button id="bk-now" type="button">💾 Sauvegarder maintenant</button><span id="bk-msg" class="small"></span></div>
+      <table id="tb-bk" class="mini"></table>
     </section>
     <section id="tools-panel" class="panel" hidden style="grid-column:1/-1">
       <h2>Outils</h2>

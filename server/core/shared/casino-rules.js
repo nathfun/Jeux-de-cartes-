@@ -296,7 +296,7 @@
     { id: 'rl_spins10', game: 'Roulette', text: 'Joue 10 tours de roulette', target: 10, reward: 30, xp: 50, on: (t, d) => (t === 'rl' && d.staked > 0 ? 1 : 0) },
     { id: 'rl_plein', game: 'Roulette', text: 'Touche un plein à la roulette', target: 1, reward: 70, xp: 90, on: (t, d) => (t === 'rl' && d.pleinHit ? 1 : 0) },
     { id: 'rl_win200', game: 'Roulette', text: 'Gagne au moins 20 € en un seul tour', target: 1, reward: 50, xp: 70, on: (t, d) => (t === 'rl' && d.net >= 20 ? 1 : 0) },
-    { id: 'any_win1000', game: 'Tous les jeux', text: 'Gagne 100 € au total aujourd\'hui', target: 100, reward: 60, xp: 80, on: (t, d) => (['bj', 'rl', 'sl', 'cr', 'pl', 'tr', 'mn'].includes(t) && d.net > 0 ? d.net : 0) },
+    { id: 'any_win1000', game: 'Tous les jeux', text: 'Gagne 100 € au total aujourd\'hui', target: 100, reward: 60, xp: 80, on: (t, d) => (['bj', 'rl', 'sl', 'cr', 'pl', 'tr', 'mn', 'lo'].includes(t) && d.net > 0 ? d.net : 0) },
     { id: 'cr_rounds15', game: 'Rocket Crash', text: 'Joue 15 manches de Rocket Crash', target: 15, reward: 30, xp: 50, on: (t) => (t === 'cr' ? 1 : 0) },
     { id: 'cr_x3', game: 'Rocket Crash', text: 'Retire ta mise à ×3 ou plus', target: 1, reward: 50, xp: 70, on: (t, d) => (t === 'cr' && d.mult >= 3 ? 1 : 0) },
     { id: 'cr_wins5', game: 'Rocket Crash', text: 'Réussis 5 retraits avant l\'explosion', target: 5, reward: 40, xp: 60, on: (t, d) => (t === 'cr' && d.mult > 0 ? 1 : 0) },
@@ -306,6 +306,8 @@
     { id: 'tr_trades10', game: 'Bourse Flash', text: 'Clôture 10 positions en bourse', target: 10, reward: 30, xp: 50, on: (t) => (t === 'tr' ? 1 : 0) },
     { id: 'tr_short', game: 'Bourse Flash', text: 'Gagne de l\'argent en vendant (pari sur la baisse)', target: 1, reward: 50, xp: 70, on: (t, d) => (t === 'tr' && d.dir < 0 && d.net > 0 ? 1 : 0) },
     { id: 'tr_win200', game: 'Bourse Flash', text: 'Gagne 20 € en bourse aujourd\'hui', target: 20, reward: 50, xp: 70, on: (t, d) => (t === 'tr' && d.net > 0 ? d.net : 0) },
+    { id: 'lo_draws10', game: 'Loto Express', text: 'Joue 10 tirages au Loto Express', target: 10, reward: 30, xp: 50, on: (t) => (t === 'lo' ? 1 : 0) },
+    { id: 'lo_hits4', game: 'Loto Express', text: 'Trouve 4 bons numéros (ou plus) en un tirage', target: 1, reward: 60, xp: 80, on: (t, d) => (t === 'lo' && d.hits >= 4 ? 1 : 0) },
     { id: 'mn_rounds10', game: 'Mines', text: 'Joue 10 manches de Mines', target: 10, reward: 30, xp: 50, on: (t) => (t === 'mn' ? 1 : 0) },
     { id: 'mn_x3', game: 'Mines', text: 'Encaisse à ×3 ou plus aux Mines', target: 1, reward: 50, xp: 70, on: (t, d) => (t === 'mn' && d.mult >= 3 ? 1 : 0) },
     { id: 'mn_gems20', game: 'Mines', text: 'Retourne 20 diamants aux Mines', target: 20, reward: 40, xp: 60, on: (t, d) => (t === 'mn' ? d.reveals : 0) },
@@ -365,6 +367,8 @@
     { id: 'vip_pass', icon: '👑', name: 'Membre du club', text: 'Prendre un pass VIP' },
     { id: 'cards10', icon: '🃏', name: 'Collectionneur', text: 'Ouvrir 10 cartes de booster' },
     { id: 'mythic', icon: '🔴', name: 'Mythique !', text: 'Obtenir une carte mythique' },
+    { id: 'lo_five', icon: '🎱', name: 'Cinq sur la grille', text: 'Trouver 5 bons numéros au Loto Express' },
+    { id: 'lo_jackpot', icon: '🍀', name: 'Carton plein', text: 'Trouver tous ses numéros au Loto Express (5 numéros ou plus)' },
     { id: 'duel_win', icon: '⚔️', name: 'Duelliste', text: 'Gagner un duel contre un ami' },
   ];
 
@@ -440,7 +444,7 @@
   const START_WALLET = 1000;
   // Parrainage : le filleul et son parrain reçoivent REF_BONUS chacun quand le filleul a joué REF_MIN_HANDS mains ou tours
   const REF_BONUS = 200, REF_MIN_HANDS = 10, REF_MAX = 25;
-  const GAMES = { blackjack: 'Blackjack', poker: 'Poker', roulette: 'Roulette', slots: 'Machine à sous', crash: 'Rocket Crash', plinko: 'Plinko', trader: 'Bourse Flash', mines: 'Mines', gold: 'Ruée vers l\'Or' };
+  const GAMES = { blackjack: 'Blackjack', poker: 'Poker', roulette: 'Roulette', slots: 'Machine à sous', crash: 'Rocket Crash', plinko: 'Plinko', trader: 'Bourse Flash', mines: 'Mines', gold: 'Ruée vers l\'Or', loto: 'Loto Express' };
   const pad = (n) => String(n).padStart(2, '0');
   // Date du jour (et de la veille) à l'heure de Paris : les défis et le bonus changent à minuit
   function dayOf(ms) {
@@ -584,7 +588,7 @@
   function track(P, type, d, now, N) {
     d = d || {};
     const T = P.totals;
-    const isRound = ['bj', 'pk', 'rl', 'sl', 'cr', 'pl', 'tr', 'mn'].includes(type);
+    const isRound = ['bj', 'pk', 'rl', 'sl', 'cr', 'pl', 'tr', 'mn', 'lo'].includes(type);
     if (isRound) {
       T.hands++;
       T.netBy = T.netBy || {};
@@ -642,6 +646,11 @@
       if (d.clear) unlock(P, 'mn_clear', N);
       if (d.mult >= 10) unlock(P, 'mn_x10', N);
       if (d.firstBust) unlock(P, 'mn_first', N);
+    }
+    if (type === 'lo') {
+      T.loDraws = (T.loDraws || 0) + 1;
+      if (d.jackpot) unlock(P, 'lo_jackpot', N);
+      if (d.hits >= 5) unlock(P, 'lo_five', N);
     }
     if (type === 'sl') { T.slSpins++; if (d.jackpot) unlock(P, 'jackpot', N); }
     if (type === 'multi') { unlock(P, 'friends', N); addXP(P, 20, N); }

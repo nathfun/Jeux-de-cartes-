@@ -147,3 +147,29 @@ En cas de doute sur un joueur, on peut tout retracer.
 ## 6. RAM et ressources
 Le serveur est limité à 256 Mo et Tailscale à 128 Mo. En pratique : ≈ 100 Mo au total, avec un processeur presque au repos.
 Tes autres projets Docker ne seront pas gênés.
+
+## Sauvegardes de la base (automatiques)
+
+Le serveur fait **chaque nuit vers 4 h** une copie complète et cohérente de la base des joueurs (banques, cartes, marché,
+journal de l'argent) dans :
+
+```
+/volume1/docker/casino/app/server/data/backups/
+```
+
+Il garde les **7 derniers jours** et **4 dimanches** (environ un mois en arrière). La page admin → « État du serveur »
+montre la dernière sauvegarde et permet d'en faire une tout de suite (bouton « 💾 Sauvegarder maintenant »).
+
+👉 Conseil : ces copies sont sur le même NAS que la base. Programme l'application de sauvegarde de ton NAS pour copier
+ce dossier `backups` vers un autre disque, une clé USB ou un cloud.
+
+### Restaurer une sauvegarde (en cas de problème)
+
+```sh
+cd /volume1/docker/casino/app/server
+sudo docker compose stop casino
+sudo cp data/casino.db data/casino-avant-restauration.db          # on garde l'état actuel, au cas où
+sudo rm -f data/casino.db-wal data/casino.db-shm
+sudo cp data/backups/casino-AAAA-MM-JJ.db data/casino.db          # la date voulue
+sudo docker compose start casino
+```

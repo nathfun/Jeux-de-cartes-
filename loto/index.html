@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Loto Express</title>
+  <meta name="theme-color" content="#04140a">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../icons/icon-192.png">
+  <link rel="stylesheet" href="../crash/style.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="../firebase-config.js"></script>
+  <script src="../gate.js"></script>
+</head>
+<body class="crash-page loto-page">
+  <header class="topbar">
+    <h1><a id="home-link" class="home-link" href="../index.html" hidden aria-label="Retour au casino">←</a> 🎱 Loto Express</h1>
+    <div class="bank">
+      <span id="bank-label">Banque</span> : <strong id="wallet">–</strong> €
+      <button id="music-toggle" class="ghost icon-btn" type="button">🎵</button><button id="sound-toggle" class="ghost icon-btn" type="button">🔊</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <div class="main-col">
+      <section id="setup" class="glass setup">
+        <h2>🎱 Loto Express</h2>
+        <p class="muted">Coche de 1 à 8 numéros sur 40. La sphère tire 10 boules : plus tu trouves de bons numéros, plus tu gagnes. Avec 8 numéros, le carton plein paie ×16 000 !</p>
+        <div id="mode-picker"></div>
+      </section>
+
+      <section id="game" class="game" hidden>
+        <div id="mode-badge" class="mode-badge" hidden></div>
+        <div id="history" class="history" aria-label="Derniers tirages"></div>
+
+        <div class="lo-stage glass">
+          <div class="lo-top">
+            <canvas id="drum" class="lo-drum" width="300" height="300" aria-hidden="true"></canvas>
+            <div class="lo-hud">
+              <div class="mn-stat"><span>Numéros cochés</span><b id="picked">0 / 8</b></div>
+              <div class="mn-stat"><span>Bons numéros</span><b id="hits">–</b></div>
+              <div class="mn-stat"><span>Gain max.</span><b id="maxwin">–</b></div>
+            </div>
+          </div>
+          <div id="tray" class="lo-tray" aria-label="Boules tirées"></div>
+          <div id="grid" class="lo-grid" role="group" aria-label="Grille de 40 numéros"></div>
+          <div class="lo-tools">
+            <span class="muted small">Grille flash :</span>
+            <div class="seg" id="flash"><button type="button" data-k="3">3</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button><button type="button" data-k="8">8</button></div>
+            <button id="clear-btn" class="btn-ghost small-btn" type="button">Effacer</button>
+          </div>
+          <div id="toast" class="stage-toast" hidden></div>
+          <div id="result" class="lo-result" hidden></div>
+        </div>
+
+        <div class="controls glass">
+          <div class="bet-side">
+            <label class="field">
+              <span>Mise</span>
+              <div class="bet-input">
+                <button id="bet-half" type="button" aria-label="Diviser la mise par deux">½</button>
+                <input id="bet" type="number" min="1" max="500" step="1" value="10" inputmode="numeric" aria-label="Montant de la mise">
+                <button id="bet-double" type="button" aria-label="Doubler la mise">×2</button>
+              </div>
+            </label>
+            <div class="quick" id="quick">
+              <button type="button" data-v="1">1 €</button><button type="button" data-v="5">5 €</button><button type="button" data-v="10">10 €</button>
+              <button type="button" data-v="25">25 €</button><button type="button" data-v="50">50 €</button><button type="button" data-v="100">100 €</button>
+            </div>
+            <div id="paytable" class="lo-pay"></div>
+          </div>
+          <div class="action-side">
+            <button id="play-btn" class="btn-bet" type="button">TIRAGE</button>
+            <button id="auto-btn" class="btn-ghost" type="button">🔁 Auto ×10</button>
+            <div class="balance"><span id="stack-label">Sur la table</span><b id="stack">–</b></div>
+            <button id="end-btn" class="btn-ghost" type="button">Encaisser et quitter</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="side">
+      <section id="aides" class="glass">
+        <h2>🎓 Aides</h2>
+        <div id="aides-body" class="aides-body"></div>
+      </section>
+      <section class="glass">
+        <h2>Tes statistiques <small id="stats-mode" class="muted"></small></h2>
+        <div class="stats">
+          <div class="stat"><span id="s-rounds">0</span><small>Tirages</small></div>
+          <div class="stat"><span id="s-wagered">0 €</span><small>Misé</small></div>
+          <div class="stat"><span id="s-won">0 €</span><small>Gagné</small></div>
+          <div class="stat"><span id="s-net">0 €</span><small>Bénéfice</small></div>
+        </div>
+        <p class="muted small" id="s-best"></p>
+        <h3>Tes derniers tirages</h3>
+        <ol id="my-bets" class="my-bets"><li class="muted">Aucun tirage pour l'instant.</li></ol>
+      </section>
+      <details class="glass fair">
+        <summary><h2>🔐 Équité vérifiable</h2></summary>
+        <p class="small muted">Les 10 boules sont tirées avant l'animation : mélange des 40 numéros piloté par HMAC-SHA256(<i>server seed</i>, « <i>client seed</i>:<i>nonce</i>:0 » puis « …:1 »). L'empreinte du server seed est publiée avant le tirage. En partie réelle, c'est le serveur du Casino qui tire les boules.</p>
+        <div class="fair-grid">
+          <span>Empreinte du server seed</span><code id="pf-hash">–</code>
+          <span>Nonce (tirage)</span><code id="pf-nonce">0</code>
+        </div>
+        <div class="pf-verify">
+          <input id="pf-v-seed" placeholder="server seed" aria-label="Server seed à vérifier">
+          <input id="pf-v-client" placeholder="client seed" aria-label="Client seed à vérifier">
+          <input id="pf-v-nonce" placeholder="nonce" inputmode="numeric" aria-label="Nonce à vérifier">
+          <button id="pf-check" type="button">Vérifier</button>
+          <b id="pf-result"></b>
+        </div>
+      </details>
+    </aside>
+  </main>
+
+  <script src="../sounds.js"></script>
+  <script src="../casino-rules.js"></script>
+  <script src="../profile.js"></script>
+  <script src="../account.js"></script>
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+  <script src="../pwa.js"></script>
+</body>
+</html>

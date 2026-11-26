@@ -382,8 +382,8 @@
   // Effet « gros gain » : montant qui défile, pièces qui tombent
   // ---------- Partage d'un gros gain (image + lien d'invitation) ----------
   const SITE = (() => { try { const src = (document.currentScript && document.currentScript.src) || ''; return src ? src.replace(/profile\.js(\?.*)?$/, '') : location.href.replace(/[^/]*$/, ''); } catch (e) { return location.href.replace(/[^/]*$/, ''); } })();
-  const GAME_ICON = { blackjack: '🂡', poker: '♠', roulette: '🎡', slots: '🎰', crash: '🚀', plinko: '🔮', trader: '📈', mines: '💎' };
-  function gameHere() { const m = /\/(blackjack|poker|roulette|slots|crash|plinko|trader|mines)\//.exec(location.pathname); return m ? m[1] : null; }
+  const GAME_ICON = { blackjack: '🂡', poker: '♠', roulette: '🎡', slots: '🎰', crash: '🚀', plinko: '🔮', trader: '📈', mines: '💎', loto: '🎱', gold: '⛏️' };
+  function gameHere() { const m = /\/(blackjack|poker|roulette|slots|crash|plinko|trader|mines|loto|gold)\//.exec(location.pathname); return m ? m[1] : null; }
   function loadImg(src) { return new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; }); }
   async function winCard(o, noIcon) {
     const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H;
@@ -486,6 +486,7 @@
     plinko: { icon: '🔮', deco: ['●', '•', '◦', '✦'], name: 'Plinko', tag: 'Lâche des billes et vise les cases du bord.', a: '#f472b6', b: '#a78bfa', bg: 'radial-gradient(ellipse at 50% 0%, #3b1a6e 0%, #0b1440 55%, #050816 100%)', pills: ['Jusqu\'à ×1 000', '3 niveaux de risque', 'Mode auto'] },
     gold: { icon: '🤠', deco: ['🟡', '🧨', '⛏️', '💰'], name: 'Ruée vers l\'Or', tag: 'Fais exploser la mine et décroche le Filon !', a: '#f59e0b', b: '#fde047', bg: 'radial-gradient(ellipse at 50% 0%, #6b3a12 0%, #2a160a 60%, #120904 100%)', pills: ['243 façons de gagner', 'Bonus Le Filon', 'Jackpot 1 000×'] },
     mines: { icon: '💎', deco: ['💣', '💎', '✦', '⭐'], name: 'Mines', tag: 'Retourne des diamants… et encaisse avant la mine !', a: '#38bdf8', b: '#f472b6', bg: 'radial-gradient(ellipse at 50% 0%, #123a5c 0%, #0b1440 55%, #050816 100%)', pills: ['1 à 24 mines', 'Jusqu\'à ×24 000', 'RTP 97 %'] },
+    loto: { icon: '🎱', deco: ['🎱', '🍀', '✨', '⭐'], name: 'Loto Express', tag: 'Coche tes numéros… et regarde les boules tomber !', a: '#facc15', b: '#22c55e', bg: 'radial-gradient(ellipse at 50% 0%, #14532d 0%, #052e16 55%, #020a05 100%)', pills: ['1 à 8 numéros', 'Jusqu\'à ×16 000', '10 boules tirées'] },
     trader: { icon: '📈', deco: ['▲', '▼', '💹', '₿'], name: 'Bourse Flash', tag: 'Achète, vends, et clôture au bon moment.', a: '#34d399', b: '#22d3ee', bg: 'radial-gradient(ellipse at 50% 0%, #0f3b4a 0%, #0b1440 55%, #050816 100%)', pills: ['Effet de levier', 'Krachs et envolées', '3 actions en direct'] },
   };
   const themeOf = (g) => LAUNCH[g] || { icon: '🎲', deco: ['✦'], name: (R.GAMES[g] || 'Jeu'), tag: '', a: '#f2c14e', b: '#4fc3f7', bg: '#10151c', pills: [] };

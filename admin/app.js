@@ -341,10 +341,24 @@
       + kpi('Charge du NAS', d.load[0].toFixed(2), d.cpus + ' cœurs · 5 min ' + d.load[1].toFixed(2) + ' · 15 min ' + d.load[2].toFixed(2), d.load[0] > d.cpus);
     barChart($('ch-req'), d.minutes.map((m, i) => ({ label: i === 59 ? 'maint.' : '−' + (59 - i) + ' min', title: (59 - i) ? 'il y a ' + (59 - i) + ' min' : 'cette minute', values: [m.n, m.err] })), [{ name: 'Requêtes', color: 'var(--s1)' }, { name: 'Erreurs', color: 'var(--s2)' }], { aria: 'Requêtes par minute', fmt: (v) => fmt(v) });
     table($('tb-ops'), ['Action', 'Nombre'], d.topOps.map(([k, v]) => [k, fmt(v)]));
+    renderBackups(d.backups);
     $('st-errors').innerHTML = '';
     if (!d.errors.length) $('st-errors').textContent = '✅ Aucune erreur depuis le démarrage.';
     d.errors.forEach((e) => { const x = document.createElement('div'); x.className = 'alert'; x.textContent = new Date(e.t).toLocaleTimeString('fr-FR') + ' · ' + (e.op || '?') + ' · ' + e.msg; $('st-errors').appendChild(x); });
   }
+  function renderBackups(b) {
+    if (!b) return;
+    const last = b.list[0];
+    $('bk-msg').textContent = b.error ? '⚠️ Dernière sauvegarde ratée : ' + b.error.msg : last ? '✅ Dernière : ' + new Date(last.at).toLocaleString('fr-FR') : '⏳ Aucune sauvegarde pour l\'instant (la première est faite dans la minute qui suit le démarrage, après 4 h).';
+    $('bk-msg').className = 'small' + (b.error || (last && Date.now() - last.at > 36 * 3600000) ? ' neg' : '');
+    table($('tb-bk'), ['Fichier', 'Taille', 'Date'], b.list.map((x) => [x.file, bytes(x.size), new Date(x.at).toLocaleString('fr-FR')]));
+  }
+  $('bk-now').addEventListener('click', async () => {
+    $('bk-now').disabled = true;
+    try { const r = await adm('backup'); $('bk-msg').textContent = '✅ Sauvegarde faite : ' + r.backup.file + ' (' + bytes(r.backup.size) + ')'; table($('tb-bk'), ['Fichier', 'Taille', 'Date'], r.list.map((x) => [x.file, bytes(x.size), new Date(x.at).toLocaleString('fr-FR')])); }
+    catch (e) { $('bk-msg').textContent = '⚠️ ' + e.message; }
+    $('bk-now').disabled = false;
+  });
   $('st-reload').addEventListener('click', loadStatus);
   loadStatus(); setInterval(loadStatus, 20000);
   loadDash();

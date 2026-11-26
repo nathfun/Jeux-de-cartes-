@@ -115,6 +115,50 @@ setTimeout(pushRound, 30000).unref();
 const publishProfile = (u, P) => { if (rtdb) rtdb.ref('profiles/' + u).update(R.publicProfile(P, P.friendCode)).catch(() => {}); };
 let deals = null; // créé plus bas (a besoin de serial)
 
+// ---------- Sauvegardes automatiques de la base ----------
+// Chaque nuit (vers 4 h, heure de Paris) : une copie complète dans data/backups. On garde 7 jours + 4 dimanches.
+const path = require('path');
+const BACKUP_DIR = process.env.BACKUP_DIR || path.join(DATA_DIR, 'backups');
+const KEEP_DAYS = Number(process.env.BACKUP_KEEP_DAYS || 7), KEEP_WEEKS = Number(process.env.BACKUP_KEEP_WEEKS || 4);
+function listBackups() {
+  try {
+    return require('fs').readdirSync(BACKUP_DIR).filter((f) => /^casino-\d{4}-\d{2}-\d{2}(-\d{4})?\.db$/.test(f)).sort().reverse()
+      .map((f) => { const st = require('fs').statSync(path.join(BACKUP_DIR, f)); return { file: f, size: st.size, at: st.mtimeMs }; });
+  } catch (e) { return []; }
+}
+function makeBackup(manual) {
+  const fsx = require('fs');
+  fsx.mkdirSync(BACKUP_DIR, { recursive: true });
+  const t = Date.now(), day = R.today(t);
+  const name = 'casino-' + day + (manual ? '-' + String(new Date(t).getHours()).padStart(2, '0') + String(new Date(t).getMinutes()).padStart(2, '0') : '') + '.db';
+  const file = path.join(BACKUP_DIR, name), tmp = file + '.tmp';
+  try { fsx.rmSync(tmp, { force: true }); } catch (e) { /* ignore */ }
+  db.backup(tmp);
+  fsx.renameSync(tmp, file);
+  // les clés des notifications vont avec la base (sans elles, les abonnements ne marchent plus)
+  try { fsx.copyFileSync(path.join(DATA_DIR, 'vapid.json'), path.join(BACKUP_DIR, 'vapid.json')); } catch (e) { /* pas encore de clés */ }
+  // ménage : les KEEP_DAYS plus récentes + une par semaine (le dimanche) sur KEEP_WEEKS semaines
+  const daily = listBackups().filter((b) => /^casino-\d{4}-\d{2}-\d{2}\.db$/.test(b.file));
+  const keep = new Set(daily.slice(0, KEEP_DAYS).map((b) => b.file));
+  daily.filter((b) => new Date(b.file.slice(7, 17) + 'T12:00:00Z').getUTCDay() === 0).slice(0, KEEP_WEEKS).forEach((b) => keep.add(b.file));
+  daily.forEach((b) => { if (!keep.has(b.file)) try { fsx.rmSync(path.join(BACKUP_DIR, b.file)); } catch (e) { /* ignore */ } });
+  listBackups().filter((b) => !/^casino-\d{4}-\d{2}-\d{2}\.db$/.test(b.file)).slice(5).forEach((b) => { try { fsx.rmSync(path.join(BACKUP_DIR, b.file)); } catch (e) { /* ignore */ } });
+  const size = fsx.statSync(file).size;
+  console.log('[casino] sauvegarde ' + name + ' (' + Math.round(size / 1024) + ' Ko)');
+  return { file: name, size, at: t };
+}
+let lastBackupError = null;
+function backupTick() {
+  try {
+    const t = Date.now(), day = R.today(t);
+    if (parisHour(t) < 4) return;
+    if (listBackups().some((b) => b.file === 'casino-' + day + '.db')) return;
+    makeBackup(false); lastBackupError = null;
+  } catch (e) { lastBackupError = { at: Date.now(), msg: e.message }; console.error('[casino] sauvegarde impossible', e.message); }
+}
+setInterval(backupTick, 10 * 60000).unref();
+setTimeout(backupTick, 60000).unref();
+
 // ---------- Mesures (page « État du serveur » de l'admin) ----------
 const os = require('os');
 const fs = require('fs');
@@ -373,7 +417,7 @@ function adminEdit(target, op, fn) {
   });
 }
 // ---------- Tableau de bord (page admin) : activité, économie, jeux, alertes ----------
-const GAME_OF = { bj: 'Blackjack', pk: 'Poker', rl: 'Roulette', sl: 'Casino Royal', gd: 'Ruée vers l\'Or', cr: 'Rocket Crash', pl: 'Plinko', mn: 'Mines', tr: 'Bourse Flash' };
+const GAME_OF = { bj: 'Blackjack', pk: 'Poker', rl: 'Roulette', sl: 'Casino Royal', gd: 'Ruée vers l\'Or', cr: 'Rocket Crash', pl: 'Plinko', mn: 'Mines', tr: 'Bourse Flash', lo: 'Loto Express' };
 function categoryOf(r) {
   if (!r.wb && !r.tb) return 'Nouveaux comptes';
   const op = r.op, pre = op.split('.')[0];
@@ -438,7 +482,8 @@ async function adminOp(uid, op, d) {
       return { brief: brief(target, st), owned: st.player.owned || {}, achievements: st.player.achievements || {}, ledger: db.ledgerOf(target, 40) };
     }
     case 'dashboard': return dashboard();
-    case 'status': return status();
+    case 'status': return Object.assign(status(), { backups: { dir: BACKUP_DIR, list: listBackups().slice(0, 12), error: lastBackupError } });
+    case 'backup': { const b = makeBackup(true); return { ok: true, backup: b, list: listBackups().slice(0, 12) }; }
     case 'vip': {
       const days = Math.round(Number(d.days));
       if (!(days >= -365 && days <= 365 && days !== 0)) throw userError('Nombre de jours invalide.');
