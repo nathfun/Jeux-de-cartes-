@@ -46,6 +46,10 @@ function open(dir) {
       PRIMARY KEY (month, board)
     );
   `);
+  // notifications push : abonnements (un par appareil) et derniers rappels envoyés
+  db.exec(`CREATE TABLE IF NOT EXISTS push_subs (endpoint TEXT PRIMARY KEY, uid TEXT NOT NULL, sub TEXT NOT NULL, prefs TEXT NOT NULL, created INTEGER NOT NULL);
+    CREATE INDEX IF NOT EXISTS push_uid ON push_subs(uid);
+    CREATE TABLE IF NOT EXISTS push_state (uid TEXT NOT NULL, k TEXT NOT NULL, v TEXT, PRIMARY KEY (uid, k));`);
   // nouvelle économie (÷ 10) : les records déjà enregistrés sont convertis une seule fois
   db.exec('CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)');
   if (!db.prepare("SELECT v FROM meta WHERE k = 'econ'").get()) {
@@ -93,6 +97,13 @@ function open(dir) {
         ledger: db.prepare('SELECT COUNT(*) AS n FROM ledger').get().n,
       };
     },
+    pushAdd(uid, sub, prefs) { db.prepare('INSERT INTO push_subs (endpoint, uid, sub, prefs, created) VALUES (?, ?, ?, ?, ?) ON CONFLICT(endpoint) DO UPDATE SET uid = excluded.uid, sub = excluded.sub, prefs = excluded.prefs').run(sub.endpoint, uid, JSON.stringify(sub), JSON.stringify(prefs || {}), Date.now()); },
+    pushRemove(endpoint) { db.prepare('DELETE FROM push_subs WHERE endpoint = ?').run(endpoint); },
+    pushOf(uid) { return db.prepare('SELECT endpoint, sub, prefs FROM push_subs WHERE uid = ?').all(uid).map((r) => ({ endpoint: r.endpoint, sub: JSON.parse(r.sub), prefs: JSON.parse(r.prefs) })); },
+    pushUids() { return db.prepare('SELECT DISTINCT uid FROM push_subs').all().map((r) => r.uid); },
+    pushCount() { return db.prepare('SELECT COUNT(*) AS n FROM push_subs').get().n; },
+    getState(uid, k) { const r = db.prepare('SELECT v FROM push_state WHERE uid = ? AND k = ?').get(uid, k); return r ? r.v : null; },
+    setState(uid, k, v) { db.prepare('INSERT INTO push_state (uid, k, v) VALUES (?, ?, ?) ON CONFLICT(uid, k) DO UPDATE SET v = excluded.v').run(uid, k, String(v)); },
     close() { db.close(); },
   };
 }

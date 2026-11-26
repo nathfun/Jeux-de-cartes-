@@ -312,6 +312,9 @@
     .vip-badge.is-pass { background: linear-gradient(135deg, #3a2a08, #1a1206); }
     .mp-row.mp-vip { border-color: #8a6a1f !important; background: linear-gradient(135deg, rgba(245,197,66,.10), transparent) !important; }
     .mp-viplock { color: #f5c542; font-weight: 700; }
+    .push-prefs { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .3rem .8rem; margin: .4rem 0 .7rem; }
+    .row-btns { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+    .chest-notif { margin-top: .6rem; }
     .vip-badge { font: inherit; font-size: .72rem; font-weight: 700; border-radius: 999px; padding: .12rem .55rem; border: 1px solid var(--border); background: #141a21; color: var(--text); cursor: pointer; }
     .vip-badge.v-argent { border-color: #cbd5e1; color: #e2e8f0; } .vip-badge.v-or { border-color: var(--gold); color: var(--gold); }
     .vip-badge.v-diamant { border-color: #67e8f9; color: #a5f3fc; box-shadow: 0 0 10px rgba(103,232,249,.35); }
@@ -560,6 +563,7 @@
       <p class="muted small-p">Ton coffre se remplit tout seul, même app fermée : <b id="chest-rate"></b>, jusqu'à <b id="chest-cap"></b>. Passe l'ouvrir quand tu veux… mais une fois plein, il ne se remplit plus !</p>
       <div id="chest" class="chest"></div>
       <div id="rescue" class="rescue" hidden></div>
+      <button id="chest-notif" type="button" class="icon-btn chest-notif" hidden>🔔 Me prévenir quand il est plein</button>
     </section>
 
     <section class="panel mp" data-tab="multi" aria-label="Multijoueur">
@@ -590,8 +594,14 @@
 
     <section class="panel" data-tab="multi" aria-label="Notifications">
       <h2>🔔 Notifications</h2>
-      <p class="muted small-p">Reçois une notification quand un ami t'invite, même si l'app est en arrière-plan sur ton téléphone ou ton ordinateur (il faut qu'elle soit restée ouverte : sans serveur payant, une app complètement fermée ne peut pas être réveillée).</p>
-      <button id="notif-btn" type="button" class="bonus-btn">Activer les notifications</button>
+      <p class="muted small-p">Le Casino te prévient, même app fermée : coffre plein, bonus du jour, un ami qui te dépasse au classement, une invitation à jouer. Jamais la nuit (entre 22 h et 9 h).</p>
+      <div class="push-prefs">
+        <label class="check"><input type="checkbox" data-pp="chest"> 🧰 Coffre plein</label>
+        <label class="check"><input type="checkbox" data-pp="bonus"> 🎁 Bonus du jour (et roue)</label>
+        <label class="check"><input type="checkbox" data-pp="friends"> 🏆 Un ami me dépasse</label>
+        <label class="check"><input type="checkbox" data-pp="social"> ⚔️ Duels, échanges et invitations</label>
+      </div>
+      <div class="row-btns"><button id="notif-btn" type="button" class="bonus-btn">🔔 Activer les notifications</button><button id="notif-off" type="button" class="icon-btn" hidden>Désactiver</button></div>
       <p id="notif-state" class="muted small-p"></p>
     </section>
 
@@ -922,6 +932,7 @@
         });
       }
 
+      $('chest-notif').addEventListener('click', async () => { const r = await Casino.pushEnable({ test: true }); Casino.toast('Notifications', r.error || 'C\'est noté : tu seras prévenu quand ton coffre est plein.', '🔔'); render(); });
       let lastChestKey = '';
       function renderTime() {
         const box = $('chest'), c = Casino.chest();
@@ -946,6 +957,7 @@
           const note = document.createElement('small'); note.className = 'cnote muted'; note.textContent = c.full ? 'Plein ! Ouvre-le pour qu\'il recommence à se remplir.' : 'Plein dans ' + dur(c.fullIn);
           box.append(top, bar, note);
         }
+        $('chest-notif').hidden = Casino.pushState() !== 'off';
         // Aide de secours : seulement quand on est presque à sec
         const r = Casino.rescue(), rb = $('rescue');
         const rkey = r.available ? 'a' : 'n';
@@ -1283,10 +1295,26 @@
       }
       $('mp-refresh').addEventListener('click', refreshLobby);
       // notifications
-      const notifState = () => { const p = 'Notification' in window ? Notification.permission : 'unsupported';
-        $('notif-state').textContent = p === 'granted' ? '✔ Notifications activées sur cet appareil.' : p === 'denied' ? 'Refusées : réautorise-les dans les réglages du navigateur pour ce site.' : p === 'unsupported' ? 'Ton navigateur ne gère pas les notifications (sur iPhone : ajoute d\'abord l\'app à l\'écran d\'accueil).' : '';
-        $('notif-btn').hidden = p === 'granted' || p === 'unsupported'; };
-      $('notif-btn').addEventListener('click', async () => { if (window.Social) await Social.enableNotifications(); notifState(); });
+      const notifState = () => {
+        const st = Casino.pushState(), pr = Casino.pushPrefs();
+        document.querySelectorAll('[data-pp]').forEach((c) => { c.checked = pr[c.dataset.pp] !== false; c.disabled = st === 'unsupported'; });
+        $('notif-state').textContent = st === 'on' ? '✔ Notifications activées sur cet appareil.' : st === 'denied' ? 'Refusées : réautorise-les dans les réglages du navigateur pour ce site, puis réessaie.' : st === 'unsupported' ? (Casino.server ? 'Ton navigateur ne gère pas les notifications. Sur iPhone : ajoute d\'abord l\'app à l\'écran d\'accueil (Partager → Sur l\'écran d\'accueil), puis ouvre-la depuis l\'icône.' : 'Les notifications demandent le serveur du Casino.') : '';
+        $('notif-btn').hidden = st === 'on' || st === 'unsupported'; $('notif-off').hidden = st !== 'on';
+      };
+      $('notif-btn').addEventListener('click', async () => {
+        $('notif-btn').disabled = true;
+        const prefs = {}; document.querySelectorAll('[data-pp]').forEach((c) => { prefs[c.dataset.pp] = c.checked; });
+        const r = await Casino.pushEnable({ prefs, test: true });
+        if (window.Social && Social.enableNotifications) Social.enableNotifications().catch(() => {});
+        $('notif-btn').disabled = false; notifState();
+        if (r.error) $('notif-state').textContent = r.error;
+      });
+      $('notif-off').addEventListener('click', async () => { await Casino.pushDisable(); notifState(); });
+      document.querySelectorAll('[data-pp]').forEach((c) => c.addEventListener('change', async () => {
+        if (Casino.pushState() !== 'on') return;
+        const prefs = {}; document.querySelectorAll('[data-pp]').forEach((x) => { prefs[x.dataset.pp] = x.checked; });
+        const r = await Casino.pushEnable({ prefs }); $('notif-state').textContent = r.error || '✔ Préférences enregistrées.';
+      }));
       notifState();
       $('mp-join').addEventListener('submit', async (ev) => {
         ev.preventDefault();

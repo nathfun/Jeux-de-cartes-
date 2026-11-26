@@ -38,6 +38,79 @@ if (!process.env.GOOGLE_APPLICATION_CREDENTIALS && !process.env.FIREBASE_AUTH_EM
 
 const db = store.open(DATA_DIR);
 
+// ---------- Notifications push (rappels : coffre plein, bonus, amis) ----------
+const webpush = require('web-push');
+const SITE = process.env.SITE_URL || 'https://nathfun.github.io/Jeux-de-cartes-/';
+const vapid = (() => {
+  if (process.env.VAPID_PUBLIC && process.env.VAPID_PRIVATE) return { publicKey: process.env.VAPID_PUBLIC, privateKey: process.env.VAPID_PRIVATE };
+  const f = require('path').join(DATA_DIR, 'vapid.json');
+  try { return JSON.parse(require('fs').readFileSync(f, 'utf8')); } catch (e) { /* première fois */ }
+  const k = webpush.generateVAPIDKeys();
+  try { require('fs').writeFileSync(f, JSON.stringify(k), { mode: 0o600 }); } catch (e) { console.error('[casino] clés push non enregistrées', e.message); }
+  return k;
+})();
+webpush.setVapidDetails(SITE, vapid.publicKey, vapid.privateKey);
+const PUSH_PREFS = ['chest', 'bonus', 'friends', 'social'];
+/** Envoie une notification à tous les appareils d'un joueur (type : chest, bonus, friends, social). */
+async function pushTo(uid, type, msg) {
+  let n = 0;
+  for (const s of db.pushOf(uid)) {
+    if (s.prefs && s.prefs[type] === false) continue;
+    try {
+      await webpush.sendNotification(s.sub, JSON.stringify({ title: msg.title, body: msg.body, url: msg.url || SITE, tag: msg.tag || type }), { TTL: 6 * 3600, urgency: 'normal' });
+      n++;
+    } catch (e) {
+      if (e.statusCode === 404 || e.statusCode === 410) db.pushRemove(s.endpoint); // abonnement expiré
+      else console.error('[casino] push', e.statusCode || '', e.message);
+    }
+  }
+  return n;
+}
+function parisHour(t) { try { return Number(new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: 'numeric', hour12: false }).format(new Date(t))); } catch (e) { return new Date(t).getHours(); } }
+let pushBusy = false;
+async function pushRound() {
+  if (pushBusy) return; pushBusy = true;
+  try {
+    const t = Date.now(), h = parisHour(t), day = R.today(t);
+    const quiet = h < 9 || h >= 22; // pas de notification la nuit
+    for (const uid of db.pushUids()) {
+      const st = db.load(uid), P = st.player;
+      if (!P) continue;
+      // 🧰 coffre plein (une fois par remplissage)
+      const c = R.chestInfo(P, t);
+      if (c.full && !quiet && db.getState(uid, 'chest') !== String(P.chestAt)) {
+        db.setState(uid, 'chest', P.chestAt);
+        await pushTo(uid, 'chest', { title: '🧰 Ton coffre est plein !', body: c.cap + ' € t\'attendent. Ouvre-le pour qu\'il recommence à se remplir.', tag: 'chest' });
+      }
+      // 🎁 bonus du jour + roue (une fois par jour, en fin d'après-midi)
+      if (h >= 17 && h < 21 && db.getState(uid, 'bonus') !== day && (!P.bonus || P.bonus.last !== day)) {
+        db.setState(uid, 'bonus', day);
+        const streak = P.bonus && P.bonus.last === R.yesterday(t) ? P.bonus.streak : 0;
+        await pushTo(uid, 'bonus', { title: '🎁 Ton bonus du jour t\'attend', body: (streak ? 'Ne casse pas ta série de ' + streak + ' jour' + (streak > 1 ? 's' : '') + ' ! ' : '') + 'Et un tour de roue gratuit, jusqu\'à 1 000 €.', tag: 'bonus' });
+      }
+      // 🏆 un ami passe devant au classement « Gains du mois »
+      const subs = db.pushOf(uid), friends = [...new Set(subs.flatMap((s) => (s.prefs && s.prefs.friendList) || []))].slice(0, 100);
+      if (friends.length && !quiet) {
+        const mine = monthNetOf(P, t);
+        const ahead = friends.filter((f) => { const F = db.load(f).player; return F && monthNetOf(F, t) > mine; });
+        const before = JSON.parse(db.getState(uid, 'ahead:' + R.seasonOf(t)) || 'null');
+        if (before) {
+          const fresh = ahead.filter((f) => !before.includes(f));
+          if (fresh.length) {
+            const F = db.load(fresh[0]).player;
+            await pushTo(uid, 'friends', { title: '🏆 ' + (F.pseudo || 'Un ami') + ' t\'a dépassé !', body: 'Il est devant toi dans les gains du mois (+' + Math.round(monthNetOf(F, t)).toLocaleString('fr-FR') + ' €). Reprends ta place !', tag: 'friends' });
+          }
+        }
+        db.setState(uid, 'ahead:' + R.seasonOf(t), JSON.stringify(ahead));
+      }
+    }
+  } catch (e) { console.error('[casino] tournée des rappels', e.message); }
+  pushBusy = false;
+}
+const monthNetOf = (P, t) => (P.season && P.season.id === R.seasonOf(t) ? P.season.net || 0 : 0);
+setInterval(pushRound, 5 * 60000).unref();
+setTimeout(pushRound, 30000).unref();
+
 // ---------- Mesures (page « État du serveur » de l'admin) ----------
 const os = require('os');
 const fs = require('fs');
@@ -63,7 +136,7 @@ function status() {
     at: t, uptime: t - M.start, node: process.version, firebase: !!rtdb,
     memory: { rss: mem.rss, heap: mem.heapUsed, limit: Number(process.env.MEM_LIMIT_MB || 256) * 1048576 },
     load: os.loadavg().map((x) => Math.round(x * 100) / 100), cpus: os.cpus().length,
-    db: Object.assign({ size: dbSize }, db.stats()),
+    db: Object.assign({ size: dbSize, push: db.pushCount() }, db.stats()),
     requests: { m5: last(300000).length, h1: h.length, rejected: h.filter((r) => r.code === 422).length, errors: h.filter((r) => r.code >= 500).length, limited: M.limited },
     latency: { avg: lat.length ? Math.round(lat.reduce((a, b) => a + b, 0) / lat.length) : 0, p50: pct(0.5), p95: pct(0.95), max: lat.length ? lat[lat.length - 1] : 0 },
     online: { m5: online(300000), h1: online(3600000) },
@@ -143,6 +216,19 @@ async function isBanned(uid) {
 async function isAdmin(uid) { return !!rtdb && (await rtdb.ref('admins/' + uid).get().then((x) => x.val()).catch(() => null)) === true; }
 
 async function casino(uid, token, op, data) {
+  // abonnements aux notifications : gérés ici (pas d'argent en jeu)
+  if (op === 'push.sub' || op === 'push.unsub') {
+    if (token.firebase && token.firebase.sign_in_provider === 'anonymous') throw userError('Connecte-toi à ton compte.');
+    const d = data || {}, sub = d.sub || {};
+    if (typeof sub.endpoint !== 'string' || !/^https:\/\/[^\s]{10,500}$/.test(sub.endpoint)) throw userError('Abonnement invalide.');
+    if (op === 'push.unsub') { db.pushRemove(sub.endpoint); return { result: { ok: true } }; }
+    if (!sub.keys || typeof sub.keys.p256dh !== 'string' || typeof sub.keys.auth !== 'string' || sub.keys.p256dh.length > 200 || sub.keys.auth.length > 100) throw userError('Abonnement invalide.');
+    const prefs = {}; PUSH_PREFS.forEach((k) => { prefs[k] = !(d.prefs && d.prefs[k] === false); });
+    prefs.friendList = Array.isArray(d.friends) ? d.friends.filter((f) => typeof f === 'string' && /^[A-Za-z0-9]{10,40}$/.test(f) && f !== uid).slice(0, 100) : [];
+    db.pushAdd(uid, { endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } }, prefs);
+    if (d.test) await pushTo(uid, 'chest', { title: '🔔 Notifications activées', body: 'Tu seras prévenu quand ton coffre est plein, pour ton bonus et quand un ami te dépasse.', tag: 'test' });
+    return { result: { ok: true } };
+  }
   // un visiteur sans compte (connexion anonyme) ne crée rien sur le serveur : il faut un compte pour jouer
   if (token.firebase && token.firebase.sign_in_provider === 'anonymous') throw userError('Connecte-toi à ton compte pour jouer.');
   if (await isBanned(uid)) throw userError('Ton compte a été bloqué par l\'administrateur du Casino.');
@@ -386,6 +472,7 @@ const server = http.createServer(async (req, res) => {
       send(req, res, 200, { month, slots: db.hall('slots', month) });
       return;
     }
+    if (req.method === 'GET' && url.pathname === '/api/push-key') { send(req, res, 200, { key: vapid.publicKey }); return; }
     if (req.method === 'GET' && url.pathname === '/health') { send(req, res, 200, Object.assign({ ok: true, at: Date.now() }, db.stats())); return; }
     if (req.method !== 'POST' || (url.pathname !== '/api/casino' && url.pathname !== '/api/admin')) { send(req, res, 404, { error: 'Introuvable.' }); return; }
     if (req.headers.origin && !ORIGINS.includes(req.headers.origin) && !ORIGINS.includes('*')) { send(req, res, 403, { error: 'Origine non autorisée.' }); return; }

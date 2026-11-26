@@ -296,6 +296,7 @@
     put();
   }
   if (typeof document !== 'undefined') {
+    setTimeout(() => { try { if (Casino.pushState() === 'on' && Date.now() - (load().settings.pushAt || 0) > 86400000) Casino.pushEnable(); } catch (e) { /* ignore */ } }, 5000);
     const boot = () => { injectStyle(); salonPill(); try { document.documentElement.classList.toggle('is-vip', R.isVip(load(), Date.now())); } catch (e) { /* ignore */ } };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else setTimeout(boot, 0);
   }
@@ -847,6 +848,42 @@
       if (BANK) return { error: 'Le pass VIP demande le serveur du Casino.' };
       const r = local((N) => R.buyVip(P, pass, Date.now(), N));
       return r.error ? r : Object.assign({ ok: true }, r);
+    },
+    // ---------- Notifications push (rappels envoyés par le serveur, même app fermée) ----------
+    pushSupported() { return !!(API && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window); },
+    pushState() {
+      if (!Casino.pushSupported()) return 'unsupported';
+      if (Notification.permission === 'denied') return 'denied';
+      return Notification.permission === 'granted' && load().settings.push ? 'on' : 'off';
+    },
+    pushPrefs() { return Object.assign({ chest: true, bonus: true, friends: true, social: true }, load().settings.pushPrefs || {}); },
+    async pushEnable(opts) {
+      opts = opts || {};
+      if (!Casino.pushSupported()) return { error: 'Les notifications ne sont pas disponibles ici (sur iPhone : ajoute d\'abord l\'app à l\'écran d\'accueil, puis ouvre-la depuis l\'icône).' };
+      let perm = Notification.permission;
+      if (perm !== 'granted') { try { perm = await Notification.requestPermission(); } catch (e) { perm = 'denied'; } }
+      if (perm !== 'granted') return { error: 'Notifications refusées : réautorise-les dans les réglages du navigateur pour ce site.' };
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+          const k = await (await fetch(API + '/api/push-key')).json();
+          const raw = atob(k.key.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - k.key.length % 4) % 4));
+          sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: Uint8Array.from(raw, (c) => c.charCodeAt(0)) });
+        }
+        const prefs = Object.assign(Casino.pushPrefs(), opts.prefs || {});
+        const r = await call('push.sub', { sub: sub.toJSON(), prefs, friends: Object.keys(load().friends || {}), test: !!opts.test });
+        if (r.error) return r;
+        load(); P.settings.push = true; P.settings.pushPrefs = prefs; P.settings.pushAt = Date.now(); save();
+        return { ok: true };
+      } catch (e) { return { error: 'Impossible d\'activer les notifications : ' + (e && e.message || e) }; }
+    },
+    async pushDisable() {
+      try {
+        const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription();
+        if (sub) { await call('push.unsub', { sub: { endpoint: sub.endpoint } }); await sub.unsubscribe(); }
+      } catch (e) { /* ignore */ }
+      load(); P.settings.push = false; save();
     },
     wheel() { return R.wheelInfo(load(), Date.now()); },
     async spinWheel() {
