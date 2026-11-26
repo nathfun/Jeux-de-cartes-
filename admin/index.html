@@ -46,6 +46,7 @@
     .chart .tip { position: absolute; pointer-events: none; background: #1f2937; border: 1px solid var(--border); border-radius: 8px; padding: .3rem .5rem; font-size: .78rem; white-space: nowrap; transform: translate(-50%, -110%); }
     .legend { display: flex; gap: .9rem; flex-wrap: wrap; font-size: .78rem; color: var(--muted); margin-bottom: .3rem; } .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: .35rem; vertical-align: -1px; }
     table.mini { font-size: .85rem; } table.mini td, table.mini th { padding: .3rem .35rem; } .pos { color: var(--good); } .neg { color: var(--bad); }
+    .kpi.warn { border-color: var(--bad); }
     .alert { background: rgba(248,81,73,.1); border: 1px solid var(--bad); border-radius: 12px; padding: .6rem .8rem; margin-bottom: .8rem; font-size: .9rem; }
     .stats { display: flex; gap: .8rem; flex-wrap: wrap; margin-bottom: .6rem; font-size: .9rem; } .stats b { color: var(--gold); }
   </style>
@@ -78,6 +79,16 @@
         <div class="card"><h3>Les plus riches</h3><table class="mini" id="tb-rich"></table></div>
       </div>
     </section>
+    <section id="status-panel" class="panel dash" hidden style="grid-column:1/-1">
+      <div class="dash-head"><h2>🩺 État du serveur</h2><span id="st-at" class="small muted"></span><button id="st-reload" type="button">↻</button></div>
+      <div id="st-kpis" class="kpis"></div>
+      <h3>Requêtes par minute (dernière heure)</h3>
+      <div id="ch-req" class="chart"></div>
+      <div class="row2" style="align-items:flex-start;gap:1.2rem;flex-wrap:wrap">
+        <div style="flex:1;min-width:240px"><h3>Actions les plus fréquentes (1 h)</h3><table id="tb-ops" class="mini"></table></div>
+        <div style="flex:1;min-width:240px"><h3>Dernières erreurs</h3><div id="st-errors" class="small"></div></div>
+      </div>
+    </section>
     <section id="tools-panel" class="panel" hidden style="grid-column:1/-1">
       <h2>Outils</h2>
       <div class="tools">
@@ -98,9 +109,12 @@
       <p class="small muted">Identifiant : <code id="ed-uid"></code></p>
       <h3>Banque</h3>
       <div class="row2"><input id="ed-wallet" type="number" min="0" step="1" style="width:9em"> €
-        <button type="button" data-add="1000">+1 000</button><button type="button" data-add="10000">+10 000</button><button type="button" data-add="-1000">−1 000</button>
+        <button type="button" data-add="100">+100</button><button type="button" data-add="1000">+1 000</button><button type="button" data-add="-100">−100</button>
         <button id="save-wallet" class="gold" type="button">Enregistrer la banque</button></div>
       <p class="small muted" id="ed-sessions"></p>
+      <h3>👑 Pass VIP</h3>
+      <div class="row2"><span id="ed-vip" class="small"></span>
+        <button type="button" data-vip="7">+7 jours</button><button type="button" data-vip="30">+30 jours</button><button type="button" data-vip="-7">−7 jours</button></div>
       <div id="save-zone">
         <h3>Profil</h3>
         <div class="row2"><label>Pseudo <input id="ed-pseudo" maxlength="16" style="width:10em"></label>
@@ -116,11 +130,11 @@
       <h3>Actions sur le compte</h3>
       <div class="row2">
         <button id="act-close" type="button" title="Rend au joueur l'argent apporté sur ses tables en cours">💼 Fermer ses parties en cours</button>
-        <button id="act-reset" type="button" title="Banque à 10 000 €, niveau 1, objets et succès retirés">♻️ Remettre à zéro</button>
+        <button id="act-reset" type="button" title="Banque à 1 000 €, niveau 1, objets et succès retirés">♻️ Remettre à zéro</button>
         <button id="act-ban" type="button">⛔ Bloquer</button>
         <button id="act-del" class="danger" type="button">🗑️ Supprimer le compte</button>
       </div>
-      <label class="small muted" style="display:flex;gap:.4rem;align-items:center;margin-top:.4rem"><input id="del-block" type="checkbox" checked> En supprimant, empêcher ce compte de revenir (sinon il pourra revenir avec une nouvelle banque de 10 000 €)</label>
+      <label class="small muted" style="display:flex;gap:.4rem;align-items:center;margin-top:.4rem"><input id="del-block" type="checkbox" checked> En supprimant, empêcher ce compte de revenir (sinon il pourra revenir avec une nouvelle banque de 1 000 €)</label>
       <p id="no-save" class="small muted" hidden>Ce joueur n'a pas de sauvegarde de compte : seule sa banque est modifiable.</p>
       <p id="ed-msg" class="msg" role="status"></p>
     </section>

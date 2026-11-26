@@ -385,7 +385,7 @@
     if (!st || !tableId || !window.Social || !Social.lobbyBeat) return;
     if (!(st.host === me && !st.gameOver)) { if (lobbyLastInfo) { Social.lobbyRemove('poker', tableId, lobbyLastInfo); lobbyLastInfo = null; } return; }
     const sets = st.settings || {};
-    lobbyLastInfo = { name: st.name, host: myName(), players: st.seats.filter((x) => x.owner).length, max: st.seats.length, pub: sets.public !== false, lk: sets.lk, live: gameRunning(st) };
+    lobbyLastInfo = { name: st.name, host: myName(), players: st.seats.filter((x) => x.owner).length, max: st.seats.length, pub: sets.public !== false, vip: !!sets.vip, lk: sets.lk, live: gameRunning(st) };
     Social.lobbyBeat('poker', tableId, lobbyLastInfo);
   }
   setInterval(lobbyTick, 30000);
@@ -738,7 +738,7 @@
     if (needPseudo()) return;
     const [sb, bb] = $('pm-blinds').value.split('/').map(Number);
     const settings = { sb, bb, stack: bb * parseInt($('pm-stack').value, 10), turnTime: parseInt($('pm-turn').value, 10), coach: $('pm-coach').checked,
-      blindRule: $('pm-blindup').value, public: $('pm-public').checked, lk: Math.random().toString(36).slice(2, 10) };
+      blindRule: $('pm-blindup').value, public: $('pm-public').checked, vip: !!(window.Casino && Casino.isVip() && $('pm-vip').checked), lk: Math.random().toString(36).slice(2, 10) };
     try {
       const id = await net.createTable(initialPub($('pm-name').value.trim().slice(0, 30) || 'Poker de ' + myName(), settings));
       $('pm-name').value = '';
@@ -849,3 +849,6 @@
   // écran « Entre amis » dans le style de l'écran de lancement
   if (window.Casino && Casino.styleLobby) Casino.styleLobby(document.getElementById('pm-lobby'), 'poker', { join: '#pm-join', pseudo: '#pm-pseudo' });
 })();
+
+// option « Club privé VIP » visible seulement pour les membres
+(function () { const o = document.getElementById('pm-vip'); if (o && window.Casino) o.closest('label').hidden = !Casino.isVip(); })();

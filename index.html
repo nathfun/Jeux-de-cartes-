@@ -282,6 +282,36 @@
     .code { color: var(--gold); letter-spacing: .15em; font-size: 1.05rem; }
     .inline-form { display: flex; gap: .3rem; }
     .inline-form input { font: inherit; background: #0b0f14; color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: .3rem .5rem; width: 9ch; text-transform: uppercase; }
+    .wheel-panel .wh-wrap { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+    .wh-stage { position: relative; width: 210px; height: 210px; flex: none; margin: 0 auto; }
+    .wh-svg { width: 100%; height: 100%; transition: transform 4.6s cubic-bezier(.12,.75,.12,1); filter: drop-shadow(0 6px 16px rgba(0,0,0,.5)); }
+    .wh-pointer { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); color: var(--gold); font-size: 1.6rem; z-index: 2; text-shadow: 0 2px 4px #000; }
+    .wh-hub { position: absolute; left: 50%; top: 50%; width: 74px; height: 74px; margin: -37px 0 0 -37px; border-radius: 50%; border: 3px solid #fff3c4; background: radial-gradient(circle at 35% 30%, #fde68a, #e89a2c); color: #2a1d00; font: inherit; font-weight: 900; font-size: .72rem; cursor: pointer; box-shadow: 0 0 0 4px rgba(0,0,0,.35), 0 0 18px rgba(242,193,78,.6); animation: glow 1.6s ease-in-out infinite; }
+    .wh-hub:disabled { animation: none; filter: grayscale(.7); cursor: default; }
+    .wh-side { flex: 1; min-width: 180px; }
+    .wh-result { font-weight: 800; color: var(--gold); font-size: 1.15rem; min-height: 1.4em; }
+    .vip-panel { background: linear-gradient(135deg, #1b1407, #0d0b07 60%, #241a06); border-color: #8a6a1f; position: relative; overflow: hidden; }
+    .vip-panel::before { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255,230,150,.10) 45%, transparent 60%); animation: vipShine 5s linear infinite; pointer-events: none; }
+    @keyframes vipShine { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+    .vip-panel h2 { background: linear-gradient(90deg, #fde68a, #f5c542, #fff7d6); -webkit-background-clip: text; background-clip: text; color: transparent; margin: 0; }
+    .vp-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; flex-wrap: wrap; }
+    .vp-status { font-size: .8rem; font-weight: 700; padding: .15rem .6rem; border-radius: 999px; border: 1px solid #8a6a1f; color: #f5c542; }
+    .vp-perks { list-style: none; padding: 0; margin: .4rem 0 .8rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: .35rem .8rem; font-size: .88rem; color: #efe4c4; }
+    .vp-perks li { display: flex; gap: .45rem; align-items: baseline; }
+    .vp-buy { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .6rem; }
+    .vp-pass { font: inherit; text-align: left; color: #fff7d6; background: rgba(245,197,66,.08); border: 2px solid #8a6a1f; border-radius: 14px; padding: .7rem .8rem; cursor: pointer; display: flex; flex-direction: column; gap: .15rem; position: relative; }
+    .vp-pass:hover { border-color: #f5c542; }
+    .vp-pass b { font-size: 1rem; } .vp-pass .pr { color: #f5c542; font-weight: 900; font-size: 1.25rem; } .vp-pass small { color: #cbb88a; }
+    .vp-pass.best::after { content: 'MEILLEUR PRIX'; position: absolute; top: -9px; right: 10px; font-size: .62rem; font-weight: 900; background: #f5c542; color: #2a1d00; padding: .1rem .45rem; border-radius: 999px; }
+    .vp-pass.armed { border-color: #f5c542; box-shadow: 0 0 14px rgba(245,197,66,.45); }
+    html.is-vip .profile { border-color: #c9a23a; box-shadow: 0 0 0 1px rgba(245,197,66,.25), 0 10px 30px rgba(245,197,66,.08); }
+    html.is-vip .profile .avatar { position: relative; }
+    html.is-vip .profile .avatar::after { content: '👑'; position: absolute; top: -14px; right: -8px; font-size: 1.1rem; transform: rotate(18deg); }
+    .fr-vip { border-color: #f5c542 !important; box-shadow: 0 0 0 2px #2a1d00, 0 0 0 4px #f5c542, 0 0 16px rgba(245,197,66,.75) !important; }
+    .salon-next { font-size: .78rem; color: var(--muted); margin-top: .15rem; }
+    .vip-badge.is-pass { background: linear-gradient(135deg, #3a2a08, #1a1206); }
+    .mp-row.mp-vip { border-color: #8a6a1f !important; background: linear-gradient(135deg, rgba(245,197,66,.10), transparent) !important; }
+    .mp-viplock { color: #f5c542; font-weight: 700; }
     .vip-badge { font: inherit; font-size: .72rem; font-weight: 700; border-radius: 999px; padding: .12rem .55rem; border: 1px solid var(--border); background: #141a21; color: var(--text); cursor: pointer; }
     .vip-badge.v-argent { border-color: #cbd5e1; color: #e2e8f0; } .vip-badge.v-or { border-color: var(--gold); color: var(--gold); }
     .vip-badge.v-diamant { border-color: #67e8f9; color: #a5f3fc; box-shadow: 0 0 10px rgba(103,232,249,.35); }
@@ -412,6 +442,7 @@
         </div>
         <div class="xpbar" aria-hidden="true"><div id="xpfill"></div></div>
         <div id="xp-text" class="xp-text"></div>
+        <div id="salon-next" class="salon-next"></div>
         <div class="wallet-row">
           <span class="wallet" title="Ta banque">🏦 <span id="wallet">0</span> €</span>
           <button id="bonus" class="bonus-btn" type="button">🎁 Bonus du jour</button>
@@ -428,6 +459,31 @@
       </div>
       <p id="ls-text" class="ls-text"></p>
       <div class="ls-reset" id="ls-reset-row" hidden><button id="ls-reset" type="button" class="small">♻️ Remettre l'apprentissage à zéro</button><span id="ls-reset-msg" class="muted small"></span></div>
+    </section>
+
+    <section class="panel wheel-panel" aria-label="Roue du jour">
+      <div class="wh-wrap">
+        <div class="wh-stage">
+          <div class="wh-pointer" aria-hidden="true">▼</div>
+          <svg id="wheel" class="wh-svg" viewBox="-110 -110 220 220" aria-hidden="true"></svg>
+          <button id="wh-spin" class="wh-hub" type="button">TOURNER</button>
+        </div>
+        <div class="wh-side">
+          <h2>🎡 Roue du jour</h2>
+          <p id="wh-text" class="muted small-p"></p>
+          <p id="wh-result" class="wh-result" role="status"></p>
+        </div>
+      </div>
+    </section>
+
+    <section id="vip-panel" class="panel vip-panel" aria-label="Club VIP">
+      <div class="vp-head">
+        <h2>👑 Club VIP</h2>
+        <span id="vp-status" class="vp-status"></span>
+      </div>
+      <p id="vp-lead" class="small-p"></p>
+      <ul id="vp-perks" class="vp-perks"></ul>
+      <div id="vp-buy" class="vp-buy"></div>
     </section>
 
     <section class="games" aria-label="Jeux">
@@ -712,8 +768,10 @@
         $('lvl-title').textContent = tt && tt.id ? '« ' + tt.name + ' »' : Casino.title(lv);
         $('avatar').className = 'avatar fr-' + Casino.equipped('frame');
         const vip = Casino.vip(), nextVip = Casino.VIP.find((x) => x.lvl > lv);
-        $('vip-badge').textContent = vip.icon + ' ' + vip.name; $('vip-badge').className = 'vip-badge v-' + vip.id;
-        $('vip-badge').title = 'Mise max. ' + fmt(vip.max) + ' € par coup' + (nextVip ? ' · ' + nextVip.name + ' au niveau ' + nextVip.lvl + ' (' + fmt(nextVip.max) + ' €)' : '');
+        $('vip-badge').textContent = Casino.salonText(); $('vip-badge').className = 'vip-badge v-' + vip.id + (Casino.isVip() ? ' is-pass' : '');
+        $('vip-badge').title = nextVip ? nextVip.name + ' au niveau ' + nextVip.lvl + ' (max ' + fmt(nextVip.max) + ' €)' : 'Salon le plus haut atteint';
+        $('salon-next').textContent = nextVip ? 'Prochain salon : ' + nextVip.icon + ' ' + nextVip.name + ' au niveau ' + nextVip.lvl + ' (encore ' + (nextVip.lvl - lv) + ' niveau' + (nextVip.lvl - lv > 1 ? 'x' : '') + ') · mise max ' + fmt(nextVip.max * (Casino.isVip() ? 2 : 1)) + ' €' : '💎 Tu es dans le salon le plus prestigieux.';
+        renderVip(); renderWheel();
         $('xpfill').style.width = Math.round(((P.xp - cur) / (nxt - cur)) * 100) + '%';
         $('xp-text').textContent = fmt(P.xp - cur) + ' / ' + fmt(nxt - cur) + ' XP jusqu\'au niveau ' + (lv + 1);
         $('wallet').textContent = fmt(P.wallet);
@@ -792,6 +850,78 @@
         const t = Math.ceil(ms / 1000), h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), sec = t % 60;
         return h ? h + ' h ' + String(m).padStart(2, '0') + ' min' : m + ' min ' + String(sec).padStart(2, '0') + ' s';
       }
+      // ---------- Roue du jour ----------
+      (function drawWheel() {
+        const svg = $('wheel'), W = Casino.WHEEL, n = W.length, step = 360 / n;
+        const cols = ['#b91c1c', '#111827', '#15803d', '#111827', '#b91c1c', '#1e3a8a', '#111827', '#a16207', '#7c3aed'];
+        const pt = (a, r) => [Math.sin(a * Math.PI / 180) * r, -Math.cos(a * Math.PI / 180) * r];
+        let h = '<circle r="106" fill="#f2c14e"/>';
+        W.forEach((x, i) => {
+          const a0 = i * step - step / 2, a1 = a0 + step, [x0, y0] = pt(a0, 100), [x1, y1] = pt(a1, 100), [tx, ty] = pt(i * step, 70);
+          h += '<path d="M0 0L' + x0.toFixed(2) + ' ' + y0.toFixed(2) + 'A100 100 0 0 1 ' + x1.toFixed(2) + ' ' + y1.toFixed(2) + 'Z" fill="' + cols[i % cols.length] + '" stroke="#f2c14e" stroke-width="1.5"/>';
+          h += '<text x="' + tx.toFixed(1) + '" y="' + ty.toFixed(1) + '" fill="' + (x.v >= 500 ? '#fde68a' : '#fff') + '" font-size="' + (x.v >= 1000 ? 13 : 15) + '" font-weight="900" text-anchor="middle" dominant-baseline="middle" transform="rotate(' + (i * step) + ' ' + tx.toFixed(1) + ' ' + ty.toFixed(1) + ')">' + x.v + '</text>';
+        });
+        for (let i = 0; i < n * 2; i++) { const [bx, by] = pt(i * step / 2, 103); h += '<circle cx="' + bx.toFixed(1) + '" cy="' + by.toFixed(1) + '" r="2.2" fill="#fff7d6"/>'; }
+        svg.innerHTML = h;
+      })();
+      let wheelRot = 0, wheelBusy = false;
+      function renderWheel() {
+        const w = Casino.wheel();
+        $('wh-spin').disabled = wheelBusy || !w.left;
+        $('wh-text').textContent = w.left
+          ? 'Un tour gratuit chaque jour' + (w.max > 1 ? ' (deux pour toi, membre VIP 👑)' : '') + ' : de 20 € jusqu\'au jackpot de 1 000 €. Il te reste ' + w.left + ' tour' + (w.left > 1 ? 's' : '') + '.'
+          : 'Tu as utilisé ' + (w.max > 1 ? 'tes tours' : 'ton tour') + ' du jour. Reviens demain !' + (w.max > 1 ? '' : ' Les membres VIP ont deux tours par jour.');
+      }
+      $('wh-spin').addEventListener('click', async () => {
+        if (wheelBusy) return; wheelBusy = true; renderWheel();
+        if (window.Sfx && Sfx.unlock) Sfx.unlock();
+        $('wh-result').textContent = '';
+        const r = await Casino.spinWheel();
+        if (!r || r.error) { wheelBusy = false; $('wh-result').textContent = (r && r.error) || 'Impossible de tourner la roue.'; renderWheel(); return; }
+        const step = 360 / Casino.WHEEL.length, target = -r.index * step + (Math.random() - 0.5) * step * 0.6;
+        wheelRot = wheelRot - (wheelRot % 360) + 360 * 6 + target;
+        $('wheel').style.transform = 'rotate(' + wheelRot + 'deg)';
+        let ticks = 0; const tick = setInterval(() => { if (window.Sfx && Sfx.chips && ticks++ < 18) Sfx.chips(); }, 220);
+        setTimeout(() => {
+          clearInterval(tick); wheelBusy = false;
+          $('wh-result').textContent = '🎉 +' + fmt(r.amount) + ' € !';
+          if (r.amount >= 250) Casino.bigWin(r.amount, r.amount >= 1000 ? 'JACKPOT DE LA ROUE !' : 'ROUE DU JOUR');
+          else Casino.toast('Roue du jour', '+' + fmt(r.amount) + ' € sur ta banque', '🎡', 'gold');
+          render();
+        }, 4700);
+      });
+
+      // ---------- Club VIP ----------
+      let vipArmed = null, vipKey = '';
+      function renderVip() {
+        const vip = Casino.isVip(), until = Casino.vipUntil(), P = Casino.profile;
+        const key = (vip ? 'v' + until : 'n') + '|' + vipArmed + '|' + Math.floor(P.wallet / 500);
+        if (key === vipKey) return; vipKey = key;
+        $('vp-status').textContent = vip ? 'Membre jusqu\'au ' + new Date(until).toLocaleDateString('fr-FR') : 'Non membre';
+        $('vp-lead').textContent = vip
+          ? 'Bienvenue dans le club 🥂 Tes avantages sont actifs. Tu peux prolonger ton pass à tout moment : les jours s\'ajoutent.'
+          : 'Le pass VIP, c\'est le vrai traitement de faveur du Lounge. Pendant toute sa durée :';
+        const ul = $('vp-perks'); ul.innerHTML = '';
+        Casino.VIP_PERKS.forEach((k) => { const li = document.createElement('li'); const i = document.createElement('span'); i.textContent = k.icon; const t = document.createElement('span'); t.textContent = k.text; li.append(i, t); ul.appendChild(li); });
+        const box = $('vp-buy'); box.innerHTML = '';
+        Casino.VIP_PASS.forEach((ps) => {
+          const b = document.createElement('button'); b.type = 'button'; b.className = 'vp-pass' + (ps.best ? ' best' : '') + (vipArmed === ps.id ? ' armed' : '');
+          const n = document.createElement('b'); n.textContent = (vip ? 'Prolonger · ' : '') + ps.days + ' jours';
+          const pr = document.createElement('span'); pr.className = 'pr'; pr.textContent = fmt(ps.price) + ' €';
+          const sm = document.createElement('small'); sm.textContent = vipArmed === ps.id ? 'Touche encore pour confirmer' : Math.round(ps.price / ps.days) + ' € par jour' + (P.wallet < ps.price ? ' · il te manque ' + fmt(ps.price - P.wallet) + ' €' : '');
+          b.append(n, pr, sm);
+          b.disabled = P.wallet < ps.price;
+          b.addEventListener('click', async () => {
+            if (vipArmed !== ps.id) { vipArmed = ps.id; vipKey = ''; renderVip(); setTimeout(() => { if (vipArmed === ps.id) { vipArmed = null; vipKey = ''; renderVip(); } }, 4000); return; }
+            vipArmed = null; b.disabled = true;
+            const r = await Casino.buyVip(ps.id);
+            if (r.error) Casino.toast('Club VIP', r.error, '👑');
+            vipKey = ''; render();
+          });
+          box.appendChild(b);
+        });
+      }
+
       let lastChestKey = '';
       function renderTime() {
         const box = $('chest'), c = Casino.chest();
@@ -1127,14 +1257,16 @@
         }
         if (!list.length) { const p = document.createElement('p'); p.className = 'muted'; p.textContent = 'Aucune partie ouverte pour le moment : crée la tienne ! (Une table apparaît ici tant que son hôte reste dessus.)'; box.appendChild(p); }
         list.forEach((e) => {
-          const row = document.createElement('div'); row.className = 'mp-row';
+          const row = document.createElement('div'); row.className = 'mp-row' + (e.vip ? ' mp-vip' : '');
           const ic = document.createElement('span'); ic.className = 'mp-ic'; ic.textContent = GAME_ICON[e.game] || '🎲';
           const tx = document.createElement('div');
-          const b = document.createElement('b'); b.textContent = (e.pub ? '🌐 ' : '🔒 ') + e.name;
+          const b = document.createElement('b'); b.textContent = (e.vip ? '👑 ' : e.pub ? '🌐 ' : '🔒 ') + e.name + (e.vip ? ' · Club privé' : '');
           const sm = document.createElement('small'); sm.textContent = (e.live ? '🔴 En cours · ' : '') + GAME_NAME[e.game] + ' · par ' + (e.host || '?') + ' · ' + e.players + (e.max ? ' / ' + e.max : '') + ' joueur' + (e.players > 1 ? 's' : '');
           tx.append(b, sm);
           row.append(ic, tx);
-          if (e.pub && e.code) {
+          if (e.vip && !Casino.isVip()) {
+            const lock = document.createElement('small'); lock.className = 'mp-viplock'; lock.textContent = '👑 Réservé aux membres VIP'; row.appendChild(lock);
+          } else if (e.pub && e.code) {
             const a = document.createElement('a'); a.className = 'mp-go'; a.textContent = e.live ? '👁 Regarder' : 'Rejoindre'; a.href = Social.tableLink(e.game, e.code); row.appendChild(a);
           } else {
             const lock = document.createElement('small'); lock.textContent = 'Code requis'; row.appendChild(lock);
@@ -1324,7 +1456,8 @@
       $('opt-vibrate').addEventListener('change', (e) => { Casino.setSetting('vibrate', e.target.checked); if (e.target.checked) Casino.vibrate(40); });
       $('vip-badge').addEventListener('click', () => {
         const lv = Casino.levelOf(Casino.profile.xp);
-        Casino.toast('Salons VIP', Casino.VIP.map((v) => (lv >= v.lvl ? '✓ ' : '🔒 ') + v.icon + ' ' + v.name + ' (niv. ' + v.lvl + ') : ' + fmt(v.max) + ' € max').join(' · '), '🥂');
+        Casino.toast('Salons (selon ton niveau)', Casino.VIP.map((v) => (lv >= v.lvl ? '✓ ' : '🔒 ') + v.icon + ' ' + v.name + ' (niv. ' + v.lvl + ') : ' + fmt(v.max) + ' € max').join(' · ') + (Casino.isVip() ? ' — doublé avec ton pass VIP 👑' : ' — le pass VIP double ces mises'), '🥂');
+        $('vip-panel').scrollIntoView({ behavior: 'smooth', block: 'center' });
       });
       Casino.onChange(render);
       render();

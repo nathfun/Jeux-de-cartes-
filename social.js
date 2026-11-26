@@ -444,6 +444,7 @@
     const e = { uid: b.uid, game, name: String(info.name || 'Table').slice(0, 30), host: String(info.host || P().pseudo || 'Joueur').slice(0, 20),
       players: info.players | 0, max: info.max | 0, pub: !!info.pub, at: t };
     if (info.live) e.live = true;
+    if (info.vip) e.vip = true;
     if (info.pub) e.code = code;
     b.set('lobby/' + key, e).catch(() => {});
   }

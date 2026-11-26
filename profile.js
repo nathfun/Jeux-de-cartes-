@@ -51,6 +51,7 @@
       while (days.length > 31) delete P.bankHist[days.shift()];
     }
     try { localStorage.setItem(KEY, JSON.stringify(P)); } catch (e) { /* ignore */ }
+    try { document.documentElement.classList.toggle("is-vip", R.isVip(P, Date.now())); } catch (e) { /* ignore */ }
     listeners.forEach((f) => { try { f(P); } catch (e) { /* ignore */ } });
   }
 
@@ -85,6 +86,7 @@
   function showNotes(notes) {
     (notes || []).forEach((n) => {
       toast(n.title, n.text, n.icon, n.kind);
+      if (n.kind === 'salon' || n.kind === 'vip') celebrate(n);
       if (n.kind === 'level') { vibrate([40, 30, 80]); if (window.Sfx) Sfx.win(); }
       else if (n.kind === 'achievement') vibrate([30, 30, 30, 30, 90]);
       else if (n.kind === 'challenge') vibrate([40, 30, 40]);
@@ -253,6 +255,49 @@
     c.appendChild(el);
     setTimeout(() => el.classList.add('out'), 4200);
     setTimeout(() => el.remove(), 4800);
+  }
+
+  // ---------- Grande annonce : nouveau salon, bienvenue au club VIP ----------
+  function celebrate(n) {
+    injectStyle();
+    const o = document.createElement('div'); o.className = 'casino-celebrate' + (n.kind === 'vip' ? ' vip' : '');
+    const box = document.createElement('div'); box.className = 'cc-box';
+    const rays = document.createElement('div'); rays.className = 'cc-rays';
+    const ic = document.createElement('div'); ic.className = 'cc-icon'; ic.textContent = n.icon || '🥂';
+    const t = document.createElement('div'); t.className = 'cc-title'; t.textContent = n.title;
+    const p = document.createElement('div'); p.className = 'cc-text'; p.textContent = n.text || '';
+    box.append(rays, ic, t, p);
+    if (n.max) { const m = document.createElement('div'); m.className = 'cc-max'; m.textContent = 'Mise max : ' + n.max + ' €'; box.appendChild(m); }
+    const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'cc-ok'; ok.textContent = 'Génial !';
+    box.appendChild(ok); o.appendChild(box);
+    for (let i = 0; i < 26; i++) { const c = document.createElement('i'); c.textContent = ['✨', '🥂', '⭐', '💎', '👑'][i % 5]; c.style.left = (Math.random() * 100) + '%'; c.style.animationDelay = (Math.random() * 1.2) + 's'; o.appendChild(c); }
+    const close = () => { o.classList.add('out'); setTimeout(() => o.remove(), 350); };
+    o.addEventListener('click', close);
+    document.body.appendChild(o);
+    vibrate([60, 40, 60, 40, 160]);
+    if (window.Sfx) { Sfx.win(); setTimeout(() => Sfx.win(), 400); }
+  }
+
+  // Bandeau « Partie réelle » des jeux : on y ajoute le salon et la mise maximale
+  function salonPill() {
+    const b = document.getElementById('mode-badge');
+    if (!b || b.dataset.salonWatch) return;
+    b.dataset.salonWatch = '1';
+    const put = () => {
+      const real = b.classList.contains('real') && !b.hidden;
+      let pill = b.querySelector('.salon-pill');
+      if (!real) { if (pill) pill.remove(); return; }
+      const txt = Casino.salonText();
+      if (pill && pill.textContent === txt) return;
+      if (!pill) { pill = document.createElement('span'); pill.className = 'salon-pill'; b.appendChild(pill); }
+      pill.textContent = txt;
+    };
+    new MutationObserver(put).observe(b, { attributes: true, childList: true, characterData: true, subtree: true });
+    put();
+  }
+  if (typeof document !== 'undefined') {
+    const boot = () => { injectStyle(); salonPill(); try { document.documentElement.classList.toggle('is-vip', R.isVip(load(), Date.now())); } catch (e) { /* ignore */ } };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else setTimeout(boot, 0);
   }
 
   function vibrate(pattern) {
@@ -765,7 +810,7 @@
       if (v > 0) setTimeout(() => bigWin(v, place === 1 ? 'VICTOIRE ENTRE AMIS !' : '2e PLACE !'), 2200);
       return v;
     },
-    showRanking,
+    showRanking, celebrate,
     // ---------- Banque du temps ----------
     // ---------- Coffre (se remplit tout seul) et aide de secours ----------
     chest() { return R.chestInfo(load(), Date.now()); },
@@ -788,11 +833,28 @@
       }
       return local(() => R.claimRescue(P, Date.now()));
     },
-    // ---------- Salons VIP : mise maximale selon le niveau ----------
+    // ---------- Salons (selon le niveau) et pass VIP ----------
     vip() { return R.vipOf(load()); },
-    VIP: R.VIP,
-    /** Mise maximale par coup : salon VIP en partie réelle, tout est permis en apprentissage. */
-    maxBet() { return Casino.training ? 500 : R.maxBet(load()); },
+    VIP: R.VIP, VIP_PASS: R.VIP_PASS, VIP_PERKS: R.VIP_PERKS, WHEEL: R.WHEEL,
+    /** Mise maximale par coup : salon (×2 avec le pass VIP) en partie réelle, 500 € en apprentissage. */
+    maxBet() { return Casino.training ? 500 : R.maxBet(load(), Date.now()); },
+    isVip() { return R.isVip(load(), Date.now()); },
+    vipUntil() { return R.isVip(load(), Date.now()) ? load().vipUntil : 0; },
+    /** Texte court : « 🥈 Salon Argent · max 100 € » (+ couronne si VIP). */
+    salonText() { const v = R.vipOf(load()), vip = R.isVip(load(), Date.now()); return (vip ? '👑 ' : '') + v.icon + ' ' + v.name + ' · max ' + R.maxBet(load(), Date.now()) + ' €'; },
+    async buyVip(pass) {
+      if (SERVER) { const r = await call('vip.buy', { pass }); return r.error ? r : Object.assign({ ok: true }, r.result); }
+      if (BANK) return { error: 'Le pass VIP demande le serveur du Casino.' };
+      const r = local((N) => R.buyVip(P, pass, Date.now(), N));
+      return r.error ? r : Object.assign({ ok: true }, r);
+    },
+    wheel() { return R.wheelInfo(load(), Date.now()); },
+    async spinWheel() {
+      if (SERVER) { const r = await call('wheel.spin'); return r.error ? r : r.result; }
+      if (BANK) return { error: 'La roue demande le serveur du Casino.' };
+      const r = local((N) => R.spinWheel(P, Date.now(), (n) => Math.floor(Math.random() * n), N));
+      return r || { error: 'Plus de tour de roue aujourd\'hui.' };
+    },
     dailyOffer() { return R.dailyOffer(Date.now()); },
     challengeReward(def) { return R.challengeReward(def, load()); },
     // ---------- Progression (mode sans serveur ; avec le serveur, c'est lui qui compte) ----------
@@ -841,6 +903,20 @@
     styled = true;
     const s = document.createElement('style');
     s.textContent = `
+.casino-celebrate { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; background: radial-gradient(circle at 50% 45%, rgba(40,30,8,.92), rgba(0,0,0,.92)); overflow: hidden; animation: cc-fade .35s both; font: 15px system-ui, sans-serif; color: #f8f3e6; }
+.casino-celebrate.out { animation: cc-fade .35s reverse both; }
+.casino-celebrate .cc-box { position: relative; text-align: center; padding: 1.6rem 1.4rem; max-width: 340px; }
+.casino-celebrate .cc-rays { position: absolute; left: 50%; top: 2.6rem; width: 340px; height: 340px; margin: -170px 0 0 -170px; background: repeating-conic-gradient(rgba(245,197,66,.22) 0 10deg, transparent 10deg 20deg); border-radius: 50%; animation: cc-spin 9s linear infinite; mask: radial-gradient(circle, #000 20%, transparent 70%); -webkit-mask: radial-gradient(circle, #000 20%, transparent 70%); z-index: -1; }
+.casino-celebrate .cc-icon { font-size: 5rem; animation: cc-pop .8s cubic-bezier(.2,1.6,.4,1) both; filter: drop-shadow(0 0 22px rgba(245,197,66,.8)); }
+.casino-celebrate .cc-title { font-size: 1.6rem; font-weight: 900; margin-top: .4rem; background: linear-gradient(90deg, #fde68a, #f5c542, #fff7d6, #f5c542); -webkit-background-clip: text; background-clip: text; color: transparent; animation: cc-up .6s .25s both; }
+.casino-celebrate .cc-text { margin-top: .5rem; color: #e7dcc0; animation: cc-up .6s .4s both; }
+.casino-celebrate .cc-max { display: inline-block; margin-top: .8rem; padding: .35rem .9rem; border-radius: 999px; border: 1px solid #f5c542; color: #f5c542; font-weight: 800; animation: cc-up .6s .55s both; }
+.casino-celebrate .cc-ok { display: block; margin: 1.2rem auto 0; font: inherit; font-weight: 800; padding: .65rem 1.6rem; border: 0; border-radius: 999px; background: linear-gradient(180deg, #fde68a, #f5c542); color: #2a1d00; cursor: pointer; animation: cc-up .6s .7s both; }
+.casino-celebrate > i { position: absolute; top: -40px; font-style: normal; font-size: 1.4rem; animation: cc-fall 3.2s linear infinite; }
+@keyframes cc-fade { from { opacity: 0; } } @keyframes cc-spin { to { transform: rotate(360deg); } }
+@keyframes cc-pop { from { transform: scale(.2) rotate(-25deg); opacity: 0; } } @keyframes cc-up { from { transform: translateY(14px); opacity: 0; } }
+@keyframes cc-fall { to { transform: translateY(110vh) rotate(300deg); } }
+.salon-pill { display: inline-block; margin-left: .5rem; padding: .05rem .5rem; border-radius: 999px; background: rgba(245,197,66,.15); border: 1px solid rgba(245,197,66,.6); color: #f5c542; font-weight: 700; font-size: .85em; white-space: nowrap; }
 #casino-toasts { position: fixed; top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 100; display: flex; flex-direction: column; gap: .5rem; width: min(420px, calc(100vw - 24px)); pointer-events: none; }
 .casino-toast { display: flex; gap: .7rem; align-items: center; background: #1a2129; color: #e8ecef; border: 2px solid #f2c14e; border-radius: 14px; padding: .6rem .8rem; box-shadow: 0 10px 30px rgba(0,0,0,.55); animation: ct-in .45s cubic-bezier(.2,.9,.3,1.3) both; font: 14px system-ui, sans-serif; }
 .casino-toast.out { animation: ct-out .5s ease-in forwards; }

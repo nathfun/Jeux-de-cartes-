@@ -578,7 +578,7 @@
     if (!st || !tableId || !window.Social || !Social.lobbyBeat) return;
     if (!(st.creator === me && !st.gameEnd)) { if (lobbyLastInfo) { Social.lobbyRemove('blackjack', tableId, lobbyLastInfo); lobbyLastInfo = null; } return; }
     const sets = st.settings || {};
-    lobbyLastInfo = { name: st.name, host: myName(), players: new Set(st.seats.map((x) => x.owner).filter(Boolean)).size, max: 5, pub: sets.public !== false, lk: sets.lk };
+    lobbyLastInfo = { name: st.name, host: myName(), players: new Set(st.seats.map((x) => x.owner).filter(Boolean)).size, max: 5, pub: sets.public !== false, vip: !!sets.vip, lk: sets.lk };
     Social.lobbyBeat('blackjack', tableId, lobbyLastInfo);
   }
   setInterval(lobbyTick, 30000);
@@ -1165,7 +1165,7 @@
         turnTime: parseInt($('set-turn').value, 10) || 20,
         betTime: parseInt($('set-bettime').value, 10) || 15,
         noHole: $('set-rule').value !== 'us',
-        public: $('set-public').checked, lk: Math.random().toString(36).slice(2, 10),
+        public: $('set-public').checked, vip: !!(window.Casino && Casino.isVip() && $('set-vip').checked), lk: Math.random().toString(36).slice(2, 10),
         hands: parseInt($('set-hands').value, 10) || 20,
       });
       const id = await net.createTable(st);
@@ -1292,3 +1292,6 @@
   // écran « Entre amis » dans le style de l'écran de lancement
   if (window.Casino && Casino.styleLobby) Casino.styleLobby(document.getElementById('lobby'), 'blackjack', { join: '#join-code', pseudo: '#pseudo' });
 })();
+
+// option « Club privé VIP » visible seulement pour les membres
+(function () { const o = document.getElementById('set-vip'); if (o && window.Casino) o.closest('label').hidden = !Casino.isVip(); })();

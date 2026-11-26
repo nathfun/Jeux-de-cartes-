@@ -144,6 +144,11 @@
   FRAMES.push({ id: 'platine', name: 'Platine (prestige)', level: 25, price: 5000 });
   TITLES.push({ id: 'magnat', name: 'Magnat (prestige)', level: 20, price: 4000 }, { id: 'baron', name: 'Baron du Lounge (prestige)', level: 30, price: 8000 });
   THEMES.push({ id: 'platine', name: 'Platine (prestige)', level: 25, price: 6000, bg: '#0e1114', panel: '#1b2127', border: '#3d4852', accent: '#e5e7eb' });
+  // Objets VIP : portés seulement tant que le pass VIP est actif
+  FRAMES.push({ id: 'vip', name: 'Couronne VIP', level: 1, price: 0, vipOnly: true });
+  TITLES.push({ id: 'membre_vip', name: 'Membre VIP', level: 1, price: 0, vipOnly: true });
+  THEMES.push({ id: 'lounge', name: 'Lounge VIP', level: 1, price: 0, vipOnly: true, bg: '#0b0906', panel: '#17120a', border: '#5c4516', accent: '#f5c542' });
+  EFFECTS.push({ id: 'champagne', name: 'Champagne VIP', level: 1, price: 0, vipOnly: true, emojis: ['🍾', '🥂', '✨', '👑'] });
   // Objets rares : vendus seulement le jour où ils sont dans la « boutique du jour »
   FELTS.push({ id: 'aurore', name: 'Aurore boréale', level: 1, price: 900, a: '#0f766e', b: '#4c1d95', daily: true });
   BACKS.push({ id: 'holo', name: 'Holographique', level: 1, price: 700, a: '#67e8f9', b: '#f0abfc', daily: true });
@@ -179,6 +184,7 @@
   function canUse(P, kind, id) {
     const it = itemOf(kind, id);
     if (!it) return false;
+    if (it.vipOnly) return isVip(P);
     if (it.exclusive || it.daily) return !!(P.owned && P.owned[ownKey(kind, id)]);
     if (levelOf(P.xp) < it.level) return false;
     return !it.price || !!(P.owned && P.owned[ownKey(kind, id)]);
@@ -284,6 +290,7 @@
     { id: 'rich25', icon: '🏦', name: 'Grosse banque', text: 'Avoir 2 500 € en banque' },
     { id: 'rich100', icon: '👑', name: 'Millionnaire en herbe', text: 'Avoir 10 000 € en banque' },
     { id: 'vip', icon: '🥂', name: 'Salon VIP', text: 'Entrer dans le salon Argent (niveau 10)' },
+    { id: 'vip_pass', icon: '👑', name: 'Membre du club', text: 'Prendre un pass VIP' },
   ];
 
   // Coffre : il se remplit tout seul (CHEST_RATE € par heure, au plus CHEST_CAP €) ; on l'ouvre quand on veut
@@ -298,7 +305,61 @@
     { lvl: 30, id: 'diamant', name: 'Salon Diamant', icon: '💎', max: 500 },
   ];
   function vipOf(P) { const lv = levelOf(P.xp || 0); let v = VIP[0]; VIP.forEach((x) => { if (lv >= x.lvl) v = x; }); return v; }
-  const maxBet = (P) => vipOf(P).max;
+  // Pass VIP (acheté avec l'argent du jeu ; prévu pour pouvoir être offert ou payé autrement plus tard)
+  const VIP_PASS = [
+    { id: 'week', name: 'Pass VIP · 7 jours', days: 7, price: 1500 },
+    { id: 'month', name: 'Pass VIP · 30 jours', days: 30, price: 4500, best: true },
+  ];
+  const VIP_PERKS = [
+    { icon: '💰', text: 'Mises maximales doublées dans ton salon' },
+    { icon: '🧰', text: 'Coffre deux fois plus rapide et deux fois plus grand' },
+    { icon: '🎡', text: 'Deux tours de roue par jour au lieu d\'un' },
+    { icon: '⭐', text: '+25 % d\'XP sur tout ce que tu fais' },
+    { icon: '🃏', text: 'Une carte de booster offerte en plus chaque jour' },
+    { icon: '🥂', text: 'Clubs privés en multijoueur : prix doublés' },
+    { icon: '🏷️', text: 'Frais du marché divisés par deux' },
+    { icon: '👑', text: 'Couronne, cadre, titre et thème VIP réservés aux membres' },
+  ];
+  const isVip = (P, now) => !!(P && P.vipUntil && P.vipUntil > (now || Date.now()));
+  const maxBet = (P, now) => vipOf(P).max * (isVip(P, now) ? 2 : 1);
+  function buyVip(P, id, now, N) {
+    const pass = VIP_PASS.find((x) => x.id === id);
+    if (!pass) return { error: 'Pass inconnu.' };
+    if (P.wallet < pass.price) return { error: 'Il te manque ' + Math.ceil(pass.price - P.wallet).toLocaleString('fr-FR') + ' €.' };
+    P.wallet -= pass.price;
+    grantVip(P, pass.days, now, 'jeu');
+    unlock(P, 'vip_pass', N);
+    N.push({ kind: 'vip', title: 'Bienvenue au club VIP 👑', text: 'Ton pass est actif jusqu\'au ' + new Date(P.vipUntil).toLocaleDateString('fr-FR') + '.', icon: '👑' });
+    return { price: pass.price, until: P.vipUntil };
+  }
+  /** Prolonge le VIP de `days` jours (achat dans le jeu, cadeau de l'admin, et plus tard paiement réel). */
+  function grantVip(P, days, now, source) {
+    const from = Math.max(now, P.vipUntil || 0);
+    P.vipUntil = from + days * 86400000;
+    P.vipLog = (P.vipLog || []).concat([{ at: now, days, source: source || 'jeu' }]).slice(-20);
+    return P.vipUntil;
+  }
+  // Roue de la fortune : un tour gratuit par jour (deux pour les VIP)
+  const WHEEL = [
+    { v: 20, w: 240 }, { v: 50, w: 200 }, { v: 30, w: 220 }, { v: 100, w: 100 }, { v: 75, w: 130 },
+    { v: 250, w: 35 }, { v: 150, w: 60 }, { v: 1000, w: 3 }, { v: 500, w: 12 },
+  ];
+  function wheelInfo(P, now) {
+    const d = today(now), used = P.wheel && P.wheel.day === d ? P.wheel.n : 0, max = isVip(P, now) ? 2 : 1;
+    return { left: Math.max(0, max - used), max, used };
+  }
+  function spinWheel(P, now, rnd, N) {
+    if (!wheelInfo(P, now).left) return null;
+    const total = WHEEL.reduce((a, x) => a + x.w, 0);
+    let r = rnd(total), idx = 0;
+    while (r >= WHEEL[idx].w) { r -= WHEEL[idx].w; idx++; }
+    const d = today(now);
+    P.wheel = { day: d, n: (P.wheel && P.wheel.day === d ? P.wheel.n : 0) + 1 };
+    P.wallet += WHEEL[idx].v;
+    addXP(P, 10, N);
+    checkWallet(P, N);
+    return { index: idx, amount: WHEEL[idx].v };
+  }
   const TIME_PACKS = []; // ancienne banque du temps (remplacée par le coffre)
 
   const START_WALLET = 1000;
@@ -354,7 +415,8 @@
   }
 
   function addXP(P, n, N) {
-    const before = levelOf(P.xp);
+    const before = levelOf(P.xp), salonBefore = vipOf(P);
+    if (isVip(P)) n *= 1.25;
     P.xp += Math.round(n);
     ensureSeason(P, Date.now(), N).xp += Math.round(n);
     const after = levelOf(P.xp);
@@ -363,6 +425,8 @@
       const unlocked = [];
       for (let l = before + 1; l <= after; l++) unlocksAt(l).forEach((it) => unlocked.push(it.name + (it.price ? ' (boutique)' : '')));
       N.push({ kind: 'level', title: 'Niveau ' + after + ' !', text: title(after) + (unlocked.length ? ' — nouveau : ' + unlocked.slice(0, 4).join(', ') + (unlocked.length > 4 ? '…' : '') : ''), icon: '⬆️' });
+      const salon = vipOf(P);
+      if (salon.id !== salonBefore.id) N.push({ kind: 'salon', title: 'Nouveau salon : ' + salon.name, text: 'Tu peux maintenant miser jusqu\'à ' + salon.max + ' € par coup' + (isVip(P) ? ' (' + salon.max * 2 + ' € avec ton pass VIP)' : '') + '.', icon: salon.icon, salon: salon.id, max: salon.max });
       if (after >= 10) unlock(P, 'lvl10', N);
       if (after >= 20) unlock(P, 'lvl20', N);
       if (after >= 30) unlock(P, 'lvl30', N);
@@ -557,9 +621,10 @@
 
   // Coffre qui se remplit tout seul
   function chestInfo(P, now) {
-    const amount = Math.min(CHEST_CAP, Math.floor(((now - (P.chestAt || now)) / 3600000) * CHEST_RATE));
-    const full = amount >= CHEST_CAP;
-    return { amount, cap: CHEST_CAP, rate: CHEST_RATE, full, fullIn: full ? 0 : Math.ceil((CHEST_CAP - amount) / CHEST_RATE * 3600000), since: P.chestAt };
+    const k = isVip(P, now) ? 2 : 1, cap = CHEST_CAP * k, rate = CHEST_RATE * k;
+    const amount = Math.min(cap, Math.floor(((now - (P.chestAt || now)) / 3600000) * rate));
+    const full = amount >= cap;
+    return { amount, cap, rate, full, vip: k > 1, fullIn: full ? 0 : Math.ceil((cap - amount) / rate * 3600000), since: P.chestAt };
   }
   function claimChest(P, now, N) {
     const c = chestInfo(P, now);
@@ -660,6 +725,7 @@
       biggestWin: Math.round(P.totals.biggestWin || 0), hands: P.totals.hands, achievements: Object.keys(P.achievements).length,
       code: code || null, updatedAt: Date.now(),
       monthNet: P.season && P.season.id === seasonOf(Date.now()) ? Math.round(P.season.net || 0) : 0, month: seasonOf(Date.now()),
+      vipUntil: isVip(P) ? P.vipUntil : 0,
     };
   }
 
@@ -669,6 +735,7 @@
     need, levelOf, title, today, fresh, normalize, addXP, unlock, checkWallet, ensureDaily, track,
     bonusInfo, claimBonus, claimChallenge, timeInfo, startTime, claimTime, startSession, cashOut,
     prizeFor, prizeText, applyPrize, publicProfile, REF_BONUS, REF_MIN_HANDS, REF_MAX,
+    VIP_PASS, VIP_PERKS, isVip, buyVip, grantVip, WHEEL, wheelInfo, spinWheel,
     CHEST_RATE, CHEST_CAP, RESCUE_BELOW, RESCUE_AMOUNT, VIP, vipOf, maxBet, chestInfo, claimChest, rescueInfo, claimRescue, challengeReward, dailyOffer,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

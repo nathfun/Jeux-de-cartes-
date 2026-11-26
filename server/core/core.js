@@ -362,7 +362,7 @@ function handle(state, ctx) {
   const P = R.normalize(state.player, now);
   // passage à la nouvelle économie (÷ 10) : les manches en cours sont abandonnées (l'argent des tables est déjà rendu)
   if (P._econMigrated) { delete P._econMigrated; state.secret = {}; N.push({ kind: 'gold', icon: '💶', title: 'Nouvelle économie', text: 'Tous les montants du Casino sont divisés par 10 : ta banque est maintenant de ' + Math.round(P.wallet).toLocaleString('fr-FR') + ' €. Les mises maximales montent avec ton niveau (salons VIP).' }); }
-  MAX_BET = R.maxBet(P);
+  MAX_BET = R.maxBet(P, now);
   if (!state.player || !P.pseudo) { const ps = String(ctx.data && ctx.data.pseudo || '').trim().slice(0, 16); if (ps) P.pseudo = ps; }
   const S = state.secret || {};
   const d = ctx.data || {};
@@ -397,6 +397,8 @@ function handle(state, ctx) {
     }
     case 'bonus.claim': result.amount = R.claimBonus(P, now, N); break;
     case 'challenge.claim': result.amount = R.claimChallenge(P, String(d.id), now, N); break;
+    case 'vip.buy': { const r = R.buyVip(P, String(d.pass), now, N); if (r.error) fail(r.error); result = r; break; }
+    case 'wheel.spin': { const r = R.spinWheel(P, now, ctx.rnd, N); if (!r) fail('Plus de tour de roue aujourd\'hui : reviens demain !'); result = r; break; }
     case 'chest.claim': result.amount = R.claimChest(P, now, N); if (!result.amount) fail('Le coffre est encore vide.'); break;
     case 'rescue.claim': result.amount = R.claimRescue(P, now); if (!result.amount) fail('L\'aide de secours n\'est pas disponible.'); break;
     case 'session.start': {
@@ -541,6 +543,8 @@ function handle(state, ctx) {
       if (P.prizes[v.key]) { result.amount = 0; break; }
       if (P.prizeDay.n >= 5) { P.prizes[v.key] = now; result.amount = 0; result.capped = true; break; }
       result.amount = R.applyPrize(P, v.key, v.place, v.players, now, N);
+      // club privé (table VIP) : prix doublé pour les membres VIP
+      if (result.amount && t0vip(ctx.table) && R.isVip(P, now)) { P.wallet += result.amount; result.amount *= 2; result.vipClub = true; }
       if (result.amount) P.prizeDay.n++;
       result.place = v.place; result.players = v.players;
       break;
@@ -553,6 +557,7 @@ function handle(state, ctx) {
 }
 
 // Vérifie la fin de partie d'une table entre amis et la place du joueur
+const t0vip = (t) => !!(t && (t.vip || (t.settings && t.settings.vip)));
 function verifyTable(uid, game, t, now) {
   if (!t) fail('Table introuvable.');
   const recent = (at) => at && now - at < 30 * 60000;

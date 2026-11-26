@@ -245,7 +245,7 @@
     if (!st || !tableId || !window.Social || !Social.lobbyBeat) return;
     if (!(st.creator === me && st.phase !== 'over')) { if (lobbyLastInfo) { Social.lobbyRemove('roulette', tableId, lobbyLastInfo); lobbyLastInfo = null; } return; }
     const sets = st.settings || {};
-    lobbyLastInfo = { name: st.name, host: myName(), players: Object.keys(st.players || {}).length, max: 8, pub: sets.public !== false, lk: sets.lk };
+    lobbyLastInfo = { name: st.name, host: myName(), players: Object.keys(st.players || {}).length, max: 8, pub: sets.public !== false, vip: !!sets.vip, lk: sets.lk };
     Social.lobbyBeat('roulette', tableId, lobbyLastInfo);
   }
   setInterval(lobbyTick, 30000);
@@ -413,7 +413,7 @@
   $('rm-create').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (needPseudo()) return;
-    const settings = { bank: +$('rm-bank').value, betTime: +$('rm-bettime').value, rounds: +$('rm-rounds').value, coach: $('rm-coach').checked, public: $('rm-public').checked, lk: Math.random().toString(36).slice(2, 10) };
+    const settings = { bank: +$('rm-bank').value, betTime: +$('rm-bettime').value, rounds: +$('rm-rounds').value, coach: $('rm-coach').checked, public: $('rm-public').checked, vip: !!(window.Casino && Casino.isVip() && $('rm-vip').checked), lk: Math.random().toString(36).slice(2, 10) };
     try {
       const id = await net.createTable(initial($('rm-name').value.trim().slice(0, 30) || 'Roulette de ' + myName(), settings));
       $('rm-name').value = '';
@@ -503,3 +503,6 @@
   // écran « Entre amis » dans le style de l'écran de lancement
   if (window.Casino && Casino.styleLobby) Casino.styleLobby(document.getElementById('rm-lobby'), 'roulette', { join: '#rm-join', pseudo: '#rm-pseudo' });
 })();
+
+// option « Club privé VIP » visible seulement pour les membres
+(function () { const o = document.getElementById('rm-vip'); if (o && window.Casino) o.closest('label').hidden = !Casino.isVip(); })();

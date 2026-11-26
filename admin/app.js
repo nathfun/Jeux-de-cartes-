@@ -24,6 +24,7 @@
   $('list-panel').hidden = false;
   $('tools-panel').hidden = false;
   $('dash-panel').hidden = !String(window.CASINO_API || '');
+  $('status-panel').hidden = !String(window.CASINO_API || '');
   // Avec le serveur du Casino (NAS) : la banque et la progression des joueurs sont sur le serveur, on passe par lui
   const API = String(window.CASINO_API || '').replace(/\/+$/, '');
   async function adm(op, data) {
@@ -44,7 +45,7 @@
     if (API) {
       let r;
       try { r = await adm('list'); } catch (e) { $('stats').textContent = 'Serveur du Casino injoignable : ' + e.message; return; }
-      players = r.players.map((p) => ({ uid: p.uid, pseudo: p.pseudo, avatar: p.avatar, level: p.level, xp: p.xp, wallet: p.wallet, onTables: p.onTables, updatedAt: p.updated, ses: Object.keys(p.sessions).length ? p.sessions : null }));
+      players = r.players.map((p) => ({ uid: p.uid, pseudo: p.pseudo, avatar: p.avatar, level: p.level, xp: p.xp, wallet: p.wallet, onTables: p.onTables, updatedAt: p.updated, vipUntil: p.vipUntil || 0, ses: Object.keys(p.sessions).length ? p.sessions : null }));
       r.players.forEach((p) => { if (p.banned) banned[p.uid] = banned[p.uid] || true; });
       const total = players.reduce((a, p) => a + p.wallet + (p.onTables || 0), 0);
       const notYet = Object.keys(profiles || {}).filter((u) => !players.some((p) => p.uid === u)).length;
@@ -86,6 +87,7 @@
     $('ed-title').textContent = p.avatar + ' ' + p.pseudo;
     $('ed-uid').textContent = p.uid;
     $('ed-wallet').value = Math.round(p.wallet);
+    $('ed-vip').textContent = !API ? 'Nécessite le serveur.' : p.vipUntil ? 'Membre jusqu\'au ' + new Date(p.vipUntil).toLocaleDateString('fr-FR') : 'Pas membre';
     $('act-ban').textContent = banned[p.uid] ? '✅ Débloquer' : '⛔ Bloquer';
     $('ed-sessions').textContent = p.ses ? 'Parties réelles en cours : ' + Object.entries(p.ses).map(([g, v]) => g + ' (' + fmt(v) + ' €' + (API ? ' sur la table' : ' apportés') + ')').join(', ') : '';
     let led = $('ed-ledger');
@@ -314,6 +316,37 @@
     table($('tb-rich'), ['Joueur', 'Niv.', 'Argent'], d.richest.map((r) => [r.name, String(r.level), fmt(r.money) + ' €']));
   }
   $('dash-reload').addEventListener('click', loadDash);
+  document.querySelectorAll('[data-vip]').forEach((b) => b.addEventListener('click', async () => {
+    if (!sel || !API) return;
+    const days = +b.dataset.vip;
+    try { await adm('vip', { uid: sel.uid, days }); await refresh('Pass VIP : ' + (days > 0 ? '+' : '') + days + ' jours.', 'ok'); } catch (e) { msg('Refusé : ' + e.message, 'err'); }
+  }));
+  // ---------- État du serveur ----------
+  const bytes = (n) => (n >= 1073741824 ? (n / 1073741824).toFixed(2) + ' Go' : n >= 1048576 ? (n / 1048576).toFixed(1) + ' Mo' : Math.round(n / 1024) + ' Ko');
+  const ago = (ms) => { const m = Math.floor(ms / 60000), h = Math.floor(m / 60), d = Math.floor(h / 24); return d ? d + ' j ' + (h % 24) + ' h' : h ? h + ' h ' + (m % 60) + ' min' : m + ' min'; };
+  async function loadStatus() {
+    if (!API || $('status-panel').hidden) return;
+    let d;
+    try { d = await adm('status'); } catch (e) { $('st-kpis').innerHTML = '<div class="alert">🔴 Serveur injoignable ou trop ancien (mets à jour le NAS) : ' + e.message + '</div>'; return; }
+    $('st-at').textContent = '🟢 en ligne · mis à jour à ' + new Date(d.at).toLocaleTimeString('fr-FR');
+    const kpi = (label, val, sub, warn) => '<div class="kpi' + (warn ? ' warn' : '') + '"><small>' + label + '</small><b>' + val + '</b>' + (sub ? '<span>' + sub + '</span>' : '') + '</div>';
+    const memPct = Math.round(d.memory.rss / d.memory.limit * 100);
+    $('st-kpis').innerHTML = kpi('Allumé depuis', ago(d.uptime), 'Node ' + d.node + (d.firebase ? ' · Firebase ✓' : ' · ⚠️ Firebase absent'), !d.firebase)
+      + kpi('Joueurs connectés', fmt(d.online.m5), fmt(d.online.h1) + ' sur la dernière heure')
+      + kpi('Requêtes', fmt(d.requests.m5) + ' / 5 min', fmt(d.requests.h1) + ' sur 1 h · ' + fmt(d.requests.rejected) + ' refusées (règles)')
+      + kpi('Temps de réponse', d.latency.p50 + ' ms', 'moyenne ' + d.latency.avg + ' ms · 95 % sous ' + d.latency.p95 + ' ms · max ' + d.latency.max + ' ms', d.latency.p95 > 800)
+      + kpi('Erreurs (1 h)', fmt(d.requests.errors), fmt(d.requests.limited) + ' requêtes freinées (anti-abus) depuis le démarrage', d.requests.errors > 0)
+      + kpi('Mémoire', bytes(d.memory.rss), memPct + ' % de la limite (' + bytes(d.memory.limit) + ')', memPct > 80)
+      + kpi('Base de données', bytes(d.db.size), fmt(d.db.players) + ' joueurs · ' + fmt(d.db.ledger) + ' lignes au journal')
+      + kpi('Charge du NAS', d.load[0].toFixed(2), d.cpus + ' cœurs · 5 min ' + d.load[1].toFixed(2) + ' · 15 min ' + d.load[2].toFixed(2), d.load[0] > d.cpus);
+    barChart($('ch-req'), d.minutes.map((m, i) => ({ label: i === 59 ? 'maint.' : '−' + (59 - i) + ' min', title: (59 - i) ? 'il y a ' + (59 - i) + ' min' : 'cette minute', values: [m.n, m.err] })), [{ name: 'Requêtes', color: 'var(--s1)' }, { name: 'Erreurs', color: 'var(--s2)' }], { aria: 'Requêtes par minute', fmt: (v) => fmt(v) });
+    table($('tb-ops'), ['Action', 'Nombre'], d.topOps.map(([k, v]) => [k, fmt(v)]));
+    $('st-errors').innerHTML = '';
+    if (!d.errors.length) $('st-errors').textContent = '✅ Aucune erreur depuis le démarrage.';
+    d.errors.forEach((e) => { const x = document.createElement('div'); x.className = 'alert'; x.textContent = new Date(e.t).toLocaleTimeString('fr-FR') + ' · ' + (e.op || '?') + ' · ' + e.msg; $('st-errors').appendChild(x); });
+  }
+  $('st-reload').addEventListener('click', loadStatus);
+  loadStatus(); setInterval(loadStatus, 20000);
   loadDash();
   load();
 })();

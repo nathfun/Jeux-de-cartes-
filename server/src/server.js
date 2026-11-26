@@ -38,6 +38,39 @@ if (!process.env.GOOGLE_APPLICATION_CREDENTIALS && !process.env.FIREBASE_AUTH_EM
 
 const db = store.open(DATA_DIR);
 
+// ---------- Mesures (page « État du serveur » de l'admin) ----------
+const os = require('os');
+const fs = require('fs');
+const M = { start: Date.now(), reqs: [], errors: [], seen: new Map(), limited: 0 };
+function measure(code, ms, uid, op, msg) {
+  const t = Date.now();
+  M.reqs.push({ t, code, ms, op });
+  if (M.reqs.length > 20000 || (M.reqs[0] && t - M.reqs[0].t > 3600000)) M.reqs = M.reqs.filter((r) => t - r.t <= 3600000);
+  if (uid) M.seen.set(uid, t);
+  if (code === 429) M.limited++;
+  if (code >= 500) { M.errors.push({ t, op: op || '', msg: String(msg || 'erreur').slice(0, 200) }); if (M.errors.length > 30) M.errors.shift(); }
+}
+function status() {
+  const t = Date.now(), last = (ms) => M.reqs.filter((r) => t - r.t <= ms);
+  const h = last(3600000), lat = h.map((r) => r.ms).sort((a, b) => a - b);
+  const pct = (q) => (lat.length ? lat[Math.min(lat.length - 1, Math.floor(lat.length * q))] : 0);
+  const minutes = []; for (let k = 59; k >= 0; k--) { const a = t - (k + 1) * 60000, b = t - k * 60000; const rs = h.filter((r) => r.t > a && r.t <= b); minutes.push({ n: rs.length, err: rs.filter((r) => r.code >= 500).length, ms: rs.length ? Math.round(rs.reduce((x, r) => x + r.ms, 0) / rs.length) : 0 }); }
+  const ops = {}; h.forEach((r) => { if (r.op) ops[r.op] = (ops[r.op] || 0) + 1; });
+  let dbSize = 0; try { ['casino.db', 'casino.db-wal'].forEach((f) => { try { dbSize += fs.statSync(require('path').join(DATA_DIR, f)).size; } catch (e) { /* absent */ } }); } catch (e) { /* ignore */ }
+  const mem = process.memoryUsage();
+  const online = (ms) => [...M.seen.values()].filter((v) => t - v <= ms).length;
+  return {
+    at: t, uptime: t - M.start, node: process.version, firebase: !!rtdb,
+    memory: { rss: mem.rss, heap: mem.heapUsed, limit: Number(process.env.MEM_LIMIT_MB || 256) * 1048576 },
+    load: os.loadavg().map((x) => Math.round(x * 100) / 100), cpus: os.cpus().length,
+    db: Object.assign({ size: dbSize }, db.stats()),
+    requests: { m5: last(300000).length, h1: h.length, rejected: h.filter((r) => r.code === 422).length, errors: h.filter((r) => r.code >= 500).length, limited: M.limited },
+    latency: { avg: lat.length ? Math.round(lat.reduce((a, b) => a + b, 0) / lat.length) : 0, p50: pct(0.5), p95: pct(0.95), max: lat.length ? lat[lat.length - 1] : 0 },
+    online: { m5: online(300000), h1: online(3600000) },
+    minutes, topOps: Object.entries(ops).sort((a, b) => b[1] - a[1]).slice(0, 8), errors: M.errors.slice().reverse(),
+  };
+}
+
 // ---------- Limites anti-abus ----------
 // seau de jetons : `rate` requêtes par seconde en moyenne, `burst` d'un coup
 function limiter(rate, burst) {
@@ -220,7 +253,7 @@ function brief(uid, st, created, updated) {
   const P = st.player || {};
   return { uid, pseudo: P.pseudo || '(sans pseudo)', avatar: P.avatar || '🎩', xp: P.xp || 0, level: R.levelOf(P.xp || 0), wallet: r2(P.wallet || 0), onTables: r2(sum(P.sessions)),
     sessions: Object.fromEntries(Object.entries(P.sessions || {}).map(([g, x]) => [g, x.stack])), achievements: Object.keys(P.achievements || {}).length, owned: Object.keys(P.owned || {}).length,
-    hands: (P.totals && P.totals.hands) || 0, created, updated };
+    hands: (P.totals && P.totals.hands) || 0, vipUntil: R.isVip(P, Date.now()) ? P.vipUntil : 0, created, updated };
 }
 // applique une modification de l'administrateur à un joueur, avec une ligne au journal de l'argent
 function adminEdit(target, op, fn) {
@@ -243,7 +276,7 @@ function categoryOf(r) {
   if (op.startsWith('admin:')) return 'Admin';
   if (op === 'ref') return 'Parrainage';
   if (GAME_OF[pre] && op !== 'session.start') return 'Jeux';
-  return { 'bonus.claim': 'Bonus du jour', 'challenge.claim': 'Défis', 'time.claim': 'Banque du temps', 'chest.claim': 'Coffre', 'rescue.claim': 'Aide de secours', 'multi.prize': 'Entre amis', 'shop.buy': 'Boutique', 'session.start': 'Tables (aller)', 'session.cashout': 'Tables (retour)' }[op] || 'Autre';
+  return { 'bonus.claim': 'Bonus du jour', 'challenge.claim': 'Défis', 'time.claim': 'Banque du temps', 'chest.claim': 'Coffre', 'wheel.spin': 'Roue du jour', 'vip.buy': 'Pass VIP', 'rescue.claim': 'Aide de secours', 'multi.prize': 'Entre amis', 'shop.buy': 'Boutique', 'session.start': 'Tables (aller)', 'session.cashout': 'Tables (retour)' }[op] || 'Autre';
 }
 function dashboard() {
   const now = Date.now(), DAY = 864e5, day = (t) => R.today(t);
@@ -298,6 +331,12 @@ async function adminOp(uid, op, d) {
       return { brief: brief(target, st), owned: st.player.owned || {}, achievements: st.player.achievements || {}, ledger: db.ledgerOf(target, 40) };
     }
     case 'dashboard': return dashboard();
+    case 'status': return status();
+    case 'vip': {
+      const days = Math.round(Number(d.days));
+      if (!(days >= -365 && days <= 365 && days !== 0)) throw userError('Nombre de jours invalide.');
+      return adminEdit(target, 'vip', (P) => { if (days > 0) R.grantVip(P, days, now, 'admin'); else P.vipUntil = Math.max(now, (P.vipUntil || now) + days * 864e5); });
+    }
     case 'wallet': {
       const v = Math.max(0, Math.min(1e9, Math.round(Number(d.wallet))));
       if (!Number.isFinite(v)) throw userError('Montant invalide.');
@@ -336,6 +375,9 @@ async function adminOp(uid, op, d) {
 
 // ---------- Serveur HTTP ----------
 const server = http.createServer(async (req, res) => {
+  const t0 = Date.now(); let mUid = null, mOp = null;
+  const done = res.end.bind(res);
+  res.end = (...a) => { try { if (req.url && req.url.startsWith('/api/')) measure(res.statusCode, Date.now() - t0, mUid, mOp, res._mErr); } catch (e) { /* ignore */ } return done(...a); };
   try {
     if (req.method === 'OPTIONS') { res.writeHead(204, headers(req)); res.end(); return; }
     const url = new URL(req.url, 'http://x');
@@ -352,10 +394,12 @@ const server = http.createServer(async (req, res) => {
     if (!auth.startsWith('Bearer ')) { send(req, res, 401, { error: 'Connexion requise.' }); return; }
     let token;
     try { token = await admin.auth().verifyIdToken(auth.slice(7)); } catch (e) { send(req, res, 401, { error: 'Session expirée : reconnecte-toi.' }); return; }
+    mUid = token.uid;
     if (!perUser(token.uid)) { send(req, res, 429, { error: 'Trop de requêtes : ralentis un peu.' }); return; }
     let body;
     try { body = JSON.parse(await readBody(req) || '{}'); } catch (e) { send(req, res, e.status || 400, { error: 'Requête invalide.' }); return; }
     if (!body || typeof body.op !== 'string' || body.op.length > 40) { send(req, res, 400, { error: 'Opération manquante.' }); return; }
+    mOp = (url.pathname === '/api/admin' ? 'admin:' : '') + body.op;
     if (body.data !== undefined && (typeof body.data !== 'object' || Array.isArray(body.data))) { send(req, res, 400, { error: 'Données invalides.' }); return; }
     if (url.pathname === '/api/admin') {
       const out = await adminOp(token.uid, body.op, body.data || {});
@@ -368,6 +412,7 @@ const server = http.createServer(async (req, res) => {
   } catch (e) {
     if (e && e.userMessage) { send(req, res, 422, { error: e.userMessage }); return; }
     console.error('[casino] erreur', e);
+    res._mErr = e && e.message;
     send(req, res, 500, { error: 'Erreur du serveur.' });
   }
 });
