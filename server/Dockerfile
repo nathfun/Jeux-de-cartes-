@@ -3,7 +3,8 @@
 FROM node:22-alpine AS build
 WORKDIR /src
 COPY . .
-RUN node server/prepare-core.js
+# server/core (la logique des jeux) est livré tout prêt dans le dépôt ; on ne le régénère que s'il manque
+RUN [ -f server/core/core.js ] || node server/prepare-core.js
 WORKDIR /src/server
 RUN npm install --omit=dev --no-audit --no-fund
 

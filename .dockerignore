@@ -1,6 +1,5 @@
 .git
 **/node_modules
-server/core
 server/data
 server/secrets
 server/.env
