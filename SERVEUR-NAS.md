@@ -111,7 +111,7 @@ L'argent laissé sur une table en cours leur est rendu dans leur banque.
 **Mettre à jour** : télécharge le nouveau ZIP, décompresse-le dans `/volume1/docker/casino` et renomme-le `app-new`, puis :
 ```bash
 cd /volume1/docker/casino
-cp -a app/server/.env app/server/secrets app/server/data app/server/tailscale/state app-new/server/ 2>/dev/null
+cp -a app/server/.env app/server/secrets app/server/data app-new/server/
 mkdir -p app-new/server/tailscale && cp -a app/server/tailscale/state app-new/server/tailscale/
 cd app/server && sudo docker compose down && cd ../..
 mv app app-old && mv app-new app
