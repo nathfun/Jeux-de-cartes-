@@ -257,6 +257,33 @@
     setTimeout(() => el.remove(), 4800);
   }
 
+
+  // ---------- Carte Légende (album, boosters, marché) ----------
+  let cotesCache = null;
+  /** Dessine une carte Légende. opts : { size: 'mini' | 'big', locked, count, cote, fact } */
+  function cardEl(id, opts) {
+    injectStyle();
+    opts = opts || {};
+    const c = R.COL_BY_ID[id]; const d = document.createElement('div');
+    if (!c) return d;
+    const cat = R.COL_CATS[c.cat], rar = R.RARITY[c.rarity];
+    d.className = 'lg-card r-' + c.rarity + (opts.size === 'big' ? ' big' : '') + (opts.locked ? ' locked' : '');
+    d.style.setProperty('--rc', rar.color); d.style.setProperty('--ca', cat.a); d.style.setProperty('--cb', cat.b);
+    const top = document.createElement('div'); top.className = 'lg-top';
+    const n = document.createElement('span'); n.textContent = '#' + String(c.n).padStart(3, '0');
+    const ct = document.createElement('span'); ct.textContent = cat.icon + ' ' + cat.name;
+    top.append(n, ct);
+    const art = document.createElement('div'); art.className = 'lg-art'; art.textContent = opts.locked ? '?' : c.icon;
+    const nm = document.createElement('div'); nm.className = 'lg-name'; nm.textContent = c.name;
+    const rr = document.createElement('div'); rr.className = 'lg-rar'; rr.textContent = rar.name;
+    d.append(top, art, nm, rr);
+    if (opts.fact && !opts.locked) { const f = document.createElement('div'); f.className = 'lg-fact'; f.textContent = c.fact; d.appendChild(f); }
+    if (opts.cote) { const v = document.createElement('div'); v.className = 'lg-cote'; v.textContent = 'Cote ' + Math.round(opts.cote).toLocaleString('fr-FR') + ' €'; d.appendChild(v); }
+    if (opts.count > 1) { const b = document.createElement('span'); b.className = 'lg-count'; b.textContent = '×' + opts.count; d.appendChild(b); }
+    if (c.rarity === 'legendaire' || c.rarity === 'mythique') { const h = document.createElement('i'); h.className = 'lg-holo'; d.appendChild(h); }
+    return d;
+  }
+
   // ---------- Grande annonce : nouveau salon, bienvenue au club VIP ----------
   function celebrate(n) {
     injectStyle();
@@ -890,6 +917,22 @@
     // ---------- Entre joueurs : marché, échanges, duels (serveur uniquement) ----------
     async deal(op, data) { if (!SERVER) return { error: 'Le marché, les échanges et les duels demandent le serveur du Casino.' }; return call(op, data || {}); },
     tradeable: R.tradeable, MARKET_FEE: R.MARKET_FEE, MARKET_FEE_VIP: R.MARKET_FEE_VIP,
+    // ---------- Cartes Légendes ----------
+    COLLECTION: R.COLLECTION, COL_CATS: R.COL_CATS, COL_BY_ID: R.COL_BY_ID, COTE_BASE: R.COTE_BASE,
+    colCount(id) { return (load().col || {})[id] || 0; },
+    countOf(key) { return R.countOf(load(), key); },
+    rarityOfKey: R.rarityOfKey, instantPrice: R.instantPrice,
+    /** Cotes de toutes les cartes (le serveur les calcule d'après le marché ; sinon la cote de départ). */
+    async cotes(force) {
+      if (SERVER) { if (!force && cotesCache && Date.now() - cotesCache.at < 120000) return cotesCache.data; const r = await call('col.cotes'); if (!r.error) cotesCache = { at: Date.now(), data: r.cotes }; return (cotesCache && cotesCache.data) || {}; }
+      const out = {}; R.COLLECTION.forEach((c) => { const k = 'col:' + c.id; out[k] = { cote: R.COTE_BASE[c.rarity], trend: 0, sales: 0, circ: 0, instant: R.instantPrice(k) }; }); return out;
+    },
+    async sellInstant(key, n) {
+      if (SERVER) { const r = await call('col.sell', { item: key, n: n || 1 }); cotesCache = null; return r; }
+      if (BANK) return { error: 'Demande le serveur du Casino.' };
+      return local(() => R.instantSell(P, key, null, n || 1));
+    },
+    cardEl,
     // ---------- Boosters de cartes ----------
     RARITY: R.RARITY, RARITY_ORDER: R.RARITY_ORDER,
     boosters() { return R.boosterInfo(load(), Date.now()); },
@@ -960,6 +1003,22 @@
     const ringCss = (R.SHOP.frame || []).filter((f) => f.ring).map((f) => '.fr-' + f.id + '{border-color:' + f.ring + ' !important;box-shadow:0 0 0 2px ' + f.ring + ',0 0 16px ' + f.glow + ' !important;' + (f.anim === 'hue' ? 'animation:fr-hue 4s linear infinite;' : f.anim === 'pulse' ? 'animation:fr-pulse 1.8s ease-in-out infinite;' : '') + '}').join('');
     s.textContent = ringCss + `@keyframes fr-hue { to { filter: hue-rotate(360deg); } } @keyframes fr-pulse { 50% { filter: brightness(1.45) saturate(1.3); } }
 
+.lg-card { position: relative; width: 112px; height: 160px; border-radius: 12px; padding: 6px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; color: #fff; font: 12px system-ui, sans-serif; overflow: hidden;
+  background: linear-gradient(160deg, var(--ca), var(--cb) 70%); border: 3px solid var(--rc); box-shadow: 0 6px 16px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.12); }
+.lg-card .lg-top { width: 100%; display: flex; justify-content: space-between; font-size: .62em; opacity: .85; font-weight: 700; }
+.lg-card .lg-art { flex: 1; display: grid; place-items: center; font-size: 3.1em; line-height: 1; filter: drop-shadow(0 4px 8px rgba(0,0,0,.5)); width: 100%; margin: 2px 0; border-radius: 8px; background: radial-gradient(circle at 50% 40%, rgba(255,255,255,.22), transparent 65%); }
+.lg-card .lg-name { font-weight: 900; font-size: 1em; text-align: center; line-height: 1.1; text-shadow: 0 1px 3px #000; }
+.lg-card .lg-rar { font-size: .62em; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; color: var(--rc); background: rgba(0,0,0,.45); border-radius: 999px; padding: 1px 7px; margin-top: 3px; }
+.lg-card .lg-fact { font-size: .78em; line-height: 1.3; text-align: center; margin-top: 6px; background: rgba(0,0,0,.35); border-radius: 8px; padding: 6px; }
+.lg-card .lg-cote { font-size: .78em; font-weight: 800; color: #fde68a; margin-top: 4px; }
+.lg-card .lg-count { position: absolute; top: 18px; right: 4px; background: #f2c14e; color: #2a1d00; font-weight: 900; font-size: .75em; border-radius: 999px; padding: 1px 6px; }
+.lg-card.big { width: 250px; height: 380px; font-size: 17px; padding: 12px; border-width: 4px; }
+.lg-card.big .lg-art { font-size: 4.4em; flex: 0 0 150px; }
+.lg-card.locked { filter: grayscale(1) brightness(.55); }
+.lg-card.locked .lg-art { font-size: 2.6em; color: rgba(255,255,255,.5); }
+.lg-card .lg-holo { position: absolute; inset: -50%; background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,.35) 48%, rgba(255,200,255,.25) 52%, transparent 60%); animation: lg-holo 3.2s linear infinite; pointer-events: none; }
+.lg-card.r-mythique { box-shadow: 0 0 22px var(--rc), 0 6px 16px rgba(0,0,0,.45); }
+@keyframes lg-holo { from { transform: translateX(-35%) rotate(0deg); } to { transform: translateX(35%) rotate(0deg); } }
 .casino-celebrate { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; background: radial-gradient(circle at 50% 45%, rgba(40,30,8,.92), rgba(0,0,0,.92)); overflow: hidden; animation: cc-fade .35s both; font: 15px system-ui, sans-serif; color: #f8f3e6; }
 .casino-celebrate.out { animation: cc-fade .35s reverse both; }
 .casino-celebrate .cc-box { position: relative; text-align: center; padding: 1.6rem 1.4rem; max-width: 340px; }

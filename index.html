@@ -315,6 +315,9 @@
     .push-prefs { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .3rem .8rem; margin: .4rem 0 .7rem; }
     .row-btns { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
     .chest-notif { margin-top: .6rem; }
+    .album-link { display: flex; align-items: center; gap: .7rem; margin: .7rem 0 .3rem; padding: .7rem .8rem; border-radius: 14px; text-decoration: none; color: var(--text); background: linear-gradient(120deg, #0e7490, #4c1d95 60%, #92400e); border: 1px solid rgba(255,255,255,.18); box-shadow: 0 8px 20px rgba(0,0,0,.35); }
+    .album-link > span:first-child { font-size: 1.8rem; } .album-link > span:nth-child(2) { flex: 1; display: flex; flex-direction: column; } .album-link small { color: #e0e7ff; opacity: .85; } .album-link > span:last-child { font-size: 1.6rem; }
+    .bo-front.col { padding: 0; background: none; border: 0; box-shadow: none; gap: .3rem; }
     .boosters { background: linear-gradient(135deg, #141026, #0c1220 60%, #1a0f22); border-color: #3b2a6b; }
     .bo-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; flex-wrap: wrap; }
     .bo-head h2 { margin: 0; } .bo-meta { font-size: .85rem; color: var(--muted); }
@@ -364,6 +367,7 @@
     .mk-card b { font-size: .85rem; } .mk-card small { color: var(--muted); font-size: .72rem; } .mk-card .pr { color: var(--gold); font-weight: 900; }
     .mk-card button { font: inherit; font-size: .82rem; font-weight: 700; border-radius: 999px; padding: .3rem .8rem; border: 0; background: var(--gold); color: #222; cursor: pointer; }
     .mk-card button.armed { background: #22c55e; } .mk-card button:disabled { opacity: .5; }
+    .mk-card.col .lg-card { margin-bottom: .2rem; }
     .mk-mine { margin-bottom: .6rem; }
     .lx-dlg { position: fixed; inset: 0; z-index: 105; background: rgba(0,0,0,.7); display: grid; place-items: center; padding: 1rem; }
     .lx-box { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 1rem; width: min(520px, 100%); max-height: 88vh; overflow-y: auto; display: flex; flex-direction: column; gap: .6rem; }
@@ -731,7 +735,8 @@
       </div>
       <div id="bo-rar" class="bo-rar"></div>
       <div id="bo-btns" class="bo-btns"></div>
-      <p class="muted small-p">Les cartes renferment des objets qu'on ne trouve nulle part ailleurs. Un doublon se transforme en éclats ✨, qui permettent de fabriquer la carte de ton choix. Chances par carte : <span id="bo-odds"></span>.</p>
+      <a class="album-link" href="cartes/index.html"><span>📖</span><span><b>Album Légendes</b><small id="bo-album">Pays, légendes de l'Histoire, sport, monuments, mythologie, espace…</small></span><span>›</span></a>
+      <p class="muted small-p">Chaque booster mélange des <b>cartes Légendes</b> (à collectionner, revendre ou échanger, avec leur cote) et des objets de style introuvables ailleurs. Un doublon se transforme en éclats ✨, qui permettent de fabriquer la carte de ton choix. Chances par carte : <span id="bo-odds"></span>.</p>
     </section>
 
     <section class="panel market" data-tab="shop" aria-label="Marché">
@@ -1251,6 +1256,7 @@
       function renderBoosters() {
         const b = Casino.boosters();
         $('bo-shards').textContent = fmt(b.shards); $('bo-have').textContent = b.have; $('bo-all').textContent = b.all;
+        const lh = Casino.COLLECTION.filter((c) => Casino.colCount(c.id) > 0).length; $('bo-album').textContent = lh + ' / ' + Casino.COLLECTION.length + ' cartes Légendes · pays, Histoire, sport, monuments, mythes, espace';
         const rar = $('bo-rar'); rar.innerHTML = '';
         Casino.RARITY_ORDER.forEach((r) => { const x = document.createElement('span'); x.style.color = RAR[r].color; x.style.borderColor = RAR[r].color; x.textContent = RAR[r].name + ' ' + b.by[r].have + '/' + b.by[r].all; rar.appendChild(x); });
         const tot = Casino.RARITY_ORDER.reduce((a, r) => a + RAR[r].w, 0);
@@ -1280,7 +1286,7 @@
         const row = document.createElement('div'); row.className = 'bo-row';
         let left = r.cards.length;
         r.cards.forEach((c, i) => {
-          const it = Casino.SHOP[c.kind].find((x) => x.id === c.id) || { name: c.id };
+          const it = c.kind === 'col' ? Casino.COL_BY_ID[c.id] : (Casino.SHOP[c.kind].find((x) => x.id === c.id) || { name: c.id });
           const el = document.createElement('div'); el.className = 'bo-card r-' + c.rarity; el.style.setProperty('--rc', RAR[c.rarity].color);
           const inn = document.createElement('div'); inn.className = 'bo-in';
           const back = document.createElement('div'); back.className = 'bo-face bo-back'; back.textContent = '🃏';
@@ -1289,7 +1295,7 @@
           const nm = document.createElement('b'); nm.textContent = (c.kind === 'avatar' ? 'Avatar ' : '') + it.name;
           const kd = document.createElement('small'); kd.className = 'muted'; kd.textContent = KIND_ICON[c.kind] + ' ' + Casino.SHOP_LABELS[c.kind];
           const tag = document.createElement('span'); tag.className = c.dup ? 'dp' : 'nw'; tag.textContent = c.dup ? 'Doublon : +' + c.shards + ' ✨' : 'NOUVEAU';
-          front.append(rr, preview(c.kind, it), nm, kd, tag);
+          if (c.kind === 'col') { front.classList.add('col'); tag.textContent = c.dup ? 'Exemplaire n°' + c.count : 'NOUVELLE CARTE'; front.append(Casino.cardEl(c.id, { count: c.count }), tag); } else front.append(rr, preview(c.kind, it), nm, kd, tag);
           inn.append(back, front); el.appendChild(inn);
           const flip = () => {
             if (el.classList.contains('flip')) return;
@@ -1783,8 +1789,9 @@
       const RC = (r) => (r && Casino.RARITY[r] ? Casino.RARITY[r].color : '');
       const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
       const chip = (it) => { const c = el('span', 'chip-it', '🃏 ' + it.name); if (it.rarity) c.style.setProperty('--rc', RC(it.rarity)); return c; };
-      const itemOf = (key) => { const [k, id] = key.split(':'); return { kind: k, id, it: (Casino.SHOP[k] || []).find((x) => x.id === id) }; };
-      const myTradeables = () => Object.keys(Casino.profile.owned || {}).filter((k) => { const [a, b] = k.split(':'); return Casino.tradeable(a, b); }).map((k) => { const o = itemOf(k); return { key: k, name: o.it ? o.it.name : k, rarity: o.it ? o.it.card || null : null }; });
+      const itemOf = (key) => { const i = key.indexOf(':'), k = key.slice(0, i), id = key.slice(i + 1); return { kind: k, id, it: k === 'col' ? Casino.COL_BY_ID[id] : (Casino.SHOP[k] || []).find((x) => x.id === id) }; };
+      const myTradeables = () => Object.keys(Casino.profile.owned || {}).filter((k) => { const [a, b] = k.split(':'); return Casino.tradeable(a, b); }).map((k) => { const o = itemOf(k); return { key: k, name: o.it ? o.it.name : k, rarity: o.it ? o.it.card || null : null }; })
+        .concat(Casino.COLLECTION.filter((c) => Casino.colCount(c.id) > 0).map((c) => ({ key: 'col:' + c.id, name: Casino.COL_CATS[c.cat].icon + ' ' + c.name + (Casino.colCount(c.id) > 1 ? ' ×' + Casino.colCount(c.id) : ''), rarity: c.rarity })));
       async function friendsList() { const rows = (window.Social && (await Social.leaderboard().catch(() => null))) || []; return rows.filter((r) => !r.me && r.uid); }
       function dialog(title) {
         const o = el('div', 'lx-dlg'), box = el('div', 'lx-box'); box.appendChild(el('h3', '', title));
@@ -1902,10 +1909,10 @@
         const others = r.listings.filter((l) => !l.mine);
         if (!others.length) list.appendChild(el('p', 'muted small-p', 'Rien en vente pour ces filtres. Sois le premier à vendre !'));
         others.forEach((l) => {
-          const it = (Casino.SHOP[l.kind] || []).find((x) => x.id === l.item); if (!it) return;
-          const c = el('div', 'mk-card'); c.style.setProperty('--rc', RC(l.rarity));
-          c.append(window.LoungePreview(l.kind, it), el('b', '', it.name), el('small', '', (l.rarity ? Casino.RARITY[l.rarity].name + ' · ' : '') + Casino.SHOP_LABELS[l.kind]), el('span', 'pr', fmt(l.price) + ' €'), el('small', '', 'par ' + l.seller));
-          const have = Casino.owns(l.kind, l.item), b = el('button', armed === l.id ? 'armed' : '', have ? 'Déjà à toi' : armed === l.id ? 'Confirmer ?' : 'Acheter'); b.type = 'button';
+          const it = l.kind === 'col' ? Casino.COL_BY_ID[l.item] : (Casino.SHOP[l.kind] || []).find((x) => x.id === l.item); if (!it) return;
+          const c = el('div', 'mk-card' + (l.kind === 'col' ? ' col' : '')); c.style.setProperty('--rc', RC(l.rarity));
+          c.append(l.kind === 'col' ? Casino.cardEl(l.item, {}) : window.LoungePreview(l.kind, it), el('b', '', it.name), el('small', '', (l.rarity ? Casino.RARITY[l.rarity].name + ' · ' : '') + Casino.SHOP_LABELS[l.kind]), el('span', 'pr', fmt(l.price) + ' €'), el('small', '', 'par ' + l.seller));
+          const have = l.kind !== 'col' && Casino.owns(l.kind, l.item), b = el('button', armed === l.id ? 'armed' : '', have ? 'Déjà à toi' : armed === l.id ? 'Confirmer ?' : 'Acheter'); b.type = 'button';
           b.disabled = have || Casino.profile.wallet < l.price;
           b.onclick = async () => {
             if (armed !== l.id) { armed = l.id; renderMarket(); setTimeout(() => { if (armed === l.id) { armed = null; renderMarket(); } }, 4000); return; }
@@ -1924,7 +1931,7 @@
         const si = el('select'); items.forEach((it) => { const o = el('option', '', it.name + (it.rarity ? ' (' + Casino.RARITY[it.rarity].name + ')' : '')); o.value = it.key; si.appendChild(o); });
         const pi = el('input'); pi.type = 'number'; pi.min = 10; pi.step = 10;
         const hint = el('small', 'muted');
-        const upd = () => { const it = items.find((x) => x.key === si.value), a = avg[si.value], base = it && it.rarity ? Casino.RARITY[it.rarity].craft * 2 : 500; if (!pi.value || pi.dataset.auto) { pi.value = a || base; pi.dataset.auto = '1'; } const fee = Math.ceil((+pi.value || 0) * (Casino.isVip() ? Casino.MARKET_FEE_VIP : Casino.MARKET_FEE)); hint.textContent = (a ? 'Prix moyen des ventes (30 j) : ' + fmt(a) + ' €. ' : '') + 'Tu toucheras ' + fmt((+pi.value || 0) - fee) + ' € (frais ' + fmt(fee) + ' €).'; };
+        const upd = () => { const it = items.find((x) => x.key === si.value), a = avg[si.value], base = it && it.rarity ? (si.value.startsWith('col:') ? Casino.COTE_BASE[it.rarity] : Casino.RARITY[it.rarity].craft * 2) : 500; if (!pi.value || pi.dataset.auto) { pi.value = a || base; pi.dataset.auto = '1'; } const fee = Math.ceil((+pi.value || 0) * (Casino.isVip() ? Casino.MARKET_FEE_VIP : Casino.MARKET_FEE)); hint.textContent = (a ? 'Prix moyen des ventes (30 j) : ' + fmt(a) + ' €. ' : '') + 'Tu toucheras ' + fmt((+pi.value || 0) - fee) + ' € (frais ' + fmt(fee) + ' €).'; };
         si.onchange = () => { pi.dataset.auto = '1'; pi.value = ''; upd(); }; pi.oninput = () => { delete pi.dataset.auto; upd(); }; upd();
         const L = (t, x) => { const l = el('label', '', t); l.appendChild(x); return l; };
         const go = el('button', 'bonus-btn', '🏷️ Mettre en vente'); go.type = 'button';

@@ -16,7 +16,8 @@ module.exports = function makeDeals({ db, serial, R, core, rtdb, TABLES, pushTo,
   const fail = (m) => { throw userError(m); };
   const nameOf = (P) => (P && P.pseudo) || 'Un joueur';
   const itemName = (k, id) => { const it = R.itemOf(k, id); return it ? it.name : id; };
-  const parseKey = (x) => { const m = /^([a-z]+):(.{1,40})$/.exec(String(x || '')); if (!m || !R.tradeable(m[1], m[2])) fail('Objet non échangeable : seules les cartes de booster et les objets rares du jour s\'échangent.'); return { kind: m[1], id: m[2], key: m[1] + ':' + m[2] }; };
+  const keyName = (key) => { const i = key.indexOf(':'); return itemName(key.slice(0, i), key.slice(i + 1)); };
+  const parseKey = (x) => { const m = /^([a-z]+):(.{1,40})$/.exec(String(x || '')); if (!m || !R.tradeable(m[1], m[2])) fail('Objet non échangeable : seules les cartes (Légendes et boosters) et les objets rares du jour s\'échangent.'); return { kind: m[1], id: m[2], key: m[1] + ':' + m[2] }; };
   const money = (v, max) => { const n = Math.round(Number(v || 0)); if (!Number.isFinite(n) || n < 0 || n > (max || 1e6)) fail('Montant invalide.'); return n; };
 
   // ----- verrous : plusieurs joueurs modifiés ensemble, toujours dans le même ordre (pas d'interblocage) -----
@@ -45,13 +46,22 @@ module.exports = function makeDeals({ db, serial, R, core, rtdb, TABLES, pushTo,
     });
   }
   const inbox = (P, title, text, icon) => { P.inbox = (P.inbox || []).concat([{ title, text, icon, at: Date.now() }]).slice(-20); };
-  const takeItem = (P, key) => { P.owned = P.owned || {}; if (!P.owned[key]) fail('Tu n\'as pas « ' + itemName(...key.split(':')) + ' ».'); delete P.owned[key]; };
-  const giveItem = (P, key) => { P.owned = P.owned || {}; if (!P.owned[key]) P.owned[key] = Date.now(); else { const k = key.split(':'); const it = R.itemOf(k[0], k[1]); if (it && it.card) { P.cards = P.cards || {}; P.cards.shards = (P.cards.shards || 0) + R.RARITY[it.card].shard; } } };
+  const split = (key) => { const i = key.indexOf(':'); return [key.slice(0, i), key.slice(i + 1)]; };
+  const takeItem = (P, key) => {
+    const [k, id] = split(key);
+    if (k === 'col') { P.col = P.col || {}; if (!(P.col[id] > 0)) fail('Tu n\'as pas la carte « ' + itemName(k, id) + ' ».'); P.col[id]--; if (!P.col[id]) delete P.col[id]; return; }
+    P.owned = P.owned || {}; if (!P.owned[key]) fail('Tu n\'as pas « ' + itemName(k, id) + ' ».'); delete P.owned[key];
+  };
+  const giveItem = (P, key) => {
+    const [k, id] = split(key);
+    if (k === 'col') { P.col = P.col || {}; P.col[id] = (P.col[id] || 0) + 1; return; }
+    P.owned = P.owned || {}; if (!P.owned[key]) P.owned[key] = Date.now(); else { const it = R.itemOf(k, id); if (it && it.card) { P.cards = P.cards || {}; P.cards.shards = (P.cards.shards || 0) + R.RARITY[it.card].shard; } }
+  };
   const takeMoney = (P, v) => { if (v > 0) { if ((P.wallet || 0) < v) fail('Il te manque ' + Math.ceil(v - P.wallet).toLocaleString('fr-FR') + ' € en banque.'); P.wallet = r2(P.wallet - v); } };
   const giveMoney = (P, v) => { if (v > 0) P.wallet = r2((P.wallet || 0) + v); };
   const notify = (uid, msg) => { if (pushTo) pushTo(uid, 'social', msg).catch(() => {}); };
   const newId = () => crypto.randomBytes(6).toString('base64url');
-  const brief = (k) => ({ key: k, name: itemName(...k.split(':')), rarity: (R.itemOf(...k.split(':')) || {}).card || null });
+  const brief = (k) => ({ key: k, name: keyName(k), rarity: R.rarityOfKey(k) || null });
 
   // ===================== Marché =====================
   async function marketList(uid, d) {
@@ -62,7 +72,7 @@ module.exports = function makeDeals({ db, serial, R, core, rtdb, TABLES, pushTo,
     const lid = newId();
     await edit([uid], 'mk.list', (P) => {
       takeItem(P[uid], key);
-      db.marketPut({ id: lid, seller: uid, sellerName: nameOf(P[uid]), kind, item: id, rarity: (R.itemOf(kind, id) || {}).card || 'rare', price, created: Date.now(), status: 'open' });
+      db.marketPut({ id: lid, seller: uid, sellerName: nameOf(P[uid]), kind, item: id, rarity: R.rarityOfKey(key) || 'rare', price, created: Date.now(), status: 'open' });
     });
     return { id: lid };
   }
@@ -81,13 +91,14 @@ module.exports = function makeDeals({ db, serial, R, core, rtdb, TABLES, pushTo,
       const cur = db.marketGet(l.id);
       if (!cur || cur.status !== 'open') fail('Cette annonce vient d\'être vendue.');
       const key = l.kind + ':' + l.item;
-      if (P[uid].owned && P[uid].owned[key]) fail('Tu as déjà cet objet.');
+      if (l.kind !== 'col' && P[uid].owned && P[uid].owned[key]) fail('Tu as déjà cet objet.');
       takeMoney(P[uid], l.price);
       fee = Math.ceil(l.price * (R.isVip(P[l.seller]) ? R.MARKET_FEE_VIP : R.MARKET_FEE));
       giveMoney(P[l.seller], l.price - fee);
       giveItem(P[uid], key);
       inbox(P[l.seller], '🏪 Vendu !', nameOf(P[uid]) + ' a acheté « ' + itemName(l.kind, l.item) + ' » : +' + (l.price - fee).toLocaleString('fr-FR') + ' € (frais ' + fee + ' €).', '💰');
       db.marketSet(l.id, { status: 'sold', buyer: uid, soldAt: Date.now() });
+      coteCache = null;
     });
     notify(l.seller, { title: '🏪 Ton objet est vendu !', body: '« ' + itemName(l.kind, l.item) + ' » : +' + (l.price - fee).toLocaleString('fr-FR') + ' €', tag: 'market' });
     return { ok: true, item: l.kind + ':' + l.item, price: l.price };
@@ -97,6 +108,35 @@ module.exports = function makeDeals({ db, serial, R, core, rtdb, TABLES, pushTo,
     const stats = {}; db.marketSoldSince(Date.now() - 30 * DAY).forEach((s) => { const k = s.kind + ':' + s.item; (stats[k] = stats[k] || []).push(s.price); });
     const avg = {}; Object.keys(stats).forEach((k) => { const a = stats[k]; avg[k] = Math.round(a.reduce((x, y) => x + y, 0) / a.length); });
     return { listings: rows, avg };
+  }
+
+  // ===================== Cotes et vente immédiate =====================
+  let coteCache = null;
+  /** Cote de chaque carte : rareté + ventes du marché (30 jours), tendance sur 7 jours, nombre d'exemplaires en circulation. */
+  function cotes() {
+    if (coteCache && Date.now() - coteCache.at < 5 * 60000) return coteCache.data;
+    const now = Date.now(), sold = db.marketSoldSince(now - 30 * DAY), by = {}, recent = {}, older = {};
+    sold.forEach((l) => { const k = l.kind + ':' + l.item; (by[k] = by[k] || []).push(l.price); ((l.soldAt || l.created) >= now - 7 * DAY ? recent : older)[k] = (((l.soldAt || l.created) >= now - 7 * DAY ? recent : older)[k] || []).concat([l.price]); });
+    const circ = {};
+    db.all().forEach((p) => { const P = p.state.player || {}; Object.entries(P.col || {}).forEach(([id, n]) => { circ['col:' + id] = (circ['col:' + id] || 0) + n; }); Object.keys(P.owned || {}).forEach((k) => { circ[k] = (circ[k] || 0) + 1; }); });
+    db.marketOpen('', '', 10000).forEach((l) => { const k = l.kind + ':' + l.item; circ[k] = (circ[k] || 0) + 1; });
+    const data = {}, med = (a) => { const s = a.slice().sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
+    const keys = R.COLLECTION.map((c) => 'col:' + c.id);
+    Object.keys(R.SHOP).forEach((k) => R.SHOP[k].forEach((it) => { if (it.card || it.daily) keys.push(k + ':' + it.id); }));
+    keys.forEach((k) => {
+      const cote = R.coteOf(k, by[k]);
+      const trend = recent[k] && older[k] && recent[k].length >= 2 && older[k].length >= 2 ? Math.round((med(recent[k]) - med(older[k])) / med(older[k]) * 100) : 0;
+      data[k] = { cote, sales: (by[k] || []).length, trend, circ: circ[k] || 0, instant: R.instantPrice(k, cote) };
+    });
+    coteCache = { at: now, data };
+    return data;
+  }
+  async function instantSell(uid, d) {
+    const { key } = parseKey(d.item), n = Math.max(1, Math.min(50, Math.floor(Number(d.n) || 1)));
+    const c = cotes()[key];
+    let out;
+    await edit([uid], 'col.sell', (P) => { out = R.instantSell(P[uid], key, c && c.cote, n); if (out.error) fail(out.error); });
+    return out;
   }
 
   // ===================== Échanges =====================
@@ -148,7 +188,8 @@ module.exports = function makeDeals({ db, serial, R, core, rtdb, TABLES, pushTo,
   function inventory(uid, d) {
     const who = String(d.uid || uid), P = db.load(who).player;
     if (!P) fail('Joueur introuvable.');
-    const items = Object.keys(P.owned || {}).filter((k) => { const [kind, id] = k.split(':'); return R.tradeable(kind, id); }).map(brief);
+    const items = Object.keys(P.owned || {}).filter((k) => { const [kind, id] = split(k); return R.tradeable(kind, id); }).map(brief)
+      .concat(Object.keys(P.col || {}).filter((id) => P.col[id] > 0).map((id) => Object.assign(brief('col:' + id), { count: P.col[id] })));
     return { uid: who, name: nameOf(P), items, wallet: who === uid ? Math.floor(P.wallet || 0) : undefined };
   }
 
@@ -213,7 +254,7 @@ module.exports = function makeDeals({ db, serial, R, core, rtdb, TABLES, pushTo,
         if (winner) {
           giveMoney(P[winner], D.stake * 2);
           [D.aItem, D.bItem].filter(Boolean).forEach((k) => giveItem(P[winner], k));
-          const what = (D.stake ? (D.stake * 2).toLocaleString('fr-FR') + ' €' : '') + ([D.aItem, D.bItem].filter(Boolean).length ? (D.stake ? ' + ' : '') + [D.aItem, D.bItem].filter(Boolean).map((k) => '« ' + itemName(...k.split(':')) + ' »').join(', ') : '');
+          const what = (D.stake ? (D.stake * 2).toLocaleString('fr-FR') + ' €' : '') + ([D.aItem, D.bItem].filter(Boolean).length ? (D.stake ? ' + ' : '') + [D.aItem, D.bItem].filter(Boolean).map((k) => '« ' + keyName(k) + ' »').join(', ') : '');
           inbox(P[winner], '⚔️ Duel gagné !', 'Tu remportes ' + what + ' contre ' + nameOf(P[loser]) + '.', '🏆');
           inbox(P[loser], '⚔️ Duel perdu', nameOf(P[winner]) + ' remporte le duel. Revanche ?', '😤');
           R.unlock(P[winner], 'duel_win', []);
@@ -258,6 +299,7 @@ module.exports = function makeDeals({ db, serial, R, core, rtdb, TABLES, pushTo,
     'trade.inventory': inventory,
     'duel.new': duelNew, 'duel.accept': (u, d) => duelAnswer(u, d, true), 'duel.decline': (u, d) => duelAnswer(u, d, false), 'duel.settle': duelSettle,
     'deals.list': list,
+    'col.cotes': () => ({ cotes: cotes() }), 'col.sell': instantSell,
   };
   return { OPS, expire, isDealOp: (op) => Object.prototype.hasOwnProperty.call(OPS, op) };
 };

@@ -239,9 +239,9 @@
     { id: 'saison_diamant', name: 'Saison diamant', level: 1, price: 0, exclusive: 'Saison : palier diamant' },
     { id: 'roi_semaine', name: 'Roi du poker de la semaine', level: 1, price: 0, exclusive: 'Tournoi de poker de la semaine : 1re place' });
   const SHOP = { felt: FELTS, back: BACKS, avatar: AVATAR_ITEMS, frame: FRAMES, rocket: ROCKETS, ball: BALLS, title: TITLES, theme: THEMES, chips: CHIPS, effect: EFFECTS };
-  const SHOP_LABELS = { felt: 'Tapis', back: 'Dos de cartes', avatar: 'Avatars', frame: 'Cadres', rocket: 'Fusées', ball: 'Billes', title: 'Titres', theme: 'Thèmes', chips: 'Jetons', effect: 'Effets de victoire' };
+  const SHOP_LABELS = { col: 'Cartes Légendes', felt: 'Tapis', back: 'Dos de cartes', avatar: 'Avatars', frame: 'Cadres', rocket: 'Fusées', ball: 'Billes', title: 'Titres', theme: 'Thèmes', chips: 'Jetons', effect: 'Effets de victoire' };
   const DEFAULT_EQUIP = { felt: 'vert', back: 'bleu', frame: 'none', rocket: 'classique', ball: 'classique', title: '', theme: 'classique', chips: 'classique', effect: 'pieces' };
-  const itemOf = (kind, id) => (SHOP[kind] || []).find((x) => x.id === id) || null;
+  const itemOf = (kind, id) => (kind === 'col' ? (typeof COL_BY_ID !== 'undefined' && COL_BY_ID[id]) || null : (SHOP[kind] || []).find((x) => x.id === id) || null);
   const ownKey = (kind, id) => kind + ':' + id;
   /** Boutique du jour : 3 objets rares, choisis selon la date (les mêmes pour tout le monde). */
   function dailyOffer(now) {
@@ -695,12 +695,154 @@
   const challengeReward = (def, P) => Math.round(def.reward * (1 + 0.5 * Math.floor(levelOf(P.xp || 0) / 10)));
 
 
+  // ---------- Cartes Légendes : la collection (on peut en avoir plusieurs exemplaires, les vendre, les échanger) ----------
+  const COL_CATS = {
+    pays: { name: 'Pays', icon: '🌍', a: '#0e7490', b: '#082f49' },
+    histoire: { name: "Légendes de l'Histoire", icon: '📜', a: '#92400e', b: '#2a1405' },
+    sport: { name: 'Sport', icon: '🏆', a: '#15803d', b: '#052e16' },
+    monument: { name: 'Monuments', icon: '🏛️', a: '#6b7280', b: '#1f2937' },
+    mytho: { name: 'Mythologie', icon: '⚡', a: '#7c3aed', b: '#1e0b3b' },
+    espace: { name: 'Espace', icon: '🪐', a: '#1d4ed8', b: '#020617' },
+  };
+  const COLLECTION = [
+    ["pays_de", "pays", "commun", "🇩🇪", "Allemagne", "Le pays compte plus de 20 000 châteaux."],
+    ["pays_es", "pays", "commun", "🇪🇸", "Espagne", "Le castillan, le catalan, le basque et le galicien y sont tous langues officielles dans leur région."],
+    ["pays_it", "pays", "commun", "🇮🇹", "Italie", "C'est le pays qui compte le plus de sites classés au patrimoine mondial de l'UNESCO."],
+    ["pays_gb", "pays", "commun", "🇬🇧", "Royaume-Uni", "Le premier timbre-poste du monde, le Penny Black, y a été émis en 1840."],
+    ["pays_us", "pays", "commun", "🇺🇸", "États-Unis", "L'Alaska a été acheté à la Russie en 1867."],
+    ["pays_cn", "pays", "commun", "🇨🇳", "Chine", "Le papier, la boussole et la poudre y ont été inventés."],
+    ["pays_in", "pays", "commun", "🇮🇳", "Inde", "Le jeu d'échecs y serait né, sous le nom de chaturanga."],
+    ["pays_br", "pays", "commun", "🇧🇷", "Brésil", "Seul pays à avoir gagné cinq Coupes du monde de football."],
+    ["pays_mx", "pays", "commun", "🇲🇽", "Mexique", "Les Aztèques y buvaient déjà du chocolat, il y a plus de 500 ans."],
+    ["pays_ca", "pays", "commun", "🇨🇦", "Canada", "C'est le pays qui compte le plus de lacs au monde."],
+    ["pays_ru", "pays", "commun", "🇷🇺", "Russie", "Le plus grand pays du monde s'étend sur 11 fuseaux horaires."],
+    ["pays_tr", "pays", "commun", "🇹🇷", "Turquie", "Istanbul est à cheval sur deux continents : l'Europe et l'Asie."],
+    ["pays_eg", "pays", "commun", "🇪🇬", "Égypte", "La Grande Pyramide a été le plus haut monument du monde pendant près de 4 000 ans."],
+    ["pays_ng", "pays", "commun", "🇳🇬", "Nigeria", "C'est le pays le plus peuplé d'Afrique."],
+    ["pays_ar", "pays", "commun", "🇦🇷", "Argentine", "Le tango est né à Buenos Aires, à la fin du XIXe siècle."],
+    ["pays_pl", "pays", "commun", "🇵🇱", "Pologne", "Marie Curie y est née, à Varsovie, en 1867."],
+    ["pays_be", "pays", "commun", "🇧🇪", "Belgique", "Tintin y est né en 1929 : c'est le pays de la bande dessinée."],
+    ["pays_pt", "pays", "commun", "🇵🇹", "Portugal", "La plus vieille librairie encore ouverte du monde est à Lisbonne (depuis 1732)."],
+    ["pays_jp", "pays", "rare", "🇯🇵", "Japon", "Ses trains à grande vitesse, les Shinkansen, roulent jusqu'à 320 km/h."],
+    ["pays_au", "pays", "rare", "🇦🇺", "Australie", "On y compte plus de kangourous que d'habitants."],
+    ["pays_ch", "pays", "rare", "🇨🇭", "Suisse", "Quatre langues nationales : allemand, français, italien et romanche."],
+    ["pays_gr", "pays", "rare", "🇬🇷", "Grèce", "Les premiers Jeux olympiques s'y sont tenus, à Olympie, en 776 av. J.-C."],
+    ["pays_ma", "pays", "rare", "🇲🇦", "Maroc", "L'université Al Quaraouiyine de Fès, fondée en 859, est la plus ancienne encore en activité."],
+    ["pays_sn", "pays", "rare", "🇸🇳", "Sénégal", "Dakar est le point le plus à l'ouest de l'Afrique continentale."],
+    ["pays_se", "pays", "rare", "🇸🇪", "Suède", "On y trouve un hôtel entièrement fait de glace, reconstruit chaque hiver."],
+    ["pays_no", "pays", "rare", "🇳🇴", "Norvège", "Au nord, en été, le soleil ne se couche pas pendant des semaines."],
+    ["pays_kr", "pays", "rare", "🇰🇷", "Corée du Sud", "Jusqu'en 2023, on y avait déjà 1 an le jour de sa naissance."],
+    ["pays_pe", "pays", "rare", "🇵🇪", "Pérou", "Le Machu Picchu, cité inca, s'y cache à 2 430 m d'altitude."],
+    ["pays_is", "pays", "epique", "🇮🇸", "Islande", "Il n'y a quasiment pas de moustiques sur l'île."],
+    ["pays_nz", "pays", "epique", "🇳🇿", "Nouvelle-Zélande", "Premier pays à donner le droit de vote aux femmes, en 1893."],
+    ["pays_mg", "pays", "epique", "🇲🇬", "Madagascar", "Environ 90 % de ses animaux n'existent nulle part ailleurs."],
+    ["pays_np", "pays", "epique", "🇳🇵", "Népal", "Son drapeau est le seul au monde qui n'est pas rectangulaire."],
+    ["pays_mn", "pays", "epique", "🇲🇳", "Mongolie", "C'est le pays le moins densément peuplé du monde."],
+    ["pays_jm", "pays", "epique", "🇯🇲", "Jamaïque", "La patrie du reggae et de certains des sprinteurs les plus rapides de l'histoire."],
+    ["pays_fr", "pays", "legendaire", "🇫🇷", "France", "C'est le pays le plus visité au monde."],
+    ["pays_lu", "pays", "legendaire", "🇱🇺", "Luxembourg", "C'est le seul grand-duché du monde."],
+    ["pays_mv", "pays", "legendaire", "🇲🇻", "Maldives", "Le pays le plus plat du monde : son point culminant fait environ 2,4 m."],
+    ["pays_sc", "pays", "legendaire", "🇸🇨", "Seychelles", "Le coco de mer, la plus grosse graine du monde, y pousse."],
+    ["pays_mc", "pays", "mythique", "🇲🇨", "Monaco", "Le deuxième plus petit pays du monde… et l'un des casinos les plus célèbres."],
+    ["pays_va", "pays", "mythique", "🇻🇦", "Vatican", "Le plus petit pays du monde : 0,44 km²."],
+    ["histoire_charlemagne", "histoire", "rare", "👑", "Charlemagne", "Il a été couronné empereur à Rome le jour de Noël de l'an 800."],
+    ["histoire_hugo", "histoire", "rare", "✒️", "Victor Hugo", "L'auteur des Misérables et de Notre-Dame de Paris."],
+    ["histoire_moliere", "histoire", "rare", "🎭", "Molière", "On parle de « la langue de Molière » pour désigner le français."],
+    ["histoire_ramses", "histoire", "rare", "🦅", "Ramsès II", "Il a régné environ 66 ans sur l'Égypte."],
+    ["histoire_galilee", "histoire", "rare", "🔭", "Galilée", "Il a découvert les quatre grandes lunes de Jupiter en 1610."],
+    ["histoire_shakespeare", "histoire", "rare", "📜", "Shakespeare", "Il a inventé ou popularisé des centaines de mots anglais."],
+    ["histoire_colomb", "histoire", "rare", "⛵", "Christophe Colomb", "Il a atteint l'Amérique en 1492 en croyant arriver aux Indes."],
+    ["histoire_jeanne", "histoire", "epique", "⚔️", "Jeanne d'Arc", "Elle avait 17 ans lors de la libération d'Orléans, en 1429."],
+    ["histoire_mozart", "histoire", "epique", "🎼", "Mozart", "Il a composé ses premières œuvres à 5 ans."],
+    ["histoire_gengis", "histoire", "epique", "🏹", "Gengis Khan", "Il a fondé l'Empire mongol, le plus grand empire d'un seul tenant de l'histoire."],
+    ["histoire_louis14", "histoire", "epique", "☀️", "Louis XIV", "Le Roi-Soleil a régné 72 ans, un record en Europe."],
+    ["histoire_toutankhamon", "histoire", "epique", "🏺", "Toutânkhamon", "Son tombeau, presque intact, a été découvert en 1922."],
+    ["histoire_newton", "histoire", "epique", "🍎", "Isaac Newton", "Il a formulé la loi de la gravitation universelle."],
+    ["histoire_hannibal", "histoire", "epique", "🐘", "Hannibal", "Il a traversé les Alpes avec des éléphants en 218 av. J.-C."],
+    ["histoire_napoleon", "histoire", "legendaire", "🎖️", "Napoléon", "Son Code civil, de 1804, est encore à la base du droit français."],
+    ["histoire_cesar", "histoire", "legendaire", "🗡️", "Jules César", "Le mois de juillet porte son nom."],
+    ["histoire_alexandre", "histoire", "legendaire", "🐎", "Alexandre le Grand", "À 30 ans, il régnait sur un empire allant de la Grèce jusqu'à l'Inde."],
+    ["histoire_curie", "histoire", "legendaire", "⚛️", "Marie Curie", "La seule personne à avoir reçu deux prix Nobel dans deux sciences différentes."],
+    ["histoire_cleopatre", "histoire", "mythique", "🐍", "Cléopâtre", "Elle a vécu plus près de notre époque que de la construction de la Grande Pyramide."],
+    ["histoire_vinci", "histoire", "mythique", "🎨", "Léonard de Vinci", "Il écrivait souvent à l'envers, en écriture miroir."],
+    ["sport_football", "sport", "commun", "⚽", "Football", "Le sport le plus pratiqué au monde."],
+    ["sport_basket", "sport", "commun", "🏀", "Basket-ball", "Inventé en 1891 par un professeur, avec des paniers à pêches."],
+    ["sport_rugby", "sport", "commun", "🏉", "Rugby", "Selon la légende, il est né en 1823 quand un élève a pris le ballon à la main."],
+    ["sport_tennis", "sport", "commun", "🎾", "Tennis", "Le score 15-30-40 viendrait des quarts d'heure d'une horloge."],
+    ["sport_marathon", "sport", "rare", "🏃", "Marathon", "42,195 km : une distance fixée aux Jeux de Londres en 1908."],
+    ["sport_superbowl", "sport", "rare", "🏈", "Super Bowl", "L'un des programmes les plus regardés de la télévision américaine."],
+    ["sport_sumo", "sport", "rare", "🤼", "Sumo", "Le sport national du Japon, pratiqué depuis plus de 1 000 ans."],
+    ["sport_echecs", "sport", "rare", "♟️", "Échecs", "Il y a plus de parties possibles que d'atomes dans l'univers observable."],
+    ["sport_tour", "sport", "epique", "🚴", "Tour de France", "Créé en 1903 ; le maillot jaune est apparu en 1919."],
+    ["sport_rolandgarros", "sport", "epique", "🧡", "Roland-Garros", "Le seul tournoi du Grand Chelem joué sur terre battue."],
+    ["sport_f1", "sport", "epique", "🏎️", "Formule 1", "Une F1 peut dépasser 350 km/h."],
+    ["sport_mans", "sport", "epique", "🏁", "24 Heures du Mans", "La course d'endurance la plus célèbre, créée en 1923."],
+    ["sport_coupe", "sport", "legendaire", "🏆", "Coupe du monde", "Le trophée actuel est en or massif 18 carats."],
+    ["sport_jo", "sport", "legendaire", "🥇", "Jeux Olympiques", "Les cinq anneaux représentent les continents réunis par le sport."],
+    ["sport_ballondor", "sport", "mythique", "🌟", "Ballon d'Or", "Récompense créée en 1956 par le magazine France Football."],
+    ["monument_bigben", "monument", "commun", "🕰️", "Big Ben", "Big Ben est le nom de la cloche, pas celui de la tour."],
+    ["monument_liberte", "monument", "rare", "🗽", "Statue de la Liberté", "Un cadeau de la France aux États-Unis, inauguré en 1886."],
+    ["monument_stonehenge", "monument", "rare", "🪨", "Stonehenge", "Ses plus grosses pierres pèsent plus de 25 tonnes."],
+    ["monument_montstmichel", "monument", "rare", "🏰", "Mont-Saint-Michel", "Une île… seulement à marée haute."],
+    ["monument_petra", "monument", "rare", "🏜️", "Pétra", "Une ville entière taillée dans la roche rose."],
+    ["monument_acropole", "monument", "rare", "🏛️", "Acropole", "Le Parthénon a été achevé en 432 av. J.-C."],
+    ["monument_sagrada", "monument", "rare", "⛪", "Sagrada Família", "Cette basilique de Barcelone est en construction depuis 1882."],
+    ["monument_colisee", "monument", "epique", "🏟️", "Colisée", "Il pouvait accueillir environ 50 000 spectateurs."],
+    ["monument_tajmahal", "monument", "epique", "🕌", "Taj Mahal", "Construit par un empereur en mémoire de son épouse."],
+    ["monument_machupicchu", "monument", "epique", "⛰️", "Machu Picchu", "Le monde l'a redécouvert en 1911."],
+    ["monument_angkor", "monument", "epique", "🛕", "Angkor Vat", "Le plus grand monument religieux du monde."],
+    ["monument_moai", "monument", "epique", "🗿", "Moaïs", "Près de 900 statues géantes veillent sur l'île de Pâques."],
+    ["monument_eiffel", "monument", "legendaire", "🗼", "Tour Eiffel", "Elle grandit jusqu'à 15 cm en été, à cause de la chaleur."],
+    ["monument_muraille", "monument", "legendaire", "🧱", "Grande Muraille", "Contrairement à la légende, elle ne se voit pas à l'œil nu depuis l'espace."],
+    ["monument_gizeh", "monument", "mythique", "🔺", "Pyramides de Gizeh", "La seule des sept merveilles du monde antique encore debout."],
+    ["mytho_meduse", "mytho", "rare", "🐍", "Méduse", "Son regard changeait en pierre quiconque la regardait."],
+    ["mytho_pegase", "mytho", "rare", "🪽", "Pégase", "Le cheval ailé serait né du sang de Méduse."],
+    ["mytho_minotaure", "mytho", "rare", "🐂", "Minotaure", "Il était enfermé dans le labyrinthe de Crète."],
+    ["mytho_licorne", "mytho", "rare", "🦄", "Licorne", "C'est l'animal national de l'Écosse !"],
+    ["mytho_cerbere", "mytho", "rare", "🐕", "Cerbère", "Un chien à trois têtes qui garde l'entrée des Enfers."],
+    ["mytho_thor", "mytho", "epique", "🔨", "Thor", "Le jeudi (« Thursday ») porte son nom en anglais."],
+    ["mytho_anubis", "mytho", "epique", "🐺", "Anubis", "Le dieu égyptien à tête de chacal, gardien des morts."],
+    ["mytho_poseidon", "mytho", "epique", "🔱", "Poséidon", "D'un coup de trident, le dieu des mers faisait trembler la terre."],
+    ["mytho_kraken", "mytho", "epique", "🦑", "Kraken", "Un monstre marin géant des légendes scandinaves."],
+    ["mytho_zeus", "mytho", "legendaire", "⚡", "Zeus", "Le roi des dieux de l'Olympe, maître de la foudre."],
+    ["mytho_dragon", "mytho", "legendaire", "🐉", "Dragon", "En Chine, il porte chance, force et sagesse."],
+    ["mytho_phenix", "mytho", "mythique", "🔥", "Phénix", "L'oiseau qui renaît de ses cendres."],
+    ["espace_mercure", "espace", "commun", "⚪", "Mercure", "Une année y dure seulement 88 jours."],
+    ["espace_venus", "espace", "commun", "🟡", "Vénus", "La planète la plus chaude : plus de 460 °C."],
+    ["espace_terre", "espace", "commun", "🌍", "Terre", "La seule planète connue qui abrite la vie."],
+    ["espace_lune", "espace", "rare", "🌙", "Lune", "Elle s'éloigne de la Terre d'environ 3,8 cm par an."],
+    ["espace_mars", "espace", "rare", "🔴", "Mars", "Elle abrite Olympus Mons, le plus grand volcan connu du Système solaire."],
+    ["espace_neptune", "espace", "rare", "🔵", "Neptune", "Ses vents, les plus rapides du Système solaire, dépassent 2 000 km/h."],
+    ["espace_jupiter", "espace", "epique", "🟠", "Jupiter", "Sa Grande Tache rouge est une tempête plus grande que la Terre."],
+    ["espace_saturne", "espace", "epique", "🪐", "Saturne", "Elle est si peu dense qu'elle flotterait dans une baignoire géante."],
+    ["espace_halley", "espace", "epique", "☄️", "Comète de Halley", "Elle revient tous les 75 à 76 ans : prochain passage en 2061."],
+    ["espace_soleil", "espace", "legendaire", "☀️", "Soleil", "Sa lumière met environ 8 minutes à nous parvenir."],
+    ["espace_voielactee", "espace", "legendaire", "🌌", "Voie lactée", "Notre galaxie compte entre 100 et 400 milliards d'étoiles."],
+    ["espace_trounoir", "espace", "mythique", "⚫", "Trou noir", "Rien, pas même la lumière, ne peut s'en échapper."],
+  ].map(([id, cat, rarity, icon, name, fact], i) => ({ id, cat, rarity, icon, name, fact, n: i + 1 }));
+  const COL_BY_ID = Object.fromEntries(COLLECTION.map((c) => [c.id, c]));
+  // Cote de départ selon la rareté (le marché la fait bouger) ; vente immédiate au Casino : 40 % de la cote, plafonnée
+  const COTE_BASE = { commun: 20, rare: 60, epique: 200, legendaire: 800, mythique: 4000 };
+  const INSTANT_RATE = 0.4;
+  const rarityOfKey = (key) => { const i = key.indexOf(':'), k = key.slice(0, i), id = key.slice(i + 1); if (k === 'col') return COL_BY_ID[id] ? COL_BY_ID[id].rarity : null; const it = itemOf(k, id); return it ? it.card || (it.daily ? 'rare' : null) : null; };
+  /** Prix de vente immédiate au Casino (ne dépasse jamais la moitié de la cote de départ : pas de profit en revendant des boosters). */
+  function instantPrice(key, cote) { const r = rarityOfKey(key); if (!r) return 0; const base = COTE_BASE[r]; return Math.max(1, Math.floor(INSTANT_RATE * Math.min(cote || base, base * 1.25))); }
+  /** Cote d'une carte : cote de départ, puis mélange avec le prix médian des ventes récentes (au moins 3 ventes). */
+  function coteOf(key, sales) {
+    const r = rarityOfKey(key); if (!r) return 0;
+    const base = COTE_BASE[r];
+    if (!sales || sales.length < 3) return base;
+    const s = sales.slice().sort((a, b) => a - b), med = s[Math.floor(s.length / 2)];
+    return Math.round(Math.max(base * 0.5, Math.min(base * 5, 0.4 * base + 0.6 * med)));
+  }
   // Objets qu'on peut vendre, échanger ou mettre en jeu entre joueurs : les cartes de booster et les objets rares du jour
-  const tradeable = (kind, id) => { const it = itemOf(kind, id); return !!(it && (it.card || it.daily)); };
+  const tradeable = (kind, id) => { if (kind === 'col') return !!COL_BY_ID[id]; const it = itemOf(kind, id); return !!(it && (it.card || it.daily)); };
+  /** Nombre d'exemplaires possédés (cartes Légendes : plusieurs ; objets : 0 ou 1). */
+  const countOf = (P, key) => { const i = key.indexOf(':'); if (key.slice(0, i) === 'col') return (P.col && P.col[key.slice(i + 1)]) || 0; return P.owned && P.owned[key] ? 1 : 0; };
   const MARKET_FEE = 0.10, MARKET_FEE_VIP = 0.05;
   // ---------- Boosters ----------
   const BOOSTER = { FREE: 2, FREE_VIP: 3, TIME_MS: 4 * 3600000, TIME_CAP: 2, PRICE1: 150, PRICE5: 600 };
-  const CARD_POOL = () => { const out = []; Object.keys(SHOP).forEach((k) => SHOP[k].forEach((it) => { if (it.card) out.push({ kind: k, id: it.id, rarity: it.card }); })); return out; };
+  const CARD_POOL = () => { const out = COLLECTION.map((c) => ({ kind: 'col', id: c.id, rarity: c.rarity })); Object.keys(SHOP).forEach((k) => SHOP[k].forEach((it) => { if (it.card) out.push({ kind: k, id: it.id, rarity: it.card }); })); return out; };
   function cardsOf(P, now) {
     P.cards = P.cards || {};
     if (!P.cards.timeAt) P.cards.timeAt = now;
@@ -713,7 +855,7 @@
     const freeLeft = Math.max(0, freeMax - (c.freeDay === d ? c.freeUsed || 0 : 0));
     const since = Math.min(now - c.timeAt, BOOSTER.TIME_MS * BOOSTER.TIME_CAP);
     const tokens = Math.floor(since / BOOSTER.TIME_MS);
-    const pool = CARD_POOL(), owned = pool.filter((x) => P.owned && P.owned[ownKey(x.kind, x.id)]);
+    const pool = CARD_POOL(), owned = pool.filter((x) => countOf(P, ownKey(x.kind, x.id)) > 0);
     const by = {}; RARITY_ORDER.forEach((r) => { by[r] = { have: owned.filter((x) => x.rarity === r).length, all: pool.filter((x) => x.rarity === r).length }; });
     return { freeLeft, freeMax, tokens, tokenCap: BOOSTER.TIME_CAP, nextIn: tokens >= BOOSTER.TIME_CAP ? 0 : BOOSTER.TIME_MS - (since % BOOSTER.TIME_MS), shards: c.shards, opened: c.opened || 0,
       price1: BOOSTER.PRICE1, price5: BOOSTER.PRICE5, have: owned.length, all: pool.length, by };
@@ -741,16 +883,34 @@
     for (let i = 0; i < n; i++) {
       const rarity = drawRarity(rnd, n === 5 && i === 4 && !out.some((x) => x.rarity !== 'commun') ? 'rare' : null);
       const list = pool.filter((x) => x.rarity === rarity), pick = list[rnd(list.length)];
-      const key = ownKey(pick.kind, pick.id), dup = !!P.owned[key];
-      if (dup) c.shards += RARITY[rarity].shard; else P.owned[key] = now;
-      out.push({ kind: pick.kind, id: pick.id, rarity, dup, shards: dup ? RARITY[rarity].shard : 0 });
-      if (rarity === 'legendaire' || rarity === 'mythique') N.push({ kind: 'gold', title: (rarity === 'mythique' ? '🔴 Carte MYTHIQUE !' : '🟡 Carte légendaire !'), text: itemOf(pick.kind, pick.id).name + (dup ? ' (doublon : +' + RARITY[rarity].shard + ' éclats)' : ''), icon: '🃏' });
+      const key = ownKey(pick.kind, pick.id);
+      if (pick.kind === 'col') {
+        // carte Légende : on garde tous les exemplaires (à vendre, échanger ou mettre en jeu)
+        P.col = P.col || {}; P.col[pick.id] = (P.col[pick.id] || 0) + 1;
+        out.push({ kind: 'col', id: pick.id, rarity, dup: P.col[pick.id] > 1, count: P.col[pick.id], shards: 0 });
+      } else {
+        const dup = !!P.owned[key];
+        if (dup) c.shards += RARITY[rarity].shard; else P.owned[key] = now;
+        out.push({ kind: pick.kind, id: pick.id, rarity, dup, shards: dup ? RARITY[rarity].shard : 0 });
+      }
+      if (rarity === 'legendaire' || rarity === 'mythique') N.push({ kind: 'gold', title: (rarity === 'mythique' ? '🔴 Carte MYTHIQUE !' : '🟡 Carte légendaire !'), text: itemOf(pick.kind, pick.id).name + (out[out.length - 1].dup ? (pick.kind === 'col' ? ' (exemplaire n°' + out[out.length - 1].count + ')' : ' (doublon : +' + RARITY[rarity].shard + ' éclats)') : ''), icon: '🃏' });
     }
     c.opened = (c.opened || 0) + n;
     addXP(P, 5 * n, N);
     if (c.opened >= 10) unlock(P, 'cards10', N);
     if (out.some((x) => x.rarity === 'mythique')) unlock(P, 'mythic', N);
     return { cards: out, shards: c.shards };
+  }
+  /** Vente immédiate au Casino d'un exemplaire (cote fournie par le serveur, d'après le marché). */
+  function instantSell(P, key, cote, n) {
+    n = Math.max(1, Math.min(50, Math.floor(n || 1)));
+    const i = key.indexOf(':'), kind = key.slice(0, i), id = key.slice(i + 1);
+    if (!tradeable(kind, id)) return { error: 'Cet objet ne peut pas être vendu.' };
+    if (countOf(P, key) < n) return { error: 'Tu n\'en as pas assez.' };
+    const price = instantPrice(key, cote) * n;
+    if (kind === 'col') { P.col[id] -= n; if (P.col[id] <= 0) delete P.col[id]; } else delete P.owned[key];
+    P.wallet += price;
+    return { price, each: price / n, left: countOf(P, key) };
   }
   /** Fabrique une carte précise avec des éclats (obtenus avec les doublons). */
   function craftCard(P, kind, id, now) {
@@ -880,6 +1040,7 @@
     need, levelOf, title, today, fresh, normalize, addXP, unlock, checkWallet, ensureDaily, track,
     bonusInfo, claimBonus, claimChallenge, timeInfo, startTime, claimTime, startSession, cashOut,
     prizeFor, prizeText, applyPrize, publicProfile, REF_BONUS, REF_MIN_HANDS, REF_MAX,
+    COL_CATS, COLLECTION, COL_BY_ID, COTE_BASE, INSTANT_RATE, instantPrice, coteOf, rarityOfKey, countOf, instantSell,
     tradeable, MARKET_FEE, MARKET_FEE_VIP, RARITY, RARITY_ORDER, BOOSTER, boosterInfo, openBooster, craftCard,
     VIP_PASS, VIP_PERKS, isVip, buyVip, grantVip, WHEEL, wheelInfo, spinWheel,
     CHEST_RATE, CHEST_CAP, RESCUE_BELOW, RESCUE_AMOUNT, VIP, vipOf, maxBet, chestInfo, claimChest, rescueInfo, claimRescue, challengeReward, dailyOffer,
