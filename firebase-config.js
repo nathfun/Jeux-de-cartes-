@@ -17,3 +17,7 @@ window.FIREBASE_CONFIG = {
 // (voir FIREBASE.md, « Serveur anti-triche »). Avec true, la banque et les tirages des parties réelles
 // sont gérés par le serveur ; avec false, tout est calculé dans le navigateur.
 window.CASINO_SERVER = false;
+
+// Serveur du Casino sur ton NAS (dossier server/, voir SERVEUR-NAS.md) : l'adresse https donnée par Tailscale Funnel,
+// par exemple 'https://casino.ton-reseau.ts.net'. Laisse vide tant que le serveur n'est pas installé.
+window.CASINO_API = '';

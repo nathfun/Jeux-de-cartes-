@@ -38,6 +38,8 @@
   let round = null; // { bet, m, mines: Set, open: [], active, nonce }
   let busy = false;
   const statsOf = () => store.stats[S.mode === 'real' ? 'real' : 'train'];
+  // partie réelle avec le serveur du Casino : les mines restent cachées sur le serveur jusqu'à la fin de la manche
+  const srv = () => S.mode === 'real' && window.Casino && Casino.server;
   const betsKey = () => (S.mode === 'real' ? 'real' : 'train');
   function setStack(v) {
     S.stack = Math.max(0, Math.round(v * 100) / 100);
@@ -81,6 +83,17 @@
     if (S.mode === 'train' && S.stack < v) setStack(Math.max(S.stack, window.Casino ? Casino.TRAIN_BANK : 10000));
     if (v > S.stack) { toast('Pas assez d\'argent sur la table.', true); return; }
     busy = true;
+    if (srv()) {
+      try {
+        let r = await Casino.call('mn.start', { bet: v, mines: m });
+        if (r.error && /déjà en cours/.test(r.error)) { await Casino.call('mn.cashout'); toast('Ta manche précédente a été réglée.'); r = await Casino.call('mn.start', { bet: v, mines: m }); }
+        if (r.error) { toast(r.error, true); return; }
+        S.stack = r.stack;
+        round = { bet: v, m, mines: null, open: [], active: true, nonce: r.nonce, srv: true };
+      } finally { busy = false; }
+      resetGrid(); if (window.Sfx) Sfx.chips(); ui();
+      return;
+    }
     setStack(S.stack - v);
     try {
       const s = await ensureSeeds();
@@ -92,8 +105,20 @@
     if (window.Sfx) Sfx.chips();
     renderFair(); ui();
   }
-  function reveal(i) {
+  async function reveal(i) {
     if (!round || !round.active || busy || cells[i].classList.contains('open')) return;
+    if (round.srv) {
+      busy = true; cells[i].classList.add('wait');
+      let r;
+      try { r = await Casino.call('mn.reveal', { cell: i }); } finally { busy = false; cells[i].classList.remove('wait'); }
+      if (r.error) { toast(r.error, true); return; }
+      if (r.over) round.mines = new Set(r.mines);
+      if (!r.gem) { boomAt(i); S.stack = r.stack; finish(0); return; }
+      gemAt(i);
+      if (r.over) { round.active = false; S.stack = r.stack; if (window.Sfx && Sfx.cashout) Sfx.cashout(); revealRest(); finish(r.payout, r.mult); return; }
+      ui();
+      return;
+    }
     if (round.mines.has(i)) {
       round.active = false;
       showCell(i, 'mine'); cells[i].classList.add('boom');
@@ -110,8 +135,32 @@
     if (round.open.length >= E.maxReveals(round.m)) { cashout(); return; }
     ui();
   }
-  function cashout() {
-    if (!round || !round.active || !round.open.length) return;
+  function boomAt(i) {
+    round.active = false;
+    showCell(i, 'mine'); cells[i].classList.add('boom');
+    $('grid').classList.add('shake'); setTimeout(() => $('grid').classList.remove('shake'), 520);
+    if (window.Sfx && Sfx.explosion) Sfx.explosion();
+    revealRest();
+  }
+  function gemAt(i) {
+    round.open.push(i);
+    showCell(i, 'gem');
+    if (window.Sfx && Sfx.gem) Sfx.gem(round.open.length);
+    const mu = $('mult'); mu.classList.remove('bump'); void mu.offsetWidth; mu.classList.add('bump');
+  }
+  async function cashout() {
+    if (!round || !round.active || !round.open.length || busy) return;
+    if (round.srv) {
+      busy = true;
+      let r;
+      try { r = await Casino.call('mn.cashout'); } finally { busy = false; }
+      if (r.error) { toast(r.error, true); return; }
+      round.active = false; round.mines = new Set(r.mines || []); S.stack = r.stack;
+      if (window.Sfx && Sfx.cashout) Sfx.cashout();
+      revealRest();
+      finish(r.payout, r.mult);
+      return;
+    }
     round.active = false;
     const res = E.settle(round.bet, round.m, round.open.length);
     setStack(S.stack + res.payout);
@@ -134,7 +183,7 @@
     store.bets[betsKey()].unshift({ amount: r.bet, m: r.m, k: r.open.length, mult: won ? mult : 0, net, at: Date.now() });
     store.bets[betsKey()] = store.bets[betsKey()].slice(0, 30);
     persist();
-    if (window.Casino && S.mode === 'real') Casino.track('mn', { bet: r.bet, net, mines: r.m, reveals: r.open.length, mult: won ? mult : 0, bust: !won, clear: r.open.length >= E.maxReveals(r.m), firstBust: !won && r.open.length === 0 });
+    if (window.Casino && S.mode === 'real' && !Casino.server) Casino.track('mn', { bet: r.bet, net, mines: r.m, reveals: r.open.length, mult: won ? mult : 0, bust: !won, clear: r.open.length >= E.maxReveals(r.m), firstBust: !won && r.open.length === 0 });
     const box = $('result');
     box.className = 'mn-result' + (won ? '' : ' lose');
     box.innerHTML = '';
@@ -288,6 +337,7 @@
   // Quitter la page en pleine manche : on encaisse ce qui est gagné (ou on rend la mise si aucune case n'est retournée)
   window.addEventListener('pagehide', () => {
     if (!round || !round.active || !S.mode) return;
+    if (round.srv) return; // le serveur garde la manche : elle sera réglée à la prochaine visite
     if (round.open.length) cashout(); else { round.active = false; setStack(S.stack + round.bet); }
   });
   renderPicker(); showWallet();

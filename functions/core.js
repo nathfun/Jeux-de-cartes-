@@ -17,6 +17,11 @@ const CR = require('./shared/crash-engine.js');
 const ST = require('./shared/strategy.js');
 const SB = require('./shared/sidebets.js');
 const PK = require('./poker.js');
+const PL = require('./shared/plinko-engine.js');
+const MN = require('./shared/mines-engine.js');
+const nodeCrypto = require('crypto');
+const hmacHex = (key, msg) => nodeCrypto.createHmac('sha256', key).update(msg).digest('hex');
+const sha256Hex = (t) => nodeCrypto.createHash('sha256').update(t).digest('hex');
 
 class GameError extends Error { constructor(msg) { super(msg); this.userMessage = msg; } }
 const fail = (msg) => { throw new GameError(msg); };
@@ -262,11 +267,96 @@ function crashOp(P, S, ctx, sess, track, fail) {
   return { busted: true, crash: r.crash, cashed: r.cashed, cashAt: r.cashAt, payout: r.payout, stack: stackNow(), nonce: C.nonce };
 }
 
+// ---------- Seeds « Provably Fair » (Plinko, Mines) : une paire par jeu et par joueur ----------
+function seedsOf(S, key, rnd) {
+  if (!S[key] || !S[key].seed) {
+    const seed = Array.from({ length: 32 }, () => rnd(256).toString(16).padStart(2, '0')).join('');
+    S[key] = { seed, hash: sha256Hex(seed), client: (S[key] && S[key].client) || 'casino', nonce: 0, round: S[key] && S[key].round };
+  }
+  return S[key];
+}
+function rotateSeeds(S, key, client, rnd) {
+  const C = seedsOf(S, key, rnd);
+  const prev = { server: C.seed, client: C.client, nonce: C.nonce };
+  S[key] = { client: String(client || C.client).slice(0, 32) || 'casino', round: C.round };
+  const n = seedsOf(S, key, rnd);
+  return { hash: n.hash, client: n.client, nonce: n.nonce, prev };
+}
+
+// ---------- Plinko : le serveur tire le chemin de chaque bille ----------
+function plinkoOp(P, S, ctx, sess, track) {
+  const d = ctx.data || {};
+  if (ctx.op === 'pl.seed') return rotateSeeds(S, 'pl', d.client, ctx.rnd);
+  const ss = sess('plinko');
+  const bet = int(d.bet), rows = int(d.rows), risk = String(d.risk);
+  if (!PL.CONFIG.ROWS.includes(rows) || !PL.CONFIG.RISKS.includes(risk)) fail('Plateau invalide.');
+  if (!(bet >= PL.CONFIG.MIN_BET && bet <= PL.CONFIG.MAX_BET)) fail('Mise entre ' + PL.CONFIG.MIN_BET + ' et ' + PL.CONFIG.MAX_BET + ' €.');
+  if (bet > ss.stack) fail('Pas assez d\'argent sur la table.');
+  const C = seedsOf(S, 'pl', ctx.rnd);
+  C.nonce++;
+  const path = PL.pathFromHex(hmacHex(C.seed, C.client + ':' + C.nonce), rows);
+  const slot = PL.slotOf(path), res = PL.settle(bet, rows, risk, slot);
+  // la bille est réglée tout de suite (son chemin est fixé) ; l'app l'anime ensuite
+  ss.stack = round2(ss.stack - bet + res.payout);
+  track('pl', { bet, net: res.net, mult: res.mult, edge: slot === 0 || slot === rows });
+  return { path, slot, mult: res.mult, payout: res.payout, net: res.net, nonce: C.nonce, hash: C.hash, stack: ss.stack };
+}
+
+// ---------- Mines : les mines restent cachées sur le serveur jusqu'à la fin de la manche ----------
+function minesOp(P, S, ctx, sess, track) {
+  const d = ctx.data || {};
+  if (ctx.op === 'mn.seed') {
+    if (S.mn && S.mn.round && S.mn.round.active) fail('Termine la manche en cours d\'abord.');
+    return rotateSeeds(S, 'mn', d.client, ctx.rnd);
+  }
+  const C = seedsOf(S, 'mn', ctx.rnd);
+  const ss = sess('mines');
+  const r = C.round;
+  const end = (won) => {
+    r.active = false;
+    const res = won ? MN.settle(r.bet, r.m, r.open.length) : { mult: 0, payout: 0, net: -r.bet };
+    ss.stack = round2(ss.stack + res.payout);
+    track('mn', { bet: r.bet, net: res.net, mines: r.m, reveals: r.open.length, mult: res.mult, bust: !won, clear: won && r.open.length >= MN.maxReveals(r.m), firstBust: !won && r.open.length === 0 });
+    return { over: true, won, mult: res.mult, payout: res.payout, mines: r.mines, open: r.open, stack: ss.stack, nonce: r.nonce };
+  };
+  if (ctx.op === 'mn.start') {
+    if (r && r.active) fail('Une manche est déjà en cours.');
+    const bet = int(d.bet), m = int(d.mines);
+    if (!(m >= 1 && m <= 24)) fail('Entre 1 et 24 mines.');
+    if (!(bet >= MN.CONFIG.MIN_BET && bet <= MN.CONFIG.MAX_BET)) fail('Mise entre ' + MN.CONFIG.MIN_BET + ' et ' + MN.CONFIG.MAX_BET + ' €.');
+    if (bet > ss.stack) fail('Pas assez d\'argent sur la table.');
+    ss.stack = round2(ss.stack - bet);
+    C.nonce++;
+    const base = C.client + ':' + C.nonce;
+    C.round = { bet, m, mines: MN.minesFromHex(hmacHex(C.seed, base + ':0') + hmacHex(C.seed, base + ':1'), m), open: [], active: true, nonce: C.nonce };
+    return { started: true, nonce: C.nonce, hash: C.hash, stack: ss.stack };
+  }
+  if (!r || !r.active) fail('Aucune manche en cours.');
+  if (ctx.op === 'mn.reveal') {
+    const cell = int(d.cell);
+    if (!(cell >= 0 && cell < MN.CONFIG.SIZE)) fail('Case invalide.');
+    if (r.open.includes(cell)) return { gem: true, again: true, k: r.open.length, mult: MN.multAt(r.m, r.open.length), stack: ss.stack };
+    if (r.mines.includes(cell)) return Object.assign(end(false), { gem: false, cell });
+    r.open.push(cell);
+    if (r.open.length >= MN.maxReveals(r.m)) return Object.assign(end(true), { gem: true, cell });
+    return { gem: true, cell, k: r.open.length, mult: MN.multAt(r.m, r.open.length), stack: ss.stack };
+  }
+  if (ctx.op === 'mn.cashout') {
+    if (!r.open.length) {
+      // aucune case retournée : la mise est rendue (manche annulée)
+      r.active = false; ss.stack = round2(ss.stack + r.bet);
+      return { over: true, cancelled: true, mines: r.mines, stack: ss.stack, nonce: r.nonce };
+    }
+    return end(true);
+  }
+  fail('Opération inconnue.');
+}
+
 // ---------- Opérations ----------
 function handle(state, ctx) {
   const now = ctx.now, N = [];
   const P = R.normalize(state.player, now);
-  if (!state.player) { P.pseudo = String(ctx.data && ctx.data.pseudo || '').slice(0, 16); }
+  if (!state.player || !P.pseudo) { const ps = String(ctx.data && ctx.data.pseudo || '').trim().slice(0, 16); if (ps) P.pseudo = ps; }
   const S = state.secret || {};
   const d = ctx.data || {};
   R.ensureDaily(P, now);
@@ -320,6 +410,13 @@ function handle(state, ctx) {
       }
       if (game === 'slots' && S.sl && S.sl.free > 0) fail('Termine d\'abord tes tours gratuits.');
       if (game === 'poker') fail('Au poker, la partie se termine à la fin du tournoi.');
+      if (game === 'mines' && S.mn && S.mn.round && S.mn.round.active) {
+        const r = S.mn.round;
+        if (r.open.length) { const res = MN.settle(r.bet, r.m, r.open.length); P.sessions.mines.stack = round2(P.sessions.mines.stack + res.payout); track('mn', { bet: r.bet, net: res.net, mines: r.m, reveals: r.open.length, mult: res.mult }); }
+        else P.sessions.mines.stack = round2(P.sessions.mines.stack + r.bet);
+        r.active = false;
+      }
+      if (game === 'trader') fail('Bourse Flash en partie réelle n\'est pas encore géré par le serveur.');
       if (game === 'crash' && S.cr && S.cr.round && !S.cr.round.done) {
         const r = S.cr.round;
         if (r.bet && !r.cashed && now < r.startAt + CR.timeFor(r.crash)) fail('Attends la fin de la manche.');
@@ -380,6 +477,10 @@ function handle(state, ctx) {
       result = crashOp(P, S, ctx, sess, track, fail);
       break;
     }
+
+    // ----- Plinko et Mines -----
+    case 'pl.drop': case 'pl.seed': result = plinkoOp(P, S, ctx, sess, track); break;
+    case 'mn.start': case 'mn.reveal': case 'mn.cashout': case 'mn.seed': result = minesOp(P, S, ctx, sess, track); break;
 
     // ----- Blackjack : le sabot reste sur le serveur -----
     case 'bj.deal': case 'bj.ins': case 'bj.act': {

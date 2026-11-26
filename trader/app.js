@@ -324,6 +324,11 @@
   function renderPicker(msg) {
     const box = $('mode-picker');
     if (!window.Casino) { startGame('train', 10000); return; }
+    if (Casino.server && !Casino.learn) {
+      // le marché sera tiré par le serveur du Casino dans une prochaine version
+      box.innerHTML = '<div class="glass" style="padding:1rem"><b>📈 Bourse Flash en partie réelle arrive bientôt avec le serveur du Casino.</b><p class="muted">En attendant, active 🎓 Apprentissage sur l\'accueil pour t\'entraîner avec un crédit illimité.</p></div>';
+      return;
+    }
     Casino.modePicker(box, { game: 'trader', min: C.MIN_BET, suggest: 500, onStart: (mode, amount) => startGame(mode, amount) });
     if (msg) { const p = document.createElement('p'); p.className = 'muted'; p.textContent = msg; box.prepend(p); }
   }

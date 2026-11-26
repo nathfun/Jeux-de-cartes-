@@ -18,7 +18,9 @@
   const { AVATARS, FELTS, BACKS, CHALLENGES, ACHIEVEMENTS, TIME_PACKS, need, levelOf, title } = R;
   const cfg = window.FIREBASE_CONFIG;
   const ONLINE = !!(cfg && cfg.databaseURL && !/[?&]backend=local\b/.test(location.search) && !window.claude);
-  const SERVER = ONLINE && !!window.CASINO_SERVER;
+  // Serveur du Casino : sur ton NAS / un hébergeur (window.CASINO_API = adresse https) ou Cloud Functions (CASINO_SERVER)
+  const API = String(window.CASINO_API || '').replace(/\/+$/, '');
+  const SERVER = ONLINE && (!!window.CASINO_SERVER || !!API);
   // Sans serveur payant : la banque est rangée dans Firebase (bank/<uid>) et les règles de la base
   // n'acceptent que les mouvements d'argent plausibles (voir database.rules.json)
   const BANK = ONLINE && !SERVER;
@@ -57,12 +59,12 @@
     if (!fbp) {
       fbp = (async () => {
         if (!cfg || !cfg.databaseURL) return null;
-        const [appMod, authMod, dbMod, fnMod] = await Promise.all(['app', 'auth', 'database'].concat(SERVER ? ['functions'] : []).map((m) => import(FB + 'firebase-' + m + '.js')));
+        const [appMod, authMod, dbMod, fnMod] = await Promise.all(['app', 'auth', 'database'].concat(SERVER && !API ? ['functions'] : []).map((m) => import(FB + 'firebase-' + m + '.js')));
         const app = appMod.getApps().length ? appMod.getApp() : appMod.initializeApp(cfg);
         const auth = authMod.getAuth(app);
         if (auth.authStateReady) await auth.authStateReady();
         if (!auth.currentUser) await authMod.signInAnonymously(auth);
-        const fn = SERVER ? fnMod.httpsCallable(fnMod.getFunctions(app, 'europe-west1'), 'casino') : null;
+        const fn = SERVER && !API ? fnMod.httpsCallable(fnMod.getFunctions(app, 'europe-west1'), 'casino') : null;
         return { app, auth, authMod, dbMod, db: dbMod.getDatabase(app), fn };
       })();
       fbp.catch(() => { fbp = null; });
@@ -94,7 +96,21 @@
     try {
       const f = await firebase();
       if (!f) return { error: 'Serveur injoignable.' };
-      const res = (await f.fn({ op, data: data || {} })).data;
+      let res;
+      if (API) {
+        // serveur du NAS : le jeton du compte prouve qui joue, le serveur décide de tout le reste
+        const u = f.auth.currentUser;
+        if (!u) return { error: 'Connexion requise.' };
+        const send = async (force) => fetch(API + '/api/casino', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (await u.getIdToken(force)) },
+          body: JSON.stringify({ op, data: data || {} }),
+        });
+        let r = await send(false);
+        if (r.status === 401) r = await send(true); // jeton expiré : on le renouvelle une fois
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) return { error: j.error || 'Erreur du serveur (' + r.status + ').' };
+        res = j;
+      } else res = (await f.fn({ op, data: data || {} })).data;
       applyServer(res);
       return res.result || {};
     } catch (e) {
@@ -104,7 +120,8 @@
   }
   let syncing = null;
   function sync() {
-    if (!syncing) syncing = call('sync', { pseudo: load().pseudo }).finally(() => { setTimeout(() => { syncing = null; }, 2000); });
+    const acc = (() => { try { return JSON.parse(localStorage.getItem('casino-account')) || {}; } catch (e) { return {}; } })();
+    if (!syncing) syncing = call('sync', { pseudo: load().pseudo || acc.pseudo || '' }).finally(() => { setTimeout(() => { syncing = null; }, 2000); });
     return syncing;
   }
 

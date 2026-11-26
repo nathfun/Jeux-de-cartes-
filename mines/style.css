@@ -40,3 +40,5 @@
 @keyframes mnIn { from { opacity: 0; transform: translate(-50%, -50%) scale(.6); } }
 @media (prefers-reduced-motion: reduce) { .mn-cell { transition: none; } .mn-cell .b, .mn-grid.shake, #mult.bump { animation: none !important; } }
 .mn-stat b { line-height: 1.15; text-align: center; } @media (max-width: 640px) { .mn-stat b { font-size: 1rem; } .mn-stat span { font-size: .58rem; letter-spacing: .08em; } }
+
+.mn-cell.wait .f { animation: mnWait .6s ease-in-out infinite alternate; } @keyframes mnWait { to { filter: brightness(1.5); } }

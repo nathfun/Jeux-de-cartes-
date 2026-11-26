@@ -45,6 +45,8 @@
   let balls = [];          // { id, bet, rows, risk, path, slot, mult, payout, at, landAt, settled }
   let seq = 0;
   const inPlay = () => balls.filter((b) => !b.settled);
+  // partie réelle avec le serveur du Casino : c'est lui qui tire le chemin de chaque bille et tient la table
+  const srv = () => S.mode === 'real' && window.Casino && Casino.server;
   const statsOf = () => store.stats[S.mode === 'real' ? 'real' : 'train'];
   const betsKey = () => (S.mode === 'real' ? 'real' : 'train');
   function setStack(v) {
@@ -66,14 +68,24 @@
     dropping++;
     const rows = store.rows, risk = store.risk;
     try {
-      const s = await ensureSeeds();
-      s.nonce++; const nonce = s.nonce; persist();
-      const path = await E.pathFromSeeds(s.server, s.client, nonce, rows);
-      const slot = E.slotOf(path), res = E.settle(v, rows, risk, slot);
+      let nonce, path, slot, res, srvStack = null;
+      if (srv()) {
+        const r = await Casino.call('pl.drop', { bet: v, rows, risk });
+        if (r.error) { setStack(S.stack + v); toast(r.error, true); return false; }
+        nonce = r.nonce; path = r.path; slot = r.slot; res = { mult: r.mult, payout: r.payout, net: r.net };
+        srvStack = r.stack; // la table du serveur, gains de toutes les billes compris
+      } else {
+        const s = await ensureSeeds();
+        s.nonce++; nonce = s.nonce; persist();
+        path = await E.pathFromSeeds(s.server, s.client, nonce, rows);
+        slot = E.slotOf(path); res = E.settle(v, rows, risk, slot);
+      }
       const at = now();
       const b = { id: ++seq, nonce, bet: v, rows, risk, path, slot, mult: res.mult, payout: res.payout, net: res.net, at, landAt: at + window.PlinkoScene.durationOf(rows), settled: false,
         label: res.mult >= 1 ? '+' + fmt(res.payout) + ' €' : fmtM(res.mult) };
       balls.push(b);
+      // serveur : la table affichée = celle du serveur moins les gains des billes encore en l'air
+      if (srvStack !== null) S.stack = Math.round((srvStack - inPlay().reduce((x, q) => x + q.payout, 0)) * 100) / 100;
       scene.drop(b);
       if (window.Sfx) Sfx.chips();
     } finally { dropping--; }
@@ -94,7 +106,7 @@
     store.bets[betsKey()] = store.bets[betsKey()].slice(0, 30);
     persist();
     if (window.Sfx && Sfx.plinkLand) Sfx.plinkLand(b.mult);
-    if (window.Casino && S.mode === 'real') Casino.track('pl', { bet: b.bet, net: b.net, mult: b.mult, edge: b.slot === 0 || b.slot === b.rows });
+    if (window.Casino && S.mode === 'real' && !Casino.server) Casino.track('pl', { bet: b.bet, net: b.net, mult: b.mult, edge: b.slot === 0 || b.slot === b.rows });
     if (b.mult >= 25 && window.Casino) setTimeout(() => Casino.bigWin(b.payout, 'PLINKO ' + fmtM(b.mult) + ' !'), 250);
     const last = $('last');
     last.textContent = fmtM(b.mult) + (b.mult >= 1 ? ' · +' + fmt(b.payout) + ' €' : '');
@@ -223,7 +235,9 @@
     if (document.activeElement !== $('pf-client')) $('pf-client').value = s ? s.client : '';
     $('pf-nonce').textContent = s ? String(s.nonce) : '0';
     $('pf-prev').textContent = s && s.prev ? s.prev.server + ' (client « ' + s.prev.client + ' », billes 1 à ' + s.prev.nonce + ')' : '–';
-    $('pf-note').textContent = 'Les seeds sont générées sur ton appareil : la vérification montre que chaque bille suit bien le chemin tiré.';
+    $('pf-note').textContent = window.Casino && Casino.server && S.mode === 'real'
+      ? 'Parties réelles : c\'est le serveur du Casino qui tire chaque bille avec ses propres seeds.'
+      : 'Les seeds sont générées sur ton appareil : la vérification montre que chaque bille suit bien le chemin tiré.';
   }
   $('pf-rotate').addEventListener('click', () => rotateSeeds($('pf-client').value.trim()));
   $('pf-check').addEventListener('click', async () => {

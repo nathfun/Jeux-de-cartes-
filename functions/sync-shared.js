@@ -8,6 +8,8 @@ const files = {
   'roulette/bets.js': 'bets.js',
   'slots/engine.js': 'slots-engine.js',
   'crash/engine.js': 'crash-engine.js',
+  'plinko/engine.js': 'plinko-engine.js',
+  'mines/engine.js': 'mines-engine.js',
   'blackjack/strategy.js': 'strategy.js',
   'blackjack/sidebets.js': 'sidebets.js',
   'poker/eval.js': 'eval.js',

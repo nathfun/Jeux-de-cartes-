@@ -1,0 +1,14 @@
+{
+  "name": "casino-serveur-nas",
+  "private": true,
+  "description": "Serveur du Casino (Node.js + SQLite) pour un NAS ou un hébergeur : banque et tirages des parties réelles",
+  "main": "src/server.js",
+  "engines": { "node": ">=22.5" },
+  "scripts": {
+    "prepare-core": "node prepare-core.js",
+    "start": "node --disable-warning=ExperimentalWarning src/server.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.6.0"
+  }
+}

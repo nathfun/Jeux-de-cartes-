@@ -47,3 +47,8 @@ App web installable sur téléphone (PWA) : blackjack, poker, roulette, machine 
 - Avec le serveur (`window.CASINO_SERVER = true`), les opérations `cr.round`, `cr.cashout`, `cr.status`, `cr.seed` de
   `functions/core.js` tirent les manches, encaissent les mises et jugent chaque retrait à l'heure du serveur (un retrait
   ne peut être payé qu'une fois). Sans serveur, le tirage se fait dans l'app et la banque reste protégée par les règles de la base.
+
+
+## Serveur du Casino sur un NAS
+
+Le dossier [`server/`](server/) contient un serveur Node.js + SQLite (Docker) qui tire tous les jeux et tient la banque. Les comptes restent chez Firebase Auth. Guide d'installation : [SERVEUR-NAS.md](SERVEUR-NAS.md).
