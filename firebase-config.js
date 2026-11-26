@@ -20,4 +20,4 @@ window.CASINO_SERVER = false;
 
 // Serveur du Casino sur ton NAS (dossier server/, voir SERVEUR-NAS.md) : l'adresse https donnée par Tailscale Funnel,
 // par exemple 'https://casino.ton-reseau.ts.net'. Laisse vide tant que le serveur n'est pas installé.
-window.CASINO_API = '';
+window.CASINO_API = 'https://casino.tailba0c1d.ts.net';
