@@ -375,7 +375,7 @@ function handle(state, ctx) {
     case 'sync': break;
     case 'profile.set': {
       if (typeof d.pseudo === 'string') P.pseudo = d.pseudo.trim().slice(0, 16);
-      if (typeof d.avatar === 'string' && R.AVATARS.includes(d.avatar)) P.avatar = d.avatar;
+      if (typeof d.avatar === 'string' && (R.AVATARS.includes(d.avatar) || R.canUse(P, 'avatar', d.avatar))) P.avatar = d.avatar;
       if (ctx.codeOk) P.friendCode = d.code;
       break;
     }
@@ -398,6 +398,8 @@ function handle(state, ctx) {
     case 'bonus.claim': result.amount = R.claimBonus(P, now, N); break;
     case 'challenge.claim': result.amount = R.claimChallenge(P, String(d.id), now, N); break;
     case 'vip.buy': { const r = R.buyVip(P, String(d.pass), now, N); if (r.error) fail(r.error); result = r; break; }
+    case 'booster.open': { const r = R.openBooster(P, String(d.source), now, ctx.rnd, N); if (r.error) fail(r.error); result = r; break; }
+    case 'card.craft': { const r = R.craftCard(P, String(d.kind), String(d.id), now); if (r.error) fail(r.error); result = r; break; }
     case 'wheel.spin': { const r = R.spinWheel(P, now, ctx.rnd, N); if (!r) fail('Plus de tour de roue aujourd\'hui : reviens demain !'); result = r; break; }
     case 'chest.claim': result.amount = R.claimChest(P, now, N); if (!result.amount) fail('Le coffre est encore vide.'); break;
     case 'rescue.claim': result.amount = R.claimRescue(P, now); if (!result.amount) fail('L\'aide de secours n\'est pas disponible.'); break;

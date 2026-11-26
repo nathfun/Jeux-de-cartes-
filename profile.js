@@ -700,7 +700,7 @@
     },
     SEASON_TIERS: R.SEASON_TIERS, seasonOf: R.seasonOf, seasonTier: R.seasonTier, seasonName: R.seasonName,
     canUse(kind, id) { return R.canUse(load(), kind, id); },
-    owns(kind, id) { const it = R.itemOf(kind, id); return !!it && (!it.price || !!(load().owned || {})[kind + ':' + id]); },
+    owns(kind, id) { const it = R.itemOf(kind, id); return !!it && ((!it.price && !it.card && !it.exclusive && !it.daily && !it.vipOnly) || !!(load().owned || {})[kind + ':' + id]); },
     equipped(kind) { load(); P.equipped = Object.assign({}, R.DEFAULT_EQUIP, P.equipped); const id = P.equipped[kind]; return R.canUse(P, kind, id) ? id : R.DEFAULT_EQUIP[kind]; },
     equip(kind, id) {
       load();
@@ -885,6 +885,19 @@
       } catch (e) { /* ignore */ }
       load(); P.settings.push = false; save();
     },
+    // ---------- Boosters de cartes ----------
+    RARITY: R.RARITY, RARITY_ORDER: R.RARITY_ORDER,
+    boosters() { return R.boosterInfo(load(), Date.now()); },
+    async openBooster(source) {
+      if (SERVER) { const r = await call('booster.open', { source }); return r.error ? r : r.result; }
+      if (BANK) return { error: 'Les boosters demandent le serveur du Casino.' };
+      return local((N) => R.openBooster(P, source, Date.now(), (n) => Math.floor(Math.random() * n), N));
+    },
+    async craftCard(kind, id) {
+      if (SERVER) { const r = await call('card.craft', { kind, id }); return r.error ? r : r.result; }
+      if (BANK) return { error: 'Demande le serveur du Casino.' };
+      return local(() => R.craftCard(P, kind, id, Date.now()));
+    },
     wheel() { return R.wheelInfo(load(), Date.now()); },
     async spinWheel() {
       if (SERVER) { const r = await call('wheel.spin'); return r.error ? r : r.result; }
@@ -939,7 +952,9 @@
     if (styled) return;
     styled = true;
     const s = document.createElement('style');
-    s.textContent = `
+    const ringCss = (R.SHOP.frame || []).filter((f) => f.ring).map((f) => '.fr-' + f.id + '{border-color:' + f.ring + ' !important;box-shadow:0 0 0 2px ' + f.ring + ',0 0 16px ' + f.glow + ' !important;' + (f.anim === 'hue' ? 'animation:fr-hue 4s linear infinite;' : f.anim === 'pulse' ? 'animation:fr-pulse 1.8s ease-in-out infinite;' : '') + '}').join('');
+    s.textContent = ringCss + `@keyframes fr-hue { to { filter: hue-rotate(360deg); } } @keyframes fr-pulse { 50% { filter: brightness(1.45) saturate(1.3); } }
+
 .casino-celebrate { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; background: radial-gradient(circle at 50% 45%, rgba(40,30,8,.92), rgba(0,0,0,.92)); overflow: hidden; animation: cc-fade .35s both; font: 15px system-ui, sans-serif; color: #f8f3e6; }
 .casino-celebrate.out { animation: cc-fade .35s reverse both; }
 .casino-celebrate .cc-box { position: relative; text-align: center; padding: 1.6rem 1.4rem; max-width: 340px; }

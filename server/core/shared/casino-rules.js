@@ -144,6 +144,78 @@
   FRAMES.push({ id: 'platine', name: 'Platine (prestige)', level: 25, price: 5000 });
   TITLES.push({ id: 'magnat', name: 'Magnat (prestige)', level: 20, price: 4000 }, { id: 'baron', name: 'Baron du Lounge (prestige)', level: 30, price: 8000 });
   THEMES.push({ id: 'platine', name: 'Platine (prestige)', level: 25, price: 6000, bg: '#0e1114', panel: '#1b2127', border: '#3d4852', accent: '#e5e7eb' });
+  // ---------- Cartes à collectionner (boosters) : objets qu'on ne trouve QUE dans les boosters (ou entre joueurs) ----------
+  // rareté : commune, rare, épique, légendaire, mythique
+  const RARITY = {
+    commun: { name: 'Commune', w: 600, shard: 5, craft: 40, color: '#9ca3af' },
+    rare: { name: 'Rare', w: 250, shard: 15, craft: 120, color: '#3b82f6' },
+    epique: { name: 'Épique', w: 105, shard: 50, craft: 400, color: '#a855f7' },
+    legendaire: { name: 'Légendaire', w: 40, shard: 200, craft: 1600, color: '#f59e0b' },
+    mythique: { name: 'Mythique', w: 5, shard: 1000, craft: 8000, color: '#ef4444' },
+  };
+  const RARITY_ORDER = ['commun', 'rare', 'epique', 'legendaire', 'mythique'];
+  const card = (r, o) => Object.assign({ level: 1, price: 0, card: r }, o);
+  FELTS.push(
+    card('commun', { id: 'c_sable', name: 'Sable chaud', a: '#8a6d3b', b: '#5a4522' }), card('commun', { id: 'c_menthe', name: 'Menthe', a: '#2f7d6d', b: '#1b4d43' }), card('commun', { id: 'c_ardoise', name: 'Ardoise', a: '#3b4654', b: '#232b35' }),
+    card('rare', { id: 'c_lagune', name: 'Lagune', a: '#0891b2', b: '#164e63' }), card('rare', { id: 'c_crepuscule', name: 'Crépuscule', a: '#9a3412', b: '#4c1d95' }), card('rare', { id: 'c_jade', name: 'Jade impérial', a: '#047857', b: '#022c22' }),
+    card('epique', { id: 'c_magma', name: 'Magma', a: '#dc2626', b: '#1c0a05' }), card('epique', { id: 'c_velours', name: 'Velours de minuit', a: '#312e81', b: '#020617' }),
+    card('legendaire', { id: 'c_orliquide', name: 'Or liquide', a: '#facc15', b: '#713f12' }), card('legendaire', { id: 'c_spirale', name: 'Galaxie spirale', a: '#7e22ce', b: '#0c0a1f' }),
+    card('mythique', { id: 'c_prisme', name: 'Prisme', a: '#ec4899', b: '#0ea5e9' }));
+  BACKS.push(
+    card('commun', { id: 'c_brique', name: 'Brique', a: '#9a3412', b: '#7c2d12' }), card('commun', { id: 'c_olive', name: 'Olive', a: '#4d5b1f', b: '#65752a' }), card('commun', { id: 'c_gris', name: 'Graphite', a: '#374151', b: '#4b5563' }),
+    card('rare', { id: 'c_corail', name: 'Corail', a: '#f43f5e', b: '#fb923c' }), card('rare', { id: 'c_glacier', name: 'Glacier', a: '#38bdf8', b: '#e0f2fe' }), card('rare', { id: 'c_lilas', name: 'Lilas', a: '#a78bfa', b: '#ddd6fe' }),
+    card('epique', { id: 'c_tigre', name: 'Tigre', a: '#f97316', b: '#111827' }), card('epique', { id: 'c_cyber', name: 'Cyber', a: '#0f172a', b: '#22d3ee' }),
+    card('legendaire', { id: 'c_soleil', name: 'Soleil royal', a: '#b45309', b: '#fde047' }), card('legendaire', { id: 'c_abysse', name: 'Abysse', a: '#020617', b: '#1d4ed8' }),
+    card('mythique', { id: 'c_eclipse', name: 'Éclipse', a: '#000000', b: '#f59e0b' }));
+  AVATAR_ITEMS.push(
+    card('commun', { id: '🐨', name: 'Koala' }), card('commun', { id: '🐧', name: 'Pingouin' }), card('commun', { id: '🦝', name: 'Raton laveur' }), card('commun', { id: '🐻', name: 'Ours' }),
+    card('rare', { id: '🦜', name: 'Perroquet' }), card('rare', { id: '🐢', name: 'Tortue' }), card('rare', { id: '🦋', name: 'Papillon' }), card('rare', { id: '🐬', name: 'Dauphin' }),
+    card('epique', { id: '🧜', name: 'Sirène' }), card('epique', { id: '🦸', name: 'Super-héros' }), card('epique', { id: '🧚', name: 'Fée' }), card('epique', { id: '🐳', name: 'Baleine' }),
+    card('legendaire', { id: '🦅', name: 'Aigle royal' }), card('legendaire', { id: '🪐', name: 'Planète' }), card('legendaire', { id: '🐆', name: 'Guépard' }),
+    card('mythique', { id: '☄️', name: 'Comète' }), card('mythique', { id: '🧿', name: 'Œil porte-bonheur' }));
+  FRAMES.push(
+    card('commun', { id: 'c_bronze', name: 'Bronze', ring: '#b87333', glow: 'rgba(184,115,51,.5)' }), card('commun', { id: 'c_menthe', name: 'Menthe', ring: '#34d399', glow: 'rgba(52,211,153,.4)' }),
+    card('rare', { id: 'c_saphir', name: 'Saphir', ring: '#2563eb', glow: 'rgba(37,99,235,.7)' }), card('rare', { id: 'c_rubis', name: 'Rubis', ring: '#e11d48', glow: 'rgba(225,29,72,.7)' }),
+    card('epique', { id: 'c_amethyste', name: 'Améthyste', ring: '#a855f7', glow: 'rgba(168,85,247,.85)' }), card('epique', { id: 'c_toxique', name: 'Toxique', ring: '#84cc16', glow: 'rgba(132,204,22,.85)' }),
+    card('legendaire', { id: 'c_solaire', name: 'Couronne solaire', ring: '#fbbf24', glow: 'rgba(251,191,36,1)', anim: 'pulse' }), card('legendaire', { id: 'c_glacial', name: 'Glacial', ring: '#a5f3fc', glow: 'rgba(165,243,252,1)', anim: 'pulse' }),
+    card('mythique', { id: 'c_prisme', name: 'Prisme vivant', ring: '#ec4899', glow: 'rgba(236,72,153,1)', anim: 'hue' }));
+  ROCKETS.push(
+    card('commun', { id: 'c_cargo', name: 'Cargo', body: ['#78716c', '#d6d3d1', '#57534e'], nose: '#f59e0b', fin: '#44403c', flame: ['#fed7aa', '#f97316'] }),
+    card('rare', { id: 'c_sapin', name: 'Sapin', body: ['#14532d', '#22c55e', '#052e16'], nose: '#ef4444', fin: '#15803d', flame: ['#fef9c3', '#facc15'] }),
+    card('rare', { id: 'c_bonbon', name: 'Bonbon', body: ['#f9a8d4', '#fdf2f8', '#f472b6'], nose: '#a855f7', fin: '#ec4899', flame: ['#fbcfe8', '#f472b6'] }),
+    card('epique', { id: 'c_requin', name: 'Requin', body: ['#475569', '#cbd5e1', '#1e293b'], nose: '#0f172a', fin: '#334155', flame: ['#bae6fd', '#0ea5e9'] }),
+    card('legendaire', { id: 'c_chrome', name: 'Chrome', body: ['#9ca3af', '#ffffff', '#4b5563'], nose: '#e5e7eb', fin: '#6b7280', flame: ['#ffffff', '#a78bfa'] }),
+    card('mythique', { id: 'c_phenix', name: 'Phénix céleste', body: ['#7f1d1d', '#fde047', '#450a0a'], nose: '#fff7ed', fin: '#f97316', flame: ['#ffffff', '#ef4444'] }));
+  BALLS.push(
+    card('commun', { id: 'c_menthe', name: 'Menthe', c: ['#6ee7b7', '#ffffff', '#10b981'] }), card('commun', { id: 'c_peche', name: 'Pêche', c: ['#fdba74', '#fff7ed', '#fb923c'] }),
+    card('rare', { id: 'c_saphir', name: 'Saphir', c: ['#3b82f6', '#dbeafe', '#1d4ed8'] }), card('epique', { id: 'c_toxique', name: 'Toxique', c: ['#a3e635', '#f7fee7', '#65a30d'] }),
+    card('legendaire', { id: 'c_soleil', name: 'Petit soleil', c: ['#fde047', '#ffffff', '#f97316'] }), card('mythique', { id: 'c_trounoir', name: 'Trou noir', c: ['#0f0f0f', '#a855f7', '#000000'] }));
+  TITLES.push(
+    card('commun', { id: 'c_curieux', name: 'Curieux' }), card('commun', { id: 'c_noctambule', name: 'Noctambule' }), card('commun', { id: 'c_touriste', name: 'Touriste' }),
+    card('rare', { id: 'c_stratege', name: 'Stratège' }), card('rare', { id: 'c_trefle', name: 'Trèfle à quatre feuilles' }), card('rare', { id: 'c_collection', name: 'Collectionneur' }),
+    card('epique', { id: 'c_pirate', name: 'Pirate du Lounge' }), card('epique', { id: 'c_maestro', name: 'Maestro' }),
+    card('legendaire', { id: 'c_parrain', name: 'Le Parrain' }), card('legendaire', { id: 'c_oracle', name: 'L\'Oracle' }),
+    card('mythique', { id: 'c_intouchable', name: 'L\'Intouchable' }));
+  THEMES.push(
+    card('rare', { id: 'c_sakura', name: 'Sakura', bg: '#1a0b12', panel: '#2a1220', border: '#5b2440', accent: '#f9a8d4' }),
+    card('rare', { id: 'c_foret', name: 'Forêt', bg: '#07120a', panel: '#0f2014', border: '#24452b', accent: '#86efac' }),
+    card('epique', { id: 'c_synthwave', name: 'Synthwave', bg: '#12051f', panel: '#1f0a35', border: '#5b21b6', accent: '#f472b6' }),
+    card('legendaire', { id: 'c_palace', name: 'Palace', bg: '#0f0a05', panel: '#1f150a', border: '#7c5a1c', accent: '#fcd34d' }),
+    card('mythique', { id: 'c_aurore', name: 'Aurore', bg: '#030d12', panel: '#08202a', border: '#0e7490', accent: '#5eead4' }));
+  CHIPS.push(
+    card('rare', { id: 'c_glace', name: 'Glacés', filter: 'hue-rotate(180deg) saturate(.7) brightness(1.3)' }),
+    card('epique', { id: 'c_braise', name: 'Braise', filter: 'sepia(1) saturate(5) hue-rotate(-30deg) drop-shadow(0 0 5px #f97316)' }),
+    card('legendaire', { id: 'c_platine', name: 'Platine', filter: 'grayscale(1) brightness(1.5) drop-shadow(0 0 6px #e5e7eb)' }),
+    card('mythique', { id: 'c_cosmique', name: 'Cosmiques', filter: 'hue-rotate(250deg) saturate(3) drop-shadow(0 0 7px #a855f7)', anim: true }));
+  EFFECTS.push(
+    card('commun', { id: 'c_bulles', name: 'Bulles', emojis: ['🫧', '💧', '🫧', '✨'] }), card('rare', { id: 'c_fleurs', name: 'Pétales', emojis: ['🌸', '🌺', '🌷', '🌼'] }),
+    card('rare', { id: 'c_fruits', name: 'Salade de fruits', emojis: ['🍒', '🍋', '🍉', '🍇'] }), card('epique', { id: 'c_neige', name: 'Tempête de neige', emojis: ['❄️', '☃️', '🌨️', '✨'] }),
+    card('legendaire', { id: 'c_dragons', name: 'Dragons', emojis: ['🐉', '🔥', '🐲', '💥'] }), card('mythique', { id: 'c_galaxie', name: 'Big Bang', emojis: ['🌌', '🪐', '☄️', '🌠'] }));
+  // Luxe : objets hors de prix de la boutique, pour les plus grosses banques
+  FRAMES.push({ id: 'l_couronne', name: 'Couronne de diamants (luxe)', level: 30, price: 50000, ring: '#e0f2fe', glow: 'rgba(224,242,254,1)', anim: 'hue', luxe: true });
+  TITLES.push({ id: 'l_empereur', name: 'Empereur du Lounge (luxe)', level: 35, price: 100000, luxe: true });
+  THEMES.push({ id: 'l_diamant', name: 'Diamant noir (luxe)', level: 30, price: 75000, luxe: true, bg: '#050507', panel: '#101018', border: '#3f3f5a', accent: '#c7d2fe' });
+
   // Objets VIP : portés seulement tant que le pass VIP est actif
   FRAMES.push({ id: 'vip', name: 'Couronne VIP', level: 1, price: 0, vipOnly: true });
   TITLES.push({ id: 'membre_vip', name: 'Membre VIP', level: 1, price: 0, vipOnly: true });
@@ -185,7 +257,7 @@
     const it = itemOf(kind, id);
     if (!it) return false;
     if (it.vipOnly) return isVip(P);
-    if (it.exclusive || it.daily) return !!(P.owned && P.owned[ownKey(kind, id)]);
+    if (it.exclusive || it.daily || it.card) return !!(P.owned && P.owned[ownKey(kind, id)]);
     if (levelOf(P.xp) < it.level) return false;
     return !it.price || !!(P.owned && P.owned[ownKey(kind, id)]);
   }
@@ -291,6 +363,8 @@
     { id: 'rich100', icon: '👑', name: 'Millionnaire en herbe', text: 'Avoir 10 000 € en banque' },
     { id: 'vip', icon: '🥂', name: 'Salon VIP', text: 'Entrer dans le salon Argent (niveau 10)' },
     { id: 'vip_pass', icon: '👑', name: 'Membre du club', text: 'Prendre un pass VIP' },
+    { id: 'cards10', icon: '🃏', name: 'Collectionneur', text: 'Ouvrir 10 cartes de booster' },
+    { id: 'mythic', icon: '🔴', name: 'Mythique !', text: 'Obtenir une carte mythique' },
   ];
 
   // Coffre : il se remplit tout seul (CHEST_RATE € par heure, au plus CHEST_CAP €) ; on l'ouvre quand on veut
@@ -619,6 +693,73 @@
   }
   const challengeReward = (def, P) => Math.round(def.reward * (1 + 0.5 * Math.floor(levelOf(P.xp || 0) / 10)));
 
+
+  // ---------- Boosters ----------
+  const BOOSTER = { FREE: 2, FREE_VIP: 3, TIME_MS: 4 * 3600000, TIME_CAP: 2, PRICE1: 150, PRICE5: 600 };
+  const CARD_POOL = () => { const out = []; Object.keys(SHOP).forEach((k) => SHOP[k].forEach((it) => { if (it.card) out.push({ kind: k, id: it.id, rarity: it.card }); })); return out; };
+  function cardsOf(P, now) {
+    P.cards = P.cards || {};
+    if (!P.cards.timeAt) P.cards.timeAt = now;
+    P.cards.shards = P.cards.shards || 0;
+    return P.cards;
+  }
+  function boosterInfo(P, now) {
+    const c = cardsOf(P, now), d = today(now);
+    const freeMax = isVip(P, now) ? BOOSTER.FREE_VIP : BOOSTER.FREE;
+    const freeLeft = Math.max(0, freeMax - (c.freeDay === d ? c.freeUsed || 0 : 0));
+    const since = Math.min(now - c.timeAt, BOOSTER.TIME_MS * BOOSTER.TIME_CAP);
+    const tokens = Math.floor(since / BOOSTER.TIME_MS);
+    const pool = CARD_POOL(), owned = pool.filter((x) => P.owned && P.owned[ownKey(x.kind, x.id)]);
+    const by = {}; RARITY_ORDER.forEach((r) => { by[r] = { have: owned.filter((x) => x.rarity === r).length, all: pool.filter((x) => x.rarity === r).length }; });
+    return { freeLeft, freeMax, tokens, tokenCap: BOOSTER.TIME_CAP, nextIn: tokens >= BOOSTER.TIME_CAP ? 0 : BOOSTER.TIME_MS - (since % BOOSTER.TIME_MS), shards: c.shards, opened: c.opened || 0,
+      price1: BOOSTER.PRICE1, price5: BOOSTER.PRICE5, have: owned.length, all: pool.length, by };
+  }
+  function drawRarity(rnd, min) {
+    const ok = RARITY_ORDER.slice(RARITY_ORDER.indexOf(min || 'commun'));
+    const total = ok.reduce((a, r) => a + RARITY[r].w, 0);
+    let x = rnd(total);
+    for (const r of ok) { if (x < RARITY[r].w) return r; x -= RARITY[r].w; }
+    return ok[0];
+  }
+  /** Ouvre des cartes : source = free (offertes du jour), time (sablier), buy1 (150 €), buy5 (600 €, une rare au moins). */
+  function openBooster(P, source, now, rnd, N) {
+    const c = cardsOf(P, now), info = boosterInfo(P, now), d = today(now);
+    let n = 1;
+    if (source === 'free') { if (!info.freeLeft) return { error: 'Plus de carte offerte aujourd\'hui : reviens demain !' }; c.freeUsed = (c.freeDay === d ? c.freeUsed || 0 : 0) + 1; c.freeDay = d; }
+    else if (source === 'time') { if (!info.tokens) return { error: 'Le sablier n\'est pas encore prêt.' }; c.timeAt = Math.max(c.timeAt, now - BOOSTER.TIME_MS * BOOSTER.TIME_CAP) + BOOSTER.TIME_MS; }
+    else if (source === 'buy1' || source === 'buy5') {
+      const price = source === 'buy5' ? BOOSTER.PRICE5 : BOOSTER.PRICE1; n = source === 'buy5' ? 5 : 1;
+      if (P.wallet < price) return { error: 'Il te manque ' + Math.ceil(price - P.wallet).toLocaleString('fr-FR') + ' €.' };
+      P.wallet -= price;
+    } else return { error: 'Booster inconnu.' };
+    const pool = CARD_POOL(), out = [];
+    P.owned = P.owned || {};
+    for (let i = 0; i < n; i++) {
+      const rarity = drawRarity(rnd, n === 5 && i === 4 && !out.some((x) => x.rarity !== 'commun') ? 'rare' : null);
+      const list = pool.filter((x) => x.rarity === rarity), pick = list[rnd(list.length)];
+      const key = ownKey(pick.kind, pick.id), dup = !!P.owned[key];
+      if (dup) c.shards += RARITY[rarity].shard; else P.owned[key] = now;
+      out.push({ kind: pick.kind, id: pick.id, rarity, dup, shards: dup ? RARITY[rarity].shard : 0 });
+      if (rarity === 'legendaire' || rarity === 'mythique') N.push({ kind: 'gold', title: (rarity === 'mythique' ? '🔴 Carte MYTHIQUE !' : '🟡 Carte légendaire !'), text: itemOf(pick.kind, pick.id).name + (dup ? ' (doublon : +' + RARITY[rarity].shard + ' éclats)' : ''), icon: '🃏' });
+    }
+    c.opened = (c.opened || 0) + n;
+    addXP(P, 5 * n, N);
+    if (c.opened >= 10) unlock(P, 'cards10', N);
+    if (out.some((x) => x.rarity === 'mythique')) unlock(P, 'mythic', N);
+    return { cards: out, shards: c.shards };
+  }
+  /** Fabrique une carte précise avec des éclats (obtenus avec les doublons). */
+  function craftCard(P, kind, id, now) {
+    const it = itemOf(kind, id);
+    if (!it || !it.card) return { error: 'Carte introuvable.' };
+    const c = cardsOf(P, now), cost = RARITY[it.card].craft;
+    P.owned = P.owned || {};
+    if (P.owned[ownKey(kind, id)]) return { error: 'Tu l\'as déjà.' };
+    if (c.shards < cost) return { error: 'Il te manque ' + (cost - c.shards) + ' éclats.' };
+    c.shards -= cost; P.owned[ownKey(kind, id)] = now;
+    return { cost, shards: c.shards };
+  }
+
   // Coffre qui se remplit tout seul
   function chestInfo(P, now) {
     const k = isVip(P, now) ? 2 : 1, cap = CHEST_CAP * k, rate = CHEST_RATE * k;
@@ -735,6 +876,7 @@
     need, levelOf, title, today, fresh, normalize, addXP, unlock, checkWallet, ensureDaily, track,
     bonusInfo, claimBonus, claimChallenge, timeInfo, startTime, claimTime, startSession, cashOut,
     prizeFor, prizeText, applyPrize, publicProfile, REF_BONUS, REF_MIN_HANDS, REF_MAX,
+    RARITY, RARITY_ORDER, BOOSTER, boosterInfo, openBooster, craftCard,
     VIP_PASS, VIP_PERKS, isVip, buyVip, grantVip, WHEEL, wheelInfo, spinWheel,
     CHEST_RATE, CHEST_CAP, RESCUE_BELOW, RESCUE_AMOUNT, VIP, vipOf, maxBet, chestInfo, claimChest, rescueInfo, claimRescue, challengeReward, dailyOffer,
   };

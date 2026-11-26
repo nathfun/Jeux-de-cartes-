@@ -315,6 +315,38 @@
     .push-prefs { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .3rem .8rem; margin: .4rem 0 .7rem; }
     .row-btns { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
     .chest-notif { margin-top: .6rem; }
+    .boosters { background: linear-gradient(135deg, #141026, #0c1220 60%, #1a0f22); border-color: #3b2a6b; }
+    .bo-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; flex-wrap: wrap; }
+    .bo-head h2 { margin: 0; } .bo-meta { font-size: .85rem; color: var(--muted); }
+    .bo-rar { display: flex; gap: .35rem; flex-wrap: wrap; margin: .6rem 0; }
+    .bo-rar span { font-size: .75rem; font-weight: 700; padding: .15rem .55rem; border-radius: 999px; border: 1px solid; background: rgba(0,0,0,.25); }
+    .bo-btns { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .55rem; }
+    .bo-btn { font: inherit; color: var(--text); text-align: left; background: rgba(0,0,0,.3); border: 2px solid #3b2a6b; border-radius: 14px; padding: .65rem .75rem; cursor: pointer; display: flex; flex-direction: column; gap: .1rem; position: relative; }
+    .bo-btn b { font-size: .98rem; } .bo-btn small { color: var(--muted); } .bo-btn .bp { color: var(--gold); font-weight: 900; }
+    .bo-btn.ready { border-color: #a855f7; box-shadow: 0 0 14px rgba(168,85,247,.45); animation: glow 1.6s ease-in-out infinite; }
+    .bo-btn:disabled { opacity: .55; cursor: default; animation: none; }
+    .sh-item.r-commun { border-color: #6b7280 !important; } .sh-item.r-rare { border-color: #3b82f6 !important; } .sh-item.r-epique { border-color: #a855f7 !important; }
+    .sh-item.r-legendaire { border-color: #f59e0b !important; box-shadow: 0 0 10px rgba(245,158,11,.35); } .sh-item.r-mythique { border-color: #ef4444 !important; box-shadow: 0 0 14px rgba(239,68,68,.5); }
+    .st-tag.t-card { background: rgba(168,85,247,.18); color: #e9d5ff; }
+    .bo-open { position: fixed; inset: 0; z-index: 110; background: radial-gradient(circle at 50% 40%, #1c1338, #05040a 75%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: 1rem; animation: cc-fade .3s both; }
+    .bo-open h3 { margin: 0; color: #e9d5ff; letter-spacing: .05em; }
+    .bo-row { display: flex; gap: .7rem; flex-wrap: wrap; justify-content: center; max-width: 760px; }
+    .bo-card { width: 128px; height: 186px; perspective: 900px; cursor: pointer; }
+    .bo-in { position: relative; width: 100%; height: 100%; transition: transform .7s cubic-bezier(.2,.8,.3,1.2); transform-style: preserve-3d; }
+    .bo-card.flip .bo-in { transform: rotateY(180deg); }
+    .bo-face { position: absolute; inset: 0; border-radius: 14px; backface-visibility: hidden; -webkit-backface-visibility: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .35rem; padding: .5rem; text-align: center; }
+    .bo-back { background: repeating-linear-gradient(45deg, #2e1065, #2e1065 8px, #4c1d95 8px, #4c1d95 16px); border: 3px solid #a78bfa; font-size: 2.4rem; box-shadow: 0 8px 20px rgba(0,0,0,.5); }
+    .bo-front { transform: rotateY(180deg); background: #11131a; border: 3px solid var(--rc); box-shadow: 0 0 22px var(--rc); color: #fff; }
+    .bo-front .pv { width: 90px; height: 70px; border-radius: 10px; display: grid; place-items: center; font-size: 2rem; overflow: hidden; }
+    .bo-front b { font-size: .82rem; line-height: 1.15; } .bo-front .rr { font-size: .68rem; font-weight: 900; color: var(--rc); text-transform: uppercase; letter-spacing: .06em; }
+    .bo-front .nw { font-size: .66rem; font-weight: 900; padding: .05rem .45rem; border-radius: 999px; background: #22c55e; color: #052e16; } .bo-front .dp { font-size: .7rem; color: #c4b5fd; }
+    .bo-card.r-legendaire.flip .bo-front, .bo-card.r-mythique.flip .bo-front { animation: boShine 1.4s ease-in-out infinite; }
+    .bo-card.r-mythique.flip .bo-front { background: linear-gradient(135deg, #2a0710, #11131a 50%, #071a2a); }
+    @keyframes boShine { 50% { box-shadow: 0 0 36px var(--rc), 0 0 8px #fff; } }
+    .bo-front .pv-title { font-size: .72rem !important; line-height: 1.15; padding: .25rem; color: var(--gold); white-space: normal; }
+    .bo-front .pv-effect { font-size: 1.1rem !important; }
+    @media (max-width: 520px) { .bo-card { width: 104px; height: 156px; } .bo-front .pv { width: 76px; height: 56px; } .bo-row { gap: .5rem; } .bo-open { justify-content: flex-start; overflow-y: auto; padding-top: max(1rem, env(safe-area-inset-top)); } }
+    .bo-open .bo-close { font: inherit; font-weight: 800; padding: .6rem 1.4rem; border-radius: 999px; border: 0; background: linear-gradient(180deg, #c4b5fd, #8b5cf6); color: #1e0b3b; cursor: pointer; }
     .vip-badge { font: inherit; font-size: .72rem; font-weight: 700; border-radius: 999px; padding: .12rem .55rem; border: 1px solid var(--border); background: #141a21; color: var(--text); cursor: pointer; }
     .vip-badge.v-argent { border-color: #cbd5e1; color: #e2e8f0; } .vip-badge.v-or { border-color: var(--gold); color: var(--gold); }
     .vip-badge.v-diamant { border-color: #67e8f9; color: #a5f3fc; box-shadow: 0 0 10px rgba(103,232,249,.35); }
@@ -660,6 +692,16 @@
       <div class="ach-filters" id="ach-filters"><button data-f="all" class="on" type="button">Tous</button><button data-f="got" type="button">Obtenus</button><button data-f="todo" type="button">À débloquer</button></div>
       <div id="achievements" class="achievements"></div>
     </dialog>
+
+    <section class="panel boosters" data-tab="shop" aria-label="Boosters de cartes">
+      <div class="bo-head">
+        <h2>🃏 Boosters</h2>
+        <span class="bo-meta"><span id="bo-shards">0</span> ✨ éclats · <b id="bo-have">0</b> / <span id="bo-all">0</span> cartes</span>
+      </div>
+      <div id="bo-rar" class="bo-rar"></div>
+      <div id="bo-btns" class="bo-btns"></div>
+      <p class="muted small-p">Les cartes renferment des objets qu'on ne trouve nulle part ailleurs. Un doublon se transforme en éclats ✨, qui permettent de fabriquer la carte de ton choix. Chances par carte : <span id="bo-odds"></span>.</p>
+    </section>
 
     <section class="panel style" data-tab="shop" aria-label="Mon style">
       <div class="st-top">
@@ -1067,6 +1109,8 @@
         if (isEquipped(kind, it)) return 'on';
         if (it.base || Casino.canUse(kind, it.id)) return 'mine';
         if (it.exclusive) return 'excl';
+        if (it.card) return 'card';
+        if (it.vipOnly) return 'vip';
         if (lv < it.level) return 'lock';
         return 'buy';
       }
@@ -1104,6 +1148,21 @@
         if (st === 'on') { act.textContent = '✓ Déjà porté'; act.disabled = true; return; }
         if (st === 'mine') { act.textContent = '✨ Équiper'; act.classList.add('go'); act.onclick = () => wear(kind, it); return; }
         if (st === 'excl') { act.textContent = '🏆 ' + it.exclusive; act.disabled = true; return; }
+        if (st === 'vip') { act.textContent = '👑 Réservé aux membres VIP'; act.disabled = true; return; }
+        if (st === 'card') {
+          const cost = Casino.RARITY[it.card].craft, sh = Casino.boosters().shards, ck = 'craft:' + kind + ':' + it.id;
+          if (sh < cost) { act.textContent = '🃏 Carte ' + Casino.RARITY[it.card].name.toLowerCase() + ' : à trouver dans les boosters (ou ' + fmt(cost) + ' ✨, tu en as ' + fmt(sh) + ')'; act.disabled = true; return; }
+          act.classList.add('buy');
+          act.textContent = armedBuy === ck ? '👉 Confirmer : ' + fmt(cost) + ' éclats ?' : '✨ Fabriquer pour ' + fmt(cost) + ' éclats';
+          act.onclick = async () => {
+            if (armedBuy !== ck) { armedBuy = ck; clearTimeout(armedTimer); armedTimer = setTimeout(() => { armedBuy = null; renderAction(); }, 4000); renderAction(); return; }
+            armedBuy = null; act.disabled = true;
+            const r = await Casino.craftCard(kind, it.id);
+            if (r.error) { Casino.toast('Fabrication impossible', r.error, '⚠️'); renderShop(); return; }
+            celebrate('−' + fmt(cost) + ' ✨'); Casino.toast('Carte fabriquée !', it.name + ' rejoint ta collection.', '🃏', 'gold'); wear(kind, it, true);
+          };
+          return;
+        }
         if (st === 'lock') { act.textContent = '🔒 Se débloque au niveau ' + it.level + (it.price ? ' (puis ' + fmt(it.price) + ' €)' : ' (offert)'); act.disabled = true; return; }
         const key = kind + ':' + it.id;
         if (P.wallet < it.price) { act.textContent = 'Il te manque ' + fmt(it.price - P.wallet) + ' €'; act.disabled = true; return; }
@@ -1141,6 +1200,70 @@
       $('st-reset').addEventListener('click', () => { styleSel = null; armedBuy = null; renderShop(); });
       document.querySelectorAll('#st-filters button').forEach((b) => b.addEventListener('click', () => { styleFilter = b.dataset.f; document.querySelectorAll('#st-filters button').forEach((x) => x.classList.toggle('on', x === b)); renderShop(); }));
 
+      // ---------- Boosters de cartes ----------
+      const RAR = Casino.RARITY;
+      const durS = (ms) => { const m = Math.ceil(ms / 60000), h = Math.floor(m / 60); return h ? h + ' h ' + String(m % 60).padStart(2, '0') : m + ' min'; };
+      function renderBoosters() {
+        const b = Casino.boosters();
+        $('bo-shards').textContent = fmt(b.shards); $('bo-have').textContent = b.have; $('bo-all').textContent = b.all;
+        const rar = $('bo-rar'); rar.innerHTML = '';
+        Casino.RARITY_ORDER.forEach((r) => { const x = document.createElement('span'); x.style.color = RAR[r].color; x.style.borderColor = RAR[r].color; x.textContent = RAR[r].name + ' ' + b.by[r].have + '/' + b.by[r].all; rar.appendChild(x); });
+        const tot = Casino.RARITY_ORDER.reduce((a, r) => a + RAR[r].w, 0);
+        $('bo-odds').textContent = Casino.RARITY_ORDER.map((r) => RAR[r].name.toLowerCase() + ' ' + (RAR[r].w / tot * 100).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' %').join(', ');
+        const box = $('bo-btns'); box.innerHTML = '';
+        const P = Casino.profile;
+        const mkb = (title, sub, price, src, ready, dis) => {
+          const x = document.createElement('button'); x.type = 'button'; x.className = 'bo-btn' + (ready ? ' ready' : ''); x.disabled = !!dis;
+          const t = document.createElement('b'); t.textContent = title; x.appendChild(t);
+          if (price) { const p = document.createElement('span'); p.className = 'bp'; p.textContent = price; x.appendChild(p); }
+          const sm = document.createElement('small'); sm.textContent = sub; x.appendChild(sm);
+          x.addEventListener('click', () => openCards(src, x)); box.appendChild(x);
+        };
+        mkb('🎁 Cartes offertes', b.freeLeft ? b.freeLeft + ' à ouvrir aujourd\'hui' + (b.freeMax > 2 ? ' (bonus VIP 👑)' : '') : 'Reviens demain (' + b.freeMax + ' par jour)', '', 'free', b.freeLeft > 0, !b.freeLeft);
+        mkb('⏳ Sablier', b.tokens ? b.tokens + ' carte' + (b.tokens > 1 ? 's' : '') + ' prête' + (b.tokens > 1 ? 's' : '') : 'Prochaine carte dans ' + durS(b.nextIn), '', 'time', b.tokens > 0, !b.tokens);
+        mkb('🃏 Une carte', 'Au hasard', fmt(b.price1) + ' €', 'buy1', false, P.wallet < b.price1);
+        mkb('📦 Paquet de 5', 'Une rare ou mieux garantie', fmt(b.price5) + ' €', 'buy5', false, P.wallet < b.price5);
+      }
+      setInterval(() => { if (document.body.dataset.hubtab === 'shop') renderBoosters(); }, 30000);
+      async function openCards(src, btn) {
+        btn.disabled = true;
+        if (window.Sfx && Sfx.unlock) Sfx.unlock();
+        const r = await Casino.openBooster(src);
+        if (!r || r.error) { Casino.toast('Boosters', (r && r.error) || 'Impossible d\'ouvrir.', '🃏'); renderShop(); return; }
+        const o = document.createElement('div'); o.className = 'bo-open';
+        const h = document.createElement('h3'); h.textContent = r.cards.length > 1 ? 'Touche les cartes pour les retourner' : 'Touche la carte pour la retourner';
+        const row = document.createElement('div'); row.className = 'bo-row';
+        let left = r.cards.length;
+        r.cards.forEach((c, i) => {
+          const it = Casino.SHOP[c.kind].find((x) => x.id === c.id) || { name: c.id };
+          const el = document.createElement('div'); el.className = 'bo-card r-' + c.rarity; el.style.setProperty('--rc', RAR[c.rarity].color);
+          const inn = document.createElement('div'); inn.className = 'bo-in';
+          const back = document.createElement('div'); back.className = 'bo-face bo-back'; back.textContent = '🃏';
+          const front = document.createElement('div'); front.className = 'bo-face bo-front';
+          const rr = document.createElement('span'); rr.className = 'rr'; rr.textContent = RAR[c.rarity].name;
+          const nm = document.createElement('b'); nm.textContent = (c.kind === 'avatar' ? 'Avatar ' : '') + it.name;
+          const kd = document.createElement('small'); kd.className = 'muted'; kd.textContent = KIND_ICON[c.kind] + ' ' + Casino.SHOP_LABELS[c.kind];
+          const tag = document.createElement('span'); tag.className = c.dup ? 'dp' : 'nw'; tag.textContent = c.dup ? 'Doublon : +' + c.shards + ' ✨' : 'NOUVEAU';
+          front.append(rr, preview(c.kind, it), nm, kd, tag);
+          inn.append(back, front); el.appendChild(inn);
+          const flip = () => {
+            if (el.classList.contains('flip')) return;
+            el.classList.add('flip'); left--;
+            if (window.Sfx) { if (c.rarity === 'legendaire' || c.rarity === 'mythique') { Sfx.win(); setTimeout(() => Sfx.win(), 300); } else Sfx.chips(); }
+            if (c.rarity === 'mythique' || c.rarity === 'legendaire') Casino.vibrate && Casino.vibrate([50, 40, 120]);
+            if (!left) { h.textContent = r.cards.some((x) => !x.dup) ? '✨ Nouvelles cartes dans ta collection !' : 'Des doublons… transformés en éclats ✨'; done.hidden = false; }
+          };
+          el.addEventListener('click', flip);
+          row.appendChild(el);
+        });
+        const done = document.createElement('button'); done.type = 'button'; done.className = 'bo-close'; done.textContent = 'Super !'; done.hidden = true;
+        const all = document.createElement('button'); all.type = 'button'; all.className = 'icon-btn'; all.textContent = 'Tout retourner';
+        all.addEventListener('click', () => { row.querySelectorAll('.bo-card:not(.flip)').forEach((x, i) => setTimeout(() => x.click(), i * 260)); all.remove(); });
+        done.addEventListener('click', () => { o.remove(); renderShop(); });
+        o.append(h, row, all, done);
+        document.body.appendChild(o);
+      }
+
       function renderShop() {
         if (document.body.dataset.hubtab !== 'shop') return;
         const P = Casino.profile, lv = Casino.levelOf(P.xp);
@@ -1151,7 +1274,7 @@
         Object.keys(Casino.SHOP).forEach((k) => Casino.SHOP[k].forEach((it) => { if ((it.exclusive || it.daily) && !Casino.owns(k, it.id)) return; all++; if (Casino.canUse(k, it.id)) mine++; }));
         $('shop-owned').textContent = mine + ' / ' + all + ' objets';
         $('st-collect-fill').style.width = Math.round(mine / all * 100) + '%';
-        renderStage(); renderAction();
+        renderStage(); renderAction(); renderBoosters();
         // boutique du jour : 3 objets rares, les mêmes pour tout le monde, changés chaque nuit à minuit
         const dl = $('shop-daily'); dl.innerHTML = '';
         const dh = document.createElement('div'); dh.className = 'sd-head'; dh.innerHTML = '<b>🌟 Boutique du jour</b><small class="muted">Objets rares · changent à minuit</small>'; dl.appendChild(dh);
@@ -1181,13 +1304,14 @@
         const LBL = { on: '✓ Porté', mine: '✅ À toi', buy: '🛒', lock: '🔒 Niv. ', excl: '🏆 Exclusif' };
         listOf(shopCat).forEach((it) => {
           const st = stateOf(shopCat, it);
-          if ((styleFilter === 'mine' && !(st === 'mine' || st === 'on')) || (styleFilter === 'buy' && st !== 'buy') || (styleFilter === 'locked' && !(st === 'lock' || st === 'excl'))) return;
+          if ((styleFilter === 'mine' && !(st === 'mine' || st === 'on')) || (styleFilter === 'buy' && st !== 'buy') || (styleFilter === 'locked' && !(st === 'lock' || st === 'excl' || st === 'card' || st === 'vip'))) return;
           const card = document.createElement('button'); card.type = 'button';
-          card.className = 'sh-item st-' + st + (styleSel && styleSel.kind === shopCat && styleSel.id === it.id ? ' sel' : '');
+          card.className = 'sh-item st-' + st + (it.card ? ' r-' + it.card : '') + (styleSel && styleSel.kind === shopCat && styleSel.id === it.id ? ' sel' : '');
           card.appendChild(preview(shopCat, it));
           const nm = document.createElement('b'); nm.textContent = it.base ? 'Avatar ' + it.id : it.name; card.appendChild(nm);
           const tag = document.createElement('span'); tag.className = 'st-tag t-' + st;
-          tag.textContent = st === 'buy' ? '🛒 ' + fmt(it.price) + ' €' : st === 'lock' ? '🔒 Niv. ' + it.level : LBL[st];
+          tag.textContent = st === 'buy' ? '🛒 ' + fmt(it.price) + ' €' : st === 'lock' ? '🔒 Niv. ' + it.level : st === 'card' ? '🃏 ' + Casino.RARITY[it.card].name : st === 'vip' ? '👑 VIP' : LBL[st];
+          if (it.card && st !== 'card') tag.textContent += ' · ' + Casino.RARITY[it.card].name;
           card.appendChild(tag);
           card.addEventListener('click', () => {
             if (st === 'on') { styleSel = null; renderShop(); return; }
