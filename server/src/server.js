@@ -111,6 +111,10 @@ const monthNetOf = (P, t) => (P.season && P.season.id === R.seasonOf(t) ? P.seas
 setInterval(pushRound, 5 * 60000).unref();
 setTimeout(pushRound, 30000).unref();
 
+// ---------- Entre joueurs : marché, échanges, duels ----------
+const publishProfile = (u, P) => { if (rtdb) rtdb.ref('profiles/' + u).update(R.publicProfile(P, P.friendCode)).catch(() => {}); };
+let deals = null; // créé plus bas (a besoin de serial)
+
 // ---------- Mesures (page « État du serveur » de l'admin) ----------
 const os = require('os');
 const fs = require('fs');
@@ -169,6 +173,9 @@ function serial(uid, fn) {
   next.finally(() => { if (queues.get(uid) === next) queues.delete(uid); }).catch(() => {});
   return next;
 }
+
+deals = require('./deals.js')({ db, serial, R, core, rtdb, TABLES, pushTo, userError: (m) => Object.assign(new Error(m), { userMessage: m }), publish: publishProfile });
+setInterval(() => { deals.expire().catch((e) => console.error('[casino] expiration', e.message)); }, 10 * 60000).unref();
 
 // ---------- Réponses ----------
 function headers(req) {
@@ -232,6 +239,16 @@ async function casino(uid, token, op, data) {
   // un visiteur sans compte (connexion anonyme) ne crée rien sur le serveur : il faut un compte pour jouer
   if (token.firebase && token.firebase.sign_in_provider === 'anonymous') throw userError('Connecte-toi à ton compte pour jouer.');
   if (await isBanned(uid)) throw userError('Ton compte a été bloqué par l\'administrateur du Casino.');
+  // marché, échanges, duels : plusieurs joueurs à la fois (module deals.js)
+  if (deals.isDealOp(op)) {
+    if (!db.has(uid)) throw userError('Joue d\'abord une partie pour créer ton compte sur le serveur.');
+    const result = await deals.OPS[op](uid, data || {});
+    const P = db.load(uid).player, notes = [];
+    if (P && Array.isArray(P.inbox) && P.inbox.length && op === 'deals.list') {
+      await serial(uid, async () => { const st = db.load(uid); const before = JSON.parse(JSON.stringify(st)); (st.player.inbox || []).forEach((x) => notes.push({ title: x.title, text: x.text, icon: x.icon, kind: 'gold' })); st.player.inbox = []; db.save(uid, 'inbox', before, st, Date.now()); });
+    }
+    return { result, notes, player: db.load(uid).player };
+  }
   const ctx = {
     uid, op, data: data || {}, anon: token.firebase && token.firebase.sign_in_provider === 'anonymous',
     rnd: (n) => crypto.randomInt(n),
@@ -278,6 +295,7 @@ async function casino(uid, token, op, data) {
       payReferrer = { uid: P.refBy, name: P.pseudo || 'Un ami' };
     }
     // avis au parrain : ses filleuls qui ont débloqué la récompense depuis sa dernière visite
+    if (Array.isArray(P.inbox) && P.inbox.length) { P.inbox.forEach((x) => out.notes.push({ title: x.title, text: x.text, icon: x.icon, kind: 'gold' })); P.inbox = []; }
     if (Array.isArray(P.refInbox) && P.refInbox.length) {
       P.refInbox.forEach((x) => out.notes.push({ title: 'Ton filleul a débloqué le parrainage', text: x.name + ' a joué ses premières parties : +' + R.REF_BONUS.toLocaleString('fr-FR') + ' € pour toi !', icon: '🎁', kind: 'gold' }));
       P.refInbox = [];
@@ -361,6 +379,9 @@ function categoryOf(r) {
   const op = r.op, pre = op.split('.')[0];
   if (op.startsWith('admin:')) return 'Admin';
   if (op === 'ref') return 'Parrainage';
+  if (op.startsWith('mk.')) return 'Marché (frais)';
+  if (op.startsWith('trade')) return 'Échanges';
+  if (op.startsWith('duel')) return 'Duels';
   if (GAME_OF[pre] && op !== 'session.start') return 'Jeux';
   return { 'bonus.claim': 'Bonus du jour', 'challenge.claim': 'Défis', 'time.claim': 'Banque du temps', 'chest.claim': 'Coffre', 'wheel.spin': 'Roue du jour', 'vip.buy': 'Pass VIP', 'rescue.claim': 'Aide de secours', 'multi.prize': 'Entre amis', 'shop.buy': 'Boutique', 'session.start': 'Tables (aller)', 'session.cashout': 'Tables (retour)' }[op] || 'Autre';
 }

@@ -796,6 +796,8 @@
     async multiPrize(key, place, players, info) {
       if (SERVER) {
         const r = await call('multi.prize', info || {});
+        // duels en cours entre joueurs de cette table : réglés tout de suite par le serveur
+        if (info && info.table) call('duel.settle', { game: info.game, table: info.table }).then((d) => { if (d.settled && d.settled.length) setTimeout(() => call('deals.list'), 2500); }).catch(() => {});
         if (r.amount > 0) setTimeout(() => bigWin(r.amount, place === 1 ? 'VICTOIRE ENTRE AMIS !' : '2e PLACE !'), 2200);
         return r.amount || 0;
       }
@@ -844,7 +846,7 @@
     /** Texte court : « 🥈 Salon Argent · max 100 € » (+ couronne si VIP). */
     salonText() { const v = R.vipOf(load()), vip = R.isVip(load(), Date.now()); return (vip ? '👑 ' : '') + v.icon + ' ' + v.name + ' · max ' + R.maxBet(load(), Date.now()) + ' €'; },
     async buyVip(pass) {
-      if (SERVER) { const r = await call('vip.buy', { pass }); return r.error ? r : Object.assign({ ok: true }, r.result); }
+      if (SERVER) { const r = await call('vip.buy', { pass }); return r.error ? r : Object.assign({ ok: true }, r); }
       if (BANK) return { error: 'Le pass VIP demande le serveur du Casino.' };
       const r = local((N) => R.buyVip(P, pass, Date.now(), N));
       return r.error ? r : Object.assign({ ok: true }, r);
@@ -885,22 +887,25 @@
       } catch (e) { /* ignore */ }
       load(); P.settings.push = false; save();
     },
+    // ---------- Entre joueurs : marché, échanges, duels (serveur uniquement) ----------
+    async deal(op, data) { if (!SERVER) return { error: 'Le marché, les échanges et les duels demandent le serveur du Casino.' }; return call(op, data || {}); },
+    tradeable: R.tradeable, MARKET_FEE: R.MARKET_FEE, MARKET_FEE_VIP: R.MARKET_FEE_VIP,
     // ---------- Boosters de cartes ----------
     RARITY: R.RARITY, RARITY_ORDER: R.RARITY_ORDER,
     boosters() { return R.boosterInfo(load(), Date.now()); },
     async openBooster(source) {
-      if (SERVER) { const r = await call('booster.open', { source }); return r.error ? r : r.result; }
+      if (SERVER) return call('booster.open', { source });
       if (BANK) return { error: 'Les boosters demandent le serveur du Casino.' };
       return local((N) => R.openBooster(P, source, Date.now(), (n) => Math.floor(Math.random() * n), N));
     },
     async craftCard(kind, id) {
-      if (SERVER) { const r = await call('card.craft', { kind, id }); return r.error ? r : r.result; }
+      if (SERVER) return call('card.craft', { kind, id });
       if (BANK) return { error: 'Demande le serveur du Casino.' };
       return local(() => R.craftCard(P, kind, id, Date.now()));
     },
     wheel() { return R.wheelInfo(load(), Date.now()); },
     async spinWheel() {
-      if (SERVER) { const r = await call('wheel.spin'); return r.error ? r : r.result; }
+      if (SERVER) return call('wheel.spin');
       if (BANK) return { error: 'La roue demande le serveur du Casino.' };
       const r = local((N) => R.spinWheel(P, Date.now(), (n) => Math.floor(Math.random() * n), N));
       return r || { error: 'Plus de tour de roue aujourd\'hui.' };

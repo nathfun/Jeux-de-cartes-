@@ -592,4 +592,4 @@ function verifyTable(uid, game, t, now) {
   fail('Jeu inconnu.');
 }
 
-module.exports = { handle, GameError, newShoe };
+module.exports = { handle, GameError, newShoe, verifyTable, isVipTable: t0vip };

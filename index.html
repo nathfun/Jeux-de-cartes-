@@ -347,6 +347,30 @@
     .bo-front .pv-effect { font-size: 1.1rem !important; }
     @media (max-width: 520px) { .bo-card { width: 104px; height: 156px; } .bo-front .pv { width: 76px; height: 56px; } .bo-row { gap: .5rem; } .bo-open { justify-content: flex-start; overflow-y: auto; padding-top: max(1rem, env(safe-area-inset-top)); } }
     .bo-open .bo-close { font: inherit; font-weight: 800; padding: .6rem 1.4rem; border-radius: 999px; border: 0; background: linear-gradient(180deg, #c4b5fd, #8b5cf6); color: #1e0b3b; cursor: pointer; }
+    .deals { border-color: #7f1d1d; background: linear-gradient(135deg, #1a0d0d, var(--panel) 55%); }
+    .dl-list { display: flex; flex-direction: column; gap: .5rem; margin-top: .8rem; }
+    .dl-item { border: 1px solid var(--border); border-radius: 12px; padding: .6rem .7rem; background: rgba(0,0,0,.22); display: flex; flex-direction: column; gap: .35rem; }
+    .dl-item.in { border-color: #f59e0b; } .dl-item.live { border-color: #22c55e; } .dl-item.done { opacity: .75; }
+    .dl-item .dl-t { font-weight: 700; } .dl-item .dl-s { font-size: .82rem; color: var(--muted); }
+    .dl-item .row-btns button, .dl-item .row-btns a { font-size: .85rem; }
+    .dl-item a.go { text-decoration: none; background: #22c55e; color: #052e16; font-weight: 800; padding: .35rem .8rem; border-radius: 999px; }
+    .chip-it { display: inline-flex; align-items: center; gap: .25rem; font-size: .78rem; border: 1px solid var(--rc, var(--border)); color: var(--rc, var(--text)); border-radius: 999px; padding: .05rem .5rem; margin: .1rem .15rem 0 0; }
+    .market { border-color: #14532d; background: linear-gradient(135deg, #0a1a10, var(--panel) 55%); }
+    .mk-filters { display: flex; gap: .4rem; flex-wrap: wrap; margin: .4rem 0 .7rem; } .mk-filters select { font: inherit; background: #0d1117; color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: .35rem .5rem; }
+    .mk-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: .5rem; }
+    .mk-card { border: 2px solid var(--rc, var(--border)); border-radius: 14px; padding: .5rem; background: rgba(0,0,0,.25); display: flex; flex-direction: column; align-items: center; gap: .25rem; text-align: center; }
+    .mk-card .pv { width: 84px; height: 60px; border-radius: 10px; display: grid; place-items: center; font-size: 1.8rem; overflow: hidden; }
+    .mk-card .pv-title { font-size: .68rem !important; padding: .2rem; color: var(--gold); }
+    .mk-card b { font-size: .85rem; } .mk-card small { color: var(--muted); font-size: .72rem; } .mk-card .pr { color: var(--gold); font-weight: 900; }
+    .mk-card button { font: inherit; font-size: .82rem; font-weight: 700; border-radius: 999px; padding: .3rem .8rem; border: 0; background: var(--gold); color: #222; cursor: pointer; }
+    .mk-card button.armed { background: #22c55e; } .mk-card button:disabled { opacity: .5; }
+    .mk-mine { margin-bottom: .6rem; }
+    .lx-dlg { position: fixed; inset: 0; z-index: 105; background: rgba(0,0,0,.7); display: grid; place-items: center; padding: 1rem; }
+    .lx-box { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 1rem; width: min(520px, 100%); max-height: 88vh; overflow-y: auto; display: flex; flex-direction: column; gap: .6rem; }
+    .lx-box h3 { margin: 0; } .lx-box label { display: flex; flex-direction: column; gap: .2rem; font-size: .85rem; color: var(--muted); }
+    .lx-box select, .lx-box input[type=number] { font: inherit; background: #0d1117; color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: .45rem .55rem; }
+    .lx-items { display: flex; flex-wrap: wrap; gap: .3rem; } .lx-items label { flex-direction: row; align-items: center; gap: .3rem; border: 1px solid var(--rc, var(--border)); border-radius: 999px; padding: .15rem .55rem; color: var(--text); cursor: pointer; }
+    .lx-err { color: #f87171; font-size: .85rem; min-height: 1em; }
     .vip-badge { font: inherit; font-size: .72rem; font-weight: 700; border-radius: 999px; padding: .12rem .55rem; border: 1px solid var(--border); background: #141a21; color: var(--text); cursor: pointer; }
     .vip-badge.v-argent { border-color: #cbd5e1; color: #e2e8f0; } .vip-badge.v-or { border-color: var(--gold); color: var(--gold); }
     .vip-badge.v-diamant { border-color: #67e8f9; color: #a5f3fc; box-shadow: 0 0 10px rgba(103,232,249,.35); }
@@ -661,6 +685,13 @@
       </div>
     </section>
 
+    <section class="panel deals" data-tab="multi" aria-label="Duels et échanges">
+      <div class="bo-head"><h2>⚔️ Duels &amp; échanges</h2><button id="dl-refresh" class="icon-btn" type="button" aria-label="Actualiser">↻</button></div>
+      <p class="muted small-p">Défie un ami au blackjack, au poker ou à la roulette : vous misez la même somme (et pourquoi pas une carte), le Casino garde les mises au coffre, et le mieux classé à la fin de votre prochaine partie ensemble rafle tout. Tu peux aussi échanger tes cartes et objets rares avec tes amis.</p>
+      <div class="row-btns"><button id="dl-duel" type="button" class="bonus-btn">⚔️ Défier un ami</button><button id="dl-trade" type="button" class="icon-btn">🔁 Proposer un échange</button></div>
+      <div id="dl-list" class="dl-list"></div>
+    </section>
+
     <section class="panel referral" data-tab="multi" aria-label="Parrainage">
       <h2>🎁 Parrainage</h2>
       <p class="ref-lead">Invite tes amis : quand ils ont joué leurs <b>10 premières parties</b>, vous recevez <b>+2 000 € chacun</b>.</p>
@@ -702,6 +733,19 @@
       <div id="bo-btns" class="bo-btns"></div>
       <p class="muted small-p">Les cartes renferment des objets qu'on ne trouve nulle part ailleurs. Un doublon se transforme en éclats ✨, qui permettent de fabriquer la carte de ton choix. Chances par carte : <span id="bo-odds"></span>.</p>
     </section>
+
+    <section class="panel market" data-tab="shop" aria-label="Marché">
+      <div class="bo-head"><h2>🏪 Marché des joueurs</h2><button id="mk-refresh" class="icon-btn" type="button" aria-label="Actualiser">↻</button></div>
+      <p class="muted small-p">Achète les cartes et objets rares mis en vente par les autres joueurs, ou vends les tiens. Le Casino prend <span id="mk-fee">10 %</span> sur chaque vente.</p>
+      <div class="mk-filters">
+        <select id="mk-kind" aria-label="Catégorie"><option value="">Toutes les catégories</option></select>
+        <select id="mk-rar" aria-label="Rareté"><option value="">Toutes les raretés</option></select>
+        <button id="mk-sell" type="button" class="bonus-btn">💰 Vendre un objet</button>
+      </div>
+      <div id="mk-mine" class="mk-mine"></div>
+      <div id="mk-list" class="mk-list"></div>
+    </section>
+
 
     <section class="panel style" data-tab="shop" aria-label="Mon style">
       <div class="st-top">
@@ -1020,8 +1064,8 @@
         ['play', 'multi', 'shop'].forEach((k) => { $('tab-' + k).classList.toggle('on', t === k); $('tab-' + k).setAttribute('aria-selected', t === k); });
         const h = t === 'play' ? '' : '#' + t;
         if (location.hash !== h) history.replaceState(null, '', location.pathname + location.search + h);
-        if (t === 'multi') { refreshLobby(); renderReferral().catch(() => {}); }
-        if (t === 'shop') renderShop();
+        if (t === 'multi') { refreshLobby(); renderReferral().catch(() => {}); if (window.renderDeals) window.renderDeals(); }
+        if (t === 'shop') { renderShop(); if (window.renderMarket) window.renderMarket(); }
         window.scrollTo({ top: 0 });
       }
       $('tab-play').addEventListener('click', () => setHubTab('play'));
@@ -1095,6 +1139,7 @@
         else if (kind === 'effect') d.textContent = it.emojis.join('');
         return d;
       }
+      window.LoungePreview = (k, it) => preview(k, it);
       // ---------- Mon style : essayer, équiper, acheter ----------
       // Avatars : les 16 de départ sont gratuits, les autres viennent de la boutique
       const BASE_AV = () => Casino.AVATARS.map((id) => ({ id, name: 'Avatar', level: 1, price: 0, base: true }));
@@ -1729,6 +1774,166 @@
     });
     if (window.matchMedia('(display-mode: standalone)').matches) document.getElementById('install').hidden = true;
     if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+
+    // ---------- Entre joueurs : duels, échanges, marché ----------
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      const fmt = (n) => Math.round(n || 0).toLocaleString('fr-FR');
+      const GAMES = { blackjack: '🂡 Blackjack', poker: '♠ Poker', roulette: '🎡 Roulette' };
+      const RC = (r) => (r && Casino.RARITY[r] ? Casino.RARITY[r].color : '');
+      const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
+      const chip = (it) => { const c = el('span', 'chip-it', '🃏 ' + it.name); if (it.rarity) c.style.setProperty('--rc', RC(it.rarity)); return c; };
+      const itemOf = (key) => { const [k, id] = key.split(':'); return { kind: k, id, it: (Casino.SHOP[k] || []).find((x) => x.id === id) }; };
+      const myTradeables = () => Object.keys(Casino.profile.owned || {}).filter((k) => { const [a, b] = k.split(':'); return Casino.tradeable(a, b); }).map((k) => { const o = itemOf(k); return { key: k, name: o.it ? o.it.name : k, rarity: o.it ? o.it.card || null : null }; });
+      async function friendsList() { const rows = (window.Social && (await Social.leaderboard().catch(() => null))) || []; return rows.filter((r) => !r.me && r.uid); }
+      function dialog(title) {
+        const o = el('div', 'lx-dlg'), box = el('div', 'lx-box'); box.appendChild(el('h3', '', title));
+        o.appendChild(box); o.addEventListener('click', (e) => { if (e.target === o) o.remove(); }); document.body.appendChild(o);
+        const err = el('p', 'lx-err');
+        return { o, box, err, close: () => o.remove() };
+      }
+      function itemPicker(items, max) {
+        const w = el('div', 'lx-items');
+        if (!items.length) w.appendChild(el('small', 'muted', 'Aucune carte ou objet rare à mettre en jeu.'));
+        items.forEach((it) => { const l = el('label'); if (it.rarity) l.style.setProperty('--rc', RC(it.rarity)); const c = el('input'); c.type = max === 1 ? 'radio' : 'checkbox'; c.name = 'p' + Math.random(); c.value = it.key; l.append(c, document.createTextNode(it.name)); w.appendChild(l); });
+        return { w, get: () => [...w.querySelectorAll('input:checked')].map((c) => c.value) };
+      }
+      const toastErr = (r, t) => { if (r && r.error) { Casino.toast(t || 'Impossible', r.error, '⚠️'); return true; } return false; };
+
+      // ----- liste des duels et échanges -----
+      async function renderDeals() {
+        const box = $('dl-list'); if (!box) return;
+        if (!Casino.server) { box.innerHTML = ''; box.appendChild(el('p', 'muted small-p', 'Les duels et échanges demandent le serveur du Casino.')); return; }
+        const r = await Casino.deal('deals.list');
+        if (r.error) { box.textContent = r.error; return; }
+        box.innerHTML = '';
+        if (!r.deals.length) box.appendChild(el('p', 'muted small-p', 'Aucun duel ni échange pour le moment.'));
+        r.deals.forEach((d) => {
+          const incoming = d.me === 'b' && d.status === 'open', it = el('div', 'dl-item' + (incoming ? ' in' : d.status === 'accepted' ? ' live' : d.status === 'open' ? '' : ' done'));
+          const T = el('div', 'dl-t'), S = el('div', 'dl-s'), B = el('div', 'row-btns');
+          if (d.type === 'duel') {
+            const pot = d.stake ? fmt(d.stake) + ' € chacun' : '';
+            T.textContent = '⚔️ Duel ' + (GAMES[d.game] || d.game) + ' ' + (d.me === 'a' ? 'contre ' : 'de ') + d.other.name;
+            const st = { open: d.me === 'a' ? 'En attente de sa réponse' : 'Il te défie !', accepted: 'Accepté : jouez une partie ensemble', done: d.winner === 'me' ? '🏆 Gagné !' : d.winner === 'other' ? '😤 Perdu' : '🤝 Égalité', declined: 'Refusé', cancelled: 'Annulé', expired: 'Expiré (mises rendues)' }[d.status];
+            S.textContent = st + (pot ? ' · mise : ' + pot : '');
+            it.append(T, S);
+            const items = [d.aItem, d.bItem].filter(Boolean); if (items.length) { const w = el('div'); items.forEach((x) => w.appendChild(chip(x))); it.appendChild(w); }
+            if (incoming) {
+              const mine = myTradeables(), pk = itemPicker(mine, 1);
+              if (mine.length) { const l = el('small', 'muted', 'Mettre aussi une carte en jeu (facultatif) :'); it.append(l, pk.w); }
+              const ok = el('button', 'bonus-btn', '✅ Accepter' + (d.stake ? ' (' + fmt(d.stake) + ' €)' : '')); ok.type = 'button';
+              ok.onclick = async () => { ok.disabled = true; const x = await Casino.deal('duel.accept', { id: d.id, item: pk.get()[0] || null }); if (!toastErr(x, 'Duel')) Casino.toast('Duel accepté', 'Créez une table de ' + GAMES[d.game] + ' et jouez ensemble : le mieux classé gagne.', '⚔️', 'gold'); renderDeals(); };
+              const no = el('button', 'icon-btn', 'Refuser'); no.type = 'button'; no.onclick = async () => { await Casino.deal('duel.decline', { id: d.id }); renderDeals(); };
+              B.append(ok, no);
+            } else if (d.status === 'open' && d.me === 'a') {
+              const no = el('button', 'icon-btn', 'Annuler (mise rendue)'); no.type = 'button'; no.onclick = async () => { await Casino.deal('duel.decline', { id: d.id }); renderDeals(); }; B.append(no);
+            } else if (d.status === 'accepted') {
+              const go = el('a', 'go', '▶ Créer la table'); go.href = d.game + '/index.html?multi=create';
+              const help = el('small', 'muted', 'Invite ' + d.other.name + ' à ta table (ou rejoins la sienne). Le duel se règle tout seul à la fin de la partie (3 manches au moins). Sans partie sous 48 h, les mises sont rendues.');
+              B.append(go); it.append(help);
+            }
+          } else {
+            T.textContent = '🔁 Échange ' + (d.me === 'a' ? 'proposé à ' : 'proposé par ') + d.other.name;
+            S.textContent = { open: d.me === 'a' ? 'En attente de sa réponse' : 'À toi de répondre', done: '✅ Échange fait', declined: 'Refusé', cancelled: 'Annulé', expired: 'Expiré' }[d.status] || d.status;
+            it.append(T, S);
+            const line = (lbl, sd) => { const w = el('div', 'dl-s'); w.appendChild(document.createTextNode(lbl + ' ')); sd.items.forEach((x) => w.appendChild(chip(x))); if (sd.money) w.appendChild(el('span', 'chip-it', '💶 ' + fmt(sd.money) + ' €')); if (!sd.items.length && !sd.money) w.appendChild(document.createTextNode('rien')); return w; };
+            const meGive = d.me === 'a' ? d.give : d.want, meGet = d.me === 'a' ? d.want : d.give;
+            it.append(line('Tu donnes :', meGive), line('Tu reçois :', meGet));
+            if (incoming) {
+              const ok = el('button', 'bonus-btn', '✅ Accepter'); ok.type = 'button'; ok.onclick = async () => { ok.disabled = true; const x = await Casino.deal('trade.accept', { id: d.id }); if (!toastErr(x, 'Échange')) Casino.toast('Échange fait !', 'Les objets ont changé de main.', '🤝', 'gold'); renderDeals(); };
+              const no = el('button', 'icon-btn', 'Refuser'); no.type = 'button'; no.onclick = async () => { await Casino.deal('trade.decline', { id: d.id }); renderDeals(); };
+              B.append(ok, no);
+            } else if (d.status === 'open') { const no = el('button', 'icon-btn', 'Annuler'); no.type = 'button'; no.onclick = async () => { await Casino.deal('trade.decline', { id: d.id }); renderDeals(); }; B.append(no); }
+          }
+          if (B.children.length) it.appendChild(B);
+          box.appendChild(it);
+        });
+      }
+      window.renderDeals = renderDeals;
+      $('dl-refresh').addEventListener('click', renderDeals);
+
+      // ----- défier un ami -----
+      $('dl-duel').addEventListener('click', async () => {
+        const fr = await friendsList(), dl = dialog('⚔️ Défier un ami');
+        if (!fr.length) { dl.box.appendChild(el('p', 'muted', 'Ajoute d\'abord des amis (liste d\'amis plus bas) pour pouvoir les défier.')); return; }
+        const sf = el('select'); fr.forEach((f) => { const o = el('option', '', (f.avatar || '🎩') + ' ' + f.pseudo); o.value = f.uid; sf.appendChild(o); });
+        const sg = el('select'); Object.keys(GAMES).forEach((g) => { const o = el('option', '', GAMES[g]); o.value = g; sg.appendChild(o); });
+        const mi = el('input'); mi.type = 'number'; mi.min = 0; mi.step = 10; mi.value = 100;
+        const L = (t, x) => { const l = el('label', '', t); l.appendChild(x); return l; };
+        const pk = itemPicker(myTradeables(), 1);
+        const go = el('button', 'bonus-btn', '⚔️ Lancer le défi'); go.type = 'button';
+        dl.box.append(L('Adversaire', sf), L('Jeu', sg), L('Mise en € (la même pour vous deux)', mi), el('small', 'muted', 'Mettre aussi une carte en jeu (facultatif) :'), pk.w,
+          el('small', 'muted', 'Ta mise est bloquée tout de suite. S\'il refuse ou ne répond pas, elle t\'est rendue.'), dl.err, go);
+        go.onclick = async () => { go.disabled = true; const r = await Casino.deal('duel.new', { to: sf.value, game: sg.value, money: +mi.value || 0, item: pk.get()[0] || null }); if (r.error) { dl.err.textContent = r.error; go.disabled = false; return; } dl.close(); Casino.toast('Défi envoyé !', 'Ton ami est prévenu.', '⚔️', 'gold'); renderDeals(); };
+      });
+      // ----- proposer un échange -----
+      $('dl-trade').addEventListener('click', async () => {
+        const fr = await friendsList(), dl = dialog('🔁 Proposer un échange');
+        if (!fr.length) { dl.box.appendChild(el('p', 'muted', 'Ajoute d\'abord des amis pour échanger avec eux.')); return; }
+        const sf = el('select'); fr.forEach((f) => { const o = el('option', '', (f.avatar || '🎩') + ' ' + f.pseudo); o.value = f.uid; sf.appendChild(o); });
+        const mine = itemPicker(myTradeables(), 0), giveM = el('input'), wantM = el('input');
+        [giveM, wantM].forEach((x) => { x.type = 'number'; x.min = 0; x.step = 10; x.value = 0; });
+        const theirsBox = el('div'); let theirs = itemPicker([], 0);
+        const loadTheirs = async () => { theirsBox.innerHTML = '…'; const r = await Casino.deal('trade.inventory', { uid: sf.value }); theirsBox.innerHTML = ''; theirs = itemPicker(r.items || [], 0); theirsBox.appendChild(theirs.w); };
+        sf.onchange = loadTheirs; loadTheirs();
+        const L = (t, x) => { const l = el('label', '', t); l.appendChild(x); return l; };
+        const go = el('button', 'bonus-btn', '🔁 Envoyer la proposition'); go.type = 'button';
+        dl.box.append(L('Avec', sf), el('b', '', 'Tu donnes'), mine.w, L('+ argent (€)', giveM), el('b', '', 'Tu veux'), theirsBox, L('+ argent (€)', wantM), el('small', 'muted', 'Ce que tu donnes est bloqué jusqu\'à sa réponse (rendu s\'il refuse).'), dl.err, go);
+        go.onclick = async () => { go.disabled = true; const r = await Casino.deal('trade.new', { to: sf.value, give: { items: mine.get(), money: +giveM.value || 0 }, want: { items: theirs.get(), money: +wantM.value || 0 } }); if (r.error) { dl.err.textContent = r.error; go.disabled = false; return; } dl.close(); Casino.toast('Proposition envoyée', 'Ton ami est prévenu.', '🔁', 'gold'); renderDeals(); };
+      });
+
+      // ----- marché -----
+      Object.keys(Casino.SHOP_LABELS).forEach((k) => { const o = el('option', '', Casino.SHOP_LABELS[k]); o.value = k; $('mk-kind').appendChild(o); });
+      Casino.RARITY_ORDER.forEach((r) => { const o = el('option', '', Casino.RARITY[r].name); o.value = r; $('mk-rar').appendChild(o); });
+      let armed = null, avg = {};
+      async function renderMarket() {
+        const list = $('mk-list'); if (!list) return;
+        $('mk-fee').textContent = Math.round((Casino.isVip() ? Casino.MARKET_FEE_VIP : Casino.MARKET_FEE) * 100) + ' %' + (Casino.isVip() ? ' (tarif VIP 👑)' : '');
+        if (!Casino.server) { list.innerHTML = ''; list.appendChild(el('p', 'muted small-p', 'Le marché demande le serveur du Casino.')); $('mk-sell').disabled = true; return; }
+        const [r, mine] = await Promise.all([Casino.deal('mk.browse', { kind: $('mk-kind').value, rarity: $('mk-rar').value }), Casino.deal('deals.list')]);
+        if (r.error) { list.textContent = r.error; return; }
+        avg = r.avg || {};
+        const mm = $('mk-mine'); mm.innerHTML = '';
+        if (mine.market && mine.market.length) {
+          mm.appendChild(el('b', '', 'Mes ventes en cours : '));
+          mine.market.forEach((l) => { const c = chip({ name: l.name + ' · ' + fmt(l.price) + ' €', rarity: l.rarity }); const x = el('button', 'icon-btn', '✕'); x.type = 'button'; x.title = 'Retirer de la vente'; x.style.marginLeft = '.2rem'; x.onclick = async () => { await Casino.deal('mk.cancel', { id: l.id }); renderMarket(); }; c.appendChild(x); mm.appendChild(c); });
+        }
+        list.innerHTML = '';
+        const others = r.listings.filter((l) => !l.mine);
+        if (!others.length) list.appendChild(el('p', 'muted small-p', 'Rien en vente pour ces filtres. Sois le premier à vendre !'));
+        others.forEach((l) => {
+          const it = (Casino.SHOP[l.kind] || []).find((x) => x.id === l.item); if (!it) return;
+          const c = el('div', 'mk-card'); c.style.setProperty('--rc', RC(l.rarity));
+          c.append(window.LoungePreview(l.kind, it), el('b', '', it.name), el('small', '', (l.rarity ? Casino.RARITY[l.rarity].name + ' · ' : '') + Casino.SHOP_LABELS[l.kind]), el('span', 'pr', fmt(l.price) + ' €'), el('small', '', 'par ' + l.seller));
+          const have = Casino.owns(l.kind, l.item), b = el('button', armed === l.id ? 'armed' : '', have ? 'Déjà à toi' : armed === l.id ? 'Confirmer ?' : 'Acheter'); b.type = 'button';
+          b.disabled = have || Casino.profile.wallet < l.price;
+          b.onclick = async () => {
+            if (armed !== l.id) { armed = l.id; renderMarket(); setTimeout(() => { if (armed === l.id) { armed = null; renderMarket(); } }, 4000); return; }
+            armed = null; b.disabled = true; const x = await Casino.deal('mk.buy', { id: l.id });
+            if (!toastErr(x, 'Achat')) Casino.toast('Acheté !', it.name + ' rejoint ta collection (Mon style).', '🛍️', 'gold');
+            renderMarket(); if (window.renderShopExt) window.renderShopExt();
+          };
+          c.appendChild(b); list.appendChild(c);
+        });
+      }
+      window.renderMarket = renderMarket;
+      $('mk-kind').onchange = renderMarket; $('mk-rar').onchange = renderMarket; $('mk-refresh').onclick = renderMarket;
+      $('mk-sell').addEventListener('click', () => {
+        const items = myTradeables(), dl = dialog('💰 Vendre un objet');
+        if (!items.length) { dl.box.appendChild(el('p', 'muted', 'Tu n\'as pas encore de carte ou d\'objet rare à vendre. Ouvre des boosters !')); return; }
+        const si = el('select'); items.forEach((it) => { const o = el('option', '', it.name + (it.rarity ? ' (' + Casino.RARITY[it.rarity].name + ')' : '')); o.value = it.key; si.appendChild(o); });
+        const pi = el('input'); pi.type = 'number'; pi.min = 10; pi.step = 10;
+        const hint = el('small', 'muted');
+        const upd = () => { const it = items.find((x) => x.key === si.value), a = avg[si.value], base = it && it.rarity ? Casino.RARITY[it.rarity].craft * 2 : 500; if (!pi.value || pi.dataset.auto) { pi.value = a || base; pi.dataset.auto = '1'; } const fee = Math.ceil((+pi.value || 0) * (Casino.isVip() ? Casino.MARKET_FEE_VIP : Casino.MARKET_FEE)); hint.textContent = (a ? 'Prix moyen des ventes (30 j) : ' + fmt(a) + ' €. ' : '') + 'Tu toucheras ' + fmt((+pi.value || 0) - fee) + ' € (frais ' + fmt(fee) + ' €).'; };
+        si.onchange = () => { pi.dataset.auto = '1'; pi.value = ''; upd(); }; pi.oninput = () => { delete pi.dataset.auto; upd(); }; upd();
+        const L = (t, x) => { const l = el('label', '', t); l.appendChild(x); return l; };
+        const go = el('button', 'bonus-btn', '🏷️ Mettre en vente'); go.type = 'button';
+        dl.box.append(L('Objet', si), L('Prix (€)', pi), hint, el('small', 'muted', 'L\'objet quitte ta collection pendant la vente (tu peux le retirer à tout moment).'), dl.err, go);
+        go.onclick = async () => { go.disabled = true; const r = await Casino.deal('mk.list', { item: si.value, price: +pi.value }); if (r.error) { dl.err.textContent = r.error; go.disabled = false; return; } dl.close(); Casino.toast('En vente !', 'Tu seras prévenu dès qu\'il est vendu.', '🏷️', 'gold'); renderMarket(); };
+      });
+      if (document.body.dataset.hubtab === 'multi') renderDeals();
+      if (document.body.dataset.hubtab === 'shop') renderMarket();
+    })();
   </script>
 </body>
 </html>

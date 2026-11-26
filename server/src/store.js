@@ -50,6 +50,11 @@ function open(dir) {
   db.exec(`CREATE TABLE IF NOT EXISTS push_subs (endpoint TEXT PRIMARY KEY, uid TEXT NOT NULL, sub TEXT NOT NULL, prefs TEXT NOT NULL, created INTEGER NOT NULL);
     CREATE INDEX IF NOT EXISTS push_uid ON push_subs(uid);
     CREATE TABLE IF NOT EXISTS push_state (uid TEXT NOT NULL, k TEXT NOT NULL, v TEXT, PRIMARY KEY (uid, k));`);
+  // entre joueurs : marché, échanges et duels (l'objet complet en JSON, quelques colonnes pour chercher)
+  db.exec(`CREATE TABLE IF NOT EXISTS market (id TEXT PRIMARY KEY, seller TEXT NOT NULL, status TEXT NOT NULL, kind TEXT NOT NULL, rarity TEXT, price REAL NOT NULL, created INTEGER NOT NULL, obj TEXT NOT NULL);
+    CREATE INDEX IF NOT EXISTS market_open ON market(status, kind, price);
+    CREATE TABLE IF NOT EXISTS deals (id TEXT PRIMARY KEY, a TEXT NOT NULL, b TEXT NOT NULL, status TEXT NOT NULL, created INTEGER NOT NULL, obj TEXT NOT NULL);
+    CREATE INDEX IF NOT EXISTS deals_a ON deals(a, status); CREATE INDEX IF NOT EXISTS deals_b ON deals(b, status);`);
   // nouvelle économie (÷ 10) : les records déjà enregistrés sont convertis une seule fois
   db.exec('CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)');
   if (!db.prepare("SELECT v FROM meta WHERE k = 'econ'").get()) {
@@ -104,6 +109,20 @@ function open(dir) {
     pushCount() { return db.prepare('SELECT COUNT(*) AS n FROM push_subs').get().n; },
     getState(uid, k) { const r = db.prepare('SELECT v FROM push_state WHERE uid = ? AND k = ?').get(uid, k); return r ? r.v : null; },
     setState(uid, k, v) { db.prepare('INSERT INTO push_state (uid, k, v) VALUES (?, ?, ?) ON CONFLICT(uid, k) DO UPDATE SET v = excluded.v').run(uid, k, String(v)); },
+    // ----- marché -----
+    marketPut(l) { db.prepare('INSERT INTO market (id, seller, status, kind, rarity, price, created, obj) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(l.id, l.seller, l.status, l.kind, l.rarity || '', l.price, l.created, JSON.stringify(l)); },
+    marketGet(id) { const r = db.prepare('SELECT obj FROM market WHERE id = ?').get(id); return r ? JSON.parse(r.obj) : null; },
+    marketSet(id, patch) { const l = Object.assign(this.marketGet(id) || {}, patch); db.prepare('UPDATE market SET status = ?, obj = ? WHERE id = ?').run(l.status, JSON.stringify(l), id); return l; },
+    marketOpen(kind, rarity, n) { return db.prepare("SELECT obj FROM market WHERE status = 'open' AND (? = '' OR kind = ?) AND (? = '' OR rarity = ?) ORDER BY price ASC LIMIT ?").all(kind, kind, rarity, rarity, n || 100).map((r) => JSON.parse(r.obj)); },
+    marketOpenOf(uid) { return db.prepare("SELECT obj FROM market WHERE status = 'open' AND seller = ? ORDER BY created DESC").all(uid).map((r) => JSON.parse(r.obj)); },
+    marketSoldSince(t) { return db.prepare("SELECT obj FROM market WHERE status = 'sold' AND created >= ?").all(t).map((r) => JSON.parse(r.obj)); },
+    // ----- échanges et duels -----
+    dealPut(t) { db.prepare('INSERT INTO deals (id, a, b, status, created, obj) VALUES (?, ?, ?, ?, ?, ?)').run(t.id, t.a, t.b, t.status, t.created, JSON.stringify(t)); },
+    dealGet(id) { const r = db.prepare('SELECT obj FROM deals WHERE id = ?').get(id); return r ? JSON.parse(r.obj) : null; },
+    dealSet(id, patch) { const t = Object.assign(this.dealGet(id) || {}, patch); db.prepare('UPDATE deals SET status = ?, obj = ? WHERE id = ?').run(t.status, JSON.stringify(t), id); return t; },
+    dealsOpenOf(uid) { return db.prepare("SELECT obj FROM deals WHERE (a = ? OR b = ?) AND status IN ('open', 'accepted')").all(uid, uid).map((r) => JSON.parse(r.obj)); },
+    dealsOf(uid, since) { return db.prepare("SELECT obj FROM deals WHERE (a = ? OR b = ?) AND (status IN ('open', 'accepted') OR created >= ?) ORDER BY created DESC LIMIT 60").all(uid, uid, since).map((r) => JSON.parse(r.obj)); },
+    dealsStale(acceptedBefore, openBefore) { return db.prepare("SELECT obj FROM deals WHERE status IN ('open', 'accepted')").all().map((r) => JSON.parse(r.obj)).filter((t) => (t.status === 'accepted' ? (t.acceptedAt || t.created) < acceptedBefore : t.created < openBefore)); },
     close() { db.close(); },
   };
 }

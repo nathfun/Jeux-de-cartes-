@@ -365,6 +365,7 @@
     { id: 'vip_pass', icon: '👑', name: 'Membre du club', text: 'Prendre un pass VIP' },
     { id: 'cards10', icon: '🃏', name: 'Collectionneur', text: 'Ouvrir 10 cartes de booster' },
     { id: 'mythic', icon: '🔴', name: 'Mythique !', text: 'Obtenir une carte mythique' },
+    { id: 'duel_win', icon: '⚔️', name: 'Duelliste', text: 'Gagner un duel contre un ami' },
   ];
 
   // Coffre : il se remplit tout seul (CHEST_RATE € par heure, au plus CHEST_CAP €) ; on l'ouvre quand on veut
@@ -694,6 +695,9 @@
   const challengeReward = (def, P) => Math.round(def.reward * (1 + 0.5 * Math.floor(levelOf(P.xp || 0) / 10)));
 
 
+  // Objets qu'on peut vendre, échanger ou mettre en jeu entre joueurs : les cartes de booster et les objets rares du jour
+  const tradeable = (kind, id) => { const it = itemOf(kind, id); return !!(it && (it.card || it.daily)); };
+  const MARKET_FEE = 0.10, MARKET_FEE_VIP = 0.05;
   // ---------- Boosters ----------
   const BOOSTER = { FREE: 2, FREE_VIP: 3, TIME_MS: 4 * 3600000, TIME_CAP: 2, PRICE1: 150, PRICE5: 600 };
   const CARD_POOL = () => { const out = []; Object.keys(SHOP).forEach((k) => SHOP[k].forEach((it) => { if (it.card) out.push({ kind: k, id: it.id, rarity: it.card }); })); return out; };
@@ -876,7 +880,7 @@
     need, levelOf, title, today, fresh, normalize, addXP, unlock, checkWallet, ensureDaily, track,
     bonusInfo, claimBonus, claimChallenge, timeInfo, startTime, claimTime, startSession, cashOut,
     prizeFor, prizeText, applyPrize, publicProfile, REF_BONUS, REF_MIN_HANDS, REF_MAX,
-    RARITY, RARITY_ORDER, BOOSTER, boosterInfo, openBooster, craftCard,
+    tradeable, MARKET_FEE, MARKET_FEE_VIP, RARITY, RARITY_ORDER, BOOSTER, boosterInfo, openBooster, craftCard,
     VIP_PASS, VIP_PERKS, isVip, buyVip, grantVip, WHEEL, wheelInfo, spinWheel,
     CHEST_RATE, CHEST_CAP, RESCUE_BELOW, RESCUE_AMOUNT, VIP, vipOf, maxBet, chestInfo, claimChest, rescueInfo, claimRescue, challengeReward, dailyOffer,
   };

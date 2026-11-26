@@ -1,0 +1,263 @@
+/*
+ * Entre joueurs : marché (vendre une carte), échanges (objets + argent) et duels (pari sur une partie entre amis).
+ *
+ * Principe de sécurité : tout ce qui est mis en jeu est BLOQUÉ par le serveur dès le départ (retiré de la banque ou
+ * de la collection), puis remis au bon joueur à la fin. On ne peut donc ni dépenser deux fois, ni se rétracter après
+ * avoir perdu. Chaque mouvement d'argent passe par le journal (ledger).
+ */
+'use strict';
+const crypto = require('crypto');
+
+const r2 = (v) => Math.round(v * 100) / 100;
+const DUEL_GAMES = { blackjack: 'Blackjack', poker: 'Poker', roulette: 'Roulette' };
+const DAY = 864e5;
+
+module.exports = function makeDeals({ db, serial, R, core, rtdb, TABLES, pushTo, userError, publish }) {
+  const fail = (m) => { throw userError(m); };
+  const nameOf = (P) => (P && P.pseudo) || 'Un joueur';
+  const itemName = (k, id) => { const it = R.itemOf(k, id); return it ? it.name : id; };
+  const parseKey = (x) => { const m = /^([a-z]+):(.{1,40})$/.exec(String(x || '')); if (!m || !R.tradeable(m[1], m[2])) fail('Objet non échangeable : seules les cartes de booster et les objets rares du jour s\'échangent.'); return { kind: m[1], id: m[2], key: m[1] + ':' + m[2] }; };
+  const money = (v, max) => { const n = Math.round(Number(v || 0)); if (!Number.isFinite(n) || n < 0 || n > (max || 1e6)) fail('Montant invalide.'); return n; };
+
+  // ----- verrous : plusieurs joueurs modifiés ensemble, toujours dans le même ordre (pas d'interblocage) -----
+  function withPlayers(uids, fn) {
+    const list = [...new Set(uids)].sort();
+    const run = (i) => (i >= list.length ? fn() : serial(list[i], () => run(i + 1)));
+    return run(0);
+  }
+  /** Charge des joueurs, applique fn, enregistre ceux qui ont changé (avec une ligne de journal par joueur). */
+  async function edit(uids, op, fn) {
+    return withPlayers(uids, async () => {
+      const st = {}, P = {};
+      for (const u of uids) {
+        st[u] = db.load(u);
+        if (!st[u].player) fail('Joueur introuvable sur le serveur.');
+        P[u] = R.normalize(JSON.parse(JSON.stringify(st[u].player)), Date.now());
+      }
+      const out = await fn(P);
+      const now = Date.now();
+      for (const u of new Set(uids)) {
+        const after = Object.assign({}, st[u], { player: P[u] });
+        db.save(u, typeof op === 'function' ? op(u) : op, st[u], after, now);
+        if (publish) publish(u, P[u]);
+      }
+      return out;
+    });
+  }
+  const inbox = (P, title, text, icon) => { P.inbox = (P.inbox || []).concat([{ title, text, icon, at: Date.now() }]).slice(-20); };
+  const takeItem = (P, key) => { P.owned = P.owned || {}; if (!P.owned[key]) fail('Tu n\'as pas « ' + itemName(...key.split(':')) + ' ».'); delete P.owned[key]; };
+  const giveItem = (P, key) => { P.owned = P.owned || {}; if (!P.owned[key]) P.owned[key] = Date.now(); else { const k = key.split(':'); const it = R.itemOf(k[0], k[1]); if (it && it.card) { P.cards = P.cards || {}; P.cards.shards = (P.cards.shards || 0) + R.RARITY[it.card].shard; } } };
+  const takeMoney = (P, v) => { if (v > 0) { if ((P.wallet || 0) < v) fail('Il te manque ' + Math.ceil(v - P.wallet).toLocaleString('fr-FR') + ' € en banque.'); P.wallet = r2(P.wallet - v); } };
+  const giveMoney = (P, v) => { if (v > 0) P.wallet = r2((P.wallet || 0) + v); };
+  const notify = (uid, msg) => { if (pushTo) pushTo(uid, 'social', msg).catch(() => {}); };
+  const newId = () => crypto.randomBytes(6).toString('base64url');
+  const brief = (k) => ({ key: k, name: itemName(...k.split(':')), rarity: (R.itemOf(...k.split(':')) || {}).card || null });
+
+  // ===================== Marché =====================
+  async function marketList(uid, d) {
+    const { kind, id, key } = parseKey(d.item);
+    const price = money(d.price);
+    if (price < 10) fail('Prix minimum : 10 €.');
+    if (db.marketOpenOf(uid).length >= 20) fail('Au plus 20 objets en vente à la fois.');
+    const lid = newId();
+    await edit([uid], 'mk.list', (P) => {
+      takeItem(P[uid], key);
+      db.marketPut({ id: lid, seller: uid, sellerName: nameOf(P[uid]), kind, item: id, rarity: (R.itemOf(kind, id) || {}).card || 'rare', price, created: Date.now(), status: 'open' });
+    });
+    return { id: lid };
+  }
+  async function marketCancel(uid, d) {
+    const l = db.marketGet(String(d.id));
+    if (!l || l.seller !== uid || l.status !== 'open') fail('Annonce introuvable.');
+    await edit([uid], 'mk.cancel', (P) => { if (db.marketGet(l.id).status !== 'open') fail('Déjà vendu.'); giveItem(P[uid], l.kind + ':' + l.item); db.marketSet(l.id, { status: 'cancelled' }); });
+    return { ok: true };
+  }
+  async function marketBuy(uid, d) {
+    const l = db.marketGet(String(d.id));
+    if (!l || l.status !== 'open') fail('Cette annonce n\'est plus disponible.');
+    if (l.seller === uid) fail('C\'est ton annonce.');
+    let fee = 0;
+    await edit([uid, l.seller], (u) => (u === uid ? 'mk.buy' : 'mk.sale'), (P) => {
+      const cur = db.marketGet(l.id);
+      if (!cur || cur.status !== 'open') fail('Cette annonce vient d\'être vendue.');
+      const key = l.kind + ':' + l.item;
+      if (P[uid].owned && P[uid].owned[key]) fail('Tu as déjà cet objet.');
+      takeMoney(P[uid], l.price);
+      fee = Math.ceil(l.price * (R.isVip(P[l.seller]) ? R.MARKET_FEE_VIP : R.MARKET_FEE));
+      giveMoney(P[l.seller], l.price - fee);
+      giveItem(P[uid], key);
+      inbox(P[l.seller], '🏪 Vendu !', nameOf(P[uid]) + ' a acheté « ' + itemName(l.kind, l.item) + ' » : +' + (l.price - fee).toLocaleString('fr-FR') + ' € (frais ' + fee + ' €).', '💰');
+      db.marketSet(l.id, { status: 'sold', buyer: uid, soldAt: Date.now() });
+    });
+    notify(l.seller, { title: '🏪 Ton objet est vendu !', body: '« ' + itemName(l.kind, l.item) + ' » : +' + (l.price - fee).toLocaleString('fr-FR') + ' €', tag: 'market' });
+    return { ok: true, item: l.kind + ':' + l.item, price: l.price };
+  }
+  function marketBrowse(uid, d) {
+    const rows = db.marketOpen(String(d.kind || ''), String(d.rarity || ''), 120).map((l) => ({ id: l.id, kind: l.kind, item: l.item, name: itemName(l.kind, l.item), rarity: l.rarity, price: l.price, seller: l.sellerName, mine: l.seller === uid, at: l.created }));
+    const stats = {}; db.marketSoldSince(Date.now() - 30 * DAY).forEach((s) => { const k = s.kind + ':' + s.item; (stats[k] = stats[k] || []).push(s.price); });
+    const avg = {}; Object.keys(stats).forEach((k) => { const a = stats[k]; avg[k] = Math.round(a.reduce((x, y) => x + y, 0) / a.length); });
+    return { listings: rows, avg };
+  }
+
+  // ===================== Échanges =====================
+  function side(o) {
+    o = o || {};
+    const items = (Array.isArray(o.items) ? o.items : []).slice(0, 6).map((x) => parseKey(x).key);
+    if (new Set(items).size !== items.length) fail('Un objet est en double dans l\'échange.');
+    return { items, money: money(o.money) };
+  }
+  async function tradeNew(uid, d) {
+    const to = String(d.to || '');
+    if (!to || to === uid || !db.has(to)) fail('Ce joueur n\'est pas encore passé sur le serveur.');
+    const give = side(d.give), want = side(d.want);
+    if (!give.items.length && !give.money && !want.items.length && !want.money) fail('Échange vide.');
+    if (db.dealsOpenOf(uid).filter((x) => x.a === uid).length >= 10) fail('Au plus 10 propositions en attente.');
+    const id = newId();
+    let toName = '';
+    await edit([uid], 'trade.offer', (P) => {
+      give.items.forEach((k) => takeItem(P[uid], k)); takeMoney(P[uid], give.money);
+      toName = nameOf(db.load(to).player);
+      db.dealPut({ id, type: 'trade', a: uid, b: to, status: 'open', created: Date.now(), data: { aName: nameOf(P[uid]), bName: toName, give, want } });
+    });
+    notify(to, { title: '🔁 Proposition d\'échange', body: nameOf(db.load(uid).player) + ' te propose un échange. Ouvre le Lounge pour répondre.', tag: 'trade' });
+    return { id };
+  }
+  async function tradeAnswer(uid, d, accept) {
+    const t = db.dealGet(String(d.id));
+    if (!t || t.type !== 'trade' || t.status !== 'open') fail('Proposition introuvable ou déjà traitée.');
+    const isA = t.a === uid, isB = t.b === uid;
+    if (!isA && !isB) fail('Cette proposition ne te concerne pas.');
+    if (accept && !isB) fail('Seul le destinataire peut accepter.');
+    const { give, want } = t.data;
+    if (!accept) {
+      await edit([t.a], 'trade.refund', (P) => { if (db.dealGet(t.id).status !== 'open') fail('Déjà traité.'); give.items.forEach((k) => giveItem(P[t.a], k)); giveMoney(P[t.a], give.money); db.dealSet(t.id, { status: isA ? 'cancelled' : 'declined' }); if (isB) inbox(P[t.a], '🔁 Échange refusé', t.data.bName + ' a refusé ton échange : tes objets et ton argent te sont rendus.', '↩️'); });
+      return { ok: true };
+    }
+    await edit([t.a, t.b], 'trade', (P) => {
+      if (db.dealGet(t.id).status !== 'open') fail('Déjà traité.');
+      want.items.forEach((k) => takeItem(P[t.b], k)); takeMoney(P[t.b], want.money);
+      want.items.forEach((k) => giveItem(P[t.a], k)); giveMoney(P[t.a], want.money);
+      give.items.forEach((k) => giveItem(P[t.b], k)); giveMoney(P[t.b], give.money);
+      inbox(P[t.a], '🔁 Échange accepté !', t.data.bName + ' a accepté ton échange.', '🤝');
+      db.dealSet(t.id, { status: 'done', doneAt: Date.now() });
+    });
+    notify(t.a, { title: '🤝 Échange accepté', body: t.data.bName + ' a accepté ton échange.', tag: 'trade' });
+    return { ok: true };
+  }
+  /** Ce qu'un joueur peut échanger (pour composer une proposition). */
+  function inventory(uid, d) {
+    const who = String(d.uid || uid), P = db.load(who).player;
+    if (!P) fail('Joueur introuvable.');
+    const items = Object.keys(P.owned || {}).filter((k) => { const [kind, id] = k.split(':'); return R.tradeable(kind, id); }).map(brief);
+    return { uid: who, name: nameOf(P), items, wallet: who === uid ? Math.floor(P.wallet || 0) : undefined };
+  }
+
+  // ===================== Duels =====================
+  async function duelNew(uid, d) {
+    const to = String(d.to || ''), game = String(d.game || '');
+    if (!DUEL_GAMES[game]) fail('Jeu invalide pour un duel.');
+    if (!to || to === uid || !db.has(to)) fail('Ce joueur n\'est pas encore passé sur le serveur.');
+    const stake = money(d.money, 100000);
+    const item = d.item ? parseKey(d.item).key : null;
+    if (!stake && !item) fail('Mets au moins de l\'argent ou un objet en jeu.');
+    if (db.dealsOpenOf(uid).filter((x) => x.type === 'duel' && x.a === uid).length >= 5) fail('Au plus 5 duels lancés à la fois.');
+    const id = newId();
+    await edit([uid], 'duel.stake', (P) => {
+      takeMoney(P[uid], stake); if (item) takeItem(P[uid], item);
+      db.dealPut({ id, type: 'duel', a: uid, b: to, status: 'open', created: Date.now(), data: { game, stake, aItem: item, bItem: null, aName: nameOf(P[uid]), bName: nameOf(db.load(to).player) } });
+    });
+    notify(to, { title: '⚔️ Tu es défié !', body: nameOf(db.load(uid).player) + ' te défie au ' + DUEL_GAMES[game] + (stake ? ' pour ' + stake.toLocaleString('fr-FR') + ' €' : '') + '.', tag: 'duel' });
+    return { id };
+  }
+  async function duelAnswer(uid, d, accept) {
+    const t = db.dealGet(String(d.id));
+    if (!t || t.type !== 'duel' || t.status !== 'open') fail('Duel introuvable ou déjà commencé.');
+    const isA = t.a === uid, isB = t.b === uid;
+    if (!isA && !isB) fail('Ce duel ne te concerne pas.');
+    if (!accept) {
+      await edit([t.a], 'duel.refund', (P) => { if (db.dealGet(t.id).status !== 'open') fail('Déjà traité.'); giveMoney(P[t.a], t.data.stake); if (t.data.aItem) giveItem(P[t.a], t.data.aItem); db.dealSet(t.id, { status: isA ? 'cancelled' : 'declined' }); if (isB) inbox(P[t.a], '⚔️ Duel refusé', t.data.bName + ' a refusé ton duel : ta mise t\'est rendue.', '↩️'); });
+      return { ok: true };
+    }
+    if (!isB) fail('Seul le joueur défié peut accepter.');
+    const item = d.item ? parseKey(d.item).key : null;
+    await edit([t.b], 'duel.stake', (P) => {
+      if (db.dealGet(t.id).status !== 'open') fail('Déjà traité.');
+      takeMoney(P[t.b], t.data.stake); if (item) takeItem(P[t.b], item);
+      db.dealSet(t.id, { status: 'accepted', acceptedAt: Date.now(), data: Object.assign({}, t.data, { bItem: item }) });
+    });
+    notify(t.a, { title: '⚔️ Duel accepté !', body: t.data.bName + ' accepte ton duel au ' + DUEL_GAMES[t.data.game] + '. Crée la table et invite-le !', tag: 'duel' });
+    return { ok: true };
+  }
+  /** Fin d'une partie entre amis : règle les duels acceptés entre des joueurs de cette table. */
+  async function duelSettle(uid, d) {
+    const game = String(d.game || ''), tid = String(d.table || '');
+    if (!TABLES[game] || !/^[A-Z0-9]{3,8}$/.test(tid)) fail('Table invalide.');
+    const duels = db.dealsOpenOf(uid).filter((x) => x.type === 'duel' && x.status === 'accepted' && x.data.game === game);
+    if (!duels.length) return { settled: [] };
+    const raw = rtdb ? (await rtdb.ref(TABLES[game] + tid).get()).val() : null;
+    if (!raw) fail('Table introuvable.');
+    const t = Object.assign({ id: tid }, raw), now = Date.now();
+    const endAt = game === 'blackjack' ? t.gameEnd && t.gameEnd.at : game === 'poker' ? t.gameOver && t.gameOver.at : t.over && t.over.at;
+    const settled = [];
+    for (const du of duels) {
+      if (!endAt || endAt < du.acceptedAt) continue; // la partie doit avoir été jouée après l'acceptation du duel
+      let pa, pb;
+      try { pa = core.verifyTable(du.a, game, t, now); pb = core.verifyTable(du.b, game, t, now); } catch (e) { continue; } // l'un des deux n'y était pas
+      let winner = pa.place < pb.place ? du.a : pb.place < pa.place ? du.b : null;
+      if (game === 'roulette' && t.players && t.players[du.a] && t.players[du.b] && t.players[du.a].bankroll === t.players[du.b].bankroll) winner = null;
+      const loser = winner === du.a ? du.b : du.a;
+      await edit([du.a, du.b], (u) => (winner ? (u === winner ? 'duel.win' : 'duel.lose') : 'duel.draw'), (P) => {
+        const cur = db.dealGet(du.id);
+        if (!cur || cur.status !== 'accepted') fail('Déjà réglé.');
+        const D = cur.data;
+        if (winner) {
+          giveMoney(P[winner], D.stake * 2);
+          [D.aItem, D.bItem].filter(Boolean).forEach((k) => giveItem(P[winner], k));
+          const what = (D.stake ? (D.stake * 2).toLocaleString('fr-FR') + ' €' : '') + ([D.aItem, D.bItem].filter(Boolean).length ? (D.stake ? ' + ' : '') + [D.aItem, D.bItem].filter(Boolean).map((k) => '« ' + itemName(...k.split(':')) + ' »').join(', ') : '');
+          inbox(P[winner], '⚔️ Duel gagné !', 'Tu remportes ' + what + ' contre ' + nameOf(P[loser]) + '.', '🏆');
+          inbox(P[loser], '⚔️ Duel perdu', nameOf(P[winner]) + ' remporte le duel. Revanche ?', '😤');
+          R.unlock(P[winner], 'duel_win', []);
+        } else {
+          giveMoney(P[du.a], D.stake); giveMoney(P[du.b], D.stake);
+          if (D.aItem) giveItem(P[du.a], D.aItem); if (D.bItem) giveItem(P[du.b], D.bItem);
+          [du.a, du.b].forEach((u) => inbox(P[u], '⚔️ Égalité', 'Duel nul : chacun récupère sa mise.', '🤝'));
+        }
+        db.dealSet(du.id, { status: 'done', doneAt: Date.now(), winner: winner || '', table: tid });
+      }).then(() => settled.push({ id: du.id, winner }), () => {});
+    }
+    return { settled };
+  }
+  /** Duels acceptés mais jamais joués (48 h) et propositions trop vieilles (7 jours) : tout est rendu. */
+  async function expire() {
+    const now = Date.now();
+    for (const t of db.dealsStale(now - 2 * DAY, now - 7 * DAY)) {
+      try {
+        if (t.type === 'duel' && t.status === 'accepted') {
+          await edit([t.a, t.b], 'duel.refund', (P) => { const c = db.dealGet(t.id); if (c.status !== 'accepted') fail('x'); giveMoney(P[t.a], c.data.stake); giveMoney(P[t.b], c.data.stake); if (c.data.aItem) giveItem(P[t.a], c.data.aItem); if (c.data.bItem) giveItem(P[t.b], c.data.bItem); [t.a, t.b].forEach((u) => inbox(P[u], '⚔️ Duel annulé', 'Le duel n\'a pas été joué à temps : chacun récupère sa mise.', '↩️')); db.dealSet(t.id, { status: 'expired' }); });
+        } else if (t.status === 'open') {
+          await edit([t.a], t.type + '.refund', (P) => { const c = db.dealGet(t.id); if (c.status !== 'open') fail('x'); if (t.type === 'duel') { giveMoney(P[t.a], c.data.stake); if (c.data.aItem) giveItem(P[t.a], c.data.aItem); } else { c.data.give.items.forEach((k) => giveItem(P[t.a], k)); giveMoney(P[t.a], c.data.give.money); } inbox(P[t.a], '⏳ Proposition expirée', 'Pas de réponse : ce que tu avais mis en jeu t\'est rendu.', '↩️'); db.dealSet(t.id, { status: 'expired' }); });
+        }
+      } catch (e) { /* déjà traité */ }
+    }
+  }
+  function list(uid) {
+    const mine = db.dealsOf(uid, Date.now() - 7 * DAY).map((t) => ({
+      id: t.id, type: t.type, status: t.status, created: t.created, acceptedAt: t.acceptedAt || null, me: t.a === uid ? 'a' : 'b', winner: t.winner ? (t.winner === uid ? 'me' : 'other') : null,
+      other: t.a === uid ? { uid: t.b, name: t.data.bName } : { uid: t.a, name: t.data.aName },
+      game: t.data.game || null, stake: t.data.stake || 0,
+      aItem: t.data.aItem ? brief(t.data.aItem) : null, bItem: t.data.bItem ? brief(t.data.bItem) : null,
+      give: t.data.give ? { items: t.data.give.items.map(brief), money: t.data.give.money } : null,
+      want: t.data.want ? { items: t.data.want.items.map(brief), money: t.data.want.money } : null,
+    }));
+    return { deals: mine, market: db.marketOpenOf(uid).map((l) => ({ id: l.id, kind: l.kind, item: l.item, name: itemName(l.kind, l.item), rarity: l.rarity, price: l.price })) };
+  }
+
+  const OPS = {
+    'mk.list': marketList, 'mk.cancel': marketCancel, 'mk.buy': marketBuy, 'mk.browse': marketBrowse,
+    'trade.new': tradeNew, 'trade.accept': (u, d) => tradeAnswer(u, d, true), 'trade.decline': (u, d) => tradeAnswer(u, d, false),
+    'trade.inventory': inventory,
+    'duel.new': duelNew, 'duel.accept': (u, d) => duelAnswer(u, d, true), 'duel.decline': (u, d) => duelAnswer(u, d, false), 'duel.settle': duelSettle,
+    'deals.list': list,
+  };
+  return { OPS, expire, isDealOp: (op) => Object.prototype.hasOwnProperty.call(OPS, op) };
+};
