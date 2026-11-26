@@ -285,6 +285,62 @@
     .defis { list-style: none; padding: 0; margin: .7rem 0 0; display: flex; flex-direction: column; gap: .4rem; font-size: .88rem; }
     .defis li { background: #141a21; border-radius: 10px; padding: .5rem .7rem; display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; justify-content: space-between; }
     .defis a { color: var(--gold); }
+
+    /* ---------- Mon style ---------- */
+    .style .st-top { display: flex; justify-content: space-between; align-items: center; gap: .5rem; } .style .st-top h2 { margin: 0; }
+    .st-meta { font-size: .9rem; color: var(--muted); } .st-meta b { color: var(--gold); }
+    .st-stage { position: relative; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: .8rem; margin: .7rem 0 .5rem; padding: .9rem; border-radius: 18px;
+      background: radial-gradient(ellipse at 50% -20%, rgba(242,193,78,.18), transparent 60%), #0b0f14; border: 1px solid var(--border); min-height: 180px; }
+    .st-stage.pop .st-card, .st-stage.pop .st-table { animation: stPop .45s cubic-bezier(.2,.9,.3,1.4); }
+    @media (max-width: 560px) { .st-stage { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: .5rem; padding: .6rem; min-height: 0; } .st-av { width: 58px; height: 58px; font-size: 34px; } .st-card { padding: .6rem .3rem; } .st-id b { font-size: .95rem; } .st-id span { font-size: .72rem; } .st-table { min-height: 120px; border-width: 5px; } .st-back { width: 30px; height: 42px; } .st-chips i { width: 18px; height: 18px; } .style .shop-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .4rem; } .style .sh-item { padding: .45rem .3rem; } .style .sh-item b { font-size: .78rem; } .style .pv { width: 64px; height: 50px; } }
+    .st-card { --acc: var(--gold); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .5rem; border-radius: 16px; border: 2px solid var(--acc); padding: .9rem .6rem; box-shadow: 0 0 24px color-mix(in srgb, var(--acc) 30%, transparent); transition: background .3s, border-color .3s; }
+    .st-av { width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; font-size: 50px; background: #0d1117; border: 3px solid #3a4652; animation: stFloat 3s ease-in-out infinite; }
+    .st-id { text-align: center; display: flex; flex-direction: column; } .st-id b { font-size: 1.15rem; } .st-id span { color: var(--acc); font-weight: 700; font-size: .85rem; }
+    .st-table { position: relative; border-radius: 60px / 40px; border: 6px solid #5b3a1e; box-shadow: inset 0 0 30px rgba(0,0,0,.5), 0 8px 20px rgba(0,0,0,.4); min-height: 150px; transition: background .3s; }
+    .st-cards { position: absolute; left: 14%; top: 22%; display: flex; } .st-back { width: 40px; height: 56px; border-radius: 6px; border: 3px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,.4); transform: rotate(-8deg); transition: background .3s; } .st-back.b2 { margin-left: -14px; transform: rotate(7deg); }
+    .st-chips { position: absolute; left: 18%; bottom: 14%; display: flex; gap: 3px; } .st-chips i { width: 24px; height: 24px; border-radius: 50%; border: 3px dashed #fff; display: block; transition: filter .3s; }
+    .st-chips i:nth-child(1) { background: #c62828; } .st-chips i:nth-child(2) { background: #1565c0; } .st-chips i:nth-child(3) { background: #2e7d32; }
+    .st-rocket { position: absolute; right: 12%; top: 10%; animation: stRocket 2.4s ease-in-out infinite; } .st-rocket svg { width: 30px; height: 52px; }
+    .st-ball { position: absolute; right: 30%; bottom: 18%; width: 20px; height: 20px; border-radius: 50%; animation: stBounce 1.2s cubic-bezier(.3,0,.7,1) infinite; }
+    .st-fx { position: absolute; inset: 0; pointer-events: none; } .st-fx span { position: absolute; bottom: -24px; font-size: 1.1rem; opacity: 0; animation: stRise 2.8s ease-in infinite; }
+    .st-conf { position: absolute; top: -10px; width: 8px; height: 12px; border-radius: 2px; animation: stConf 1.4s ease-in forwards; pointer-events: none; }
+    .st-paid { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); font-size: 1.6rem; color: var(--gold); text-shadow: 0 2px 10px rgba(0,0,0,.6); animation: stPaid 1.3s ease-out forwards; pointer-events: none; }
+    .st-bar { display: flex; align-items: center; justify-content: space-between; gap: .6rem; flex-wrap: wrap; margin-bottom: .6rem; }
+    .st-try { font-size: .9rem; color: var(--muted); } .st-try b { color: var(--text); }
+    .st-btns { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; }
+    .st-act { font: inherit; font-weight: 800; border-radius: 12px; border: 1px solid var(--border); background: #2b3540; color: var(--text); padding: .55rem 1rem; cursor: pointer; }
+    .st-act.go { background: #3fb950; border-color: #3fb950; color: #04210c; } .st-act.buy { background: var(--gold); border-color: var(--gold); color: #222; animation: stGlow 1.6s ease-in-out infinite; }
+    .st-act:disabled { opacity: .75; cursor: default; animation: none; }
+    .st-collect { display: flex; align-items: center; gap: .6rem; font-size: .85rem; margin-bottom: .6rem; } .st-collect .xpbar { flex: 1; margin: 0; }
+    #st-collect-fill { height: 100%; background: linear-gradient(90deg, var(--gold), #4fc3f7); border-radius: 999px; transition: width .4s; }
+    .shop-cats button { display: flex; flex-direction: column; align-items: center; line-height: 1.15; } .shop-cats button small { font-size: .68rem; opacity: .75; }
+    .st-filters { display: flex; gap: .35rem; flex-wrap: wrap; margin-top: .5rem; }
+    .st-filters button { font: inherit; font-size: .78rem; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--muted); padding: .25rem .7rem; cursor: pointer; } .st-filters button.on { color: var(--text); border-color: var(--text); }
+    .shop-grid .sh-item { cursor: pointer; font: inherit; color: inherit; position: relative; }
+    .sh-item.st-on { border-color: #3fb950; box-shadow: 0 0 0 3px rgba(63,185,80,.2); } .sh-item.st-lock, .sh-item.st-excl { opacity: .6; }
+    .sh-item.sel { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(242,193,78,.35); transform: translateY(-3px); opacity: 1; }
+    .st-tag { font-size: .74rem; font-weight: 800; padding: .15rem .55rem; border-radius: 999px; background: #222b35; }
+    .st-tag.t-on { background: #3fb950; color: #04210c; } .st-tag.t-mine { background: rgba(63,185,80,.18); color: #7ee787; } .st-tag.t-buy { background: rgba(242,193,78,.18); color: var(--gold); }
+    .st-levels { margin-top: .8rem; } .st-levels summary { cursor: pointer; font-weight: 700; }
+    @keyframes stFloat { 50% { transform: translateY(-5px); } } @keyframes stRocket { 50% { transform: translateY(-8px) rotate(4deg); } }
+    @keyframes stBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-34px); } }
+    @keyframes stRise { 0% { opacity: 0; transform: translateY(0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-200px) rotate(20deg); } }
+    @keyframes stConf { to { transform: translateY(260px) rotate(var(--r)); opacity: 0; } }
+    @keyframes stPaid { 0% { opacity: 0; transform: translate(-50%, -30%) scale(.6); } 30% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); } 100% { opacity: 0; transform: translate(-50%, -110%); } }
+    @keyframes stPop { 40% { transform: scale(1.05); } } @keyframes stGlow { 50% { box-shadow: 0 0 18px rgba(242,193,78,.6); } }
+    @media (prefers-reduced-motion: reduce) { .st-av, .st-rocket, .st-ball, .st-fx span, .st-act.buy { animation: none !important; } }
+    /* ---------- Succès (résumé + fenêtre) ---------- */
+    .ach-head { display: flex; justify-content: space-between; align-items: center; } .ach-head h2 { margin: 0; }
+    .ach-bar { margin: .5rem 0 .6rem; } #ach-fill { height: 100%; background: linear-gradient(90deg, var(--gold), #3fb950); border-radius: 999px; }
+    .ach-recent { display: flex; gap: .45rem; flex-wrap: wrap; align-items: center; }
+    .ar.got { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; background: rgba(242,193,78,.12); border: 1px solid rgba(242,193,78,.4); }
+    .ar.next { display: flex; gap: .4rem; align-items: center; font-size: .78rem; color: var(--muted); background: #141a21; border: 1px dashed var(--border); border-radius: 12px; padding: .3rem .6rem; flex: 1 1 200px; }
+    .ar.next i { font-style: normal; font-size: 1.2rem; filter: grayscale(1); opacity: .7; }
+    .ach-dialog { width: min(760px, calc(100vw - 24px)); max-height: 85vh; background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 18px; padding: 1rem; }
+    .ach-dialog::backdrop { background: rgba(0,0,0,.6); }
+    .ach-dhead { display: flex; justify-content: space-between; align-items: center; } .ach-dhead h2 { margin: 0; }
+    .ach-filters { display: flex; gap: .35rem; margin: .6rem 0; } .ach-filters button { font: inherit; font-size: .8rem; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--muted); padding: .25rem .7rem; cursor: pointer; } .ach-filters button.on { background: var(--gold); color: #222; border-color: var(--gold); }
+    .ach small { display: block; color: #3fb950; font-size: .7rem; margin-top: .15rem; }
   </style>
 </head>
 <body>
@@ -306,7 +362,7 @@
     <nav class="hub-tabs" role="tablist" aria-label="Sections">
       <button id="tab-play" class="on" type="button" role="tab" aria-selected="true">🎰 Jeux</button>
       <button id="tab-multi" type="button" role="tab" aria-selected="false">👥 Multijoueur</button>
-      <button id="tab-shop" type="button" role="tab" aria-selected="false">🛍️ Boutique</button>
+      <button id="tab-shop" type="button" role="tab" aria-selected="false">🎨 Mon style</button>
     </nav>
 
     <section class="panel profile" aria-label="Mon profil">
@@ -324,7 +380,6 @@
           <button id="bonus" class="bonus-btn" type="button">🎁 Bonus du jour</button>
         </div>
         <div id="in-play" class="in-play" hidden></div>
-        <div id="avatars" class="avatars" hidden></div>
         <div id="lifetime" class="stats-row"></div>
       </div>
     </section>
@@ -480,32 +535,52 @@
       <ul id="my-defis" class="defis"></ul>
     </section>
 
-    <section class="panel" aria-label="Succès">
-      <h2>Succès <span id="ach-count" class="muted" style="font-size:.85rem;font-weight:400"></span></h2>
-      <div id="achievements" class="achievements"></div>
-    </section>
-
-    <section class="panel shop" data-tab="shop" aria-label="Boutique">
-      <div class="shop-head">
-        <div class="sh-wallet">🏦 <b id="shop-wallet">0</b> €</div>
-        <div class="sh-lvl">Niveau <b id="shop-lvl">1</b> · <span id="shop-owned"></span></div>
+    <section class="panel ach-panel" aria-label="Succès">
+      <div class="ach-head">
+        <h2>🏅 Succès <span id="ach-count" class="muted" style="font-size:.85rem;font-weight:400"></span></h2>
+        <button id="ach-open" type="button" class="icon-btn">Voir tout ›</button>
       </div>
-      <h2>🏅 Parcours des niveaux</h2>
-      <p class="muted small-p">Chaque niveau débloque de nouveaux objets : certains sont offerts, d'autres arrivent en boutique. Gagne de l'XP en partie réelle, avec les défis du jour et entre amis.</p>
-      <div id="level-track" class="level-track" aria-label="Déblocages par niveau"></div>
-      <h2>🛍️ Boutique</h2>
-      <div id="shop-cats" class="shop-cats" role="tablist"></div>
-      <div id="shop-grid" class="shop-grid"></div>
-      <p class="muted small-p">Les objets s'achètent avec l'argent virtuel de ta banque (aucun argent réel). Un objet acheté est à toi pour toujours.</p>
+      <div class="xpbar ach-bar" aria-hidden="true"><div id="ach-fill"></div></div>
+      <div id="ach-recent" class="ach-recent"></div>
     </section>
+    <dialog id="ach-dialog" class="ach-dialog" aria-label="Tous les succès">
+      <div class="ach-dhead"><h2>🏅 Tous les succès <span id="ach-count2" class="muted" style="font-size:.85rem;font-weight:400"></span></h2><button id="ach-close" type="button" class="icon-btn" aria-label="Fermer">✕</button></div>
+      <div class="ach-filters" id="ach-filters"><button data-f="all" class="on" type="button">Tous</button><button data-f="got" type="button">Obtenus</button><button data-f="todo" type="button">À débloquer</button></div>
+      <div id="achievements" class="achievements"></div>
+    </dialog>
 
-    <section class="panel" aria-label="Personnalisation">
-      <h2>Personnalisation</h2>
-      <div id="felts" class="swatches" hidden></div>
-      <div id="backs" class="swatches" hidden></div>
-      <p style="margin:.2rem 0 .6rem"><button id="open-shop" type="button" class="bonus-btn">🛍️ Tapis, cartes, avatars, cadres, fusées, titres : ouvrir la boutique</button></p>
-      <label style="font-size:.9rem"><input type="checkbox" id="opt-vibrate"> Vibrations sur téléphone</label>
-      <p class="muted" style="font-size:.78rem;margin:.6rem 0 0">Tout se joue avec des jetons virtuels : aucun argent réel, rien à acheter.</p>
+    <section class="panel style" data-tab="shop" aria-label="Mon style">
+      <div class="st-top">
+        <h2>🎨 Mon style</h2>
+        <div class="st-meta">🏦 <b id="shop-wallet">0</b> € · Niv. <b id="shop-lvl">1</b></div>
+      </div>
+      <div id="st-stage" class="st-stage">
+        <div id="st-card" class="st-card">
+          <span id="st-av" class="st-av">🎩</span>
+          <div class="st-id"><b id="st-name">Toi</b><span id="st-title"></span></div>
+        </div>
+        <div id="st-table" class="st-table">
+          <div class="st-cards"><span class="st-back"></span><span class="st-back b2"></span></div>
+          <div class="st-chips"><i></i><i></i><i></i></div>
+          <div id="st-rocket" class="st-rocket"></div>
+          <span id="st-ball" class="st-ball"></span>
+        </div>
+        <div id="st-fx" class="st-fx" aria-hidden="true"></div>
+      </div>
+      <div class="st-bar">
+        <div id="st-try" class="st-try">Touche un objet pour l'essayer ✨</div>
+        <div class="st-btns"><button id="st-reset" type="button" class="icon-btn" hidden>↺ Mon style</button><button id="st-act" type="button" class="st-act" hidden></button></div>
+      </div>
+      <div class="st-collect"><span>Collection : <b id="shop-owned"></b></span><div class="xpbar"><div id="st-collect-fill"></div></div></div>
+      <div id="shop-cats" class="shop-cats" role="tablist"></div>
+      <div class="st-filters" id="st-filters"><button data-f="all" class="on" type="button">Tout</button><button data-f="mine" type="button">✅ À moi</button><button data-f="buy" type="button">🛒 À acheter</button><button data-f="locked" type="button">🔒 À débloquer</button></div>
+      <div id="shop-grid" class="shop-grid"></div>
+      <details class="st-levels">
+        <summary>🏅 Ce que chaque niveau débloque</summary>
+        <p class="muted small-p">🎁 = offert automatiquement en atteignant le niveau · 🛒 = devient achetable à ce niveau · ✓ = déjà à toi.</p>
+        <div id="level-track" class="level-track" aria-label="Déblocages par niveau"></div>
+      </details>
+      <p class="muted small-p">Tout s'achète avec l'argent virtuel de ta banque (aucun argent réel). Un objet acheté est à toi pour toujours.</p>
     </section>
 
     <section class="panel account" aria-label="Mon compte">
@@ -534,6 +609,7 @@
         <button id="acc-logout" class="icon-btn" type="button">Se déconnecter</button>
       </div>
       <p id="acc-msg" class="acc-msg" role="status"></p>
+      <label style="font-size:.9rem;display:block;margin-top:.6rem"><input type="checkbox" id="opt-vibrate"> Vibrations sur téléphone</label>
     </section>
 
     <section class="install" id="install">
@@ -555,6 +631,20 @@
     (function () {
       const $ = (id) => document.getElementById(id);
       const fmt = (n) => Math.round(n).toLocaleString('fr-FR');
+      let achFilter = 'all';
+      function renderAchDialog() {
+        const P = Casino.profile, ach = $('achievements'); ach.innerHTML = '';
+        Casino.ACHIEVEMENTS.forEach((a) => {
+          const got = !!P.achievements[a.id];
+          if ((achFilter === 'got' && !got) || (achFilter === 'todo' && got)) return;
+          const hide = a.secret && !got; // succès secret : caché tant qu'il n'est pas débloqué
+          const el = document.createElement('div'); el.className = 'ach' + (got ? '' : ' locked') + (a.secret ? ' secret' : ''); el.title = hide ? 'Succès secret' : a.text;
+          const i = document.createElement('span'); i.className = 'i'; i.textContent = hide ? '❓' : a.icon;
+          const tx = document.createElement('div'); const bb = document.createElement('b'); bb.textContent = hide ? '???' : a.name; tx.append(bb, hide ? 'Succès secret : à toi de le découvrir' : a.text);
+          if (got) { const dt = document.createElement('small'); dt.textContent = '✔ ' + new Date(P.achievements[a.id]).toLocaleDateString('fr-FR'); tx.appendChild(dt); }
+          el.append(i, tx); ach.appendChild(el);
+        });
+      }
       function render() {
         const P = Casino.profile;
         const lv = Casino.levelOf(P.xp), cur = Casino.need(lv), nxt = Casino.need(lv + 1);
@@ -608,47 +698,29 @@
         const mid = new Date(); mid.setHours(24, 0, 0, 0);
         const h = Math.floor((mid - new Date()) / 3600000), m = Math.floor(((mid - new Date()) % 3600000) / 60000);
         $('chal-reset').textContent = '· nouveaux défis dans ' + h + ' h ' + String(m).padStart(2, '0');
-        // succès
-        const ach = $('achievements'); ach.innerHTML = '';
-        let n = 0;
-        Casino.ACHIEVEMENTS.forEach((a) => {
-          const got = !!P.achievements[a.id]; if (got) n++;
-          const hide = a.secret && !got; // succès secret : caché tant qu'il n'est pas débloqué
-          const el = document.createElement('div'); el.className = 'ach' + (got ? '' : ' locked') + (a.secret ? ' secret' : ''); el.title = hide ? 'Succès secret' : a.text;
-          const i = document.createElement('span'); i.className = 'i'; i.textContent = hide ? '❓' : a.icon;
-          const tx = document.createElement('div'); const bb = document.createElement('b'); bb.textContent = hide ? '???' : a.name; tx.append(bb, hide ? 'Succès secret : à toi de le découvrir' : a.text);
-          el.append(i, tx); ach.appendChild(el);
+        // succès : un résumé sur l'accueil, la liste complète dans une fenêtre
+        const got = Casino.ACHIEVEMENTS.filter((a) => P.achievements[a.id]);
+        $('ach-count').textContent = '· ' + got.length + ' / ' + Casino.ACHIEVEMENTS.length;
+        $('ach-count2').textContent = '· ' + got.length + ' / ' + Casino.ACHIEVEMENTS.length;
+        $('ach-fill').style.width = Math.round(got.length / Casino.ACHIEVEMENTS.length * 100) + '%';
+        const rec = $('ach-recent'); rec.innerHTML = '';
+        got.slice().sort((x, y) => P.achievements[y.id] - P.achievements[x.id]).slice(0, 4).forEach((a) => {
+          const d = document.createElement('span'); d.className = 'ar got'; d.title = a.name + ' : ' + a.text; d.textContent = a.icon; rec.appendChild(d);
         });
-        $('ach-count').textContent = '· ' + n + ' / ' + Casino.ACHIEVEMENTS.length;
-        // personnalisation
-        [['felt', Casino.FELTS, 'felts'], ['back', Casino.BACKS, 'backs']].forEach(([kind, list, id]) => {
-          const box2 = $(id); box2.innerHTML = '';
-          list.forEach((it) => {
-            const b2 = document.createElement('button'); b2.type = 'button';
-            const ok = lv >= it.level;
-            b2.className = 'sw' + (P.equipped[kind] === it.id ? ' on' : '');
-            b2.disabled = !ok;
-            const i = document.createElement('i');
-            i.style.background = kind === 'felt' ? 'radial-gradient(circle, ' + it.a + ', ' + it.b + ')' : 'repeating-linear-gradient(45deg, ' + it.a + ', ' + it.a + ' 5px, ' + it.b + ' 5px, ' + it.b + ' 10px)';
-            b2.append(i, ok ? it.name : '🔒 Niv. ' + it.level);
-            b2.addEventListener('click', () => { Casino.equip(kind, it.id); render(); });
-            box2.appendChild(b2);
-          });
-        });
+        const next = Casino.ACHIEVEMENTS.filter((a) => !P.achievements[a.id] && !a.secret).slice(0, 2);
+        next.forEach((a) => { const d = document.createElement('span'); d.className = 'ar next'; d.innerHTML = '<i></i><small></small>'; d.firstChild.textContent = a.icon; d.lastChild.textContent = 'À débloquer : ' + a.text; rec.appendChild(d); });
+        if (!rec.children.length) rec.innerHTML = '<span class="muted small-p">Joue en partie réelle pour débloquer tes premiers succès !</span>';
+        renderAchDialog();
         $('opt-vibrate').checked = P.settings.vibrate;
         renderSeason(P); renderBank(P);
       }
       $('pseudo').addEventListener('change', (e) => { Casino.setPseudo(e.target.value); render(); });
-      $('avatar').addEventListener('click', () => {
-        const box = $('avatars');
-        box.hidden = !box.hidden;
-        box.innerHTML = '';
-        if (!box.hidden) Casino.AVATARS.concat(Casino.SHOP.avatar.filter((it) => Casino.canUse('avatar', it.id)).map((it) => it.id)).forEach((a) => {
-          const b = document.createElement('button'); b.type = 'button'; b.textContent = a; b.setAttribute('aria-label', 'Avatar ' + a);
-          b.addEventListener('click', () => { Casino.setAvatar(a); box.hidden = true; render(); });
-          box.appendChild(b);
-        });
-      });
+      // toucher son avatar : on va choisir son look dans « Mon style »
+      $('avatar').addEventListener('click', () => { shopCat = 'avatar'; styleSel = null; setHubTab('shop'); });
+      $('ach-open').addEventListener('click', () => { renderAchDialog(); $('ach-dialog').showModal(); });
+      $('ach-close').addEventListener('click', () => $('ach-dialog').close());
+      $('ach-dialog').addEventListener('click', (e) => { if (e.target === $('ach-dialog')) $('ach-dialog').close(); });
+      document.querySelectorAll('#ach-filters button').forEach((b) => b.addEventListener('click', () => { achFilter = b.dataset.f; document.querySelectorAll('#ach-filters button').forEach((x) => x.classList.toggle('on', x === b)); renderAchDialog(); }));
       $('bonus').addEventListener('click', async () => {
         $('bonus').disabled = true;
         const v = await Casino.claimBonus();
@@ -728,7 +800,6 @@
       $('tab-play').addEventListener('click', () => setHubTab('play'));
       $('tab-multi').addEventListener('click', () => setHubTab('multi'));
       $('tab-shop').addEventListener('click', () => setHubTab('shop'));
-      $('open-shop').addEventListener('click', () => setHubTab('shop'));
 
 
       // ---------- Saison ----------
@@ -797,71 +868,154 @@
         else if (kind === 'effect') d.textContent = it.emojis.join('');
         return d;
       }
+      // ---------- Mon style : essayer, équiper, acheter ----------
+      // Avatars : les 16 de départ sont gratuits, les autres viennent de la boutique
+      const BASE_AV = () => Casino.AVATARS.map((id) => ({ id, name: 'Avatar', level: 1, price: 0, base: true }));
+      const listOf = (kind) => (kind === 'avatar' ? BASE_AV().concat(Casino.SHOP.avatar) : Casino.SHOP[kind]);
+      let styleSel = null, styleFilter = 'all';
       function isEquipped(kind, it) { return kind === 'avatar' ? Casino.profile.avatar === it.id : Casino.equipped(kind) === it.id; }
+      // état d'un objet pour le joueur
+      function stateOf(kind, it) {
+        const lv = Casino.levelOf(Casino.profile.xp);
+        if (isEquipped(kind, it)) return 'on';
+        if (it.base || Casino.canUse(kind, it.id)) return 'mine';
+        if (it.exclusive) return 'excl';
+        if (lv < it.level) return 'lock';
+        return 'buy';
+      }
+      // l'aperçu montre le style équipé, avec l'objet essayé à la place
+      function styleNow(kind) {
+        if (styleSel && styleSel.kind === kind) return styleSel.id;
+        return kind === 'avatar' ? Casino.profile.avatar : Casino.equipped(kind);
+      }
+      function renderStage() {
+        const P = Casino.profile, it = (k) => (k === 'avatar' ? { id: styleNow('avatar') } : Casino.itemOf(k, styleNow(k)));
+        const th = it('theme'), fe = it('felt'), bk = it('back'), ch = it('chips'), ro = it('rocket'), ba = it('ball'), ti = it('title'), ef = it('effect');
+        const card = $('st-card');
+        if (th) { card.style.background = 'linear-gradient(160deg, ' + th.panel + ', ' + th.bg + ')'; card.style.borderColor = th.accent; card.style.setProperty('--acc', th.accent); }
+        const av = $('st-av'); av.textContent = it('avatar').id; av.className = 'st-av fr-' + styleNow('frame');
+        $('st-name').textContent = P.pseudo || 'Toi';
+        $('st-title').textContent = ti && ti.id ? '« ' + ti.name + ' »' : Casino.title(Casino.levelOf(P.xp));
+        if (fe) $('st-table').style.background = 'radial-gradient(ellipse at 35% 25%, ' + fe.a + ', ' + fe.b + ')';
+        if (bk) document.querySelectorAll('.st-back').forEach((x) => { x.style.background = 'repeating-linear-gradient(45deg, ' + bk.a + ', ' + bk.a + ' 5px, ' + bk.b + ' 5px, ' + bk.b + ' 10px)'; });
+        document.querySelectorAll('.st-chips i').forEach((x) => { x.style.filter = ch ? ch.filter : 'none'; });
+        if (ro) $('st-rocket').innerHTML = rocketSvg(ro);
+        if (ba) { const b = $('st-ball'); b.style.background = 'radial-gradient(circle at 35% 30%, ' + ba.c[1] + ', ' + ba.c[0] + ' 45%, ' + ba.c[2] + ')'; b.style.boxShadow = '0 0 14px ' + ba.c[2]; }
+        const fx = $('st-fx'); fx.innerHTML = '';
+        if (ef) ef.emojis.concat(ef.emojis).forEach((e, i) => { const sp = document.createElement('span'); sp.textContent = e; sp.style.left = (8 + i * 11) + '%'; sp.style.animationDelay = (i * 0.35) + 's'; fx.appendChild(sp); });
+      }
+      // barre d'action sous l'aperçu : ce qu'on peut faire avec l'objet essayé
+      function renderAction() {
+        const act = $('st-act'), tr = $('st-try');
+        $('st-reset').hidden = !styleSel;
+        act.hidden = true; act.className = 'st-act'; act.disabled = false; act.onclick = null;
+        if (!styleSel) { tr.textContent = 'Touche un objet pour l\'essayer ✨'; return; }
+        const kind = styleSel.kind, it = listOf(kind).find((x) => x.id === styleSel.id); if (!it) return;
+        const st = stateOf(kind, it), P = Casino.profile;
+        tr.innerHTML = ''; const b = document.createElement('b'); b.textContent = (kind === 'avatar' ? it.id + ' ' : '') + (it.base ? 'Avatar de départ' : it.name); tr.append('Essai : ', b, ' · ' + Casino.SHOP_LABELS[kind]);
+        act.hidden = false;
+        if (st === 'on') { act.textContent = '✓ Déjà porté'; act.disabled = true; return; }
+        if (st === 'mine') { act.textContent = '✨ Équiper'; act.classList.add('go'); act.onclick = () => wear(kind, it); return; }
+        if (st === 'excl') { act.textContent = '🏆 ' + it.exclusive; act.disabled = true; return; }
+        if (st === 'lock') { act.textContent = '🔒 Se débloque au niveau ' + it.level + (it.price ? ' (puis ' + fmt(it.price) + ' €)' : ' (offert)'); act.disabled = true; return; }
+        const key = kind + ':' + it.id;
+        if (P.wallet < it.price) { act.textContent = 'Il te manque ' + fmt(it.price - P.wallet) + ' €'; act.disabled = true; return; }
+        act.classList.add('buy');
+        act.textContent = armedBuy === key ? '👉 Confirmer l\'achat : ' + fmt(it.price) + ' € ?' : '🛒 Acheter ' + fmt(it.price) + ' €';
+        act.onclick = async () => {
+          if (armedBuy !== key) { armedBuy = key; clearTimeout(armedTimer); armedTimer = setTimeout(() => { armedBuy = null; renderAction(); }, 4000); renderAction(); return; }
+          armedBuy = null; clearTimeout(armedTimer);
+          act.disabled = true; act.textContent = '…';
+          const r = await Casino.buy(kind, it.id);
+          if (r.error) { Casino.toast('Achat impossible', r.error, '⚠️'); renderShop(); return; }
+          celebrate(it.price ? '−' + fmt(it.price) + ' €' : '');
+          Casino.toast('Acheté !', it.name + ' est à toi et déjà équipé.', '🛍️', 'gold');
+          wear(kind, it, true);
+        };
+      }
+      function wear(kind, it, bought) {
+        Casino.equip(kind, it.id);
+        styleSel = null;
+        if (window.Sfx) { if (bought) Sfx.win(); else Sfx.chips(); }
+        if (!bought) Casino.vibrate && Casino.vibrate(20);
+        const st = $('st-stage'); st.classList.remove('pop'); void st.offsetWidth; st.classList.add('pop');
+        render(); renderShop();
+      }
+      function celebrate(text) {
+        const st = $('st-stage');
+        for (let i = 0; i < 26; i++) {
+          const c = document.createElement('i'); c.className = 'st-conf';
+          c.style.left = (Math.random() * 100) + '%'; c.style.background = ['#f2c14e', '#4fc3f7', '#f472b6', '#34d399', '#a78bfa'][i % 5];
+          c.style.animationDelay = (Math.random() * 0.25) + 's'; c.style.setProperty('--r', (Math.random() * 720 - 360) + 'deg');
+          st.appendChild(c); setTimeout(() => c.remove(), 1600);
+        }
+        if (text) { const t = document.createElement('b'); t.className = 'st-paid'; t.textContent = text; st.appendChild(t); setTimeout(() => t.remove(), 1400); }
+      }
+      $('st-reset').addEventListener('click', () => { styleSel = null; armedBuy = null; renderShop(); });
+      document.querySelectorAll('#st-filters button').forEach((b) => b.addEventListener('click', () => { styleFilter = b.dataset.f; document.querySelectorAll('#st-filters button').forEach((x) => x.classList.toggle('on', x === b)); renderShop(); }));
+
       function renderShop() {
         if (document.body.dataset.hubtab !== 'shop') return;
         const P = Casino.profile, lv = Casino.levelOf(P.xp);
         $('shop-wallet').textContent = fmt(P.wallet);
         $('shop-lvl').textContent = lv;
-        const totalPaid = Object.values(Casino.SHOP).reduce((a, l) => a + l.filter((x) => x.price && !x.exclusive).length, 0);
-        $('shop-owned').textContent = Object.keys(P.owned || {}).length + ' / ' + totalPaid + ' objets achetés';
-        // parcours des niveaux
-        const tr = $('level-track'); tr.innerHTML = '';
+        // collection : tout ce que le joueur peut porter
+        let mine = 0, all = 0;
+        Object.keys(Casino.SHOP).forEach((k) => Casino.SHOP[k].forEach((it) => { if (it.exclusive && !Casino.owns(k, it.id)) return; all++; if (Casino.canUse(k, it.id)) mine++; }));
+        $('shop-owned').textContent = mine + ' / ' + all + ' objets';
+        $('st-collect-fill').style.width = Math.round(mine / all * 100) + '%';
+        renderStage(); renderAction();
+        // catégories (avec ce qu'on possède dans chacune)
+        const cats = $('shop-cats'); cats.innerHTML = '';
+        Object.keys(Casino.SHOP).forEach((k) => {
+          const l = listOf(k), have = l.filter((it) => it.base || Casino.canUse(k, it.id)).length;
+          const b = document.createElement('button'); b.type = 'button'; b.className = k === shopCat ? 'on' : '';
+          b.innerHTML = '<span></span><small></small>'; b.firstChild.textContent = KIND_ICON[k] + ' ' + Casino.SHOP_LABELS[k]; b.lastChild.textContent = have + '/' + l.length;
+          b.addEventListener('click', () => { shopCat = k; styleSel = null; renderShop(); }); cats.appendChild(b);
+        });
+        // objets : toucher = essayer ; si c'est à toi, c'est équipé tout de suite
+        const grid = $('shop-grid'); grid.innerHTML = '';
+        const LBL = { on: '✓ Porté', mine: '✅ À toi', buy: '🛒', lock: '🔒 Niv. ', excl: '🏆 Exclusif' };
+        listOf(shopCat).forEach((it) => {
+          const st = stateOf(shopCat, it);
+          if ((styleFilter === 'mine' && !(st === 'mine' || st === 'on')) || (styleFilter === 'buy' && st !== 'buy') || (styleFilter === 'locked' && !(st === 'lock' || st === 'excl'))) return;
+          const card = document.createElement('button'); card.type = 'button';
+          card.className = 'sh-item st-' + st + (styleSel && styleSel.kind === shopCat && styleSel.id === it.id ? ' sel' : '');
+          card.appendChild(preview(shopCat, it));
+          const nm = document.createElement('b'); nm.textContent = it.base ? 'Avatar ' + it.id : it.name; card.appendChild(nm);
+          const tag = document.createElement('span'); tag.className = 'st-tag t-' + st;
+          tag.textContent = st === 'buy' ? '🛒 ' + fmt(it.price) + ' €' : st === 'lock' ? '🔒 Niv. ' + it.level : LBL[st];
+          card.appendChild(tag);
+          card.addEventListener('click', () => {
+            if (st === 'on') { styleSel = null; renderShop(); return; }
+            if (st === 'mine') { wear(shopCat, it); return; }
+            styleSel = { kind: shopCat, id: it.id }; armedBuy = null;
+            if (window.Sfx) Sfx.chips();
+            renderShop();
+            $('st-stage').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          });
+          grid.appendChild(card);
+        });
+        if (!grid.children.length) grid.innerHTML = '<p class="muted small-p">Rien ici pour ce filtre.</p>';
+        // ce que chaque niveau débloque
+        const trk = $('level-track'); trk.innerHTML = '';
         let cur = null;
         for (let l = 2; l <= 35; l++) {
           const items = Casino.unlocksAt(l);
           if (!items.length) continue;
-          const n = document.createElement('div'); n.className = 'lt-node' + (lv >= l ? ' done' : '') + (l === lv || (!cur && l > lv) ? ' next' : '');
+          const n = document.createElement('div'); n.className = 'lt-node' + (lv >= l ? ' done' : '') + (!cur && l > lv ? ' next' : '');
           if (!cur && l > lv) cur = n;
-          const h = document.createElement('b'); h.textContent = 'Niv. ' + l;
+          const h = document.createElement('b'); h.textContent = 'Niv. ' + l + (lv >= l ? ' ✓' : '');
           const ic = document.createElement('div'); ic.className = 'lt-items';
-          items.forEach((it) => { const sp = document.createElement('span'); sp.title = Casino.SHOP_LABELS[it.kind] + ' : ' + it.name + (it.price ? ' (boutique, ' + fmt(it.price) + ' €)' : ' (offert)'); sp.textContent = it.kind === 'avatar' ? it.id : KIND_ICON[it.kind]; if (!it.price) sp.className = 'free'; ic.appendChild(sp); });
-          const sm = document.createElement('small'); sm.textContent = items.filter((x) => !x.price).length ? '🎁 ' + items.filter((x) => !x.price).map((x) => x.name).join(', ') : items.length + ' en boutique';
-          n.append(h, ic, sm); tr.appendChild(n);
+          items.forEach((x) => {
+            const sp = document.createElement('span'); const have = Casino.canUse(x.kind, x.id);
+            sp.textContent = (x.kind === 'avatar' ? x.id : KIND_ICON[x.kind]) + (have ? '✓' : x.price ? '🛒' : '🎁');
+            sp.title = Casino.SHOP_LABELS[x.kind] + ' : ' + x.name + (have ? ' (à toi)' : x.price ? ' (achetable : ' + fmt(x.price) + ' €)' : ' (offert)');
+            ic.appendChild(sp);
+          });
+          n.append(h, ic); trk.appendChild(n);
         }
-        if (cur) setTimeout(() => { tr.scrollLeft = Math.max(0, cur.offsetLeft - tr.clientWidth / 2 + cur.clientWidth / 2); }, 0);
-        // catégories
-        const cats = $('shop-cats'); cats.innerHTML = '';
-        Object.keys(Casino.SHOP).forEach((k) => {
-          const b = document.createElement('button'); b.type = 'button'; b.className = k === shopCat ? 'on' : ''; b.textContent = KIND_ICON[k] + ' ' + Casino.SHOP_LABELS[k];
-          b.addEventListener('click', () => { shopCat = k; renderShop(); }); cats.appendChild(b);
-        });
-        // objets
-        const grid = $('shop-grid'); grid.innerHTML = '';
-        Casino.SHOP[shopCat].forEach((it) => {
-          const owned = Casino.owns(shopCat, it.id), unlocked = lv >= it.level, usable = Casino.canUse(shopCat, it.id) || (shopCat === 'avatar' && false);
-          const card = document.createElement('div'); card.className = 'sh-item' + (isEquipped(shopCat, it) ? ' equipped' : '') + (!unlocked ? ' locked' : '');
-          card.appendChild(preview(shopCat, it));
-          const nm = document.createElement('b'); nm.textContent = it.name; card.appendChild(nm);
-          const info = document.createElement('small');
-          if (it.exclusive) info.textContent = '🏆 ' + it.exclusive;
-          else info.textContent = !unlocked ? '🔒 Niveau ' + it.level + (it.price ? ' · ' + fmt(it.price) + ' €' : ' · offert') : it.price ? (owned ? 'Acheté' : fmt(it.price) + ' €') : 'Offert';
-          card.appendChild(info);
-          const btn = document.createElement('button'); btn.type = 'button';
-          if (isEquipped(shopCat, it)) { btn.textContent = 'Équipé ✓'; btn.disabled = true; }
-          else if (usable) { btn.textContent = 'Équiper'; btn.addEventListener('click', () => { Casino.equip(shopCat, it.id); if (window.Sfx) Sfx.chips(); render(); renderShop(); }); }
-          else if (it.exclusive) { btn.textContent = '🏆 Récompense exclusive'; btn.disabled = true; }
-          else if (!unlocked) { btn.textContent = '🔒 Niv. ' + it.level; btn.disabled = true; }
-          else {
-            const key = shopCat + ':' + it.id;
-            btn.className = 'buy'; btn.textContent = armedBuy === key ? 'Confirmer ' + fmt(it.price) + ' € ?' : 'Acheter ' + fmt(it.price) + ' €';
-            if (P.wallet < it.price) { btn.disabled = true; btn.textContent = 'Il manque ' + fmt(it.price - P.wallet) + ' €'; }
-            btn.addEventListener('click', async () => {
-              // deux appuis pour acheter (la confirmation survit à un rafraîchissement de la boutique)
-              if (armedBuy !== key) { armedBuy = key; clearTimeout(armedTimer); armedTimer = setTimeout(() => { armedBuy = null; renderShop(); }, 4000); renderShop(); return; }
-              armedBuy = null; clearTimeout(armedTimer);
-              btn.disabled = true; btn.textContent = '…';
-              const r = await Casino.buy(shopCat, it.id);
-              if (r.error) { Casino.toast('Achat impossible', r.error, '⚠️'); renderShop(); return; }
-              Casino.equip(shopCat, it.id);
-              Casino.toast('Acheté !', it.name + ' est à toi (−' + fmt(it.price) + ' €).', '🛍️', 'gold');
-              if (window.Sfx) Sfx.win();
-              render(); renderShop();
-            });
-          }
-          card.appendChild(btn);
-          grid.appendChild(card);
-        });
+        if (cur) setTimeout(() => { trk.scrollLeft = Math.max(0, cur.offsetLeft - trk.clientWidth / 2 + cur.clientWidth / 2); }, 0);
       }
       Casino.onChange(() => renderShop());
       // ---------- Partie réelle / Apprentissage ----------
