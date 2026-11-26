@@ -46,6 +46,12 @@ function open(dir) {
       PRIMARY KEY (month, board)
     );
   `);
+  // nouvelle économie (÷ 10) : les records déjà enregistrés sont convertis une seule fois
+  db.exec('CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)');
+  if (!db.prepare("SELECT v FROM meta WHERE k = 'econ'").get()) {
+    db.exec('UPDATE hall SET amount = ROUND(amount / 10.0, 2)');
+    db.exec("INSERT INTO meta (k, v) VALUES ('econ', '2')");
+  }
   const get = db.prepare('SELECT state FROM players WHERE uid = ?');
   const ins = db.prepare('INSERT INTO players (uid, state, created, updated) VALUES (?, ?, ?, ?) ON CONFLICT(uid) DO UPDATE SET state = excluded.state, updated = excluded.updated');
   const led = db.prepare('INSERT INTO ledger (uid, at, op, wallet_before, wallet_after, table_before, table_after) VALUES (?, ?, ?, ?, ?, ?, ?)');

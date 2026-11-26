@@ -35,6 +35,7 @@
     let raw = null;
     try { raw = JSON.parse(localStorage.getItem(KEY)); } catch (e) { /* ignore */ }
     P = Object.assign(localDefaults(), R.normalize(raw, Date.now()), raw ? pick(raw, LOCAL_KEYS) : {});
+    if (P._econMigrated) { delete P._econMigrated; setTimeout(() => { try { save(); } catch (e) { /* ignore */ } }, 0); }
     if (!raw || !raw.pseudo) { try { P.pseudo = P.pseudo || localStorage.getItem('bj-pseudo') || ''; } catch (e) { /* ignore */ } }
     return P;
   }
@@ -127,7 +128,7 @@
 
   // ---------- Banque protégée par les règles de la base (sans serveur payant) ----------
   const BONUS_GAP = 6 * 3600000; // les règles imposent 6 h entre deux bonus
-  const GAIN_CAP = 100000;       // et au plus 100 000 € de gains encaissés par 24 h
+  const GAIN_CAP = 10000;        // et au plus 10 000 € de gains encaissés par 24 h
   let bank = null, bankUid = null, bankUnsub = null, offset = 0, bankReady = null;
   const packMs = (id) => { const p = TIME_PACKS.find((x) => x.id === id); return p ? p.minutes * 60000 : 0; };
   function bankInit() {
@@ -391,7 +392,7 @@
   }
 
   // Écran « Entre amis » (créer / rejoindre une table) avec la même ambiance que l'écran de lancement
-  const MULTI_PILLS = { blackjack: ['Jusqu\'à 5 places', 'Classement final', '+500 € au 1er'], poker: ['Cartes secrètes', 'Spectateurs', '+500 € au 1er'], roulette: ['Même roue pour tous', 'Chacun mise', '+500 € au 1er'] };
+  const MULTI_PILLS = { blackjack: ['Jusqu\'à 5 places', 'Classement final', '+50 € au 1er'], poker: ['Cartes secrètes', 'Spectateurs', '+50 € au 1er'], roulette: ['Même roue pour tous', 'Chacun mise', '+50 € au 1er'] };
   function styleLobby(el, game, o) {
     if (!el || el.dataset.cmStyled) return;
     injectStyle();
@@ -505,7 +506,7 @@
         chips.querySelectorAll('button').forEach((b) => b.classList.toggle('on', Number(b.dataset.v) === val));
         if (bump) { big.classList.remove('bump'); void big.offsetWidth; big.classList.add('bump'); }
       };
-      [[100, 'c1'], [500, 'c2'], [1000, 'c3'], [2500, 'c4']].filter(([v]) => v >= min && v <= wal).forEach(([v, c]) => {
+      [[10, 'c1'], [50, 'c2'], [100, 'c3'], [250, 'c4']].filter(([v]) => v >= min && v <= wal).forEach(([v, c]) => {
         const q = mk('button', 'cm-chip ' + c); q.type = 'button'; q.dataset.v = v;
         q.append(mk('b', '', v >= 1000 ? String(v / 1000).replace('.', ',') + 'k' : String(v)));
         q.onclick = () => { show(v, true); if (window.Sfx) Sfx.chips(); };
@@ -616,8 +617,8 @@
         const c = (Casino.daily().list || []).find((x) => x.id === id);
         const def = CHALLENGES.find((x) => x.id === id);
         if (!c || !c.done || c.claimed || !def) return 0;
-        const r = await bankOp('gain', def.reward, () => ({ x: def.reward }), (N) => R.claimChallenge(P, id, Date.now(), N));
-        return r.ok ? def.reward : 0;
+        const r = await bankOp('gain', R.challengeReward(def, load()), () => ({ x: R.challengeReward(def, load()) }), (N) => R.claimChallenge(P, id, Date.now(), N));
+        return r.ok ? R.challengeReward(def, load()) : 0;
       }
       return local((N) => R.claimChallenge(P, id, Date.now(), N));
     },
@@ -681,7 +682,7 @@
     // Mode Apprentissage choisi sur l'accueil : tous les jeux en crédit illimité avec les aides
     get learn() { try { return localStorage.getItem('casino-learn') === '1'; } catch (e) { return false; } },
     setLearn(on) { try { localStorage.setItem('casino-learn', on ? '1' : '0'); } catch (e) { /* ignore */ } listeners.forEach((f) => { try { f(load()); } catch (e) { /* ignore */ } }); },
-    TRAIN_BANK: 10000,
+    TRAIN_BANK: 1000,
     session(game) { return load().sessions[game] || null; },
     sessions() { return Object.assign({}, load().sessions); },
     /** Commence (ou reprend) une partie réelle : { session, resumed, … } ou { error } */
@@ -766,28 +767,34 @@
     },
     showRanking,
     // ---------- Banque du temps ----------
-    timebank() { return R.timeInfo(load(), Date.now()); },
-    async startTime(id) {
-      if (SERVER) return !(await call('time.start', { pack: id })).error;
-      if (BANK) return !(await bankOp('tstart', 0, (o) => { if (o.tb) return false; o.tb = { p: id, s: { '.sv': 'timestamp' } }; }, () => R.startTime(P, id, Date.now()))).error;
-      return local(() => R.startTime(P, id, Date.now()));
-    },
-    async claimTime() {
-      if (SERVER) { const r = await call('time.claim'); if (r.amount) vibrate([30, 30, 60]); return r.amount || 0; }
+    // ---------- Coffre (se remplit tout seul) et aide de secours ----------
+    chest() { return R.chestInfo(load(), Date.now()); },
+    async claimChest() {
+      if (SERVER) { const r = await call('chest.claim'); if (r.amount) vibrate([30, 30, 60]); return r.amount || 0; }
       if (BANK) {
-        const t = R.timeInfo(load(), Date.now());
-        if (!t || !t.ready) return 0;
-        const r = await bankOp('tclaim', t.pack.amount, (o) => { delete o.tb; }, (N) => R.claimTime(P, Date.now(), N));
-        if (r.ok) vibrate([30, 30, 60]);
-        return r.ok ? t.pack.amount : 0;
+        const c = R.chestInfo(load(), Date.now()); if (c.amount < 1) return 0;
+        const r = await bankOp('gain', c.amount, () => ({ x: c.amount }), (N) => { const v = R.claimChest(P, Date.now(), N); P.wallet -= v; });
+        return r.ok ? c.amount : 0;
       }
-      return local((N) => R.claimTime(P, Date.now(), N));
+      return local((N) => R.claimChest(P, Date.now(), N));
     },
-    async cancelTime() {
-      if (SERVER) { await call('time.cancel'); return; }
-      if (BANK) { await bankOp('spend', 0, (o) => { delete o.tb; }, () => { P.timebank = null; }); return; }
-      local(() => { P.timebank = null; });
+    rescue() { return R.rescueInfo(load(), Date.now()); },
+    async claimRescue() {
+      if (SERVER) { const r = await call('rescue.claim'); return r.amount || 0; }
+      if (BANK) {
+        if (!R.rescueInfo(load(), Date.now()).available) return 0;
+        const r = await bankOp('gain', R.RESCUE_AMOUNT, () => ({ x: R.RESCUE_AMOUNT }), () => { const v = R.claimRescue(P, Date.now()); P.wallet -= v; });
+        return r.ok ? R.RESCUE_AMOUNT : 0;
+      }
+      return local(() => R.claimRescue(P, Date.now()));
     },
+    // ---------- Salons VIP : mise maximale selon le niveau ----------
+    vip() { return R.vipOf(load()); },
+    VIP: R.VIP,
+    /** Mise maximale par coup : salon VIP en partie réelle, tout est permis en apprentissage. */
+    maxBet() { return Casino.training ? 500 : R.maxBet(load()); },
+    dailyOffer() { return R.dailyOffer(Date.now()); },
+    challengeReward(def) { return R.challengeReward(def, load()); },
     // ---------- Progression (mode sans serveur ; avec le serveur, c'est lui qui compte) ----------
     track(type, d) {
       if (Casino.training || SERVER) return;

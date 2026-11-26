@@ -7,7 +7,9 @@
   const MAX_HANDS = 4;
   const START_BANKROLL = 1000;
   // Limites de la table, comme au casino (le doublement et la séparation peuvent dépasser le maximum)
-  const MIN_BET = 5, MAX_BET = 250;
+  const MIN_BET = 1;
+  // mise maximale : celle du salon VIP en partie réelle (elle monte avec le niveau), 500 € en entraînement
+  const maxBetNow = () => (mode === 'real' && window.Casino ? Casino.maxBet() : 500);
   const STORAGE_KEY = 'blackjack-coach-v1';
   const CAT_LABELS = { hard: 'Mains dures', soft: 'Mains souples', pair: 'Paires' };
   const $ = (id) => document.getElementById(id);
@@ -21,7 +23,7 @@
   let stats = loadStats();
   // Mode de la partie solo : 'train' (crédit illimité + coach), 'real' (somme apportée, sans aides) ou 'defi'
   let mode = null;
-  const TRAIN_BANK = window.Casino ? Casino.TRAIN_BANK : 10000;
+  const TRAIN_BANK = window.Casino ? Casino.TRAIN_BANK : 1000;
 
   function freshStats() {
     return {
@@ -171,7 +173,7 @@
     const playing = round && round.phase === 'playing' && !busy;
     $('bet-controls').classList.toggle('hidden', !!inRound);
     $('play-controls').classList.toggle('hidden', !inRound || !!insuranceResolve);
-    $('deal').disabled = busy || bet < MIN_BET || bet > MAX_BET || bet + side.pp + side.t213 > stats.bankroll;
+    $('deal').disabled = busy || bet < MIN_BET || bet > maxBetNow() || bet + side.pp + side.t213 > stats.bankroll;
 
     if (inRound) {
       const opts = playing ? availableActions() : {};
@@ -197,7 +199,7 @@
   }
 
   // ---------- Emplacements de mise (mise principale + paris annexes rouges) ----------
-  const SIDE_STEPS = [0, 5, 10, 25, 50];
+  const SIDE_STEPS = [0, 1, 5, 10, 25];
   function chipStack(amount) {
     const c = document.createElement('span');
     c.className = 'spot-chip' + (amount ? '' : ' empty');
@@ -265,7 +267,7 @@
 
   async function deal() {
     if ($('coach-bubble')) $('coach-bubble').hidden = true;
-    if (busy || bet < MIN_BET || bet > MAX_BET || bet + side.pp + side.t213 > stats.bankroll) return;
+    if (busy || bet < MIN_BET || bet > maxBetNow() || bet + side.pp + side.t213 > stats.bankroll) return;
     if (round && round.phase !== 'over') return;
     busy = true;
     let srvPhase = null;
@@ -1009,7 +1011,7 @@
   // ---------- Événements ----------
   document.querySelectorAll('[data-chip]').forEach((b) => b.addEventListener('click', () => {
     const v = parseInt(b.dataset.chip, 10);
-    if (bet + v > MAX_BET) setMessage('Mise maximale : ' + MAX_BET + ' € par main.');
+    if (bet + v > maxBetNow()) setMessage('Mise maximale : ' + maxBetNow() + ' € par main' + (mode === 'real' ? ' dans ton salon (elle monte avec ton niveau).' : '.'));
     else if (bet + v <= stats.bankroll) { bet += v; if (window.Sfx) Sfx.chips(); }
     render();
   }));
@@ -1107,7 +1109,7 @@
   }
   function renderPicker(msg) {
     if (!window.Casino) { startMode('train', TRAIN_BANK); return; }
-    Casino.modePicker($('mode-picker'), { game: 'blackjack', min: MIN_BET, suggest: 500, onStart: (m, amount) => startMode(m, amount) });
+    Casino.modePicker($('mode-picker'), { game: 'blackjack', min: MIN_BET, suggest: 100, onStart: (m, amount) => startMode(m, amount) });
     if (msg) { const p = document.createElement('p'); p.className = 'end-msg'; p.textContent = msg; $('mode-picker').prepend(p); }
   }
   async function endSession(broke) {

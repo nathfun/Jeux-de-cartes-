@@ -49,13 +49,13 @@
 
         <div id="bet-controls" class="controls">
           <div class="chips">
+            <button class="chip" data-chip="1">1</button>
             <button class="chip" data-chip="5">5</button>
             <button class="chip" data-chip="10">10</button>
             <button class="chip" data-chip="25">25</button>
-            <button class="chip" data-chip="100">100</button>
           </div>
           <div class="bet-line">
-            Mise : <strong id="bet">10</strong> € <span class="muted small">(min 5 € · max 250 €)</span>
+            Mise : <strong id="bet">10</strong> € <span class="muted small">(min 1 € · max selon ton salon VIP)</span>
             <button id="clear-bet" class="ghost">Effacer</button>
             <button id="deal" class="primary">Distribuer</button>
             <button id="cashout" class="ghost" type="button">Encaisser</button>
@@ -140,7 +140,7 @@
                 <option value="50">50 mains</option>
               </select>
             </label>
-            <p class="small muted prize-note">Les jetons de la table ne servent qu'ici. À la fin, le classement rapporte sur la banque du Casino : 1er +500 €, 2e +200 € (à deux joueurs : le gagnant +300 €). Pas de recave : sous 5 €, on est éliminé.</p>
+            <p class="small muted prize-note">Les jetons de la table ne servent qu'ici. À la fin, le classement rapporte sur la banque du Casino : 1er +50 €, 2e +20 € (à deux joueurs : le gagnant +30 €). Pas de recave : sous 5 jetons, on est éliminé.</p>
             <label>Jetons de départ (monnaie de la table)
               <select id="set-bankroll">
                 <option value="500">500 €</option>

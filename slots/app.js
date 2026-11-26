@@ -3,7 +3,9 @@
   'use strict';
   const E = window.SlotEngine;
   const $ = (id) => document.getElementById(id);
-  const BETS = [10, 20, 50, 100, 200];
+  // mises possibles ; en partie réelle on garde celles permises par le salon VIP (elles montent avec le niveau)
+  const ALL_BETS = [1, 2, 5, 10, 20, 50, 100, 250, 500];
+  let BETS = ALL_BETS.slice(0, 5);
   const LINE_COLORS = ['#ffd76a', '#4fc3f7', '#81c784', '#f06292', '#ba68c8', '#ff8a65', '#4db6ac', '#e57373', '#9575cd', '#aed581'];
   const fmt = (n) => (Math.round(n * 100) / 100).toLocaleString('fr-FR');
   const icon = (id) => E.byId[id].icon;
@@ -135,7 +137,7 @@
     const free = S.free > 0;
     const b = free ? S.freeBet : bet();
     if (!S.mode) return;
-    if (!free && wallet() < b && S.mode === 'train') { S.stack = S.start = window.Casino ? Casino.TRAIN_BANK : 10000; showWallet(); }
+    if (!free && wallet() < b && S.mode === 'train') { S.stack = S.start = window.Casino ? Casino.TRAIN_BANK : 1000; showWallet(); }
     if (!free && wallet() < b) {
       $('win-text').textContent = wallet() < BETS[0] ? 'Plus rien sur la table : la partie est perdue.' : 'Mise trop élevée pour ce qui reste sur la table : baisse la mise.';
       stopAuto();
@@ -280,6 +282,9 @@
   function startGame(mode, amount, resumed, info) {
     S.mode = mode;
     if (window.Casino) Casino.training = mode === 'train';
+    const cap = window.Casino ? Casino.maxBet() : 500;
+    BETS = ALL_BETS.filter((b) => b <= cap);
+    S.betIndex = Math.min(BETS.indexOf(5), BETS.length - 1);
     S.stack = amount;
     S.start = mode === 'real' && window.Casino && Casino.session('slots') ? Casino.session('slots').start : amount;
     S.spins = 0; S.staked = 0; S.won = 0; S.best = 0;
@@ -324,7 +329,7 @@
   function renderPicker(msg) {
     const box = $('mode-picker');
     if (!window.Casino) { startGame('train', 10000); return; }
-    Casino.modePicker(box, { game: 'slots', min: BETS[0], suggest: 500, onStart: startGame });
+    Casino.modePicker(box, { game: 'slots', min: 1, suggest: 100, onStart: startGame });
     if (msg) { const p = document.createElement('p'); p.className = 'end-msg'; p.textContent = msg; box.prepend(p); }
   }
   $('cashout').addEventListener('click', () => {

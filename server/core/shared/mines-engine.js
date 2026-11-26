@@ -12,7 +12,7 @@
  */
 (function (root) {
   'use strict';
-  const CONFIG = { SIZE: 25, RTP: 0.97, MIN_BET: 1, MAX_BET: 500, MAX_WIN: 100000 };
+  const CONFIG = { SIZE: 25, RTP: 0.97, MIN_BET: 1, MAX_BET: 500, MAX_WIN: 10000 };
   const floor2 = (x) => Math.floor(x * 100 + 1e-9) / 100;
 
   /** Chance de retourner k cases sûres d'affilée avec m mines. */

@@ -219,8 +219,8 @@
     if (canCash) { cashout(); return; }
     if (G.queued != null) { G.queued = null; ui(); return; } // annuler la mise réservée
     const v = readBet();
-    if (!(v >= C.MIN_BET && v <= C.MAX_BET)) { toast('Mise entre ' + C.MIN_BET + ' et ' + C.MAX_BET + ' €.', true); return; }
-    if (S.mode === 'train' && S.stack < v) setStack(Math.max(S.stack, window.Casino ? Casino.TRAIN_BANK : 10000));
+    if (!(v >= C.MIN_BET && v <= maxB())) { toast('Mise entre ' + C.MIN_BET + ' et ' + maxB() + ' €.', true); return; }
+    if (S.mode === 'train' && S.stack < v) setStack(Math.max(S.stack, window.Casino ? Casino.TRAIN_BANK : 1000));
     if (v > S.stack) { toast('Pas assez d\'argent sur la table.', true); return; }
     G.queued = v;
     if (window.Sfx) Sfx.chips();
@@ -233,9 +233,9 @@
   });
   document.querySelectorAll('#quick button').forEach((b) => b.addEventListener('click', () => { $('bet').value = b.dataset.v; if (window.Sfx) Sfx.chips(); ui(); }));
   $('bet-half').addEventListener('click', () => { $('bet').value = Math.max(C.MIN_BET, Math.floor(readBet() / 2)); ui(); });
-  $('bet-double').addEventListener('click', () => { $('bet').value = Math.min(C.MAX_BET, Math.max(C.MIN_BET, readBet() * 2)); ui(); });
+  $('bet-double').addEventListener('click', () => { $('bet').value = Math.min(maxB(), Math.max(C.MIN_BET, readBet() * 2)); ui(); });
   $('bet').addEventListener('input', () => ui());
-  $('bet').addEventListener('change', () => { const v = readBet(); $('bet').value = Math.min(C.MAX_BET, Math.max(C.MIN_BET, isFinite(v) ? v : C.MIN_BET)); ui(); });
+  $('bet').addEventListener('change', () => { const v = readBet(); $('bet').value = Math.min(maxB(), Math.max(C.MIN_BET, isFinite(v) ? v : C.MIN_BET)); ui(); });
   $('auto').addEventListener('input', () => { renderAides(); });
 
   // ---------- Affichage ----------
@@ -250,8 +250,22 @@
     if (G.phase === 'crashed') return G.crash || G.lastM;
     return 1;
   }
+  // mise maximale : salon VIP en partie réelle (le serveur vérifie aussi)
+  function maxB() { return Math.min(500, window.Casino && S.mode === 'real' ? Casino.maxBet() : 500); }
+  let maxShown = null;
+  function applyMax() {
+    const m = maxB(); if (m === maxShown) return; maxShown = m;
+    $('bet').max = m;
+    if (readBet() > m) $('bet').value = m;
+    document.querySelectorAll('#quick button').forEach((b) => { b.disabled = Number(b.dataset.v) > m; b.title = b.disabled ? 'Mise maximale de ton salon : ' + m + ' €' : ''; });
+    let hint = document.getElementById('vip-hint');
+    if (!hint) { hint = document.createElement('div'); hint.id = 'vip-hint'; hint.className = 'vip-hint'; $('quick').after(hint); }
+    if (window.Casino && S.mode === 'real') { const v = Casino.vip(), nx = Casino.VIP.find((x) => x.lvl > v.lvl); hint.textContent = v.icon + ' ' + v.name + ' · mise max ' + m + ' €' + (nx ? ' · ' + nx.name + ' (' + nx.max + ' €) au niveau ' + nx.lvl : ''); hint.hidden = false; }
+    else hint.hidden = true;
+  }
   function ui() {
     if (!S.mode) return;
+    applyMax();
     const m = currentM(), b = G.bet;
     const mult = $('mult'), label = $('state-label'), sub = $('sub');
     mult.classList.toggle('crashed', G.phase === 'crashed');
@@ -414,7 +428,7 @@
   function renderPicker(msg) {
     const box = $('mode-picker');
     if (!window.Casino) { startGame('train', 10000); return; }
-    Casino.modePicker(box, { game: 'crash', min: C.MIN_BET, suggest: 500, onStart: (mode, amount) => startGame(mode, amount) });
+    Casino.modePicker(box, { game: 'crash', min: C.MIN_BET, suggest: 100, onStart: (mode, amount) => startGame(mode, amount) });
     if (msg) { const p = document.createElement('p'); p.className = 'muted'; p.textContent = msg; box.prepend(p); }
   }
   // Quitter la page en pleine manche : la mise engagée est perdue (elle est déjà retirée de la table)

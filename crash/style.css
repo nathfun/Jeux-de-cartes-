@@ -239,3 +239,5 @@ body { background: radial-gradient(1200px 600px at 20% -10%, #1b1450 0%, transpa
 .pf-verify b { color: var(--c-cyan); }
 body.real-mode #aides { display: none; }
 @media (prefers-reduced-motion: reduce) { .btn-cash { animation: none; } .mult.crashed { animation: none; } }
+
+.vip-hint { font-size: .75rem; color: var(--muted); margin: -.2rem 0 .3rem; }

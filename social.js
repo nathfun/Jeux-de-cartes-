@@ -146,6 +146,7 @@
       pokerWeek: Casino.pokerWeek ? Casino.pokerWeek() : null, pokerWeekPrev: p.pokerWeekPrev || null,
       titleName: (() => { const t = Casino.itemOf && Casino.itemOf('title', Casino.equipped('title')); return t && t.id ? t.name : null; })(),
       card: publicCard(p),
+      monthNet: p.season && Casino.seasonOf && p.season.id === Casino.seasonOf(Date.now()) ? Math.round(p.season.net || 0) : 0, month: Casino.seasonOf ? Casino.seasonOf(Date.now()) : null,
     });
     return true;
   }

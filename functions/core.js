@@ -30,7 +30,10 @@ const int = (v) => (Number.isInteger(v) ? v : NaN);
 const round2 = (v) => Math.round(v * 100) / 100;
 
 // ---------- Blackjack (règle européenne : pas de carte cachée) ----------
-const DECKS = 6, MIN_BET = 5, MAX_BET = 250, MAX_HANDS = 4, MAX_SIDE = 100;
+const DECKS = 6, MIN_BET = 1, MAX_HANDS = 4, MAX_SIDE = 25;
+// Mise maximale par coup selon le salon VIP du joueur (fixée au début de chaque opération)
+let MAX_BET = 50;
+const SLOT_BETS = [1, 2, 5, 10, 20, 50, 100, 250, 500];
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 const value = (cards) => ST.handValue(cards);
@@ -235,7 +238,7 @@ function crashOp(P, S, ctx, sess, track, fail) {
     const auto = Number(d.auto) >= 1.01 ? CR.floor2(Number(d.auto)) : 0;
     if (bet) {
       const ss = sess('crash');
-      if (!(bet >= CR.CONFIG.MIN_BET && bet <= CR.CONFIG.MAX_BET)) fail('Mise entre ' + CR.CONFIG.MIN_BET + ' et ' + CR.CONFIG.MAX_BET + ' €.');
+      if (!(bet >= CR.CONFIG.MIN_BET && bet <= Math.min(CR.CONFIG.MAX_BET, MAX_BET))) fail('Mise entre ' + CR.CONFIG.MIN_BET + ' et ' + Math.min(CR.CONFIG.MAX_BET, MAX_BET) + ' € dans ton salon.');
       if (bet > ss.stack) fail('Pas assez d\'argent sur la table.');
       ss.stack = round2(ss.stack - bet);
     }
@@ -291,7 +294,7 @@ function plinkoOp(P, S, ctx, sess, track) {
   const ss = sess('plinko');
   const bet = int(d.bet), rows = int(d.rows), risk = String(d.risk);
   if (!PL.CONFIG.ROWS.includes(rows) || !PL.CONFIG.RISKS.includes(risk)) fail('Plateau invalide.');
-  if (!(bet >= PL.CONFIG.MIN_BET && bet <= PL.CONFIG.MAX_BET)) fail('Mise entre ' + PL.CONFIG.MIN_BET + ' et ' + PL.CONFIG.MAX_BET + ' €.');
+  if (!(bet >= PL.CONFIG.MIN_BET && bet <= Math.min(PL.CONFIG.MAX_BET, MAX_BET))) fail('Mise entre ' + PL.CONFIG.MIN_BET + ' et ' + Math.min(PL.CONFIG.MAX_BET, MAX_BET) + ' € dans ton salon.');
   if (bet > ss.stack) fail('Pas assez d\'argent sur la table.');
   const C = seedsOf(S, 'pl', ctx.rnd);
   C.nonce++;
@@ -324,7 +327,7 @@ function minesOp(P, S, ctx, sess, track) {
     if (r && r.active) fail('Une manche est déjà en cours.');
     const bet = int(d.bet), m = int(d.mines);
     if (!(m >= 1 && m <= 24)) fail('Entre 1 et 24 mines.');
-    if (!(bet >= MN.CONFIG.MIN_BET && bet <= MN.CONFIG.MAX_BET)) fail('Mise entre ' + MN.CONFIG.MIN_BET + ' et ' + MN.CONFIG.MAX_BET + ' €.');
+    if (!(bet >= MN.CONFIG.MIN_BET && bet <= Math.min(MN.CONFIG.MAX_BET, MAX_BET))) fail('Mise entre ' + MN.CONFIG.MIN_BET + ' et ' + Math.min(MN.CONFIG.MAX_BET, MAX_BET) + ' € dans ton salon.');
     if (bet > ss.stack) fail('Pas assez d\'argent sur la table.');
     ss.stack = round2(ss.stack - bet);
     C.nonce++;
@@ -357,6 +360,9 @@ function minesOp(P, S, ctx, sess, track) {
 function handle(state, ctx) {
   const now = ctx.now, N = [];
   const P = R.normalize(state.player, now);
+  // passage à la nouvelle économie (÷ 10) : les manches en cours sont abandonnées (l'argent des tables est déjà rendu)
+  if (P._econMigrated) { delete P._econMigrated; state.secret = {}; N.push({ kind: 'gold', icon: '💶', title: 'Nouvelle économie', text: 'Tous les montants du Casino sont divisés par 10 : ta banque est maintenant de ' + Math.round(P.wallet).toLocaleString('fr-FR') + ' €. Les mises maximales montent avec ton niveau (salons VIP).' }); }
+  MAX_BET = R.maxBet(P);
   if (!state.player || !P.pseudo) { const ps = String(ctx.data && ctx.data.pseudo || '').trim().slice(0, 16); if (ps) P.pseudo = ps; }
   const S = state.secret || {};
   const d = ctx.data || {};
@@ -391,9 +397,8 @@ function handle(state, ctx) {
     }
     case 'bonus.claim': result.amount = R.claimBonus(P, now, N); break;
     case 'challenge.claim': result.amount = R.claimChallenge(P, String(d.id), now, N); break;
-    case 'time.start': if (!R.startTime(P, String(d.pack), now)) fail('Une attente est déjà en cours.'); break;
-    case 'time.claim': result.amount = R.claimTime(P, now, N); if (!result.amount) fail('L\'attente n\'est pas finie.'); break;
-    case 'time.cancel': P.timebank = null; break;
+    case 'chest.claim': result.amount = R.claimChest(P, now, N); if (!result.amount) fail('Le coffre est encore vide.'); break;
+    case 'rescue.claim': result.amount = R.claimRescue(P, now); if (!result.amount) fail('L\'aide de secours n\'est pas disponible.'); break;
     case 'session.start': {
       const game = String(d.game);
       if (P.sessions[game]) {
@@ -405,7 +410,7 @@ function handle(state, ctx) {
         if (game === 'slots' && S.sl) { result.free = S.sl.free; result.freeBet = S.sl.freeBet; }
         result.session = P.sessions[game]; result.resumed = true; break;
       }
-      const min = game === 'blackjack' ? MIN_BET : game === 'slots' || game === 'gold' ? 10 : 1; // crash : 1 €
+      const min = 1;
       if (!(int(d.amount) >= min)) fail('Il faut apporter au moins ' + min + ' €.');
       if (!R.startSession(P, game, d.amount, now)) fail('Ta banque ne contient pas assez d\'argent.');
       result.session = P.sessions[game];
@@ -448,10 +453,11 @@ function handle(state, ctx) {
       let staked = 0;
       for (const k of Object.keys(bets)) {
         const v = bets[k];
-        if (!B.byKey[k] || !(int(v) >= 1) || v > B.byKey[k].max) fail('Mise invalide sur ' + k + '.');
+        if (!B.byKey[k] || !(int(v) >= 1) || v > Math.min(B.byKey[k].max, MAX_BET)) fail('Mise invalide sur ' + k + ' (au plus ' + Math.min(B.byKey[k].max, MAX_BET) + ' €).');
         staked += v;
       }
       if (!staked) fail('Aucune mise.');
+      if (staked > MAX_BET * 2) fail('Au plus ' + MAX_BET * 2 + ' € par tour dans ton salon.');
       if (staked > ss.stack) fail('Pas assez d\'argent sur la table.');
       const n = ctx.rnd(37);
       let back = 0;
@@ -470,7 +476,7 @@ function handle(state, ctx) {
       S.sl = S.sl || { free: 0, freeBet: 0 };
       const free = S.sl.free > 0;
       const bet = free ? S.sl.freeBet : int(d.bet);
-      if (!free && ![10, 20, 50, 100, 200].includes(bet)) fail('Mise invalide.');
+      if (!free && !(SLOT_BETS.includes(bet) && bet <= MAX_BET)) fail('Mise invalide (au plus ' + MAX_BET + ' € dans ton salon).');
       if (!free && bet > ss.stack) fail('Pas assez d\'argent sur la table.');
       const random = () => ctx.rnd(1 << 30) / (1 << 30);
       const grid = SL.spinGrid(random);
@@ -493,7 +499,7 @@ function handle(state, ctx) {
     case 'gd.spin': {
       const ss = sess('gold');
       const bet = int(d.bet);
-      if (!GD.BETS.includes(bet)) fail('Mise invalide.');
+      if (!(GD.BETS.includes(bet) && bet <= MAX_BET)) fail('Mise invalide (au plus ' + MAX_BET + ' € dans ton salon).');
       if (bet > ss.stack) fail('Pas assez d\'argent sur la table.');
       const r = GD.play(bet, () => ctx.rnd(1 << 30) / (1 << 30));
       ss.stack = round2(ss.stack - bet + r.total);

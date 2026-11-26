@@ -84,9 +84,9 @@
     const a = assetOf(store.asset), m = M[a.id];
     const v = readBet(), lev = Math.min(store.lev, a.maxLev);
     if (E.halted(m)) { toast('Cotation suspendue : attends la fin du ' + (m.burst && m.burst.dir === 'up' ? 'rallye' : 'krach') + '.', true); return; }
-    if (!(v >= C.MIN_BET && v <= C.MAX_BET)) { toast('Mise entre ' + C.MIN_BET + ' et ' + C.MAX_BET + ' €.', true); return; }
+    if (!(v >= C.MIN_BET && v <= maxB())) { toast('Mise entre ' + C.MIN_BET + ' et ' + maxB() + ' €.', true); return; }
     if (positions.length >= C.MAX_POS) { toast(C.MAX_POS + ' positions au maximum : clôtures-en une.', true); return; }
-    if (S.mode === 'train' && S.stack < v) setStack(Math.max(S.stack, window.Casino ? Casino.TRAIN_BANK : 10000));
+    if (S.mode === 'train' && S.stack < v) setStack(Math.max(S.stack, window.Casino ? Casino.TRAIN_BANK : 1000));
     if (v > S.stack) { toast('Pas assez d\'argent sur la table.', true); return; }
     setStack(S.stack - v);
     const p = Object.assign(E.open(v, lev, dir, m.price), { id: ++seq, asset: a.id, tp: readPct('tp', 1000), sl: readPct('sl', 80), at: clock });
@@ -148,9 +148,9 @@
   $('close-all').addEventListener('click', closeAll);
   document.querySelectorAll('#quick button').forEach((b) => b.addEventListener('click', () => { $('bet').value = b.dataset.v; if (window.Sfx) Sfx.chips(); ui(); }));
   $('bet-half').addEventListener('click', () => { $('bet').value = Math.max(C.MIN_BET, Math.floor(readBet() / 2)); ui(); });
-  $('bet-double').addEventListener('click', () => { $('bet').value = Math.min(C.MAX_BET, Math.max(C.MIN_BET, readBet() * 2)); ui(); });
+  $('bet-double').addEventListener('click', () => { $('bet').value = Math.min(maxB(), Math.max(C.MIN_BET, readBet() * 2)); ui(); });
   $('bet').addEventListener('input', () => ui());
-  $('bet').addEventListener('change', () => { const v = readBet(); $('bet').value = Math.min(C.MAX_BET, Math.max(C.MIN_BET, isFinite(v) ? v : C.MIN_BET)); ui(); });
+  $('bet').addEventListener('change', () => { const v = readBet(); $('bet').value = Math.min(maxB(), Math.max(C.MIN_BET, isFinite(v) ? v : C.MIN_BET)); ui(); });
   // leviers
   C.LEVERS.forEach((l) => { const b = document.createElement('button'); b.type = 'button'; b.dataset.v = l; b.textContent = '×' + l; b.addEventListener('click', () => { store.lev = l; persist(); ui(); renderAides(); }); $('lev').appendChild(b); });
   // actions
@@ -173,8 +173,22 @@
   // variation sur la dernière minute
   function change(m) { const h = m.hist, i = Math.max(0, h.length - 1 - 240); return (m.price / h[i].p - 1) * 100; }
   const pctTxt = (x) => (x >= 0 ? '+' : '−') + Math.abs(x).toFixed(2).replace('.', ',') + ' %';
+  // mise maximale : salon VIP en partie réelle (le serveur vérifie aussi)
+  function maxB() { return Math.min(500, window.Casino && S.mode === 'real' ? Casino.maxBet() : 500); }
+  let maxShown = null;
+  function applyMax() {
+    const m = maxB(); if (m === maxShown) return; maxShown = m;
+    $('bet').max = m;
+    if (readBet() > m) $('bet').value = m;
+    document.querySelectorAll('#quick button').forEach((b) => { b.disabled = Number(b.dataset.v) > m; b.title = b.disabled ? 'Mise maximale de ton salon : ' + m + ' €' : ''; });
+    let hint = document.getElementById('vip-hint');
+    if (!hint) { hint = document.createElement('div'); hint.id = 'vip-hint'; hint.className = 'vip-hint'; $('quick').after(hint); }
+    if (window.Casino && S.mode === 'real') { const v = Casino.vip(), nx = Casino.VIP.find((x) => x.lvl > v.lvl); hint.textContent = v.icon + ' ' + v.name + ' · mise max ' + m + ' €' + (nx ? ' · ' + nx.name + ' (' + nx.max + ' €) au niveau ' + nx.lvl : ''); hint.hidden = false; }
+    else hint.hidden = true;
+  }
   function ui() {
     if (!S.mode) return;
+    applyMax();
     const a = assetOf(store.asset), m = M[a.id];
     // onglets des actions
     document.querySelectorAll('.asset').forEach((b) => {
@@ -329,7 +343,7 @@
       box.innerHTML = '<div class="glass" style="padding:1rem"><b>📈 Bourse Flash en partie réelle arrive bientôt avec le serveur du Casino.</b><p class="muted">En attendant, active 🎓 Apprentissage sur l\'accueil pour t\'entraîner avec un crédit illimité.</p></div>';
       return;
     }
-    Casino.modePicker(box, { game: 'trader', min: C.MIN_BET, suggest: 500, onStart: (mode, amount) => startGame(mode, amount) });
+    Casino.modePicker(box, { game: 'trader', min: C.MIN_BET, suggest: 100, onStart: (mode, amount) => startGame(mode, amount) });
     if (msg) { const p = document.createElement('p'); p.className = 'muted'; p.textContent = msg; box.prepend(p); }
   }
   window.addEventListener('pagehide', () => { if (S.mode && positions.length) forceCloseAll(); });

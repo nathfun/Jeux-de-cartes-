@@ -9,7 +9,7 @@ const B = require('./shared/bots.js');
 const Tourney = require('./shared/tourney.js');
 
 const ME = 0;
-const BUYINS = [100, 500, 1000, 2500];
+const BUYINS = [10, 50, 100, 250];
 const BLINDS = { '10/20': [10, 20], '25/50': [25, 50], '50/100': [50, 100] };
 const STACKS = [50, 100, 200];
 const RULES = ['h5', 'h8', 'h12', 'm3', 'm5', '0'];

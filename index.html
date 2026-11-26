@@ -242,16 +242,15 @@
     .in-play { margin-top: .5rem; font-size: .9rem; display: flex; gap: .4rem; flex-wrap: wrap; }
     .in-play a { color: inherit; text-decoration: none; background: rgba(242,193,78,.12); border: 1px solid var(--gold); border-radius: 999px; padding: .2rem .6rem; }
     .small-p { font-size: .9rem; margin: .2rem 0 .7rem; }
-    .timebank { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .6rem; }
-    .tpack { font: inherit; color: inherit; text-align: left; background: rgba(0,0,0,.25); border: 2px solid var(--border); border-radius: 12px; padding: .7rem .8rem; cursor: pointer; display: flex; flex-direction: column; gap: .2rem; }
-    .tpack:hover { border-color: var(--gold); }
-    .tpack .ti { font-size: 1.6rem; } .tpack b { font-size: 1.05rem; } .tpack .ta { color: var(--gold); font-weight: 800; font-size: 1.15rem; }
-    .tpack small { color: var(--muted); }
-    .tactive { grid-column: 1 / -1; display: flex; flex-direction: column; gap: .5rem; }
-    .tactive .bar { height: 12px; background: #2b3540; border-radius: 999px; overflow: hidden; }
-    .tactive .bar div { height: 100%; background: linear-gradient(90deg, #f2c14e, #3fb950); transition: width 1s linear; }
-    .tactive .row2 { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
-    .tleft { font-variant-numeric: tabular-nums; font-weight: 700; }
+    .chest { display: flex; flex-direction: column; gap: .5rem; }
+    .chest .ctop { display: flex; align-items: center; gap: .7rem; flex-wrap: wrap; }
+    .chest .cico { font-size: 2rem; } .chest .cico.full { animation: chestPulse 1.2s ease-in-out infinite; }
+    @keyframes chestPulse { 50% { transform: scale(1.15) rotate(-6deg); } }
+    .chest .camt { color: var(--gold); font-size: 1.4rem; font-variant-numeric: tabular-nums; flex: 1; }
+    .chest .bar { height: 12px; background: #2b3540; border-radius: 999px; overflow: hidden; }
+    .chest .bar div { height: 100%; background: linear-gradient(90deg, #f2c14e, #3fb950); transition: width 1s linear; }
+    .rescue { margin-top: .8rem; padding: .7rem .8rem; border: 1px dashed var(--gold); border-radius: 12px; background: rgba(242,193,78,.07); }
+    .rescue p { margin: 0 0 .5rem; }
     .bonus-btn:disabled { animation: none; background: #2b3540; color: var(--muted); cursor: default; }
     @keyframes glow { 50% { box-shadow: 0 0 18px rgba(242,193,78,.75); } }
     .avatars { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .4rem; }
@@ -283,6 +282,13 @@
     .code { color: var(--gold); letter-spacing: .15em; font-size: 1.05rem; }
     .inline-form { display: flex; gap: .3rem; }
     .inline-form input { font: inherit; background: #0b0f14; color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: .3rem .5rem; width: 9ch; text-transform: uppercase; }
+    .vip-badge { font: inherit; font-size: .72rem; font-weight: 700; border-radius: 999px; padding: .12rem .55rem; border: 1px solid var(--border); background: #141a21; color: var(--text); cursor: pointer; }
+    .vip-badge.v-argent { border-color: #cbd5e1; color: #e2e8f0; } .vip-badge.v-or { border-color: var(--gold); color: var(--gold); }
+    .vip-badge.v-diamant { border-color: #67e8f9; color: #a5f3fc; box-shadow: 0 0 10px rgba(103,232,249,.35); }
+    .shop-daily { margin: .6rem 0; padding: .6rem; border-radius: 14px; border: 1px solid rgba(242,193,78,.5); background: linear-gradient(135deg, rgba(242,193,78,.12), rgba(168,85,247,.10)); }
+    .shop-daily .sd-head { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; margin-bottom: .45rem; flex-wrap: wrap; }
+    .shop-daily .sd-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: .45rem; }
+    .shop-daily .sd-item small { font-size: .7rem; }
     .lb-tabs { display: flex; gap: .3rem; flex-wrap: wrap; margin-bottom: .5rem; }
     .lb-tabs button { font: inherit; font-size: .82rem; background: #141a21; color: var(--text); border: 1px solid var(--border); border-radius: 999px; padding: .25rem .7rem; cursor: pointer; }
     .lb-tabs button.on { background: var(--gold); color: #222; border-color: var(--gold); }
@@ -402,6 +408,7 @@
           <input id="pseudo" maxlength="16" placeholder="Ton pseudo" aria-label="Ton pseudo">
           <span id="lvl" class="lvl">Niv. 1</span>
           <span id="lvl-title" class="muted"></span>
+          <button id="vip-badge" class="vip-badge" type="button"></button>
         </div>
         <div class="xpbar" aria-hidden="true"><div id="xpfill"></div></div>
         <div id="xp-text" class="xp-text"></div>
@@ -492,10 +499,11 @@
       <div id="challenges" class="challenges"></div>
     </section>
 
-    <section class="panel" aria-label="Banque du temps">
-      <h2>⏳ Banque du temps</h2>
-      <p class="muted small-p">Ici, l'argent ne tombe pas du ciel : il s'achète avec du temps. Lance une attente, reviens quand elle est finie et encaisse. Plus l'attente est longue, plus chaque minute rapporte. Une seule à la fois, et le compteur tourne même app fermée.</p>
-      <div id="timebank" class="timebank"></div>
+    <section class="panel" aria-label="Coffre">
+      <h2>🧰 Coffre</h2>
+      <p class="muted small-p">Ton coffre se remplit tout seul, même app fermée : <b id="chest-rate"></b>, jusqu'à <b id="chest-cap"></b>. Passe l'ouvrir quand tu veux… mais une fois plein, il ne se remplit plus !</p>
+      <div id="chest" class="chest"></div>
+      <div id="rescue" class="rescue" hidden></div>
     </section>
 
     <section class="panel mp" data-tab="multi" aria-label="Multijoueur">
@@ -514,7 +522,7 @@
       <p id="mp-note" class="mp-note" role="status"></p>
       <h2>Parties ouvertes <button id="mp-refresh" class="icon-btn" type="button" aria-label="Actualiser">↻</button></h2>
       <div id="mp-list" class="mp-list"><p class="muted">Chargement…</p></div>
-      <p class="muted small-p">🌐 Publique : on rejoint d'un clic. 🔒 Privée : il faut le code donné par l'hôte. Les jetons d'une table ne servent qu'à elle ; à la fin, le classement rapporte sur ta banque (1er +500 €, 2e +200 € ; à deux : +300 € au gagnant).</p>
+      <p class="muted small-p">🌐 Publique : on rejoint d'un clic. 🔒 Privée : il faut le code donné par l'hôte. Les jetons d'une table ne servent qu'à elle ; à la fin, le classement rapporte sur ta banque (1er +50 €, 2e +20 € ; à deux : +30 € au gagnant).</p>
     </section>
 
     <section class="panel" data-tab="multi" aria-label="Tournoi de poker de la semaine">
@@ -547,7 +555,7 @@
         <p class="muted" style="font-size:.8rem;margin:.3rem 0 .6rem">Les joueurs croisés à une table entre amis sont ajoutés automatiquement.</p>
         <div class="lb-tabs" role="tablist">
           <button data-sort="xp" class="on" type="button">Niveau</button>
-          <button data-sort="wallet" type="button">Banque</button>
+          <button data-sort="monthNet" type="button">Gains du mois</button>
           <button data-sort="biggestWin" type="button">Plus gros gain</button>
           <button data-sort="achievements" type="button">Succès</button>
         </div>
@@ -609,6 +617,7 @@
         <div id="st-try" class="st-try">Touche un objet pour l'essayer ✨</div>
         <div class="st-btns"><button id="st-reset" type="button" class="icon-btn" hidden>↺ Mon style</button><button id="st-act" type="button" class="st-act" hidden></button></div>
       </div>
+      <div id="shop-daily" class="shop-daily"></div>
       <div class="st-collect"><span>Collection : <b id="shop-owned"></b></span><div class="xpbar"><div id="st-collect-fill"></div></div></div>
       <div id="shop-cats" class="shop-cats" role="tablist"></div>
       <div class="st-filters" id="st-filters"><button data-f="all" class="on" type="button">Tout</button><button data-f="mine" type="button">✅ À moi</button><button data-f="buy" type="button">🛒 À acheter</button><button data-f="locked" type="button">🔒 À débloquer</button></div>
@@ -702,6 +711,9 @@
         const tt = Casino.itemOf('title', Casino.equipped('title'));
         $('lvl-title').textContent = tt && tt.id ? '« ' + tt.name + ' »' : Casino.title(lv);
         $('avatar').className = 'avatar fr-' + Casino.equipped('frame');
+        const vip = Casino.vip(), nextVip = Casino.VIP.find((x) => x.lvl > lv);
+        $('vip-badge').textContent = vip.icon + ' ' + vip.name; $('vip-badge').className = 'vip-badge v-' + vip.id;
+        $('vip-badge').title = 'Mise max. ' + fmt(vip.max) + ' € par coup' + (nextVip ? ' · ' + nextVip.name + ' au niveau ' + nextVip.lvl + ' (' + fmt(nextVip.max) + ' €)' : '');
         $('xpfill').style.width = Math.round(((P.xp - cur) / (nxt - cur)) * 100) + '%';
         $('xp-text').textContent = fmt(P.xp - cur) + ' / ' + fmt(nxt - cur) + ' XP jusqu\'au niveau ' + (lv + 1);
         $('wallet').textContent = fmt(P.wallet);
@@ -733,11 +745,11 @@
           const g = document.createElement('div'); g.className = 'game-tag'; g.textContent = def.game;
           const t = document.createElement('div'); t.textContent = def.text;
           const bar = document.createElement('div'); bar.className = 'bar'; const f = document.createElement('div'); f.style.width = (c.progress / def.target * 100) + '%'; bar.appendChild(f);
-          const r = document.createElement('div'); r.className = 'reward'; r.textContent = fmt(c.progress) + ' / ' + fmt(def.target) + ' · récompense ' + fmt(def.reward) + ' € et ' + def.xp + ' XP';
+          const r = document.createElement('div'); r.className = 'reward'; r.textContent = fmt(c.progress) + ' / ' + fmt(def.target) + ' · récompense ' + fmt(Casino.challengeReward(def)) + ' € et ' + def.xp + ' XP';
           el.append(g, t, bar, r);
           if (c.claimed) { const k = document.createElement('div'); k.className = 'claimed'; k.textContent = '✔ Récompense récupérée'; el.appendChild(k); }
           else if (c.done) {
-            const btn = document.createElement('button'); btn.type = 'button'; btn.textContent = 'Récupérer +' + fmt(def.reward) + ' €';
+            const btn = document.createElement('button'); btn.type = 'button'; btn.textContent = 'Récupérer +' + fmt(Casino.challengeReward(def)) + ' €';
             btn.addEventListener('click', async () => { btn.disabled = true; const v = await Casino.claimChallenge(c.id); if (v) Casino.toast('Récompense', '+' + fmt(v) + ' € dans ta banque', '🎉', 'challenge'); render(); });
             el.appendChild(btn);
           }
@@ -780,57 +792,40 @@
         const t = Math.ceil(ms / 1000), h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), sec = t % 60;
         return h ? h + ' h ' + String(m).padStart(2, '0') + ' min' : m + ' min ' + String(sec).padStart(2, '0') + ' s';
       }
-      function packLen(p) { return p.minutes >= 60 ? (p.minutes / 60) + ' h' : p.minutes + ' min'; }
-      let lastTimeKey = '';
+      let lastChestKey = '';
       function renderTime() {
-        const box = $('timebank');
-        const t = Casino.timebank();
-        const key = t ? t.pack.id + (t.ready ? 'r' : 'w') : 'none';
-        if (!t && key === lastTimeKey && box.children.length) return;
-        if (t && !t.ready && key === lastTimeKey) {
-          const bar = box.querySelector('.bar div'), left = box.querySelector('.tleft');
-          if (bar) bar.style.width = Math.min(100, (1 - t.left / (t.end - t.start)) * 100) + '%';
-          if (left) left.textContent = 'Encore ' + dur(t.left);
-          return;
-        }
-        lastTimeKey = key;
-        box.innerHTML = '';
-        if (!t) {
-          Casino.TIME_PACKS.forEach((p) => {
-            const b = document.createElement('button'); b.type = 'button'; b.className = 'tpack';
-            const i = document.createElement('span'); i.className = 'ti'; i.textContent = p.icon;
-            const n = document.createElement('b'); n.textContent = p.name;
-            const a = document.createElement('span'); a.className = 'ta'; a.textContent = '+' + fmt(p.amount) + ' €';
-            const sm = document.createElement('small'); sm.textContent = 'contre ' + packLen(p) + ' d\'attente · ' + (Math.round(p.amount / p.minutes * 10) / 10).toLocaleString('fr-FR') + ' €/min';
-            b.append(i, n, a, sm);
-            b.addEventListener('click', async () => { b.disabled = true; if (!(await Casino.startTime(p.id))) { render(); return; } Casino.toast('Banque du temps', p.name + ' lancée : reviens dans ' + packLen(p) + ' pour encaisser ' + fmt(p.amount) + ' €.', '⏳'); render(); });
-            box.appendChild(b);
-          });
-          return;
-        }
-        const w = document.createElement('div'); w.className = 'tactive';
-        const title = document.createElement('div');
-        title.textContent = t.pack.icon + ' ' + t.pack.name + ' : +' + fmt(t.pack.amount) + ' €';
-        title.style.fontWeight = '700';
-        const bar = document.createElement('div'); bar.className = 'bar'; const f = document.createElement('div');
-        f.style.width = (t.ready ? 100 : Math.min(100, (1 - t.left / (t.end - t.start)) * 100)) + '%'; bar.appendChild(f);
-        const row = document.createElement('div'); row.className = 'row2';
-        if (t.ready) {
-          const c = document.createElement('button'); c.type = 'button'; c.className = 'bonus-btn'; c.textContent = '💰 Encaisser +' + fmt(t.pack.amount) + ' €';
-          c.addEventListener('click', async () => { c.disabled = true; const v = await Casino.claimTime(); if (v) Casino.bigWin(v, 'TEMPS ENCAISSÉ'); render(); });
-          row.appendChild(c);
+        const box = $('chest'), c = Casino.chest();
+        $('chest-rate').textContent = '+' + fmt(c.rate) + ' € par heure'; $('chest-cap').textContent = fmt(c.cap) + ' €';
+        const pct = Math.min(100, c.amount / c.cap * 100);
+        const key = (c.full ? 'f' : 'w') + (c.amount >= 1 ? 'o' : 'e');
+        if (key === lastChestKey && box.children.length) {
+          box.querySelector('.bar div').style.width = pct + '%';
+          box.querySelector('.camt').textContent = fmt(c.amount) + ' €';
+          box.querySelector('.cnote').textContent = c.full ? 'Plein ! Ouvre-le pour qu\'il recommence à se remplir.' : 'Plein dans ' + dur(c.fullIn);
         } else {
-          const l = document.createElement('span'); l.className = 'tleft'; l.textContent = 'Encore ' + dur(t.left);
-          const x = document.createElement('button'); x.type = 'button'; x.className = 'icon-btn'; x.textContent = 'Abandonner';
-          let armed = false;
-          x.addEventListener('click', () => {
-            if (!armed) { armed = true; x.textContent = 'Sûr ? Le temps passé sera perdu'; setTimeout(() => { armed = false; x.textContent = 'Abandonner'; }, 3000); return; }
-            Casino.cancelTime().then(render);
-          });
-          row.append(l, x);
+          lastChestKey = key;
+          box.innerHTML = '';
+          const top = document.createElement('div'); top.className = 'ctop';
+          const ic = document.createElement('span'); ic.className = 'cico' + (c.full ? ' full' : ''); ic.textContent = c.full ? '💰' : '🧰';
+          const am = document.createElement('b'); am.className = 'camt'; am.textContent = fmt(c.amount) + ' €';
+          const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'bonus-btn'; btn.textContent = 'Ouvrir le coffre';
+          btn.disabled = c.amount < 1;
+          btn.addEventListener('click', async () => { btn.disabled = true; const v = await Casino.claimChest(); if (v) Casino.bigWin(v, 'COFFRE OUVERT'); lastChestKey = ''; render(); });
+          top.append(ic, am, btn);
+          const bar = document.createElement('div'); bar.className = 'bar'; const f = document.createElement('div'); f.style.width = pct + '%'; bar.appendChild(f);
+          const note = document.createElement('small'); note.className = 'cnote muted'; note.textContent = c.full ? 'Plein ! Ouvre-le pour qu\'il recommence à se remplir.' : 'Plein dans ' + dur(c.fullIn);
+          box.append(top, bar, note);
         }
-        w.append(title, bar, row);
-        box.appendChild(w);
+        // Aide de secours : seulement quand on est presque à sec
+        const r = Casino.rescue(), rb = $('rescue');
+        const rkey = r.available ? 'a' : 'n';
+        if (rb.dataset.k === rkey) return;
+        rb.dataset.k = rkey; rb.hidden = !r.available; rb.innerHTML = '';
+        if (!r.available) return;
+        const t = document.createElement('p'); t.className = 'small-p'; t.textContent = '🛟 Presque à sec ? Le Casino t\'aide une fois par jour : +' + fmt(r.amount) + ' € tant que tu as moins de ' + fmt(r.below) + ' € (banque + tables).';
+        const go = document.createElement('button'); go.type = 'button'; go.className = 'bonus-btn'; go.textContent = '🛟 Recevoir ' + fmt(r.amount) + ' €';
+        go.addEventListener('click', async () => { go.disabled = true; const v = await Casino.claimRescue(); if (v) Casino.toast('Aide de secours', '+' + fmt(v) + ' € sur ta banque. Joue prudemment !', '🛟', 'gold'); rb.dataset.k = ''; render(); });
+        rb.append(t, go);
       }
       setInterval(renderTime, 1000);
 
@@ -919,7 +914,9 @@
       // ---------- Mon style : essayer, équiper, acheter ----------
       // Avatars : les 16 de départ sont gratuits, les autres viennent de la boutique
       const BASE_AV = () => Casino.AVATARS.map((id) => ({ id, name: 'Avatar', level: 1, price: 0, base: true }));
-      const listOf = (kind) => (kind === 'avatar' ? BASE_AV().concat(Casino.SHOP.avatar) : Casino.SHOP[kind]);
+      // objets rares : visibles seulement le jour où ils sont en boutique (ou si on les a déjà)
+      const inOffer = (kind, id) => Casino.dailyOffer().some((x) => x.kind === kind && x.id === id);
+      const listOf = (kind) => (kind === 'avatar' ? BASE_AV().concat(Casino.SHOP.avatar) : Casino.SHOP[kind]).filter((it) => !it.daily || Casino.owns(kind, it.id) || inOffer(kind, it.id));
       let styleSel = null, styleFilter = 'all';
       function isEquipped(kind, it) { return kind === 'avatar' ? Casino.profile.avatar === it.id : Casino.equipped(kind) === it.id; }
       // état d'un objet pour le joueur
@@ -1009,10 +1006,26 @@
         $('shop-lvl').textContent = lv;
         // collection : tout ce que le joueur peut porter
         let mine = 0, all = 0;
-        Object.keys(Casino.SHOP).forEach((k) => Casino.SHOP[k].forEach((it) => { if (it.exclusive && !Casino.owns(k, it.id)) return; all++; if (Casino.canUse(k, it.id)) mine++; }));
+        Object.keys(Casino.SHOP).forEach((k) => Casino.SHOP[k].forEach((it) => { if ((it.exclusive || it.daily) && !Casino.owns(k, it.id)) return; all++; if (Casino.canUse(k, it.id)) mine++; }));
         $('shop-owned').textContent = mine + ' / ' + all + ' objets';
         $('st-collect-fill').style.width = Math.round(mine / all * 100) + '%';
         renderStage(); renderAction();
+        // boutique du jour : 3 objets rares, les mêmes pour tout le monde, changés chaque nuit à minuit
+        const dl = $('shop-daily'); dl.innerHTML = '';
+        const dh = document.createElement('div'); dh.className = 'sd-head'; dh.innerHTML = '<b>🌟 Boutique du jour</b><small class="muted">Objets rares · changent à minuit</small>'; dl.appendChild(dh);
+        const drow = document.createElement('div'); drow.className = 'sd-row';
+        Casino.dailyOffer().forEach((o) => {
+          const it = Casino.SHOP[o.kind].find((x) => x.id === o.id); if (!it) return;
+          const st = stateOf(o.kind, it);
+          const card = document.createElement('button'); card.type = 'button'; card.className = 'sh-item sd-item st-' + st + (styleSel && styleSel.kind === o.kind && styleSel.id === it.id ? ' sel' : '');
+          card.appendChild(preview(o.kind, it));
+          const nm = document.createElement('b'); nm.textContent = it.name; card.appendChild(nm);
+          const tag = document.createElement('span'); tag.className = 'st-tag t-' + st; tag.textContent = st === 'buy' ? '🛒 ' + fmt(it.price) + ' €' : st === 'on' ? '✓ Porté' : '✅ À toi'; card.appendChild(tag);
+          const kd = document.createElement('small'); kd.className = 'muted'; kd.textContent = KIND_ICON[o.kind] + ' ' + Casino.SHOP_LABELS[o.kind]; card.appendChild(kd);
+          card.addEventListener('click', () => { shopCat = o.kind; if (st === 'mine') { wear(o.kind, it); return; } styleSel = st === 'on' ? null : { kind: o.kind, id: it.id }; armedBuy = null; renderShop(); $('st-stage').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
+          drow.appendChild(card);
+        });
+        dl.appendChild(drow);
         // catégories (avec ce qu'on possède dans chacune)
         const cats = $('shop-cats'); cats.innerHTML = '';
         Object.keys(Casino.SHOP).forEach((k) => {
@@ -1309,6 +1322,10 @@
       Casino.onChange(() => renderAccount());
       renderAccount();
       $('opt-vibrate').addEventListener('change', (e) => { Casino.setSetting('vibrate', e.target.checked); if (e.target.checked) Casino.vibrate(40); });
+      $('vip-badge').addEventListener('click', () => {
+        const lv = Casino.levelOf(Casino.profile.xp);
+        Casino.toast('Salons VIP', Casino.VIP.map((v) => (lv >= v.lvl ? '✓ ' : '🔒 ') + v.icon + ' ' + v.name + ' (niv. ' + v.lvl + ') : ' + fmt(v.max) + ' € max').join(' · '), '🥂');
+      });
       Casino.onChange(render);
       render();
       if (Casino.server) Casino.sync();
@@ -1323,7 +1340,7 @@
       if (!b) { $('social-off').hidden = false; $('social-on').hidden = true; $('defi-roulette').disabled = $('defi-blackjack').disabled = true; return; }
       $('my-code').textContent = (await Social.myCode()) || '—';
       let sort = 'xp', rows = [];
-      const LABEL = { xp: (r) => 'Niv. ' + r.level + ' · ' + fmt(r.xp) + ' XP', wallet: (r) => fmt(r.wallet) + ' €', biggestWin: (r) => '+' + fmt(r.biggestWin) + ' €', achievements: (r) => r.achievements + ' / ' + Casino.ACHIEVEMENTS.length };
+      const LABEL = { xp: (r) => 'Niv. ' + r.level + ' · ' + fmt(r.xp) + ' XP', monthNet: (r) => (r.monthNet > 0 ? '+' : '') + fmt(r.monthNet) + ' €', biggestWin: (r) => '+' + fmt(r.biggestWin) + ' €', achievements: (r) => r.achievements + ' / ' + Casino.ACHIEVEMENTS.length };
       function draw() {
         const ol = $('leaderboard'); ol.innerHTML = '';
         rows.slice().sort((x, y) => (y[sort] || 0) - (x[sort] || 0)).forEach((r, k) => {
@@ -1357,7 +1374,7 @@
         });
         if (rows.length < 2) { const li = document.createElement('li'); li.className = 'muted'; li.style.display = 'block'; li.textContent = 'Ajoute des amis avec leur code pour vous comparer.'; ol.appendChild(li); }
       }
-      async function refresh() { rows = (await Social.leaderboard()) || []; draw(); renderWeek(rows); if (Casino.checkWeek) Casino.checkWeek(rows); }
+      async function refresh() { rows = ((await Social.leaderboard()) || []).map((r) => Object.assign({}, r, { monthNet: r.month === Casino.seasonOf(Date.now()) ? (r.monthNet || 0) : 0 })); draw(); renderWeek(rows); if (Casino.checkWeek) Casino.checkWeek(rows); }
       function renderWeek(list) {
         const wk = Casino.weekOf(Date.now());
         const next = new Date(wk + 'T00:00:00'); next.setDate(next.getDate() + 7);

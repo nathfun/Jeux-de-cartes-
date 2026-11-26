@@ -86,7 +86,7 @@
   async function spin() {
     if (!S.mode || S.busy) return;
     const b = bet();
-    if (S.mode === 'train' && S.stack < b) S.stack = window.Casino ? Casino.TRAIN_BANK : 10000;
+    if (S.mode === 'train' && S.stack < b) S.stack = window.Casino ? Casino.TRAIN_BANK : 1000;
     if (b > S.stack) { winText('Pas assez d\'argent sur la table : baisse la mise ou encaisse.'); stopAuto(); return; }
     S.busy = true; $('spin').disabled = true; $('cashout').disabled = true;
     winText('');
@@ -183,7 +183,7 @@
   $('spin').addEventListener('click', spin);
   document.addEventListener('keydown', (e) => { if (e.code === 'Space' && !/INPUT|BUTTON|SELECT/.test(document.activeElement.tagName)) { e.preventDefault(); spin(); } });
   $('bet-minus').addEventListener('click', () => { if (S.busy) return; S.betIx = Math.max(0, S.betIx - 1); renderJackpots(); showWallet(); if (window.Sfx) Sfx.chips(); });
-  $('bet-plus').addEventListener('click', () => { if (S.busy) return; S.betIx = Math.min(E.BETS.length - 1, S.betIx + 1); renderJackpots(); showWallet(); if (window.Sfx) Sfx.chips(); });
+  $('bet-plus').addEventListener('click', () => { if (S.busy) return; const top = E.BETS.filter((b) => b <= (window.Casino && S.mode === 'real' ? Casino.maxBet() : 500)).length - 1; if (S.betIx >= top && S.mode === 'real' && window.Casino) Casino.toast('Salon ' + Casino.vip().name, 'Mise maximale : ' + E.BETS[top] + ' € (elle monte avec ton niveau).', '🥂'); S.betIx = Math.min(top, S.betIx + 1); renderJackpots(); showWallet(); if (window.Sfx) Sfx.chips(); });
   function updateAuto() { const a = $('auto'); a.classList.toggle('on', S.auto > 0); a.textContent = S.auto > 0 ? '■ Stop (' + S.auto + ')' : 'Auto ×10'; }
   function stopAuto() { S.auto = 0; updateAuto(); }
   $('auto').addEventListener('click', () => { if (S.auto > 0) { stopAuto(); return; } S.auto = 10; updateAuto(); if (!S.busy) spin(); });
@@ -225,7 +225,7 @@
   function renderPicker(msg) {
     const box = $('mode-picker');
     if (!window.Casino) { startGame('train', 10000); return; }
-    Casino.modePicker(box, { game: 'gold', min: E.BETS[0], suggest: 500, onStart: (mode, amount) => startGame(mode, amount) });
+    Casino.modePicker(box, { game: 'gold', min: E.BETS[0], suggest: 100, onStart: (mode, amount) => startGame(mode, amount) });
     if (msg) { const p = document.createElement('p'); p.className = 'muted'; p.textContent = msg; box.prepend(p); }
   }
   // la table en partie réelle (sans serveur) est sauvegardée en continu

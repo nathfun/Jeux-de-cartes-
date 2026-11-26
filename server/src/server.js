@@ -141,6 +141,12 @@ async function casino(uid, token, op, data) {
   const res = await serial(uid, async () => {
     let before = db.load(uid);
     if (!before.player && imported) before = { player: imported, secret: {} };
+    // passage à la nouvelle économie (÷ 10) : noté à part dans le journal, pour ne pas fausser le tableau de bord
+    if (before.player && (before.player.econ || 1) !== 2) {
+      const conv = { player: R.normalize(JSON.parse(JSON.stringify(before.player)), Date.now()), secret: {} };
+      db.save(uid, 'econ', before, Object.assign({}, conv, { player: Object.assign({}, conv.player, { _econMigrated: undefined }) }), Date.now());
+      before = conv; // garde _econMigrated : le cœur du jeu affichera l'avis au joueur
+    }
     const copy = JSON.parse(JSON.stringify(before));
     ctx.now = Date.now();
     const out = core.handle(copy, ctx);          // lève une GameError si l'action est refusée : rien n'est enregistré
@@ -194,17 +200,13 @@ async function importFromFirebase(uid) {
     const save = sv.val(), b = bank.val(), pr = pub.val();
     if (!save && !b) return null;
     const data = save && save.data ? JSON.parse(save.data) : {};
-    const P = R.normalize(data, Date.now());
-    if (!P.pseudo && pr && pr.pseudo) P.pseudo = String(pr.pseudo).slice(0, 16);
-    if (!P.avatar && pr && pr.avatar) P.avatar = pr.avatar;
-    if (b && typeof b.wallet === 'number') {
-      const onTables = Object.values(b.ses || {}).reduce((a, v) => a + (Number(v) || 0), 0);
-      P.wallet = Math.round((b.wallet + onTables) * 100) / 100;
-    } else {
-      P.wallet = Math.round(((P.wallet || 0) + Object.values(P.sessions || {}).reduce((a, x) => a + (x.stack || 0), 0)) * 100) / 100;
-    }
+    // la banque protégée (bank/<uid>) fait foi ; l'argent laissé sur une table est rendu
+    if (b && typeof b.wallet === 'number') { data.wallet = b.wallet + Object.values(b.ses || {}).reduce((a, v) => a + (Number(v) || 0), 0); data.sessions = {}; }
+    if (!data.pseudo && pr && pr.pseudo) data.pseudo = String(pr.pseudo).slice(0, 16);
+    if (!data.avatar && pr && pr.avatar) data.avatar = pr.avatar;
+    const P = R.normalize(data, Date.now()); // applique aussi le passage à la nouvelle économie (÷ 10) si besoin
+    delete P._econMigrated;
     P.sessions = {};
-    P.timebank = (b && b.tb) ? P.timebank : null;
     console.log('[casino] joueur repris depuis Firebase : ' + uid.slice(0, 6) + '…');
     return P;
   } catch (e) { console.error('[casino] reprise impossible', e.message); return null; }
@@ -241,14 +243,14 @@ function categoryOf(r) {
   if (op.startsWith('admin:')) return 'Admin';
   if (op === 'ref') return 'Parrainage';
   if (GAME_OF[pre] && op !== 'session.start') return 'Jeux';
-  return { 'bonus.claim': 'Bonus du jour', 'challenge.claim': 'Défis', 'time.claim': 'Banque du temps', 'multi.prize': 'Entre amis', 'shop.buy': 'Boutique', 'session.start': 'Tables (aller)', 'session.cashout': 'Tables (retour)' }[op] || 'Autre';
+  return { 'bonus.claim': 'Bonus du jour', 'challenge.claim': 'Défis', 'time.claim': 'Banque du temps', 'chest.claim': 'Coffre', 'rescue.claim': 'Aide de secours', 'multi.prize': 'Entre amis', 'shop.buy': 'Boutique', 'session.start': 'Tables (aller)', 'session.cashout': 'Tables (retour)' }[op] || 'Autre';
 }
 function dashboard() {
   const now = Date.now(), DAY = 864e5, day = (t) => R.today(t);
   const all = db.all();
   const days = []; for (let k = 29; k >= 0; k--) days.push(day(now - k * DAY));
   const active = Object.fromEntries(days.map((d) => [d, new Set()])), fresh = Object.fromEntries(days.map((d) => [d, 0]));
-  const rows = db.ledgerSince(now - 30 * DAY);
+  const rows = db.ledgerSince(now - 30 * DAY).filter((r) => r.op !== 'econ');
   rows.forEach((r) => { const d = day(r.at); if (active[d]) active[d].add(r.uid); });
   all.forEach((p) => { const d = day(p.created); if (fresh[d] !== undefined) fresh[d]++; });
   // économie : argent créé / détruit par catégorie, par jour
@@ -267,7 +269,7 @@ function dashboard() {
   const name = Object.fromEntries(all.map((p) => [p.uid, (p.state.player && p.state.player.pseudo) || '(sans pseudo)']));
   const money = (p) => { const P = p.state.player || {}; return (P.wallet || 0) + Object.values(P.sessions || {}).reduce((a, s) => a + (s.stack || 0), 0); };
   const total = all.reduce((a, p) => a + money(p), 0);
-  const ALERT = 50000;
+  const ALERT = 5000;
   const alerts = Object.entries(gain24).filter(([, v]) => v >= ALERT).sort((a, b) => b[1] - a[1]).map(([uid, v]) => ({ uid, name: name[uid] || uid.slice(0, 6), gained: r2(v) }));
   return {
     at: now,
