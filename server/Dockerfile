@@ -14,8 +14,9 @@ COPY --from=build /src/server/node_modules ./node_modules
 COPY --from=build /src/server/core ./core
 COPY --from=build /src/server/src ./src
 COPY --from=build /src/server/package.json ./package.json
-# l'application tourne sans droits root ; seul /data (la base) est modifiable
-RUN mkdir -p /data && chown node:node /data
+# l'application tourne sans droits root ; seul /data (la base) est modifiable.
+# Les fichiers sont rendus lisibles par tous (un ZIP décompressé sur le NAS peut avoir des droits trop stricts).
+RUN chmod -R a+rX /app && mkdir -p /data && chown node:node /data
 USER node
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD wget -qO- http://127.0.0.1:8080/health >/dev/null || exit 1
