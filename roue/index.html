@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Roue de la fortune</title>
+  <meta name="theme-color" content="#140d05">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../icons/icon-192.png">
+  <link rel="stylesheet" href="../crash/style.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="../firebase-config.js"></script>
+  <script src="../gate.js"></script>
+</head>
+<body class="crash-page roue-page">
+  <header class="topbar">
+    <h1><a id="home-link" class="home-link" href="../index.html" hidden aria-label="Retour au casino">←</a> 🎡 Roue de la fortune</h1>
+    <div class="bank">
+      <span id="bank-label">Caisse</span> : <strong id="wallet">–</strong> €
+      <button id="sound-toggle" class="ghost icon-btn" type="button">🔊</button>
+    </div>
+  </header>
+
+  <main class="rw-main">
+    <section id="setup" class="glass setup">
+      <h2>🎡 Roue de la fortune</h2>
+      <p class="muted">Mise, lance la roue : la case où s'arrête l'aiguille multiplie ta mise. Les grosses cases (×10, ×25) sont minuscules… mais elles existent.</p>
+      <div id="mode-picker"></div>
+    </section>
+
+    <section id="game" hidden>
+      <div id="mode-badge" class="mode-badge" hidden></div>
+      <div class="rw-stage">
+        <div class="rw-pointer" aria-hidden="true"></div>
+        <canvas id="wheel" width="600" height="600" aria-label="La roue"></canvas>
+        <div id="rw-result" class="rw-result" role="status"></div>
+      </div>
+      <div class="rw-legend" id="legend"></div>
+      <div class="glass rw-controls">
+        <div class="rw-bet">
+          <button id="bet-minus" type="button" aria-label="Baisser la mise">−</button>
+          <div><small>Mise</small><b id="bet">–</b></div>
+          <button id="bet-plus" type="button" aria-label="Monter la mise">+</button>
+        </div>
+        <button id="spin" class="btn-bet" type="button">LANCER</button>
+        <div class="rw-stack"><small id="stack-label">Sur la table</small><b id="stack">–</b></div>
+        <button id="end-btn" class="btn-ghost" type="button">Encaisser et quitter</button>
+      </div>
+      <ol id="history" class="rw-history" aria-label="Derniers tours"></ol>
+    </section>
+  </main>
+
+  <script src="../sounds.js"></script>
+  <script src="../casino-rules.js"></script>
+  <script src="../profile.js"></script>
+  <script src="../account.js"></script>
+  <script src="app.js"></script>
+  <script src="../pwa.js"></script>
+</body>
+</html>

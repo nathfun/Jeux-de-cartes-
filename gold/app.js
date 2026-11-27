@@ -183,7 +183,7 @@
   $('spin').addEventListener('click', spin);
   document.addEventListener('keydown', (e) => { if (e.code === 'Space' && !/INPUT|BUTTON|SELECT/.test(document.activeElement.tagName)) { e.preventDefault(); spin(); } });
   $('bet-minus').addEventListener('click', () => { if (S.busy) return; S.betIx = Math.max(0, S.betIx - 1); renderJackpots(); showWallet(); if (window.Sfx) Sfx.chips(); });
-  $('bet-plus').addEventListener('click', () => { if (S.busy) return; const top = E.BETS.filter((b) => b <= (window.Casino && S.mode === 'real' ? Casino.maxBet() : 500)).length - 1; if (S.betIx >= top && S.mode === 'real' && window.Casino) Casino.toast('Salon ' + Casino.vip().name, 'Mise maximale : ' + E.BETS[top] + ' € (elle monte avec ton niveau).', '🥂'); S.betIx = Math.min(top, S.betIx + 1); renderJackpots(); showWallet(); if (window.Sfx) Sfx.chips(); });
+  $('bet-plus').addEventListener('click', () => { if (S.busy) return; const top = E.BETS.filter((b) => b <= (window.Casino && S.mode === 'real' ? Casino.maxBet() : 500)).length - 1; if (S.betIx >= top && S.mode === 'real' && window.Casino) Casino.toast('Mise maximale', E.BETS[top].toLocaleString('fr-FR') + ' € à ce palier (elle monte avec les paliers).', '🕴️'); S.betIx = Math.min(top, S.betIx + 1); renderJackpots(); showWallet(); if (window.Sfx) Sfx.chips(); });
   function updateAuto() { const a = $('auto'); a.classList.toggle('on', S.auto > 0); a.textContent = S.auto > 0 ? '■ Stop (' + S.auto + ')' : 'Auto ×10'; }
   function stopAuto() { S.auto = 0; updateAuto(); }
   $('auto').addEventListener('click', () => { if (S.auto > 0) { stopAuto(); return; } S.auto = 10; updateAuto(); if (!S.busy) spin(); });
@@ -196,7 +196,7 @@
     document.body.classList.toggle('real-mode', mode === 'real');
     $('setup').hidden = true; $('cabinet').hidden = false;
     const badge = $('mode-badge'); badge.hidden = false;
-    badge.textContent = mode === 'real' ? '💰 Partie réelle · ta banque · sans aides' : '🎓 Apprentissage · crédit illimité, aides et conseils';
+    badge.textContent = mode === 'real' ? '🕴️ La Dette · ta caisse · sans aides' : '🎓 Apprentissage · crédit illimité, aides et conseils';
     $('cashout').textContent = mode === 'train' ? 'Terminer' : 'Encaisser';
     renderJackpots(); showWallet(); renderStats(); renderAides();
   }

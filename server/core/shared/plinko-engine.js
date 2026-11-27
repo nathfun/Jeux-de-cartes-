@@ -12,7 +12,7 @@
  */
 (function (root) {
   'use strict';
-  const CONFIG = { MIN_BET: 1, MAX_BET: 500, MAX_WIN: 10000, ROWS: [8, 10, 12, 14, 16], RISKS: ['low', 'medium', 'high'] };
+  const CONFIG = { MIN_BET: 1, MAX_BET: 1e9, MAX_WIN: 1e12, ROWS: [8, 10, 12, 14, 16], RISKS: ['low', 'medium', 'high'] };
   const RISK_NAMES = { low: 'Faible', medium: 'Moyen', high: 'Élevé' };
 
   // Tables de gains (moitié gauche, du bord vers le centre ; la table est symétrique).

@@ -506,13 +506,13 @@
   function addBet(key, amount) {
     if (!S || !(S.phase === 'waiting' || S.phase === 'betting')) return false;
     if (S.bankroll < amount) { $('sub-message').textContent = 'Solde insuffisant pour ce jeton.'; return false; }
-    if (B.room(key, S.bets[key]) < amount) { $('sub-message').textContent = limitText(key); return false; }
-    // partie réelle : plafond du salon VIP (par case, et deux fois ce plafond pour tout le tour)
+    // partie réelle : plafonds du palier de La Dette (par case selon le type, et deux fois la mise max. pour le tour)
     if (S.mode === 'real' && window.Casino) {
       const cap = Casino.maxBet(), staked = Object.values(S.bets).reduce((a, v) => a + v, 0);
-      if ((S.bets[key] || 0) + amount > cap) { $('sub-message').textContent = 'Dans ton salon (' + Casino.vip().name + '), au plus ' + cap + ' € par case. Monte de niveau pour miser plus.'; return false; }
-      if (staked + amount > cap * 2) { $('sub-message').textContent = 'Dans ton salon (' + Casino.vip().name + '), au plus ' + cap * 2 + ' € par tour.'; return false; }
-    }
+      const caseCap = Math.min(cap, Math.round(B.byKey[key].max * Casino.betFactor()));
+      if ((S.bets[key] || 0) + amount > caseCap) { $('sub-message').textContent = 'À ce palier, au plus ' + caseCap.toLocaleString('fr-FR') + ' € sur cette case.'; return false; }
+      if (staked + amount > cap * 2) { $('sub-message').textContent = 'À ce palier, au plus ' + (cap * 2).toLocaleString('fr-FR') + ' € par tour.'; return false; }
+    } else if (B.room(key, S.bets[key]) < amount) { $('sub-message').textContent = limitText(key); return false; }
     S.bets[key] = (S.bets[key] || 0) + amount;
     S.bankroll -= amount;
     S.log.push({ key, amount });

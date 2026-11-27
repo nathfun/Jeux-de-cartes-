@@ -18,7 +18,7 @@
  */
 (function (root) {
   'use strict';
-  const BETS = [1, 2, 5, 10, 20, 50, 100, 250, 500];
+  const BETS = (() => { const a = []; for (let e = 1; e <= 1e8; e *= 10) [1, 2, 5].forEach((m) => a.push(m * e)); [25, 250, 2500, 25000, 250000].forEach((v) => a.push(v)); return a.sort((x, y) => x - y); })();
   const REELS = 5, ROWS = 3, CELLS = REELS * ROWS;
   const UNIT = 20; // les gains du tableau sont en « mise ÷ 20 »
   const SYMBOLS = {

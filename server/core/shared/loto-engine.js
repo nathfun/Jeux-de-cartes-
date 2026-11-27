@@ -11,7 +11,7 @@
  */
 (function (root) {
   'use strict';
-  const CONFIG = { N: 30, DRAW: 10, MAX_PICK: 8, MIN_BET: 1, MAX_BET: 500, MAX_WIN: 10000 };
+  const CONFIG = { N: 30, DRAW: 10, MAX_PICK: 8, MIN_BET: 1, MAX_BET: 1e9, MAX_WIN: 1e12 };
   // PAY[k][m] : multiplicateur de la mise (gain total rendu) avec k numéros cochés et m bons numéros
   const PAY = {
     1: { 1: 2.85 },

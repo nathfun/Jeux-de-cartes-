@@ -7,7 +7,7 @@
   const MAX_HANDS = 4;
   const START_BANKROLL = 1000;
   // Limites de la table, comme au casino (le doublement et la séparation peuvent dépasser le maximum)
-  const MIN_BET = 1;
+  const minBet = () => (mode === 'real' && window.Casino && Casino.minBet ? Casino.minBet('blackjack') : 1);
   // mise maximale : celle du salon VIP en partie réelle (elle monte avec le niveau), 500 € en entraînement
   const maxBetNow = () => (mode === 'real' && window.Casino ? Casino.maxBet() : 500);
   const STORAGE_KEY = 'blackjack-coach-v1';
@@ -173,7 +173,7 @@
     const playing = round && round.phase === 'playing' && !busy;
     $('bet-controls').classList.toggle('hidden', !!inRound);
     $('play-controls').classList.toggle('hidden', !inRound || !!insuranceResolve);
-    $('deal').disabled = busy || bet < MIN_BET || bet > maxBetNow() || bet + side.pp + side.t213 > stats.bankroll;
+    $('deal').disabled = busy || bet < minBet() || bet > maxBetNow() || bet + side.pp + side.t213 > stats.bankroll;
 
     if (inRound) {
       const opts = playing ? availableActions() : {};
@@ -267,7 +267,7 @@
 
   async function deal() {
     if ($('coach-bubble')) $('coach-bubble').hidden = true;
-    if (busy || bet < MIN_BET || bet > maxBetNow() || bet + side.pp + side.t213 > stats.bankroll) return;
+    if (busy || bet < minBet() || bet > maxBetNow() || bet + side.pp + side.t213 > stats.bankroll) return;
     if (round && round.phase !== 'over') return;
     busy = true;
     let srvPhase = null;
@@ -522,11 +522,11 @@
       }
     }
 
-    if (stats.bankroll < MIN_BET && mode === 'train') {
+    if (stats.bankroll < minBet() && mode === 'train') {
       appendFeedbackNote('Entraînement : ton crédit est rechargé à ' + TRAIN_BANK + ' €.');
       stats.bankroll = TRAIN_BANK;
     }
-    if (stats.bankroll < MIN_BET && mode === 'real') setTimeout(() => endSession(true), 2500);
+    if (stats.bankroll < minBet() && mode === 'real') setTimeout(() => endSession(true), 2500);
     if (bet > stats.bankroll) bet = Math.max(0, Math.min(bet, stats.bankroll));
     saveStats();
     render();
@@ -534,7 +534,7 @@
     if (defi) {
       defi.hands++;
       $('defi-count').textContent = 'Main ' + Math.min(defi.hands + 1, defi.meta.rounds) + ' / ' + defi.meta.rounds + ' · solde de défi : ' + stats.bankroll + ' €';
-      if (defi.hands >= defi.meta.rounds || stats.bankroll < MIN_BET) endDefi();
+      if (defi.hands >= defi.meta.rounds || stats.bankroll < minBet()) endDefi();
     }
   }
 
@@ -1011,7 +1011,7 @@
   // ---------- Événements ----------
   document.querySelectorAll('[data-chip]').forEach((b) => b.addEventListener('click', () => {
     const v = parseInt(b.dataset.chip, 10);
-    if (bet + v > maxBetNow()) setMessage('Mise maximale : ' + maxBetNow() + ' € par main' + (mode === 'real' ? ' dans ton salon (elle monte avec ton niveau).' : '.'));
+    if (bet + v > maxBetNow()) setMessage('Mise maximale : ' + maxBetNow() + ' € par main' + (mode === 'real' ? ' à ce palier (elle monte avec les paliers).' : '.'));
     else if (bet + v <= stats.bankroll) { bet += v; if (window.Sfx) Sfx.chips(); }
     render();
   }));
@@ -1101,7 +1101,7 @@
     badge.className = 'cm-badge mode-line' + (mode === 'real' ? ' real' : '');
     badge.textContent = mode === 'real' ? '💰 Partie réelle · sans aides · « Encaisser » ramène tes jetons à la banque' : '🎓 Apprentissage · crédit illimité, aides et conseils · ne compte pas';
     $('cashout').hidden = mode === 'defi' || mode === 'train';
-    $('bank-label').textContent = mode === 'real' ? 'Sur la table' : mode === 'train' ? 'Crédit d\'apprentissage' : mode === 'defi' ? 'Jetons de défi' : 'Banque';
+    $('bank-label').textContent = mode === 'real' ? 'Sur la table' : mode === 'train' ? 'Crédit d\'apprentissage' : mode === 'defi' ? 'Jetons de défi' : 'Caisse';
     if (!mode && window.Casino) { $('bankroll').textContent = (Math.round(Casino.wallet() * 100) / 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 }); }
     $('cashout').textContent = mode === 'train' ? 'Terminer' : 'Encaisser';
     if (!playing) { renderPicker(); return; }
@@ -1109,7 +1109,7 @@
   }
   function renderPicker(msg) {
     if (!window.Casino) { startMode('train', TRAIN_BANK); return; }
-    Casino.modePicker($('mode-picker'), { game: 'blackjack', min: MIN_BET, suggest: 100, onStart: (m, amount) => startMode(m, amount) });
+    Casino.modePicker($('mode-picker'), { game: 'blackjack', min: 1, suggest: 100, onStart: (m, amount) => startMode(m, amount) });
     if (msg) { const p = document.createElement('p'); p.className = 'end-msg'; p.textContent = msg; $('mode-picker').prepend(p); }
   }
   async function endSession(broke) {

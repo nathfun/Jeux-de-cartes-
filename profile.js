@@ -44,15 +44,13 @@
   }
   function pick(o, keys) { const r = {}; keys.forEach((k) => { if (o[k] !== undefined) r[k] = o[k]; }); return r; }
   const listeners = [];
-  const TX_LABEL = { 'session.start': 'mis sur la table', 'session.cashout': 'encaissés de la table', 'shop.buy': 'achat en boutique', 'booster.open': 'achat de cartes', 'mk.buy': 'achat sur le marché',
-    'col.sell': 'vente au Casino', 'bonus.claim': 'bonus du jour', 'chest.claim': 'coffre', 'wheel.spin': 'roue du jour', 'vip.buy': 'pass VIP', 'challenge.claim': 'défi du jour', 'rescue.claim': 'aide de secours',
-    'multi.prize': 'prix entre amis', 'duel.new': 'mise du duel', 'duel.accept': 'mise du duel', 'duel.decline': 'mise rendue', 'duel.settle': 'duel', 'trade.new': 'échange', 'trade.accept': 'échange', 'trade.decline': 'échange annulé', 'mk.cancel': 'vente retirée', 'deals.list': 'marché et duels', 'ref.link': 'parrainage' };
+  const TX_LABEL = { 'shop.buy': 'achat en boutique', 'vip.buy': 'pass VIP' };
   function txBanner(delta, why) {
     injectStyle();
     const c = container(), el = document.createElement('div');
     el.className = 'casino-tx ' + (delta > 0 ? 'plus' : 'minus');
     const amt = Math.abs(delta).toLocaleString('fr-FR', { maximumFractionDigits: 2 });
-    el.textContent = (delta > 0 ? '+' + amt + ' € crédités sur ton compte' : '−' + amt + ' € débités de ton compte') + (why ? ' · ' + why : '');
+    el.textContent = (delta > 0 ? '+' + amt + ' jetons' : '−' + amt + ' jetons') + (why ? ' · ' + why : '');
     c.insertBefore(el, c.firstChild);
     setTimeout(() => el.classList.add('out'), 3000);
     setTimeout(() => el.remove(), 3500);
@@ -67,9 +65,10 @@
       const t = document.createElement('h3'); t.textContent = opts.title || 'Confirmer ?'; b.appendChild(t);
       if (opts.text) { const p = document.createElement('p'); p.textContent = opts.text; b.appendChild(p); }
       if (typeof opts.price === 'number') {
-        const w = load().wallet || 0, row = document.createElement('div'); row.className = 'ccf-bank';
-        row.innerHTML = '<span>Ta banque</span><b></b>';
-        row.querySelector('b').textContent = Math.round(w).toLocaleString('fr-FR') + ' € → ' + Math.round(w - opts.price).toLocaleString('fr-FR') + ' €';
+        const w = typeof opts.from === 'number' ? opts.from : load().wallet || 0, u = ' ' + (opts.unit || 'jetons'), row = document.createElement('div'); row.className = 'ccf-bank';
+        row.innerHTML = '<span></span><b></b>';
+        row.querySelector('span').textContent = opts.fromLabel || 'Tes jetons';
+        row.querySelector('b').textContent = Math.round(w).toLocaleString('fr-FR') + u + ' → ' + Math.round(w - opts.price).toLocaleString('fr-FR') + u;
         b.appendChild(row);
       }
       const btns = document.createElement('div'); btns.className = 'ccf-btns';
@@ -95,7 +94,7 @@
     try { document.documentElement.classList.toggle("is-vip", R.isVip(P, Date.now())); } catch (e) { /* ignore */ }
     // bandeau de transaction : chaque mouvement de la banque est annoncé en haut de l'écran
     const w = Math.round((P.wallet || 0) * 100) / 100;
-    if (lastWallet !== null && Math.abs(w - lastWallet) >= 0.5 && Date.now() - bootAt > 2500 && typeof document !== 'undefined') { try { txBanner(w - lastWallet, txReason); } catch (e) { /* ignore */ } }
+    if (lastWallet !== null && txReason && Math.abs(w - lastWallet) >= 0.5 && Date.now() - bootAt > 2500 && typeof document !== 'undefined') { try { txBanner(w - lastWallet, txReason); } catch (e) { /* ignore */ } }
     lastWallet = w; txReason = null;
     listeners.forEach((f) => { try { f(P); } catch (e) { /* ignore */ } });
   }
@@ -161,6 +160,7 @@
       } else res = (await f.fn({ op, data: data || {} })).data;
       txReason = TX_LABEL[op] || null;
       applyServer(res);
+      try { runWatch(res.result || {}); } catch (e) { /* ignore */ }
       return res.result || {};
     } catch (e) {
       const msg = e && e.code === 'functions/failed-precondition' ? e.message : (e && e.code === 'functions/unavailable') || /network|internet|fetch/i.test(String(e && e.message)) ? 'Pas de connexion au serveur.' : errText(e);
@@ -578,6 +578,7 @@
     if (P.sessions[opts.game] && !opts.noAutoResume) {
       box.innerHTML = '';
       box.appendChild(mk('p', 'cm-wait', 'Reprise de ta partie…'));
+      runHud();
       Casino.startSession(opts.game, P.sessions[opts.game].stack).then((r) => {
         if (!r || r.error) { opts.noAutoResume = true; modePicker(box, opts); return; }
         Casino.training = false;
@@ -592,8 +593,19 @@
     card.appendChild(gameHero(opts.game));
     const panel = mk('div', 'cm-panel');
     const cur = P.sessions[opts.game];
-    const min = opts.min || 1;
-    const wal = P.wallet;
+    // Pas de journée de La Dette en cours, ou jeu pas encore débloqué : retour à l'accueil
+    const lockMsg = !R.runActive(P) ? ['Aucune journée en cours', 'Les jeux se jouent pendant une partie de La Dette : lance-la depuis l\'accueil (ou active 🎓 Apprentissage pour t\'entraîner).']
+      : !cur && !R.isUnlocked(P, opts.game) ? ['🔒 Se débloque au palier ' + (R.RUN.UNLOCK[opts.game] || '?'), 'Continue de rembourser la dette pour ouvrir ce jeu.'] : null;
+    if (lockMsg && !cur) {
+      panel.append(mk('div', 'cm-label', lockMsg[0]), mk('p', 'cm-sub', lockMsg[1]));
+      const back = mk('a', 'cm-cta', '← Retour à l\'accueil'); back.href = '../index.html#play';
+      panel.appendChild(back);
+      card.appendChild(panel); box.append(card);
+      return;
+    }
+    runHud();
+    const min = R.gameMin(P, opts.game);
+    const wal = P.run ? P.run.cash : 0;
     const note = mk('p', 'cm-note');
     if (cur) {
       panel.append(mk('div', 'cm-label', 'Partie en cours'), mk('div', 'cm-big', fmtE(cur.stack)), mk('div', 'cm-sub', 'sur la table · apporté : ' + fmtE(cur.start)));
@@ -610,7 +622,7 @@
       panel.append(rb, note);
     } else {
       const maxV = Math.max(min, Math.floor(wal));
-      let val = Math.max(min, Math.min(Math.floor(wal), opts.suggest || 500));
+      let val = Math.max(min, Math.min(Math.floor(wal), R.niceDown(wal / 4) || min));
       panel.appendChild(mk('div', 'cm-label', 'Combien apportes-tu à la table ?'));
       const big = mk('div', 'cm-big'); const amount = mk('span', 'cm-amt'); big.append(amount, mk('span', 'cm-eur', ' €'));
       const after = mk('div', 'cm-sub');
@@ -622,11 +634,11 @@
         amount.textContent = val.toLocaleString('fr-FR');
         range.value = val; if (document.activeElement !== exact) exact.value = val;
         range.style.setProperty('--p', ((val - min) / Math.max(1, maxV - min) * 100) + '%');
-        after.textContent = 'Banque : ' + fmtE(wal) + '  →  il te restera ' + fmtE(wal - val);
+        after.textContent = 'Caisse : ' + fmtE(wal) + '  →  il te restera ' + fmtE(wal - val) + ' · mise min. ' + fmtE(min) + ', max. ' + fmtE(R.maxBet(P, Date.now()));
         chips.querySelectorAll('button').forEach((b) => b.classList.toggle('on', Number(b.dataset.v) === val));
         if (bump) { big.classList.remove('bump'); void big.offsetWidth; big.classList.add('bump'); }
       };
-      [[10, 'c1'], [50, 'c2'], [100, 'c3'], [250, 'c4']].filter(([v]) => v >= min && v <= wal).forEach(([v, c]) => {
+      [[R.niceDown(wal * 0.1), 'c1'], [R.niceDown(wal * 0.25), 'c2'], [R.niceDown(wal * 0.5), 'c3']].filter(([v], i, a) => v >= min && v <= wal && (!i || v !== a[i - 1][0])).forEach(([v, c]) => {
         const q = mk('button', 'cm-chip ' + c); q.type = 'button'; q.dataset.v = v;
         q.append(mk('b', '', v >= 1000 ? String(v / 1000).replace('.', ',') + 'k' : String(v)));
         q.onclick = () => { show(v, true); if (window.Sfx) Sfx.chips(); };
@@ -639,7 +651,7 @@
       const go = mk('button', 'cm-cta', '▶ Lancer la partie'); go.type = 'button';
       go.onclick = async () => {
         if (!(val >= min)) { note.textContent = 'Il faut apporter au moins ' + fmtE(min) + '.'; return; }
-        if (val > P.wallet) { note.textContent = 'Ta banque ne contient que ' + fmtE(P.wallet) + '. Gagne du temps contre de l\'argent sur l\'accueil (banque du temps).'; return; }
+        if (val > wal) { note.textContent = 'Ta caisse ne contient que ' + fmtE(wal) + '.'; return; }
         go.disabled = true; note.textContent = '';
         const r = await Casino.startSession(opts.game, val);
         go.disabled = false;
@@ -650,12 +662,57 @@
       };
       const exactRow = mk('div', 'cm-exact-row'); exactRow.append(mk('span', '', 'Somme exacte'), exact);
       panel.append(big, range, chips, after, exactRow, go, note);
-      if (wal < min) { go.disabled = true; range.disabled = true; note.textContent = 'Ta banque est trop basse (' + fmtE(wal) + '). Récupère ton bonus du jour ou passe par la banque du temps sur l\'accueil.'; }
+      if (wal < min) { go.disabled = true; range.disabled = true; note.textContent = 'Ta caisse est trop basse (' + fmtE(wal) + ') pour la mise minimale de ce jeu.'; }
       show(val);
     }
-    panel.appendChild(mk('p', 'cm-learn-tip', '💰 Partie réelle, sans aides : gains, XP, défis et succès comptent.' + (opts.realNote ? ' ' + opts.realNote : '') + ' Pour apprendre sans risque, active 🎓 Apprentissage sur l\'accueil.'));
+    panel.appendChild(mk('p', 'cm-learn-tip', '🕴️ La Dette, palier ' + P.run.palier + ' : l\'argent apporté vient de ta caisse. Si la table ne peut plus payer la mise minimale, elle est perdue.' + (opts.realNote ? ' ' + opts.realNote : '')));
     card.appendChild(panel);
     box.append(card);
+  }
+
+
+  // ---------- La Dette : bandeau de la journée sur les pages de jeu ----------
+  let hudTimer = null, hudEl = null, endShown = false;
+  const fmtClock = (ms) => { const t = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
+  function runHud() {
+    if (typeof document === 'undefined' || !R.runActive(load())) return;
+    injectStyle();
+    if (!hudEl) {
+      hudEl = document.createElement('a'); hudEl.className = 'run-hud'; hudEl.href = '../index.html#play'; hudEl.title = 'Retour au bureau du parrain';
+      document.body.appendChild(hudEl);
+      document.body.style.paddingBottom = 'calc(64px + env(safe-area-inset-bottom))';
+    }
+    const draw = () => {
+      const p = load(), r = p.run;
+      if (!r || r.status !== 'playing') { hudEl.hidden = true; return; }
+      hudEl.hidden = false;
+      const left = r.dayEnd - Date.now(), tot = R.runTotal(p), pc = Math.min(100, tot / r.quota * 100);
+      hudEl.classList.toggle('late', left < 60000);
+      hudEl.classList.toggle('ok', tot >= r.quota);
+      hudEl.innerHTML = '';
+      const a = mk('span', 'rh-p', 'P' + r.palier), b = mk('span', 'rh-t', '⏱ ' + fmtClock(left));
+      const c = mk('span', 'rh-q'); const bar = mk('i'); bar.style.width = pc + '%'; c.append(bar, mk('b', '', fmtE(Math.floor(tot)) + ' / ' + fmtE(r.quota)));
+      hudEl.append(a, b, c);
+      if (left <= 0 && !endShown) { endShown = true; Casino.runTick(); }
+    };
+    draw();
+    clearInterval(hudTimer); hudTimer = setInterval(draw, 500);
+    Casino.onChange(draw);
+  }
+  /** Réponse du serveur : fin de journée, banqueroute, table perdue → écran par-dessus le jeu. */
+  function runWatch(res) {
+    if (typeof document === 'undefined' || !(hudEl || document.querySelector('.cm-host'))) return;
+    if (res.dayOver) return runOverlay(res.dayOver === 'over' ? '🕴️ La mafia est passée…' : '🔔 La journée est terminée', res.dayOver === 'over' ? 'Ta partie de La Dette est finie. Va voir le parrain pour le bilan.' : 'Le parrain fait les comptes. Retourne à son bureau pour la suite.');
+    const g = res.tableLost && res.tableLost.game;
+    if (g && document.querySelector('.cm-host')) runOverlay('💸 Table perdue', 'Il ne restait plus assez sur la table pour payer la mise minimale. Retourne au bureau choisir un autre jeu… ou revenir avec plus d\'argent.');
+  }
+  function runOverlay(title, text) {
+    if (document.querySelector('.run-over')) return;
+    injectStyle();
+    const ov = mk('div', 'run-over'), box = mk('div', 'ro-box');
+    const go = mk('a', 'cm-cta', 'Retour au bureau du parrain'); go.href = '../index.html#play';
+    box.append(mk('div', 'ro-title', title), mk('p', '', text), go);
+    ov.appendChild(box); document.body.appendChild(ov);
   }
 
   // Classement de fin de partie (utilisé par le blackjack entre amis)
@@ -694,7 +751,26 @@
     call, sync, firebase,
     get profile() { return load(); },
     onChange(f) { listeners.push(f); },
-    wallet() { return Math.round((load().wallet || 0) * 100) / 100; },
+    /** Caisse de la partie de La Dette (euros), utilisée par les jeux. */
+    wallet() { const p = load(); return Math.round(((p.run && p.run.status !== 'over' ? p.run.cash : 0) || 0) * 100) / 100; },
+    /** Jetons du compte (style, VIP, multijoueur). */
+    jetons() { return Math.round((load().wallet || 0) * 100) / 100; },
+    get run() { return load().run || null; },
+    async runCall(op, data) {
+      if (SERVER) return call(op, data);
+      if (BANK) return { error: 'La Dette demande le serveur du Casino.' };
+      const now = Date.now();
+      return local((N) => {
+        const t = R.runTick(P, now, N);
+        if (t && op !== 'sync') return { dayOver: t.over ? 'over' : 'shop', run: P.run };
+        const r = op === 'run.start' ? R.runStart(P, now, N) : op === 'run.end' ? R.runEndDay(P, now, N, 'closed') : op === 'run.buy' ? R.runBuy(P, data.id)
+          : op === 'run.next' ? R.runNext(P, now, N) : op === 'run.abandon' ? R.runOver(P, now, N, 'abandon') : op === 'run.seen' ? ((P.run || {}).seen = true, {}) : {};
+        if (r && r.over) r.dayOver = 'over';
+        return Object.assign({ run: P.run }, r);
+      });
+    },
+    runTick() { return Casino.runCall('sync').then((r) => { const p = load(); if (p.run && p.run.status !== 'playing') runWatch({ dayOver: p.run.status === 'over' ? 'over' : 'shop' }); return r; }); },
+    runHud,
     // Mode sans serveur uniquement (les jeux ne touchent jamais la banque directement avec le serveur)
     setWallet(v) { if (SERVER) return; if (BANK) return Casino.addWallet(v - load().wallet); local((N) => { P.wallet = Math.max(0, Math.round(v * 100) / 100); R.checkWallet(P, N); }); },
     addWallet(v) {
@@ -915,10 +991,12 @@
     VIP: R.VIP, VIP_PASS: R.VIP_PASS, VIP_PERKS: R.VIP_PERKS, WHEEL: R.WHEEL,
     /** Mise maximale par coup : salon (×2 avec le pass VIP) en partie réelle, 500 € en apprentissage. */
     maxBet() { return Casino.training ? 500 : R.maxBet(load(), Date.now()); },
+    betFactor() { const p = load(); return Casino.training ? 1 : R.palierFactor(p.run ? p.run.palier : 1) * (R.isVip(p, Date.now()) ? R.RUN.VIP_BET : 1); },
+    minBet(game) { return Casino.training ? 1 : R.gameMin(load(), game || 'roulette'); },
     isVip() { return R.isVip(load(), Date.now()); },
     vipUntil() { return R.isVip(load(), Date.now()) ? load().vipUntil : 0; },
     /** Texte court : « 🥈 Salon Argent · max 100 € » (+ couronne si VIP). */
-    salonText() { const v = R.vipOf(load()), vip = R.isVip(load(), Date.now()); return (vip ? '👑 ' : '') + v.icon + ' ' + v.name + ' · max ' + R.maxBet(load(), Date.now()) + ' €'; },
+    salonText() { const p = load(); return (R.isVip(p, Date.now()) ? '👑 VIP · ' : '') + 'mises ' + R.gameMin(p, 'blackjack') + ' à ' + R.maxBet(p, Date.now()).toLocaleString('fr-FR') + ' €'; },
     async buyVip(pass) {
       if (SERVER) { const r = await call('vip.buy', { pass }); return r.error ? r : Object.assign({ ok: true }, r); }
       if (BANK) return { error: 'Le pass VIP demande le serveur du Casino.' };
@@ -1049,7 +1127,24 @@
     styled = true;
     const s = document.createElement('style');
     const ringCss = (R.SHOP.frame || []).filter((f) => f.ring).map((f) => '.fr-' + f.id + '{border-color:' + f.ring + ' !important;box-shadow:0 0 0 2px ' + f.ring + ',0 0 16px ' + f.glow + ' !important;' + (f.anim === 'hue' ? 'animation:fr-hue 4s linear infinite;' : f.anim === 'pulse' ? 'animation:fr-pulse 1.8s ease-in-out infinite;' : '') + '}').join('');
-    s.textContent = ringCss + `@keyframes fr-hue { to { filter: hue-rotate(360deg); } } @keyframes fr-pulse { 50% { filter: brightness(1.45) saturate(1.3); } }
+    s.textContent = ringCss + `
+.run-hud { position: fixed; z-index: 70; left: 50%; transform: translateX(-50%); bottom: max(10px, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: .5rem; padding: .35rem .7rem; border-radius: 999px;
+  background: rgba(12,10,8,.92); border: 1px solid rgba(250,204,21,.45); color: #fde68a; font: 700 .82rem/1.2 system-ui, sans-serif; text-decoration: none; box-shadow: 0 8px 24px rgba(0,0,0,.5); white-space: nowrap; max-width: calc(100vw - 32px); }
+.run-hud[hidden] { display: none; }
+.run-hud .rh-p { background: #facc15; color: #1c1300; border-radius: 999px; padding: .05rem .45rem; }
+.run-hud .rh-t { font-variant-numeric: tabular-nums; }
+.run-hud.late .rh-t { color: #f87171; animation: rh-blink 1s steps(2) infinite; }
+.run-hud .rh-q { position: relative; min-width: 120px; padding: .1rem .5rem; border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; text-align: center; font-variant-numeric: tabular-nums; }
+.run-hud .rh-q i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #b45309, #f59e0b); opacity: .55; }
+.run-hud.ok .rh-q i { background: linear-gradient(90deg, #15803d, #22c55e); }
+.run-hud .rh-q b { position: relative; color: #fff; }
+@keyframes rh-blink { 50% { opacity: .35; } }
+.run-over { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 16px; background: rgba(0,0,0,.82); backdrop-filter: blur(4px); }
+.run-over .ro-box { width: min(420px, 100%); text-align: center; background: #15110c; border: 2px solid #facc15; border-radius: 20px; padding: 1.4rem 1.2rem; color: #f5f0e6; font-family: system-ui, sans-serif; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+.run-over .ro-title { font-size: 1.5rem; font-weight: 900; color: #facc15; margin-bottom: .4rem; }
+a.cm-cta { display: block; text-align: center; text-decoration: none; }
+.run-over .cm-cta { display: inline-block; text-decoration: none; margin-top: .6rem; }
+@keyframes fr-hue { to { filter: hue-rotate(360deg); } } @keyframes fr-pulse { 50% { filter: brightness(1.45) saturate(1.3); } }
 
 .lg-card { position: relative; width: 112px; height: 160px; border-radius: 12px; padding: 6px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; color: #fff; font: 12px system-ui, sans-serif; overflow: hidden;
   background: linear-gradient(160deg, var(--ca), var(--cb) 70%); border: 3px solid var(--rc); box-shadow: 0 6px 16px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.12); }

@@ -226,7 +226,7 @@
   function applyMax() {
     const m = maxB(); if (m === maxShown) return; maxShown = m;
     $('bet').max = m; if (readBet() > m) $('bet').value = m;
-    document.querySelectorAll('#quick button').forEach((b) => { b.disabled = Number(b.dataset.v) > m; b.title = b.disabled ? 'Mise maximale de ton salon : ' + m + ' €' : ''; });
+    document.querySelectorAll('#quick button').forEach((b) => { b.disabled = Number(b.dataset.v) > m; b.title = b.disabled ? 'Mise maximale à ce palier : ' + m + ' €' : ''; });
   }
   function renderPay() {
     const k = store.picks.length, box = $('paytable'); box.innerHTML = '';
@@ -302,7 +302,7 @@
 
   // ---------- Début et fin de partie ----------
   function showWallet() {
-    setText($('bank-label'), 'Banque'); setText($('wallet'), window.Casino ? fmt(Casino.wallet()) : '–');
+    setText($('bank-label'), 'Caisse'); setText($('wallet'), window.Casino ? fmt(Casino.wallet()) : '–');
     setText($('stack-label'), S.mode === 'train' ? 'Crédit d\'apprentissage' : 'Sur la table');
   }
   function startGame(mode, amount) {
@@ -313,7 +313,7 @@
     $('setup').hidden = true; $('game').hidden = false;
     const badge = $('mode-badge'); badge.hidden = false;
     badge.className = 'mode-badge' + (mode === 'real' ? ' real' : '');
-    badge.textContent = mode === 'real' ? '💰 Partie réelle · ta banque · sans aides' : '🎓 Apprentissage · crédit illimité, aides et conseils';
+    badge.textContent = mode === 'real' ? '🕴️ La Dette · ta caisse · sans aides' : '🎓 Apprentissage · crédit illimité, aides et conseils';
     $('end-btn').hidden = mode === 'train';
     maxShown = null; renderTray([]); renderHistory(); renderStats(); lastAid = ''; ui();
   }

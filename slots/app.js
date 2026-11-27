@@ -4,7 +4,7 @@
   const E = window.SlotEngine;
   const $ = (id) => document.getElementById(id);
   // mises possibles ; en partie réelle on garde celles permises par le salon VIP (elles montent avec le niveau)
-  const ALL_BETS = [1, 2, 5, 10, 20, 50, 100, 250, 500];
+  const ALL_BETS = window.CasinoRules ? window.CasinoRules.BET_STEPS : [1, 2, 5, 10, 20, 50, 100, 250, 500];
   let BETS = ALL_BETS.slice(0, 5);
   const LINE_COLORS = ['#ffd76a', '#4fc3f7', '#81c784', '#f06292', '#ba68c8', '#ff8a65', '#4db6ac', '#e57373', '#9575cd', '#aed581'];
   const fmt = (n) => (Math.round(n * 100) / 100).toLocaleString('fr-FR');
@@ -18,7 +18,7 @@
     showWallet();
   };
   function showWallet() {
-    if (!S.mode) { $('bank-label').textContent = 'Banque'; $('wallet').textContent = window.Casino ? fmt(Casino.wallet()) : '–'; return; }
+    if (!S.mode) { $('bank-label').textContent = 'Caisse'; $('wallet').textContent = window.Casino ? fmt(Casino.wallet()) : '–'; return; }
     $('bank-label').textContent = S.mode === 'train' ? 'Crédit d\'apprentissage' : 'Sur la table';
     $('wallet').textContent = fmt(S.stack);
   }
@@ -283,8 +283,8 @@
     S.mode = mode;
     if (window.Casino) Casino.training = mode === 'train';
     const cap = window.Casino ? Casino.maxBet() : 500;
-    BETS = ALL_BETS.filter((b) => b <= cap);
-    S.betIndex = Math.min(BETS.indexOf(5), BETS.length - 1);
+    BETS = ALL_BETS.filter((b) => b <= cap && (!window.Casino || !Casino.minBet || Casino.training || b >= Casino.minBet('slots')));
+    S.betIndex = Math.max(0, Math.min(BETS.indexOf(5), BETS.length - 1));
     S.stack = amount;
     S.start = mode === 'real' && window.Casino && Casino.session('slots') ? Casino.session('slots').start : amount;
     S.spins = 0; S.staked = 0; S.won = 0; S.best = 0;

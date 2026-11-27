@@ -22,8 +22,8 @@
     K: 0.00006,         // vitesse de croissance du multiplicateur
     MAX_MULT: 10000,    // plafond d'affichage du multiplicateur
     MIN_BET: 1,
-    MAX_BET: 500,
-    MAX_WIN: 10000,    // gain maximal par manche : retrait automatique au-delà
+    MAX_BET: 1e9,
+    MAX_WIN: 1e12,    // gain maximal par manche : retrait automatique au-delà
     COUNTDOWN_MS: 6000, // temps pour miser avant le décollage
     LAUNCH_MS: 900,     // allumage des moteurs (le multiplicateur reste à 1.00)
     CRASH_SHOW_MS: 3200,

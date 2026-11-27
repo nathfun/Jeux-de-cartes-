@@ -25,7 +25,7 @@ const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'jeux-de-cartes-81cdf';
 const DB_URL = process.env.FIREBASE_DATABASE_URL || 'https://jeux-de-cartes-81cdf-default-rtdb.europe-west1.firebasedatabase.app';
 const MAX_BODY = 32 * 1024;
 // version du serveur (affichée dans l'admin et sur /health) : à changer à chaque mise à jour du serveur
-const SERVER_VERSION = '2026.11.27-2';
+const SERVER_VERSION = '2026.11.27-3';
 const TABLES = { blackjack: 'tables/', poker: 'ptables/', roulette: 'rtables/', loto: 'ltables/' };
 
 // ---------- Firebase (vérification des comptes, profil public, lecture des tables entre amis) ----------
@@ -287,6 +287,8 @@ async function casino(uid, token, op, data) {
   if (await isBanned(uid)) throw userError('Ton compte a été bloqué par l\'administrateur du Casino.');
   // marché, échanges, duels : plusieurs joueurs à la fois (module deals.js)
   if (deals.isDealOp(op)) {
+    // refonte (version 3) : marché, échanges, duels, cotes et Loto entre amis payant sont retirés
+    if (/^(mk|trade|duel|col)\./.test(op) || op === 'loto.buy') throw userError('Cette fonction a été retirée du Casino.');
     if (!db.has(uid)) throw userError('Joue d\'abord une partie pour créer ton compte sur le serveur.');
     const result = await deals.OPS[op](uid, data || {});
     const P = db.load(uid).player, notes = [];
@@ -430,7 +432,7 @@ function categoryOf(r) {
   if (op.startsWith('duel')) return 'Duels';
   if (op.startsWith('loto')) return 'Loto entre amis';
   if (GAME_OF[pre] && op !== 'session.start') return 'Jeux';
-  return { 'bonus.claim': 'Bonus du jour', 'challenge.claim': 'Défis', 'time.claim': 'Banque du temps', 'chest.claim': 'Coffre', 'wheel.spin': 'Roue du jour', 'vip.buy': 'Pass VIP', 'rescue.claim': 'Aide de secours', 'multi.prize': 'Entre amis', 'shop.buy': 'Boutique', 'session.start': 'Tables (aller)', 'session.cashout': 'Tables (retour)' }[op] || 'Autre';
+  return { 'bonus.claim': 'Bonus du jour', 'challenge.claim': 'Défis', 'time.claim': 'Banque du temps', 'chest.claim': 'Coffre', 'wheel.spin': 'Roue du jour', 'vip.buy': 'Pass VIP', 'rescue.claim': 'Aide de secours', 'multi.prize': 'Entre amis', 'shop.buy': 'Boutique', 'session.start': 'Tables (aller)', 'session.cashout': 'Tables (retour)', 'run.start': 'La Dette', 'run.end': 'La Dette', 'run.over': 'La Dette', 'run.abandon': 'La Dette' }[op] || 'Autre';
 }
 function dashboard() {
   const now = Date.now(), DAY = 864e5, day = (t) => R.today(t);
@@ -505,7 +507,7 @@ async function adminOp(uid, op, d) {
         if (d.achievements && typeof d.achievements === 'object') { const a = {}; R.ACHIEVEMENTS.forEach((x) => { if (d.achievements[x.id]) a[x.id] = (P.achievements || {})[x.id] || now; }); P.achievements = a; }
       });
     }
-    case 'close': return adminEdit(target, 'close', (P, st) => { P.wallet = r2((P.wallet || 0) + sum(P.sessions)); P.sessions = {}; st.secret = {}; });
+    case 'close': return adminEdit(target, 'close', (P, st) => { if (P.run) P.run.cash = r2((P.run.cash || 0) + sum(P.sessions)); P.sessions = {}; st.secret = {}; });
     case 'reset': return adminEdit(target, 'reset', (P, st) => {
       const keep = { pseudo: P.pseudo, avatar: P.avatar, friendCode: P.friendCode };
       Object.keys(P).forEach((k) => delete P[k]); Object.assign(P, R.fresh(now), keep); st.secret = {};

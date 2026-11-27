@@ -31,10 +31,10 @@ const int = (v) => (Number.isInteger(v) ? v : NaN);
 const round2 = (v) => Math.round(v * 100) / 100;
 
 // ---------- Blackjack (règle européenne : pas de carte cachée) ----------
-const DECKS = 6, MIN_BET = 1, MAX_HANDS = 4, MAX_SIDE = 25;
+const DECKS = 6, MAX_HANDS = 4, MAX_SIDE = 25;
 // Mise maximale par coup selon le salon VIP du joueur (fixée au début de chaque opération)
-let MAX_BET = 50;
-const SLOT_BETS = [1, 2, 5, 10, 20, 50, 100, 250, 500];
+let MAX_BET = 250, MIN_BET = 5;
+const SLOT_BETS = R.BET_STEPS;
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 const value = (cards) => ST.handValue(cards);
@@ -239,7 +239,7 @@ function crashOp(P, S, ctx, sess, track, fail) {
     const auto = Number(d.auto) >= 1.01 ? CR.floor2(Number(d.auto)) : 0;
     if (bet) {
       const ss = sess('crash');
-      if (!(bet >= CR.CONFIG.MIN_BET && bet <= Math.min(CR.CONFIG.MAX_BET, MAX_BET))) fail('Mise entre ' + CR.CONFIG.MIN_BET + ' et ' + Math.min(CR.CONFIG.MAX_BET, MAX_BET) + ' € dans ton salon.');
+      if (!(bet >= CR.CONFIG.MIN_BET && bet <= Math.min(CR.CONFIG.MAX_BET, MAX_BET))) fail('Mise entre ' + CR.CONFIG.MIN_BET + ' et ' + Math.min(CR.CONFIG.MAX_BET, MAX_BET) + ' € à ce palier.');
       if (bet > ss.stack) fail('Pas assez d\'argent sur la table.');
       ss.stack = round2(ss.stack - bet);
     }
@@ -295,7 +295,7 @@ function plinkoOp(P, S, ctx, sess, track) {
   const ss = sess('plinko');
   const bet = int(d.bet), rows = int(d.rows), risk = String(d.risk);
   if (!PL.CONFIG.ROWS.includes(rows) || !PL.CONFIG.RISKS.includes(risk)) fail('Plateau invalide.');
-  if (!(bet >= PL.CONFIG.MIN_BET && bet <= Math.min(PL.CONFIG.MAX_BET, MAX_BET))) fail('Mise entre ' + PL.CONFIG.MIN_BET + ' et ' + Math.min(PL.CONFIG.MAX_BET, MAX_BET) + ' € dans ton salon.');
+  if (!(bet >= PL.CONFIG.MIN_BET && bet <= Math.min(PL.CONFIG.MAX_BET, MAX_BET))) fail('Mise entre ' + PL.CONFIG.MIN_BET + ' et ' + Math.min(PL.CONFIG.MAX_BET, MAX_BET) + ' € à ce palier.');
   if (bet > ss.stack) fail('Pas assez d\'argent sur la table.');
   const C = seedsOf(S, 'pl', ctx.rnd);
   C.nonce++;
@@ -314,7 +314,7 @@ function lotoOp(P, S, ctx, sess, track) {
   const ss = sess('loto');
   const bet = int(d.bet), picks = Array.isArray(d.picks) ? d.picks.map(Number) : [];
   if (!LO.validPicks(picks)) fail('Coche de 1 à ' + LO.CONFIG.MAX_PICK + ' numéros différents entre 1 et ' + LO.CONFIG.N + '.');
-  if (!(bet >= LO.CONFIG.MIN_BET && bet <= Math.min(LO.CONFIG.MAX_BET, MAX_BET))) fail('Mise entre ' + LO.CONFIG.MIN_BET + ' et ' + Math.min(LO.CONFIG.MAX_BET, MAX_BET) + ' € dans ton salon.');
+  if (!(bet >= LO.CONFIG.MIN_BET && bet <= Math.min(LO.CONFIG.MAX_BET, MAX_BET))) fail('Mise entre ' + LO.CONFIG.MIN_BET + ' et ' + Math.min(LO.CONFIG.MAX_BET, MAX_BET) + ' € à ce palier.');
   if (bet > ss.stack) fail('Pas assez d\'argent sur la table.');
   const C = seedsOf(S, 'lo', ctx.rnd);
   C.nonce++;
@@ -347,7 +347,7 @@ function minesOp(P, S, ctx, sess, track) {
     if (r && r.active) fail('Une manche est déjà en cours.');
     const bet = int(d.bet), m = int(d.mines);
     if (!(m >= 1 && m <= 24)) fail('Entre 1 et 24 mines.');
-    if (!(bet >= MN.CONFIG.MIN_BET && bet <= Math.min(MN.CONFIG.MAX_BET, MAX_BET))) fail('Mise entre ' + MN.CONFIG.MIN_BET + ' et ' + Math.min(MN.CONFIG.MAX_BET, MAX_BET) + ' € dans ton salon.');
+    if (!(bet >= MN.CONFIG.MIN_BET && bet <= Math.min(MN.CONFIG.MAX_BET, MAX_BET))) fail('Mise entre ' + MN.CONFIG.MIN_BET + ' et ' + Math.min(MN.CONFIG.MAX_BET, MAX_BET) + ' € à ce palier.');
     if (bet > ss.stack) fail('Pas assez d\'argent sur la table.');
     ss.stack = round2(ss.stack - bet);
     C.nonce++;
@@ -380,16 +380,47 @@ function minesOp(P, S, ctx, sess, track) {
 function handle(state, ctx) {
   const now = ctx.now, N = [];
   const P = R.normalize(state.player, now);
-  // passage à la nouvelle économie (÷ 10) : les manches en cours sont abandonnées (l'argent des tables est déjà rendu)
-  if (P._econMigrated) { delete P._econMigrated; state.secret = {}; N.push({ kind: 'gold', icon: '💶', title: 'Nouvelle économie', text: 'Tous les montants du Casino sont divisés par 10 : ta banque est maintenant de ' + Math.round(P.wallet).toLocaleString('fr-FR') + ' €. Les mises maximales montent avec ton niveau (salons VIP).' }); }
-  MAX_BET = R.maxBet(P, now);
+  // version 3 : comptes remis à zéro (jetons + La Dette) → les manches en cours sont abandonnées
+  if (P._econMigrated) { delete P._econMigrated; state.secret = {}; N.push({ kind: 'gold', icon: '🕴️', title: 'Nouveau Lucky Lounge', text: 'Le Casino fait peau neuve : tous les comptes repartent de zéro. Tes jetons servent au style, au VIP et au multijoueur ; les euros se gagnent dans le mode La Dette.' }); }
+  MAX_BET = R.maxBet(P, now); MIN_BET = R.gameMin(P, 'blackjack');
+  let result = {};
   if (!state.player || !P.pseudo) { const ps = String(ctx.data && ctx.data.pseudo || '').trim().slice(0, 16); if (ps) P.pseudo = ps; }
   const S = state.secret || {};
   const d = ctx.data || {};
   R.ensureDaily(P, now);
-  let result = {};
-  const sess = (game) => P.sessions[game] || fail('Aucune partie réelle en cours : choisis une somme pour commencer.');
+  const sess = (game) => P.sessions[game] || fail(R.runActive(P) ? 'Aucune somme sur cette table : choisis combien tu apportes.' : 'Aucune journée en cours : lance une partie de La Dette depuis l\'accueil.');
   const track = (type, data) => R.track(P, type, data, now, N);
+  // Termine proprement une manche laissée en plein milieu (fin de journée ou départ de la table)
+  const settle = (game, strict) => {
+    if (!P.sessions[game]) return;
+    if (game === 'blackjack' && S.bj && S.bj.round && S.bj.round.phase !== 'over') {
+      const s = bj(P.sessions.blackjack, S, ctx.rnd, []).finish();
+      if (s) track('bj', s.track);
+    }
+    if (game === 'mines' && S.mn && S.mn.round && S.mn.round.active) {
+      const r = S.mn.round;
+      if (r.open.length) { const res = MN.settle(r.bet, r.m, r.open.length); P.sessions.mines.stack = round2(P.sessions.mines.stack + res.payout); track('mn', { bet: r.bet, net: res.net, mines: r.m, reveals: r.open.length, mult: res.mult }); }
+      else P.sessions.mines.stack = round2(P.sessions.mines.stack + r.bet);
+      r.active = false;
+    }
+    if (game === 'crash' && S.cr && S.cr.round && !S.cr.round.done) {
+      const r = S.cr.round;
+      if (strict && r.bet && !r.cashed && now < r.startAt + CR.timeFor(r.crash)) fail('Attends la fin de la manche.');
+      crashFinish(P, r, track);
+    }
+    if (game === 'slots') S.sl = null;
+    if (game === 'blackjack') S.bj = { shoe: S.bj && S.bj.shoe, round: null };
+  };
+  // La journée est-elle finie ? (le chrono est vérifié par le serveur à chaque action)
+  if (R.runActive(P) && now >= P.run.dayEnd && ctx.op !== 'run.end') {
+    Object.keys(P.sessions).forEach((g) => settle(g, false));
+    const r = R.runEndDay(P, now, N, 'time');
+    result.dayOver = r.over ? 'over' : 'shop';
+    if (/^(bj|rl|sl|cr|gd|pl|lo|mn|wh|pk)\./.test(ctx.op) || ctx.op === 'session.start' || ctx.op === 'session.cashout') {
+      state.player = P; state.secret = S;
+      return { state, result: { dayOver: result.dayOver, run: P.run }, notes: N };
+    }
+  }
 
   switch (ctx.op) {
     case 'sync': break;
@@ -418,11 +449,44 @@ function handle(state, ctx) {
     case 'bonus.claim': result.amount = R.claimBonus(P, now, N); break;
     case 'challenge.claim': result.amount = R.claimChallenge(P, String(d.id), now, N); break;
     case 'vip.buy': { const r = R.buyVip(P, String(d.pass), now, N); if (r.error) fail(r.error); result = r; break; }
-    case 'booster.open': { const r = R.openBooster(P, String(d.source), now, ctx.rnd, N); if (r.error) fail(r.error); result = r; break; }
-    case 'card.craft': { const r = R.craftCard(P, String(d.kind), String(d.id), now); if (r.error) fail(r.error); result = r; break; }
-    case 'wheel.spin': { const r = R.spinWheel(P, now, ctx.rnd, N); if (!r) fail('Plus de tour de roue aujourd\'hui : reviens demain !'); result = r; break; }
-    case 'chest.claim': result.amount = R.claimChest(P, now, N); if (!result.amount) fail('Le coffre est encore vide.'); break;
-    case 'rescue.claim': result.amount = R.claimRescue(P, now); if (!result.amount) fail('L\'aide de secours n\'est pas disponible.'); break;
+    case 'booster.open': case 'card.craft': case 'wheel.spin': case 'chest.claim': case 'rescue.claim':
+      fail('Cette fonction a été retirée du Casino.');
+      break;
+
+    // ----- Mode « La Dette » -----
+    case 'run.start': { const r = R.runStart(P, now, N); if (r.error) fail(r.error); S.bj = { shoe: S.bj && S.bj.shoe, round: null }; S.sl = null; S.mn = null; S.cr = null; result = r; break; }
+    case 'run.end': {
+      if (!R.runActive(P)) fail('Pas de journée en cours.');
+      Object.keys(P.sessions).forEach((g) => settle(g, true));
+      const r = R.runEndDay(P, now, N, now >= P.run.dayEnd ? 'time' : 'closed');
+      result = r; result.dayOver = r.over ? 'over' : 'shop';
+      break;
+    }
+    case 'run.buy': { const r = R.runBuy(P, String(d.id)); if (r.error) fail(r.error); result = r; result.run = P.run; break; }
+    case 'run.next': { const r = R.runNext(P, now, N); if (r.error) fail(r.error); result = r; break; }
+    case 'run.abandon': {
+      if (!P.run || P.run.status === 'over') fail('Pas de partie en cours.');
+      Object.keys(P.sessions).forEach((g) => settle(g, false));
+      result = R.runOver(P, now, N, 'abandon');
+      break;
+    }
+    case 'run.seen': { if (P.run && P.run.status === 'over') P.run.seen = true; break; }
+
+    // ----- Roue de la fortune (jeu de la partie) -----
+    case 'wh.spin': {
+      const ss = sess('wheel');
+      const bet = int(d.bet);
+      if (!(R.BET_STEPS.includes(bet) && bet >= R.gameMin(P, 'wheel') && bet <= MAX_BET)) fail('Mise invalide (au plus ' + MAX_BET + ' € à ce palier).');
+      if (bet > ss.stack) fail('Pas assez d\'argent sur la table.');
+      const total = R.FORTUNE.reduce((a, x) => a + x.w, 0);
+      let x = ctx.rnd(total), idx = 0;
+      while (x >= R.FORTUNE[idx].w) { x -= R.FORTUNE[idx].w; idx++; }
+      const win = round2(bet * R.FORTUNE[idx].m);
+      ss.stack = round2(ss.stack - bet + win);
+      track('sl', { bet, net: round2(win - bet), jackpot: R.FORTUNE[idx].m >= 25, freeTrigger: false });
+      result = { index: idx, mult: R.FORTUNE[idx].m, win, stack: ss.stack };
+      break;
+    }
     case 'session.start': {
       const game = String(d.game);
       if (P.sessions[game]) {
@@ -434,39 +498,24 @@ function handle(state, ctx) {
         if (game === 'slots' && S.sl) { result.free = S.sl.free; result.freeBet = S.sl.freeBet; }
         result.session = P.sessions[game]; result.resumed = true; break;
       }
-      const min = 1;
-      if (!(int(d.amount) >= min)) fail('Il faut apporter au moins ' + min + ' €.');
-      if (!R.startSession(P, game, d.amount, now)) fail('Ta banque ne contient pas assez d\'argent.');
+      if (!R.runActive(P)) fail('Aucune journée en cours : lance une partie de La Dette depuis l\'accueil.');
+      if (!R.isUnlocked(P, game)) fail('Ce jeu se débloque au palier ' + (R.RUN.UNLOCK[game] || '?') + '.');
+      const min = R.gameMin(P, game);
+      if (!(int(d.amount) >= min)) fail('Il faut apporter au moins ' + min + ' € à cette table.');
+      if (!R.startSession(P, game, d.amount, now)) fail('Ta caisse ne contient pas assez d\'argent.');
       result.session = P.sessions[game];
       break;
     }
     case 'session.cashout': {
       const game = String(d.game);
       sess(game);
-      if (game === 'blackjack' && S.bj && S.bj.round && S.bj.round.phase !== 'over') {
-        const out = [];
-        const s = bj(P.sessions.blackjack, S, ctx.rnd, out).finish();
-        if (s) track('bj', s.track);
-      }
       if (game === 'slots' && S.sl && S.sl.free > 0) fail('Termine d\'abord tes tours gratuits.');
       if (game === 'poker') fail('Au poker, la partie se termine à la fin du tournoi.');
-      if (game === 'mines' && S.mn && S.mn.round && S.mn.round.active) {
-        const r = S.mn.round;
-        if (r.open.length) { const res = MN.settle(r.bet, r.m, r.open.length); P.sessions.mines.stack = round2(P.sessions.mines.stack + res.payout); track('mn', { bet: r.bet, net: res.net, mines: r.m, reveals: r.open.length, mult: res.mult }); }
-        else P.sessions.mines.stack = round2(P.sessions.mines.stack + r.bet);
-        r.active = false;
-      }
       if (game === 'trader') fail('Bourse Flash en partie réelle n\'est pas encore géré par le serveur.');
-      if (game === 'crash' && S.cr && S.cr.round && !S.cr.round.done) {
-        const r = S.cr.round;
-        if (r.bet && !r.cashed && now < r.startAt + CR.timeFor(r.crash)) fail('Attends la fin de la manche.');
-        crashFinish(P, r, track);
-      }
+      settle(game, true);
       const startStack = P.sessions[game].start, endStack = P.sessions[game].stack;
       result.cash = R.cashOut(P, game, N);
       if (game === 'roulette') track('rl-cashout', { diff: endStack - startStack });
-      if (game === 'slots') S.sl = null;
-      if (game === 'blackjack') S.bj = { shoe: S.bj && S.bj.shoe, round: null };
       break;
     }
 
@@ -477,11 +526,12 @@ function handle(state, ctx) {
       let staked = 0;
       for (const k of Object.keys(bets)) {
         const v = bets[k];
-        if (!B.byKey[k] || !(int(v) >= 1) || v > Math.min(B.byKey[k].max, MAX_BET)) fail('Mise invalide sur ' + k + ' (au plus ' + Math.min(B.byKey[k].max, MAX_BET) + ' €).');
+        const cap = B.byKey[k] ? Math.min(Math.round(B.byKey[k].max * R.palierFactor(P.run ? P.run.palier : 1) * (R.isVip(P, now) ? R.RUN.VIP_BET : 1)), MAX_BET) : 0;
+        if (!B.byKey[k] || !(int(v) >= 1) || v > cap) fail('Mise invalide sur ' + k + ' (au plus ' + cap + ' €).');
         staked += v;
       }
       if (!staked) fail('Aucune mise.');
-      if (staked > MAX_BET * 2) fail('Au plus ' + MAX_BET * 2 + ' € par tour dans ton salon.');
+      if (staked > MAX_BET * 2) fail('Au plus ' + MAX_BET * 2 + ' € par tour à ce palier.');
       if (staked > ss.stack) fail('Pas assez d\'argent sur la table.');
       const n = ctx.rnd(37);
       let back = 0;
@@ -500,7 +550,7 @@ function handle(state, ctx) {
       S.sl = S.sl || { free: 0, freeBet: 0 };
       const free = S.sl.free > 0;
       const bet = free ? S.sl.freeBet : int(d.bet);
-      if (!free && !(SLOT_BETS.includes(bet) && bet <= MAX_BET)) fail('Mise invalide (au plus ' + MAX_BET + ' € dans ton salon).');
+      if (!free && !(SLOT_BETS.includes(bet) && bet <= MAX_BET)) fail('Mise invalide (au plus ' + MAX_BET + ' € à ce palier).');
       if (!free && bet > ss.stack) fail('Pas assez d\'argent sur la table.');
       const random = () => ctx.rnd(1 << 30) / (1 << 30);
       const grid = SL.spinGrid(random);
@@ -523,7 +573,7 @@ function handle(state, ctx) {
     case 'gd.spin': {
       const ss = sess('gold');
       const bet = int(d.bet);
-      if (!(GD.BETS.includes(bet) && bet <= MAX_BET)) fail('Mise invalide (au plus ' + MAX_BET + ' € dans ton salon).');
+      if (!(R.BET_STEPS.includes(bet) && bet <= MAX_BET)) fail('Mise invalide (au plus ' + MAX_BET + ' € à ce palier).');
       if (bet > ss.stack) fail('Pas assez d\'argent sur la table.');
       const r = GD.play(bet, () => ctx.rnd(1 << 30) / (1 << 30));
       ss.stack = round2(ss.stack - bet + r.total);
@@ -574,6 +624,22 @@ function handle(state, ctx) {
     }
     default: fail('Opération inconnue.');
   }
+  // Une table qui n'a plus de quoi payer la mise minimale est perdue ; plus rien nulle part = banqueroute
+  if (R.runActive(P)) {
+    const busy = { blackjack: S.bj && S.bj.round && S.bj.round.phase !== 'over', slots: S.sl && S.sl.free > 0, mines: S.mn && S.mn.round && S.mn.round.active, crash: S.cr && S.cr.round && !S.cr.round.done && S.cr.round.bet };
+    Object.keys(P.sessions).forEach((g) => {
+      const ss = P.sessions[g];
+      if (!busy[g] && ss.stack < R.gameMin(P, g)) {
+        delete P.sessions[g];
+        if (g === 'slots') S.sl = null;
+        result.tableLost = { game: g, left: ss.stack };
+        N.push({ kind: 'loss', title: 'Table perdue', text: 'Plus assez pour miser à ' + (R.GAMES[g] || g) + (ss.stack > 0 ? ' : les ' + ss.stack.toLocaleString('fr-FR') + ' € restants sont perdus.' : '.'), icon: '💸' });
+      }
+    });
+    const b = R.runCheckBroke(P, now, N);
+    if (b && b.over) result.dayOver = 'over';
+  }
+  if (P.run) result.run = P.run;
   state.player = P;
   state.secret = S;
   return { state, result, notes: N };

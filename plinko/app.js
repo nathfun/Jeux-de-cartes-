@@ -175,16 +175,16 @@
     document.querySelectorAll('#rows button').forEach((b) => b.classList.toggle('on', Number(b.dataset.v) === store.rows));
   }
   // mise maximale : salon VIP en partie réelle (le serveur vérifie aussi)
-  function maxB() { return Math.min(500, window.Casino && S.mode === 'real' ? Casino.maxBet() : 500); }
+  function maxB() { return (window.Casino && S.mode === 'real' ? Casino.maxBet() : 500); }
   let maxShown = null;
   function applyMax() {
     const m = maxB(); if (m === maxShown) return; maxShown = m;
     $('bet').max = m;
     if (readBet() > m) $('bet').value = m;
-    document.querySelectorAll('#quick button').forEach((b) => { b.disabled = Number(b.dataset.v) > m; b.title = b.disabled ? 'Mise maximale de ton salon : ' + m + ' €' : ''; });
+    document.querySelectorAll('#quick button').forEach((b) => { b.disabled = Number(b.dataset.v) > m; b.title = b.disabled ? 'Mise maximale à ce palier : ' + m + ' €' : ''; });
     let hint = document.getElementById('vip-hint');
     if (!hint) { hint = document.createElement('div'); hint.id = 'vip-hint'; hint.className = 'vip-hint'; $('quick').after(hint); }
-    if (window.Casino && S.mode === 'real') { const v = Casino.vip(), nx = Casino.VIP.find((x) => x.lvl > v.lvl); hint.textContent = v.icon + ' ' + v.name + ' · mise max ' + m + ' €' + (nx ? ' · ' + nx.name + ' (' + nx.max + ' €) au niveau ' + nx.lvl : ''); hint.hidden = false; }
+    if (window.Casino && S.mode === 'real') { hint.textContent = '🕴️ Palier ' + ((Casino.run || {}).palier || 1) + ' · mise max ' + m.toLocaleString('fr-FR') + ' € (elle monte avec les paliers)'; hint.hidden = false; }
     else hint.hidden = true;
   }
   function ui() {
@@ -272,7 +272,7 @@
 
   // ---------- Début et fin de partie ----------
   function showWallet() {
-    setText($('bank-label'), 'Banque'); setText($('wallet'), window.Casino ? fmt(Casino.wallet()) : '–');
+    setText($('bank-label'), 'Caisse'); setText($('wallet'), window.Casino ? fmt(Casino.wallet()) : '–');
     setText($('stack-label'), S.mode === 'train' ? 'Crédit d\'apprentissage' : 'Sur la table');
   }
   function startGame(mode, amount) {
@@ -283,7 +283,7 @@
     $('setup').hidden = true; $('game').hidden = false;
     const badge = $('mode-badge'); badge.hidden = false;
     badge.className = 'mode-badge' + (mode === 'real' ? ' real' : '');
-    badge.textContent = mode === 'real' ? '💰 Partie réelle · ta banque · sans aides' : '🎓 Apprentissage · crédit illimité, aides et conseils';
+    badge.textContent = mode === 'real' ? '🕴️ La Dette · ta caisse · sans aides' : '🎓 Apprentissage · crédit illimité, aides et conseils';
     $('end-btn').hidden = mode === 'train';
     renderHistory(); renderStats(); renderFair(); renderAides();
     setTimeout(() => scene.resize(), 0);
