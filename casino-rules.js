@@ -1146,10 +1146,10 @@
   }
 
   function startSession(P, game, amount, now) {
-    amount = Math.floor(amount);
+    amount = Math.round(amount * 100) / 100;
     if (!GAMES[game] || !runActive(P) || !isUnlocked(P, game)) return null;
     if (P.sessions[game]) return P.sessions[game];
-    if (!(amount > 0) || amount > P.run.cash) return null;
+    if (!(amount > 0) || amount > P.run.cash + 1e-9) return null;
     P.run.cash = Math.round((P.run.cash - amount) * 100) / 100;
     P.sessions[game] = { stack: amount, start: amount, at: now };
     return P.sessions[game];

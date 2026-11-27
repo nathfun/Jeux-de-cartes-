@@ -592,6 +592,7 @@
    * (ou reprise d'une partie en cours). En mode Apprentissage (choisi sur l'accueil), le jeu démarre tout de suite.
    * opts : { game, min, suggest, realNote, onStart(mode, amount, resumed) }
    */
+  const autoSat = {};
   function modePicker(box, opts) {
     injectStyle();
     load();
@@ -651,51 +652,26 @@
       };
       panel.append(rb, note);
     } else {
-      const maxV = Math.max(min, Math.floor(wal));
-      let val = Math.max(min, Math.min(Math.floor(wal), R.niceDown(wal / 4) || min));
-      panel.appendChild(mk('div', 'cm-label', 'Combien apportes-tu à la table ?'));
-      const big = mk('div', 'cm-big'); const amount = mk('span', 'cm-amt'); big.append(amount, mk('span', 'cm-eur', ' €'));
-      const after = mk('div', 'cm-sub');
-      const range = document.createElement('input'); range.type = 'range'; range.className = 'cm-range'; range.min = min; range.max = maxV; range.step = 1; range.setAttribute('aria-label', 'Somme apportée');
-      const exact = document.createElement('input'); exact.type = 'number'; exact.className = 'cm-exact'; exact.min = min; exact.max = maxV; exact.step = 1; exact.setAttribute('aria-label', 'Somme exacte');
-      const chips = mk('div', 'cm-chips');
-      const show = (v, bump) => {
-        val = Math.max(min, Math.min(maxV, Math.floor(v) || min));
-        amount.textContent = val.toLocaleString('fr-FR');
-        range.value = val; if (document.activeElement !== exact) exact.value = val;
-        range.style.setProperty('--p', ((val - min) / Math.max(1, maxV - min) * 100) + '%');
-        after.textContent = 'Caisse : ' + fmtE(wal) + '  →  il te restera ' + fmtE(wal - val) + ' · mise min. ' + fmtE(min) + ', max. ' + fmtE(R.maxBet(P, Date.now()));
-        chips.querySelectorAll('button').forEach((b) => b.classList.toggle('on', Number(b.dataset.v) === val));
-        if (bump) { big.classList.remove('bump'); void big.offsetWidth; big.classList.add('bump'); }
-      };
-      [[R.niceDown(wal * 0.1), 'c1'], [R.niceDown(wal * 0.25), 'c2'], [R.niceDown(wal * 0.5), 'c3']].filter(([v], i, a) => v >= min && v <= wal && (!i || v !== a[i - 1][0])).forEach(([v, c]) => {
-        const q = mk('button', 'cm-chip ' + c); q.type = 'button'; q.dataset.v = v;
-        q.append(mk('b', '', v >= 1000 ? String(v / 1000).replace('.', ',') + 'k' : String(v)));
-        q.onclick = () => { show(v, true); if (window.Sfx) Sfx.chips(); };
-        chips.appendChild(q);
-      });
-      if (wal >= min) { const q = mk('button', 'cm-chip c5'); q.type = 'button'; q.dataset.v = Math.floor(wal); q.append(mk('b', '', 'Tout')); q.onclick = () => { show(wal, true); if (window.Sfx) Sfx.chips(); }; chips.appendChild(q); }
-      range.oninput = () => show(range.value);
-      exact.oninput = () => { if (exact.value !== '') show(exact.value); };
-      exact.onchange = () => show(exact.value || min);
-      const go = mk('button', 'cm-cta', '▶ Lancer la partie'); go.type = 'button';
-      go.onclick = async () => {
-        if (!(val >= min)) { note.textContent = 'Il faut apporter au moins ' + fmtE(min) + '.'; return; }
-        if (val > wal) { note.textContent = 'Ta caisse ne contient que ' + fmtE(wal) + '.'; return; }
+      // La Dette : on s'installe toujours avec toute la caisse (l'argent des autres jeux suit)
+      const tot = R.runTotal(P);
+      const go = mk('button', 'cm-cta', '▶ Jouer avec toute ma caisse'); go.type = 'button';
+      const start = async () => {
         go.disabled = true; note.textContent = '';
-        const r = await Casino.startSession(opts.game, val);
+        const r = await Casino.startSession(opts.game, tot, true);
         go.disabled = false;
         if (!r || r.error) { note.textContent = (r && r.error) || 'Impossible de commencer.'; return; }
         Casino.training = false;
         opts.onStart('real', r.session.stack, !!r.resumed, r);
         launchFx(opts.game, 'Bonne chance !', fmtE(r.session.stack) + ' sur la table');
       };
-      const exactRow = mk('div', 'cm-exact-row'); exactRow.append(mk('span', '', 'Somme exacte'), exact);
-      panel.append(big, range, chips, after, exactRow, go, note);
-      if (wal < min) { go.disabled = true; range.disabled = true; note.textContent = 'Ta caisse est trop basse (' + fmtE(wal) + ') pour la mise minimale de ce jeu.'; }
-      show(val);
+      go.onclick = start;
+      panel.append(mk('div', 'cm-label', 'Ta caisse'), mk('div', 'cm-big', fmtE(tot)), mk('div', 'cm-sub', 'Mises de ' + fmtE(min) + ' à ' + fmtE(R.maxBet(P, Date.now())) + ' à ce palier'), go, note);
+      const back = mk('a', 'cm-back', '← Retour à la partie'); back.href = '../partie.html'; panel.appendChild(back);
+      if (tot < min) { go.disabled = true; note.textContent = 'Ta caisse est trop basse (' + fmtE(tot) + ') pour la mise minimale de ce jeu (' + fmtE(min) + ').'; }
+      // en arrivant sur le jeu : on s'assoit directement (pas après « Encaisser et quitter »)
+      else if (!autoSat[opts.game]) { autoSat[opts.game] = true; box.append(card); card.appendChild(panel); start(); return; }
     }
-    panel.appendChild(mk('p', 'cm-learn-tip', '🕴️ La Dette, palier ' + P.run.palier + ' : l\'argent apporté vient de ta caisse. Si la table ne peut plus payer la mise minimale, elle est perdue.' + (opts.realNote ? ' ' + opts.realNote : '')));
+    panel.appendChild(mk('p', 'cm-learn-tip', '🕴️ La Dette, palier ' + P.run.palier + ' : tu joues avec toute ta caisse, elle te suit d\'un jeu à l\'autre. Plus rien pour miser nulle part = banqueroute.' + (opts.realNote ? ' ' + opts.realNote : '')));
     card.appendChild(panel);
     box.append(card);
   }
@@ -732,9 +708,7 @@
   /** Réponse du serveur : fin de journée, banqueroute, table perdue → écran par-dessus le jeu. */
   function runWatch(res) {
     if (typeof document === 'undefined' || !(hudEl || document.querySelector('.cm-host'))) return;
-    if (res.dayOver) return runOverlay(res.dayOver === 'over' ? '🕴️ La mafia est passée…' : '🔔 La journée est terminée', res.dayOver === 'over' ? 'Ta partie de La Dette est finie. Retourne à la partie pour le bilan.' : 'Le parrain fait les comptes. Retourne à la partie pour la suite.');
-    const g = res.tableLost && res.tableLost.game;
-    if (g && document.querySelector('.cm-host')) runOverlay('💸 Table perdue', 'Il ne restait plus assez sur la table pour payer la mise minimale. Retourne à la partie choisir un autre jeu… ou revenir avec plus d\'argent.');
+    if (res.dayOver) return setTimeout(() => runOverlay(res.dayOver === 'over' ? '🕴️ La mafia est passée…' : '🔔 La journée est terminée', res.dayOver === 'over' ? 'Ta partie de La Dette est finie. Retourne à la partie pour le bilan.' : 'Le parrain fait les comptes. Retourne à la partie pour la suite.'), res.dayOver === 'over' ? 4500 : 0);
   }
   function runOverlay(title, text) {
     if (document.querySelector('.run-over')) return;
@@ -912,8 +886,13 @@
     session(game) { return load().sessions[game] || null; },
     sessions() { return Object.assign({}, load().sessions); },
     /** Commence (ou reprend) une partie réelle : { session, resumed, … } ou { error } */
-    async startSession(game, amount) {
-      if (SERVER) { const r = await call('session.start', { game, amount }); return r; }
+    async startSession(game, amount, all) {
+      if (SERVER) { const r = await call('session.start', { game, amount, all: !!all }); return r; }
+      if (all && !BANK && R.runActive(load())) {
+        // sans serveur : même règle, l'argent des autres jeux revient dans la caisse puis on prend tout
+        local((N) => { Object.keys(P.sessions).filter((g) => g !== game).forEach((g) => R.cashOut(P, g, N)); });
+        amount = load().run.cash;
+      }
       load();
       if (P.sessions[game]) return { session: P.sessions[game], resumed: true };
       if (BANK) {
@@ -1173,6 +1152,7 @@
 .run-over .ro-box { width: min(420px, 100%); text-align: center; background: #15110c; border: 2px solid #facc15; border-radius: 20px; padding: 1.4rem 1.2rem; color: #f5f0e6; font-family: system-ui, sans-serif; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
 .run-over .ro-title { font-size: 1.5rem; font-weight: 900; color: #facc15; margin-bottom: .4rem; }
 a.cm-cta { display: block; text-align: center; text-decoration: none; }
+.cm-back { display: block; text-align: center; margin-top: .7rem; color: #9aa5b1; font-size: .9rem; }
 .run-over .cm-cta { display: inline-block; text-decoration: none; margin-top: .6rem; }
 @keyframes fr-hue { to { filter: hue-rotate(360deg); } } @keyframes fr-pulse { 50% { filter: brightness(1.45) saturate(1.3); } }
 

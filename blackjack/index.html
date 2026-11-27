@@ -87,12 +87,8 @@
         <div class="options">
           <label class="coach-only"><input type="checkbox" id="opt-coach" checked> Coach en direct (retour après chaque décision)</label>
           <label class="coach-only"><input type="checkbox" id="opt-hint"> Afficher le conseil avant de jouer</label>
-          <label>Règle du croupier
-            <select id="opt-rule">
-              <option value="eu" selected>Européenne : pas de carte cachée (casinos français)</option>
-              <option value="us">Américaine : carte cachée + vérification du blackjack</option>
-            </select>
-          </label>
+          <!-- règle européenne (pas de carte cachée) : fixe, plus de choix -->
+          <select id="opt-rule" hidden aria-hidden="true"><option value="eu" selected>Européenne</option></select>
           <label>Vitesse de distribution
             <select id="opt-speed">
               <option value="0.6">Lente</option>

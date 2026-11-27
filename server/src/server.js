@@ -25,7 +25,7 @@ const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'jeux-de-cartes-81cdf';
 const DB_URL = process.env.FIREBASE_DATABASE_URL || 'https://jeux-de-cartes-81cdf-default-rtdb.europe-west1.firebasedatabase.app';
 const MAX_BODY = 32 * 1024;
 // version du serveur (affichée dans l'admin et sur /health) : à changer à chaque mise à jour du serveur
-const SERVER_VERSION = '2026.11.27-3';
+const SERVER_VERSION = '2026.11.27-4';
 const TABLES = { blackjack: 'tables/', poker: 'ptables/', roulette: 'rtables/', loto: 'ltables/' };
 
 // ---------- Firebase (vérification des comptes, profil public, lecture des tables entre amis) ----------
@@ -325,8 +325,8 @@ async function casino(uid, token, op, data) {
   const res = await serial(uid, async () => {
     let before = db.load(uid);
     if (!before.player && imported) before = { player: imported, secret: {} };
-    // passage à la nouvelle économie (÷ 10) : noté à part dans le journal, pour ne pas fausser le tableau de bord
-    if (before.player && (before.player.econ || 1) !== 2) {
+    // passage à la nouvelle économie (version 3 : jetons + La Dette) : noté à part dans le journal, une seule fois
+    if (before.player && (before.player.econ || 1) !== 3) {
       const conv = { player: R.normalize(JSON.parse(JSON.stringify(before.player)), Date.now()), secret: {} };
       db.save(uid, 'econ', before, Object.assign({}, conv, { player: Object.assign({}, conv.player, { _econMigrated: undefined }) }), Date.now());
       before = conv; // garde _econMigrated : le cœur du jeu affichera l'avis au joueur

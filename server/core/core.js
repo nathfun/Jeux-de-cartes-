@@ -501,8 +501,14 @@ function handle(state, ctx) {
       if (!R.runActive(P)) fail('Aucune journée en cours : lance une partie de La Dette depuis l\'accueil.');
       if (!R.isUnlocked(P, game)) fail('Ce jeu se débloque au palier ' + (R.RUN.UNLOCK[game] || '?') + '.');
       const min = R.gameMin(P, game);
-      if (!(int(d.amount) >= min)) fail('Il faut apporter au moins ' + min + ' € à cette table.');
-      if (!R.startSession(P, game, d.amount, now)) fail('Ta caisse ne contient pas assez d\'argent.');
+      let amount = Number(d.amount);
+      if (d.all) {
+        // on s'installe avec toute la caisse : l'argent laissé sur les autres jeux revient d'abord dans la caisse
+        Object.keys(P.sessions).filter((g) => g !== game).forEach((g) => { settle(g, false); R.cashOut(P, g, N); });
+        amount = P.run.cash;
+      }
+      if (!(amount >= min)) fail('Il faut au moins ' + min + ' € pour jouer ici' + (d.all ? ' (ta caisse : ' + P.run.cash.toLocaleString('fr-FR') + ' €).' : '.'));
+      if (!R.startSession(P, game, amount, now)) fail('Ta caisse ne contient pas assez d\'argent.');
       result.session = P.sessions[game];
       break;
     }
@@ -624,19 +630,10 @@ function handle(state, ctx) {
     }
     default: fail('Opération inconnue.');
   }
-  // Une table qui n'a plus de quoi payer la mise minimale est perdue ; plus rien nulle part = banqueroute
+  // Plus assez d'argent nulle part pour miser (caisse + tables, manches finies) : banqueroute
   if (R.runActive(P)) {
-    const busy = { blackjack: S.bj && S.bj.round && S.bj.round.phase !== 'over', slots: S.sl && S.sl.free > 0, mines: S.mn && S.mn.round && S.mn.round.active, crash: S.cr && S.cr.round && !S.cr.round.done && S.cr.round.bet };
-    Object.keys(P.sessions).forEach((g) => {
-      const ss = P.sessions[g];
-      if (!busy[g] && ss.stack < R.gameMin(P, g)) {
-        delete P.sessions[g];
-        if (g === 'slots') S.sl = null;
-        result.tableLost = { game: g, left: ss.stack };
-        N.push({ kind: 'loss', title: 'Table perdue', text: 'Plus assez pour miser à ' + (R.GAMES[g] || g) + (ss.stack > 0 ? ' : les ' + ss.stack.toLocaleString('fr-FR') + ' € restants sont perdus.' : '.'), icon: '💸' });
-      }
-    });
-    const b = R.runCheckBroke(P, now, N);
+    const busy = (S.bj && S.bj.round && S.bj.round.phase !== 'over') || (S.sl && S.sl.free > 0) || (S.mn && S.mn.round && S.mn.round.active) || (S.cr && S.cr.round && !S.cr.round.done && S.cr.round.bet);
+    const b = busy ? null : R.runCheckBroke(P, now, N);
     if (b && b.over) result.dayOver = 'over';
   }
   if (P.run) result.run = P.run;
