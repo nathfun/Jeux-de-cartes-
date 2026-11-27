@@ -449,6 +449,8 @@
   // Parrainage : le filleul et son parrain reçoivent REF_BONUS jetons chacun quand le filleul réussit son premier palier de La Dette
   const REF_BONUS = 150, REF_MIN_HANDS = 10, REF_MAX = 25;
   const refDone = (P) => (P.bestPalier || 0) >= 1;
+  // Tables multijoueur en jetons (blackjack, roulette) : mise d'entrée minimale, gain plafonné (×CAP de l'apport)
+  const MT = { MIN: 50, CAP: 10, TABLES: 2, PRESETS: [100, 250, 500, 1000] };
   const GAMES = { blackjack: 'Blackjack', poker: 'Poker', roulette: 'Roulette', slots: 'Machine à sous', crash: 'Rocket Crash', plinko: 'Plinko', trader: 'Bourse Flash', mines: 'Mines', gold: 'Ruée vers l\'Or', loto: 'Loto Express', wheel: 'Roue de la fortune', boosters: 'Boosters' };
   const pad = (n) => String(n).padStart(2, '0');
   // Date du jour (et de la veille) à l'heure de Paris : les défis et le bonus changent à minuit
@@ -1322,7 +1324,7 @@
     AVATARS, FELTS, BACKS, SHOP, SHOP_LABELS, DEFAULT_EQUIP, itemOf, canUse, buyItem, unlocksAt, CHALLENGES, ACHIEVEMENTS, TIME_PACKS, START_WALLET, GAMES,
     need, levelOf, title, today, fresh, normalize, addXP, unlock, checkWallet, ensureDaily, track,
     bonusInfo, claimBonus, claimChallenge, timeInfo, startTime, claimTime, startSession, cashOut,
-    prizeFor, prizeText, applyPrize, publicProfile, REF_BONUS, REF_MIN_HANDS, REF_MAX, refDone,
+    prizeFor, prizeText, applyPrize, publicProfile, REF_BONUS, REF_MIN_HANDS, REF_MAX, refDone, MT,
     COL_CATS, COLLECTION, COL_BY_ID, COTE_BASE, INSTANT_RATE, instantPrice, coteOf, rarityOfKey, countOf, instantSell,
     SERIES, PACK, PACK_MULT, packPrice, seriesOpen, openPack,
     RUN, QUOTAS, BET_STEPS, gameMin, FORTUNE, quotaOf, niceDown, palierFactor, runMaxBet, runMinBet, runActive, runTotal, isUnlocked, RUN_ITEMS, runItem, itemPrice, runReward,

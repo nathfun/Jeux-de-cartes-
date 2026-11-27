@@ -787,6 +787,43 @@
     },
     runTick() { return Casino.runCall('sync').then((r) => { const p = load(); if (p.run && p.run.status !== 'playing') runWatch({ dayOver: p.run.status === 'over' ? 'over' : 'shop' }); return r; }); },
     runHud,
+    // ----- Tables multijoueur en jetons -----
+    async mtSit(game, table, amount) {
+      if (SERVER) return call('mt.sit', { game, table, amount });
+      return local(() => { if (amount > P.wallet) return { error: 'Pas assez de jetons.' }; if (P.mt && P.mt.table !== table) return { error: 'Tu as encore des jetons sur une autre table.' }; P.wallet -= amount; P.mt = P.mt ? Object.assign(P.mt, { amount: P.mt.amount + amount }) : { game, table, amount, at: Date.now() }; return { mt: P.mt }; });
+    },
+    async mtLeave(chips) {
+      if (SERVER) return call('mt.leave', {});
+      return local(() => { if (!P.mt) return { payout: 0, none: true }; const brought = P.mt.amount, payout = Math.floor(Math.min(chips == null ? brought : chips, brought * R.MT.CAP)); P.wallet += payout; P.mt = null; return { payout, brought, net: payout - brought }; });
+    },
+    get mt() { return load().mt || null; },
+    // ----- Poker entre amis : droit d'entrée et cagnotte -----
+    async pkBuyIn(table) { if (SERVER) return call('pk.buyin', { table }); return { free: true }; },
+    async pkRefund() { if (SERVER) return call('pk.refund', {}); return { refund: 0 }; },
+    async pkClaim(table) { if (SERVER) { const r = await call('pk.claim', { table }); if (r && r.amount) Casino.toast('Cagnotte du poker', '+' + r.amount.toLocaleString('fr-FR') + ' jetons', '♠', 'gold'); return r; } return { amount: 0 }; },
+    MT: R.MT,
+    /** Combien de jetons apporter à la table ? (renvoie le nombre, ou null si on annule) */
+    buyInDialog(game) {
+      injectStyle();
+      const w = Math.floor(load().wallet || 0), min = R.MT.MIN;
+      return new Promise((resolve) => {
+        const o = document.createElement('div'); o.className = 'casino-confirm';
+        const b = document.createElement('div'); b.className = 'ccf-box';
+        const ic = document.createElement('div'); ic.className = 'ccf-icon'; ic.textContent = game === 'roulette' ? '🎡' : '🂡'; b.appendChild(ic);
+        const t = document.createElement('h3'); t.textContent = 'Combien de jetons apportes-tu ?'; b.appendChild(t);
+        const p = document.createElement('p'); p.textContent = w < min ? 'Il te faut au moins ' + min + ' jetons pour t\'asseoir (tu en as ' + w + '). Récupère ton bonus du jour ou tes défis !' : 'Tu en as ' + w.toLocaleString('fr-FR') + '. Tu repars avec ce qu\'il te reste sur la table quand tu la quittes.';
+        b.appendChild(p);
+        const row = document.createElement('div'); row.className = 'ccf-btns'; row.style.flexWrap = 'wrap';
+        const close = (v) => { o.remove(); resolve(v); };
+        R.MT.PRESETS.filter((v) => v <= w).concat(w >= min && !R.MT.PRESETS.includes(w) ? [w] : []).forEach((v) => {
+          const x = document.createElement('button'); x.type = 'button'; x.className = 'ccf-ok'; x.textContent = (v === w ? 'Tout · ' : '') + v.toLocaleString('fr-FR') + ' 🪙';
+          x.onclick = () => close(v); row.appendChild(x);
+        });
+        const no = document.createElement('button'); no.type = 'button'; no.className = 'ccf-no'; no.textContent = 'Annuler'; no.onclick = () => close(null);
+        row.appendChild(no);
+        b.appendChild(row); o.appendChild(b); document.body.appendChild(o);
+      });
+    },
     /** Retient les annonces (et le bandeau du quota) jusqu'à la fin de l'animation en cours. */
     hold() { holding = true; clearTimeout(holdTimer); holdTimer = setTimeout(() => Casino.release(), 20000); },
     release() { clearTimeout(holdTimer); if (!holding) return; holding = false; const n = held; held = []; showNotes(n); listeners.forEach((f) => { try { f(load()); } catch (e) { /* ignore */ } }); },

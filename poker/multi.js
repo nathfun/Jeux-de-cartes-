@@ -327,6 +327,7 @@
     if (!raw) { showLobby('Cette table n\'existe pas ou a été fermée.'); return; }
     const st = normalize(JSON.parse(JSON.stringify(raw)));
     if (pub && st.handNo !== pub.handNo) { boardShown = 0; }
+    document.body.classList.toggle('high-roller', !!(st.settings && st.settings.hr));
     if (shownHand < 0) boardShown = st.board.length; // arrivée en cours de main : pas d'animation
     shownHand = st.handNo;
     pub = st;
@@ -457,6 +458,16 @@
           b.className = 'sit'; b.textContent = 'S\'asseoir'; b.disabled = working;
           b.addEventListener('click', () => {
             if (!myName()) { toast('Choisis d\'abord un pseudo (← Tables).'); return; }
+            const fee = (st.settings && st.settings.buyIn) || 0;
+            if (fee > 0 && window.Casino && Casino.pkBuyIn) {
+              Casino.confirm({ icon: st.settings.hr ? '👑' : '♠', title: 'Droit d\'entrée : ' + fee.toLocaleString('fr-FR') + ' jetons', text: 'Il part dans la cagnotte de la partie. Si tu te lèves avant la première main, il t\'est rendu.', price: fee, ok: 'Payer et m\'asseoir' }).then(async (ok) => {
+                if (!ok) return;
+                const r = await Casino.pkBuyIn(tableId);
+                if (r && r.error) { toast(r.error); return; }
+                act((x) => opSit(x, i));
+              });
+              return;
+            }
             act((x) => opSit(x, i));
           });
           plate.appendChild(b);
@@ -528,13 +539,15 @@
       // Prix sur la banque du Casino (les jetons de la table, eux, restent sur la table)
       const nPlayers = (st.tstats.eliminated || []).length + 1;
       const myPlace = won ? 1 : myElim ? myElim.place : 0;
-      const prize = myPlace && window.Casino ? Casino.prizeFor(myPlace, nPlayers) : 0;
+      const fee = (st.settings && st.settings.buyIn) || 0;
+      const pot = fee * nPlayers, share = nPlayers <= 3 ? (myPlace === 1 ? 1 : 0) : ({ 1: 0.65, 2: 0.25, 3: 0.1 }[myPlace] || 0);
+      const prize = fee > 0 ? Math.floor(pot * share) : 0;
       if (myPlace && window.Casino && Casino.pokerWeekAdd) Casino.pokerWeekAdd(myPlace, nPlayers); // tournoi de la semaine
-      if (prize !== null && myPlace && window.Casino) Casino.multiPrize('pk:' + tableId + ':' + g.at, myPlace, nPlayers, { game: 'poker', table: tableId });
+      if (fee > 0 && myPlace && window.Casino && Casino.pkClaim) Casino.pkClaim(tableId);
       setTimeout(() => PokerApp.showRecap({
         won, T: st.tstats, winnerKey: g.winner, winnerName: g.name, meKey: me, blinds: g.blinds,
         title: won ? 'Tu as gagné la partie !' : g.name + ' remporte la partie !',
-        subtitle: (won ? 'Tous tes adversaires sont éliminés' : myElim ? 'Tu termines ' + myElim.place + 'e' : '') + (prize ? ' · +' + prize + ' € sur ta banque du Casino' : ''),
+        subtitle: (won ? 'Tous tes adversaires sont éliminés' : myElim ? 'Tu termines ' + myElim.place + 'e' : '') + (prize ? ' · +' + prize.toLocaleString('fr-FR') + ' jetons (cagnotte de ' + pot.toLocaleString('fr-FR') + ')' : ''),
         againLabel: st.host === me ? 'Nouvelle partie' : 'Fermer',
         onAgain: () => { if (pub && pub.host === me) act(opRestart); },
       }), 1500);
@@ -737,8 +750,9 @@
     e.preventDefault();
     if (needPseudo()) return;
     const [sb, bb] = $('pm-blinds').value.split('/').map(Number);
+    if ($('pm-buyin').selectedOptions[0].dataset.hr && !(window.Casino && Casino.isVip())) { $('pm-note').textContent = 'Les tables High Roller sont réservées aux membres VIP.'; return; }
     const settings = { sb, bb, stack: bb * parseInt($('pm-stack').value, 10), turnTime: parseInt($('pm-turn').value, 10), coach: $('pm-coach').checked,
-      blindRule: $('pm-blindup').value, public: $('pm-public').checked, vip: !!(window.Casino && Casino.isVip() && $('pm-vip').checked), lk: Math.random().toString(36).slice(2, 10) };
+      blindRule: $('pm-blindup').value, buyIn: parseInt($('pm-buyin').value, 10) || 0, hr: !!$('pm-buyin').selectedOptions[0].dataset.hr, public: $('pm-public').checked, vip: !!(window.Casino && Casino.isVip() && $('pm-vip').checked), lk: Math.random().toString(36).slice(2, 10) };
     try {
       const id = await net.createTable(initialPub($('pm-name').value.trim().slice(0, 30) || 'Poker de ' + myName(), settings));
       $('pm-name').value = '';
@@ -746,7 +760,8 @@
       if (window.Casino && Casino.launchFx) Casino.launchFx('poker', 'Table créée !', 'Code ' + id + ' · invite tes amis');
     } catch (err) { $('pm-note').textContent = 'Impossible de créer la table. Vérifie ta connexion.'; }
   });
-  $('pm-leave-table').addEventListener('click', () => { if (lobbyLastInfo && window.Social) Social.lobbyRemove('poker', tableId, lobbyLastInfo); lobbyLastInfo = null; showLobby(); if (window.Social && Social.hubLink) location.href = Social.hubLink('#multi'); });
+  $('pm-leave-table').addEventListener('click', () => {
+    if (window.Casino && Casino.profile.pkt && Casino.profile.pkt.table === tableId && !(pub && pub.tstats && pub.tstats.hands > 0)) Casino.pkRefund().then((r) => { if (r && r.refund) Casino.toast('Droit d\'entrée rendu', '+' + r.refund + ' jetons', '🪙'); }); if (lobbyLastInfo && window.Social) Social.lobbyRemove('poker', tableId, lobbyLastInfo); lobbyLastInfo = null; showLobby(); if (window.Social && Social.hubLink) location.href = Social.hubLink('#multi'); });
   $('pm-invite').addEventListener('click', async () => {
     if (window.Social && Social.inviteDialog) { Social.inviteDialog('poker', tableId); return; }
     const u = new URL(location.href); u.search = ''; u.searchParams.set('table', tableId);

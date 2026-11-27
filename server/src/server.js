@@ -25,7 +25,7 @@ const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'jeux-de-cartes-81cdf';
 const DB_URL = process.env.FIREBASE_DATABASE_URL || 'https://jeux-de-cartes-81cdf-default-rtdb.europe-west1.firebasedatabase.app';
 const MAX_BODY = 32 * 1024;
 // version du serveur (affichée dans l'admin et sur /health) : à changer à chaque mise à jour du serveur
-const SERVER_VERSION = '2026.11.27-6';
+const SERVER_VERSION = '2026.11.27-7';
 const TABLES = { blackjack: 'tables/', poker: 'ptables/', roulette: 'rtables/', loto: 'ltables/' };
 
 // ---------- Firebase (vérification des comptes, profil public, lecture des tables entre amis) ----------
@@ -307,6 +307,23 @@ async function casino(uid, token, op, data) {
     if (!TABLES[game] || !/^[A-Z0-9]{3,8}$/.test(id)) throw userError('Table invalide.');
     const t = rtdb ? (await rtdb.ref(TABLES[game] + id).get()).val() : null;
     ctx.table = t ? Object.assign({ id }, t) : null;
+  }
+  if (op === 'pk.buyin' || op === 'pk.refund' || op === 'pk.claim') {
+    let id = String(ctx.data.table || '');
+    if (op === 'pk.refund' && db.has(uid)) { const cur = db.load(uid).player; if (cur && cur.pkt) id = cur.pkt.table; }
+    if (/^[A-Za-z0-9_-]{3,40}$/.test(id) && rtdb) {
+      const t = (await rtdb.ref(TABLES.poker + id).get()).val();
+      ctx.table = t ? Object.assign({ id }, t) : null;
+    }
+  }
+  if (op === 'mt.sit' || op === 'mt.leave') {
+    // table en jetons : le serveur lit la table (réglages, jetons du joueur) dans Firebase
+    let game = String(ctx.data.game || ''), id = String(ctx.data.table || '');
+    if (op === 'mt.leave' && db.has(uid)) { const cur = db.load(uid).player; if (cur && cur.mt) { game = cur.mt.game; id = cur.mt.table; } }
+    if (TABLES[game] && /^[A-Za-z0-9_-]{3,40}$/.test(id) && rtdb) {
+      const t = (await rtdb.ref(TABLES[game] + id).get()).val();
+      ctx.table = t ? Object.assign({ id }, t) : null;
+    }
   }
   if (op === 'ref.link') {
     const code = String(ctx.data.code || '').trim().toUpperCase();

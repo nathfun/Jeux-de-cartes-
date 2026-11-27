@@ -43,7 +43,7 @@
   function opJoin(x) {
     if (x.players[me]) { if (myName()) x.players[me].name = myName(); return; }
     if (x.phase === 'over') return false;
-    x.players[me] = { name: myName() || 'Joueur', bankroll: x.settings.bank, color: COLORS[Object.keys(x.players).length % COLORS.length], wagered: 0, biggestWin: 0, ready: false };
+    x.players[me] = { name: myName() || 'Joueur', bankroll: x.settings.cash ? 0 : x.settings.bank, color: COLORS[Object.keys(x.players).length % COLORS.length], wagered: 0, biggestWin: 0, ready: false };
   }
   function opBet(key, amount) {
     return (x) => {
@@ -116,6 +116,7 @@
     x.bets = {};
     x.phase = 'waiting';
     x.deadline = null;
+    if (x.settings.cash) return; // table en jetons : pas de fin de partie, on vient et on part
     Object.keys(x.players).forEach((u) => { if (x.players[u].bankroll < 1) x.players[u].out = true; });
     const alive = activePlayers(x);
     if ((x.settings.rounds && x.round >= x.settings.rounds) || (Object.keys(x.players).length && !alive.length)) {
@@ -162,6 +163,7 @@
     const prev = st;
     st = normalize(JSON.parse(JSON.stringify(raw)));
     if (!st.players[me] && st.phase !== 'over') act(opJoin);
+    if (st.settings.cash && window.Casino && !(st.players[me] && st.players[me].bankroll > 0) && !(Casino.mt && Casino.mt.table === tableId) && !sitting) setTimeout(askBuyIn, 300);
     if (st.settings.coach && coachChoice() === null && !$('coach-dialog').open) {
       try { $('coach-dialog').showModal(); } catch (e) { $('coach-dialog').setAttribute('open', ''); }
     }
@@ -197,7 +199,7 @@
         if (r.staked && prev) setTimeout(() => UI.showOutcome(r.net, r.staked), 700);
         if (r.staked) {
           if (window.Sfx) setTimeout(() => { if (r.net > 0) Sfx.win(); else if (r.net < 0) Sfx.lose(); }, 900);
-          if (coachOn()) UI.coachRound([(r.net >= 0 ? '✔ ' : '✘ ') + 'Tour ' + st.round + ' : ' + B.describe(n), 'Tu as misé ' + UI.fmt(r.staked) + ' € et récupéré ' + UI.fmt(r.back) + ' €.', 'L\'avantage du casino sur ces mises : environ ' + UI.fmt(Math.round(r.expected * 100) / 100) + ' € par tour en moyenne.'], r.net > 0 ? 'good' : r.net < 0 ? 'bad' : 'hint');
+          if (coachOn()) UI.coachRound([(r.net >= 0 ? '✔ ' : '✘ ') + 'Tour ' + st.round + ' : ' + B.describe(n), 'Tu as misé ' + UI.fmt(r.staked) + ' jetons et récupéré ' + UI.fmt(r.back) + ' jetons.', 'L\'avantage du casino sur ces mises : environ ' + UI.fmt(Math.round(r.expected * 100) / 100) + ' jetons par tour en moyenne.'], r.net > 0 ? 'good' : r.net < 0 ? 'bad' : 'hint');
         }
         UI.renderStats(T);
       }
@@ -217,10 +219,10 @@
     if (x.phase === 'result') {
       announce = B.describe(x.history[0]);
       const mine = x.lastWins ? x.lastWins[me] : undefined;
-      sub = mine === undefined ? '' : mine > 0 ? 'Tu gagnes ' + UI.fmt(mine) + ' € !' : mine < 0 ? 'Tu perds ' + UI.fmt(-mine) + ' €.' : 'Mise récupérée.';
+      sub = mine === undefined ? '' : mine > 0 ? 'Tu gagnes ' + UI.fmt(mine) + ' jetons !' : mine < 0 ? 'Tu perds ' + UI.fmt(-mine) + ' jetons.' : 'Mise récupérée.';
     }
     if (x.phase === 'over') { announce = 'Partie terminée'; sub = ''; }
-    if (p && p.out) sub = p.cashedOut ? 'Tu as encaissé ' + UI.fmt(p.bankroll) + ' € : tu regardes la fin de la partie.' : 'Ton solde est épuisé : tu regardes la fin de la partie.';
+    if (p && p.out) sub = p.cashedOut ? 'Tu as encaissé ' + UI.fmt(p.bankroll) + ' jetons : tu regardes la fin de la partie.' : 'Ton solde est épuisé : tu regardes la fin de la partie.';
     const others = [];
     Object.keys(x.bets).forEach((u) => {
       if (u === me || !x.players[u]) return;
@@ -243,9 +245,11 @@
   let lobbyLastInfo = null;
   function lobbyTick() {
     if (!st || !tableId || !window.Social || !Social.lobbyBeat) return;
-    if (!(st.creator === me && st.phase !== 'over')) { if (lobbyLastInfo) { Social.lobbyRemove('roulette', tableId, lobbyLastInfo); lobbyLastInfo = null; } return; }
     const sets = st.settings || {};
-    lobbyLastInfo = { name: st.name, host: myName(), players: Object.keys(st.players || {}).length, max: 8, pub: sets.public !== false, vip: !!sets.vip, lk: sets.lk };
+    const mine = sets.cash ? !!st.players[me] : st.creator === me && st.phase !== 'over';
+    if (!mine) { if (lobbyLastInfo && st.creator === me) Social.lobbyRemove('roulette', tableId, lobbyLastInfo); lobbyLastInfo = null; return; }
+    const n = Object.keys(st.players || {}).filter((u) => st.players[u].bankroll > 0 || u === me).length;
+    lobbyLastInfo = { name: st.name, host: myName(), players: n, max: 8, free: 8 - n, pub: sets.public !== false, vip: !!sets.vip, lk: sets.lk, cash: !!sets.cash };
     Social.lobbyBeat('roulette', tableId, lobbyLastInfo);
   }
   setInterval(lobbyTick, 30000);
@@ -278,9 +282,9 @@
       const hot = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
       setTimeout(() => UI.showRecap({
         won, title: won ? 'Tu gagnes la partie !' : (ranking[0] ? ranking[0].name + ' gagne la partie !' : 'Partie terminée'),
-        subtitle: (myRank ? 'Tu termines ' + (myRank === 1 ? '1er' : myRank + 'e') + ' avec ' + UI.fmt(ranking[myRank - 1].bankroll) + ' €' : '') + (prize ? ' · +' + prize + ' € sur ta banque du Casino' : ''),
+        subtitle: (myRank ? 'Tu termines ' + (myRank === 1 ? '1er' : myRank + 'e') + ' avec ' + UI.fmt(ranking[myRank - 1].bankroll) + ' jetons' : '') + (prize ? ' · +' + prize + ' jetons sur ta banque du Casino' : ''),
         stats: [['Tours', st.round], ['Joueurs', ranking.length], ['Numéro le plus sorti', hot !== undefined ? hot + ' (' + counts[hot] + '×)' : '–'],
-          ['Plus gros gain', UI.fmt(Math.max(0, ...ranking.map((r) => r.biggestWin || 0))) + ' €'], ['Total misé', UI.fmt(ranking.reduce((a, r) => a + (r.wagered || 0), 0)) + ' €'], ['Zéros', st.history.filter((n) => n === 0).length]],
+          ['Plus gros gain', UI.fmt(Math.max(0, ...ranking.map((r) => r.biggestWin || 0))) + ' jetons'], ['Total misé', UI.fmt(ranking.reduce((a, r) => a + (r.wagered || 0), 0)) + ' jetons'], ['Zéros', st.history.filter((n) => n === 0).length]],
         ranking, againLabel: 'Rejouer', onAgain: () => act(opRestart),
       }), 800);
     }
@@ -332,8 +336,8 @@
         T.peak = Math.max(T.peak || 0, p.bankroll);
         UI.showRecap({
           won: diff > 0, icon: diff > 0 ? '💰' : '🎡',
-          title: 'Tu encaisses ' + UI.fmt(p.bankroll) + ' €',
-          subtitle: diff > 0 ? 'Tu repars avec ' + UI.fmt(diff) + ' € de plus qu\'au départ !' : diff < 0 ? 'Tu repars avec ' + UI.fmt(-diff) + ' € de moins qu\'au départ.' : 'Tu repars avec ton solde de départ.',
+          title: 'Tu encaisses ' + UI.fmt(p.bankroll) + ' jetons',
+          subtitle: diff > 0 ? 'Tu repars avec ' + UI.fmt(diff) + ' jetons de plus qu\'au départ !' : diff < 0 ? 'Tu repars avec ' + UI.fmt(-diff) + ' jetons de moins qu\'au départ.' : 'Tu repars avec ton solde de départ.',
           stats: UI.bilanStats(T, st.settings.bank, p.bankroll),
           ranking: [{ name: 'Toi', me: true, bankroll: p.bankroll, biggestWin: p.biggestWin, wagered: p.wagered }],
           rankTitle: 'Ton bilan', againLabel: 'Quitter la table', closeLabel: 'Regarder la fin',
@@ -342,6 +346,51 @@
       });
     },
   };
+
+  // ---------- Tables en jetons ----------
+  let sitting = false, buyAsked = false;
+  async function cashSit(id, amount) {
+    const r = await Casino.mtSit('roulette', id, amount);
+    if (!r || r.error) { $('rm-note').textContent = (r && r.error) || 'Impossible de s\'asseoir.'; Casino.toast('Roulette', (r && r.error) || 'Impossible de s\'asseoir.', '⚠️'); return false; }
+    try { await net.transact(id, (x) => { normalize(x); opJoin(x); x.players[me].bankroll = (x.players[me].bankroll || 0) + amount; x.players[me].out = false; }); } catch (e) { /* ignore */ }
+    return true;
+  }
+  async function autoPlay() {
+    const mt = Casino.mt;
+    if (mt && mt.game === 'roulette') {
+      if ((await net.activeCount(mt.table).catch(() => 0)) > 0) { sitting = true; openTable(mt.table, true); return; }
+      const r = await Casino.mtLeave();
+      if (r && r.payout) Casino.toast('Table fermée', r.payout + ' jetons rendus sur ton compte.', '🪙');
+    }
+    const amount = await Casino.buyInDialog('roulette');
+    if (!amount) { location.href = Social.hubLink('#multi'); return; }
+    $('rm-note').textContent = 'Recherche d\'une table…';
+    const list = ((await Social.lobbyList().catch(() => null)) || []).filter((e) => e.game === 'roulette' && e.pub && e.cash && e.code && !e.vip);
+    let id = null;
+    for (const e of list) { if ((e.free == null ? e.players < 8 : e.free > 0) && (await net.activeCount(e.code).catch(() => 0)) > 0) { id = e.code; break; } }
+    if (!id) {
+      if (list.length >= Casino.MT.TABLES) { $('rm-note').textContent = 'Les tables publiques sont pleines : réessaie dans un instant.'; return; }
+      const x = initial('Roulette publique', { cash: true, bank: 0, betTime: 25, rounds: 0, coach: true, public: true, lk: Math.random().toString(36).slice(2, 10) });
+      x.started = true;
+      try { id = await net.createTable(x); } catch (e) { $('rm-note').textContent = 'Impossible d\'ouvrir une table. Vérifie ta connexion.'; return; }
+    }
+    sitting = true;
+    if (!(await cashSit(id, amount))) { sitting = false; return; }
+    openTable(id, true);
+  }
+  async function cashLeave() {
+    const p = st && st.players[me];
+    if (st && canBet(st) && st.bets && st.bets[me]) await act(opClear);
+    const r = await Casino.mtLeave(p ? p.bankroll + (st && canBet(st) && st.bets[me] ? total(st.bets[me]) : 0) : null);
+    if (r && !r.error && tableId) { try { await net.transact(tableId, (x) => { if (x.players && x.players[me]) x.players[me].bankroll = 0; }); } catch (e) { /* ignore */ } }
+    if (r && !r.error && !r.none) Casino.toast('Tu quittes la table', 'Tu repars avec ' + r.payout.toLocaleString('fr-FR') + ' jetons (' + (r.net >= 0 ? '+' : '−') + Math.abs(r.net).toLocaleString('fr-FR') + ').', '🪙', r.net > 0 ? 'gold' : '');
+  }
+  async function askBuyIn() {
+    if (buyAsked) return; buyAsked = true;
+    const amount = await Casino.buyInDialog('roulette');
+    if (amount) { sitting = true; await cashSit(tableId, amount); }
+    buyAsked = false;
+  }
 
   // ---------- Accueil ----------
   function cleanup() { unsub.forEach((u) => { try { u(); } catch (e) { /* ignore */ } }); unsub = []; timers.forEach(clearTimeout); }
@@ -413,15 +462,26 @@
   $('rm-create').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (needPseudo()) return;
-    const settings = { bank: +$('rm-bank').value, betTime: +$('rm-bettime').value, rounds: +$('rm-rounds').value, coach: $('rm-coach').checked, public: $('rm-public').checked, vip: !!(window.Casino && Casino.isVip() && $('rm-vip').checked), lk: Math.random().toString(36).slice(2, 10) };
+    if (!(window.Casino && Casino.isVip())) { $('rm-note').textContent = 'Les tables privées sont réservées aux membres VIP. Touche « Jouer » dans Multijoueur pour rejoindre une table publique.'; return; }
+    const amount = await Casino.buyInDialog('roulette');
+    if (!amount) return;
+    const settings = { cash: true, bank: 0, betTime: +$('rm-bettime').value, rounds: +$('rm-rounds').value, coach: $('rm-coach').checked, public: $('rm-public').checked, vip: !!(window.Casino && Casino.isVip() && $('rm-vip').checked), lk: Math.random().toString(36).slice(2, 10) };
     try {
-      const id = await net.createTable(initial($('rm-name').value.trim().slice(0, 30) || 'Roulette de ' + myName(), settings));
+      const x0 = initial($('rm-name').value.trim().slice(0, 30) || 'Roulette de ' + myName(), settings); x0.started = true;
+      const id = await net.createTable(x0);
       $('rm-name').value = '';
+      sitting = true;
+      if (!(await cashSit(id, amount))) { sitting = false; net.deleteTable(id).catch(() => {}); return; }
       openTable(id, true);
       if (window.Casino && Casino.launchFx) Casino.launchFx('roulette', 'Table créée !', 'Code ' + id + ' · invite tes amis');
     } catch (err) { $('rm-note').textContent = 'Impossible de créer la table. Vérifie ta connexion.'; }
   });
-  $('rm-leave').addEventListener('click', () => { if (lobbyLastInfo && window.Social) Social.lobbyRemove('roulette', tableId, lobbyLastInfo); lobbyLastInfo = null; showLobby(); if (window.Social && Social.hubLink) location.href = Social.hubLink('#multi'); });
+  $('rm-leave').addEventListener('click', async () => {
+    if (st && st.settings.cash && window.Casino && Casino.mt) await cashLeave();
+    if (lobbyLastInfo && window.Social && st && st.creator === me) Social.lobbyRemove('roulette', tableId, lobbyLastInfo);
+    lobbyLastInfo = null; showLobby();
+    if (window.Social && Social.hubLink) setTimeout(() => { location.href = Social.hubLink('#multi'); }, 900);
+  });
   $('rm-invite').addEventListener('click', async () => {
     if (window.Social && Social.inviteDialog) { Social.inviteDialog('roulette', tableId); return; }
     const u = new URL(location.href); u.search = ''; u.searchParams.set('table', tableId);
@@ -491,7 +551,10 @@
     net = n; me = n.me;
     $('rm-pseudo').value = myName();
     const code = new URLSearchParams(location.search).get('table');
+    const wantAuto = new URLSearchParams(location.search).get('multi') === 'auto';
     showLobby();
+    $('rm-create').hidden = !(window.Casino && Casino.isVip());
+    if (wantAuto && !code) { autoPlay(); return; }
     if (code) {
       if (myName()) openTable(code.toUpperCase());
       else { $('rm-code').value = code.toUpperCase(); needPseudo(); }

@@ -112,9 +112,11 @@
   }
 
   function player(st, uid) {
-    if (!st.players[uid]) st.players[uid] = { bankroll: startMoney(st) };
+    if (!st.players[uid]) st.players[uid] = { bankroll: st.settings.cash ? 0 : startMoney(st) };
     return st.players[uid];
   }
+
+  function opBuyIn(st, amount) { const p = player(st, me); p.bankroll = (p.bankroll || 0) + amount; p.out = false; if (myName()) p.name = myName(); }
 
   function seatHasHands(seat) { return seat.hands && seat.hands.length > 0; }
 
@@ -208,8 +210,8 @@
       const parts = [];
       const one = (amount, res, label) => {
         if (!amount) return;
-        if (res) { p.bankroll += amount * (res.mult + 1); parts.push('✔ ' + label + ' : ' + res.name + ' +' + amount * res.mult + ' €'); }
-        else parts.push('✘ ' + label + ' −' + amount + ' €');
+        if (res) { p.bankroll += amount * (res.mult + 1); parts.push('✔ ' + label + ' : ' + res.name + ' +' + amount * res.mult + ' jetons'); }
+        else parts.push('✘ ' + label + ' −' + amount + ' jetons');
       };
       one(s.pp, SideBets.perfectPairs(c[0], c[1]), 'Paire parfaite');
       one(s.t213, SideBets.twentyOnePlusThree(c[0], c[1], up), '21+3');
@@ -251,8 +253,8 @@
       s.insDecided = true;
       if (!s.ins || st.settings.noHole) return; // règle européenne : réglée à la fin, avec la 2e carte du croupier
       const p = player(st, s.owner);
-      if (dBJ) { p.bankroll += s.ins * 3; s.side = (s.side ? s.side + ' · ' : '') + '✔ Assurance +' + s.ins * 2 + ' €'; }
-      else s.side = (s.side ? s.side + ' · ' : '') + '✘ Assurance −' + s.ins + ' €';
+      if (dBJ) { p.bankroll += s.ins * 3; s.side = (s.side ? s.side + ' · ' : '') + '✔ Assurance +' + s.ins * 2 + ' jetons'; }
+      else s.side = (s.side ? s.side + ' · ' : '') + '✘ Assurance −' + s.ins + ' jetons';
     });
     afterPeek(st, 0);
   }
@@ -322,20 +324,20 @@
       if (!s.owner || !s.hands.length) return;
       const p = player(st, s.owner);
       if (st.settings.noHole && s.ins) { // assurance (règle européenne) : réglée maintenant
-        if (dBJ) { p.bankroll += s.ins * 3; s.side = (s.side ? s.side + ' · ' : '') + '✔ Assurance +' + s.ins * 2 + ' €'; }
-        else s.side = (s.side ? s.side + ' · ' : '') + '✘ Assurance −' + s.ins + ' €';
+        if (dBJ) { p.bankroll += s.ins * 3; s.side = (s.side ? s.side + ' · ' : '') + '✔ Assurance +' + s.ins * 2 + ' jetons'; }
+        else s.side = (s.side ? s.side + ' · ' : '') + '✘ Assurance −' + s.ins + ' jetons';
       }
       const single = s.hands.length === 1;
       s.hands.forEach((h) => {
         const v = value(h.cards).total;
         const pBJ = single && !h.split && isBJ(h.cards);
         let back = 0, txt, cls;
-        if (h.surrendered) { back = h.bet / 2; txt = 'Abandon −' + h.bet / 2 + ' €'; cls = 'lose'; }
+        if (h.surrendered) { back = h.bet / 2; txt = 'Abandon −' + h.bet / 2 + ' jetons'; cls = 'lose'; }
         else if (pBJ && dBJ) { back = h.bet; txt = 'Égalité'; cls = 'push'; }
-        else if (pBJ) { back = h.bet * 2.5; txt = 'Blackjack ! +' + h.bet * 1.5 + ' €'; cls = 'win'; }
+        else if (pBJ) { back = h.bet * 2.5; txt = 'Blackjack ! +' + h.bet * 1.5 + ' jetons'; cls = 'win'; }
         else if (dBJ) { txt = 'Blackjack du croupier'; cls = 'lose'; }
         else if (v > 21) { txt = 'Sauté'; cls = 'lose'; }
-        else if (d > 21 || v > d) { back = h.bet * 2; txt = 'Gagné +' + h.bet + ' €'; cls = 'win'; }
+        else if (d > 21 || v > d) { back = h.bet * 2; txt = 'Gagné +' + h.bet + ' jetons'; cls = 'win'; }
         else if (v === d) { back = h.bet; txt = 'Égalité'; cls = 'push'; }
         else { txt = 'Perdu'; cls = 'lose'; }
         p.bankroll += back;
@@ -345,7 +347,7 @@
     // Pas de recave : sous la mise minimale, le joueur est éliminé
     Object.keys(st.players).forEach((uid) => {
       const p = st.players[uid];
-      if (p.played && !p.out && p.bankroll < 5) { p.out = true; p.outRound = st.round; st.seats.forEach((s) => { if (s.owner === uid) s.bet = 0; }); }
+      if (!st.settings.cash && p.played && !p.out && p.bankroll < 5) { p.out = true; p.outRound = st.round; st.seats.forEach((s) => { if (s.owner === uid) s.bet = 0; }); }
     });
     checkGameEnd(st);
     if (!st.msg) st.msg = d > 21 ? 'Le croupier saute avec ' + d + ' !' : 'Le croupier a ' + (dBJ ? 'un blackjack' : d) + '.';
@@ -353,6 +355,7 @@
 
   // Fin de la partie : nombre de mains atteint, ou un seul joueur encore en jeu
   function checkGameEnd(st) {
+    if (st.settings.cash) return; // table en jetons : on vient et on part quand on veut
     const parts = Object.keys(st.players).filter((u) => st.players[u].played);
     const alive = parts.filter((u) => !st.players[u].out);
     const limit = st.settings.hands && st.round >= st.settings.hands;
@@ -451,8 +454,8 @@
     if (place && window.Casino) { prize = Casino.prizeFor(place, rows.length); Casino.multiPrize('bj:' + tableId + ':' + st.gameEnd.at, place, rows.length, { game: 'blackjack', table: tableId }); }
     const fn = () => window.Casino && Casino.showRanking({
       title: place === 1 ? 'Tu gagnes la partie !' : (rows[0] ? rows[0].name + ' gagne la partie !' : 'Partie terminée'),
-      subtitle: (place ? 'Tu termines ' + (place === 1 ? '1er' : place + 'e') + '. ' : '') + (prize ? '+' + prize + ' € sur ta banque du Casino.' : 'Les jetons de la table restent sur la table.'),
-      rows: rows.map((r) => ({ name: r.name + (r.out ? ' (éliminé)' : ''), value: r.bankroll + ' €', me: r.uid === me })),
+      subtitle: (place ? 'Tu termines ' + (place === 1 ? '1er' : place + 'e') + '. ' : '') + (prize ? '+' + prize + ' jetons.' : 'Les jetons de la table restent sur la table.'),
+      rows: rows.map((r) => ({ name: r.name + (r.out ? ' (éliminé)' : ''), value: r.bankroll + ' jetons', me: r.uid === me })),
       againLabel: 'Nouvelle partie', onAgain: () => mutate(opRestart),
     });
     setTimeout(fn, 1200);
@@ -472,6 +475,15 @@
     if (!raw) { state = null; showLobby('Cette table n\'existe pas ou a été supprimée.'); return; }
     const st = normalize(JSON.parse(JSON.stringify(raw)));
     state = st;
+    if (st.settings.cash && window.Casino) {
+      const mine = st.players[me] && st.players[me].bankroll > 0;
+      if (!mine && !(Casino.mt && Casino.mt.table === tableId) && !autoSeat) setTimeout(askBuyIn, 300);
+      if (autoSeat && mine) {
+        autoSeat = false;
+        const free = st.seats.findIndex((x) => !x.owner);
+        if (free >= 0 && !st.seats.some((x) => x.owner === me)) setTimeout(() => mutate((x) => opSit(x, free)), 200);
+      }
+    }
     if (firstSnap) BJ.setCountCtx(ctx); // le tableau de stratégie suit la règle de la table
     if (st.round !== shownRound) { holeFlipped = !!st.settings.noHole; ctx.counter.reset(st.rcBase); }
     const all = [];
@@ -576,9 +588,11 @@
   function lobbyTick() {
     const st = state;
     if (!st || !tableId || !window.Social || !Social.lobbyBeat) return;
-    if (!(st.creator === me && !st.gameEnd)) { if (lobbyLastInfo) { Social.lobbyRemove('blackjack', tableId, lobbyLastInfo); lobbyLastInfo = null; } return; }
     const sets = st.settings || {};
-    lobbyLastInfo = { name: st.name, host: myName(), players: new Set(st.seats.map((x) => x.owner).filter(Boolean)).size, max: 5, pub: sets.public !== false, vip: !!sets.vip, lk: sets.lk };
+    const mine = sets.cash ? st.seats.some((x) => x.owner === me) || st.creator === me : st.creator === me && !st.gameEnd;
+    if (!mine) { if (lobbyLastInfo && st.creator === me) { Social.lobbyRemove('blackjack', tableId, lobbyLastInfo); } lobbyLastInfo = null; return; }
+    const seated = st.seats.filter((x) => x.owner).length;
+    lobbyLastInfo = { name: st.name, host: myName(), players: new Set(st.seats.map((x) => x.owner).filter(Boolean)).size, max: 5, free: 5 - seated, pub: sets.public !== false, vip: !!sets.vip, lk: sets.lk, cash: !!sets.cash };
     Social.lobbyBeat('blackjack', tableId, lobbyLastInfo);
   }
   setInterval(lobbyTick, 30000);
@@ -684,7 +698,7 @@
       const bank = document.createElement('span');
       bank.className = 'muted small';
       const p = st.players[s.owner];
-      bank.textContent = p ? p.bankroll + ' €' : '';
+      bank.textContent = p ? p.bankroll + ' jetons' : '';
       head.appendChild(bank);
     }
     el.appendChild(head);
@@ -713,7 +727,7 @@
       const t = document.createElement('b');
       t.textContent = totalText(vis);
       if (value(vis).total > 21) t.className = 'bust';
-      info.append('Total : ', t, ' · ' + h.bet + ' €');
+      info.append('Total : ', t, ' · ' + h.bet + ' jetons');
       if (h.result && !anim && st.phase === 'over') {
         const r = document.createElement('span');
         r.className = 'result ' + h.resultClass;
@@ -742,7 +756,7 @@
     if (inPlay(st) || anim || (inRound && st.phase === 'over' && s.owner !== me)) {
       if ((s.pp || s.t213) && !s.side && st.settings.sides) {
         const sd = document.createElement('div'); sd.className = 'side-result';
-        sd.textContent = 'Paris annexes : ' + [s.t213 ? '21+3 ' + s.t213 + ' €' : '', s.pp ? 'Paire ' + s.pp + ' €' : ''].filter(Boolean).join(' · ');
+        sd.textContent = 'Paris annexes : ' + [s.t213 ? '21+3 ' + s.t213 + ' jetons' : '', s.pp ? 'Paire ' + s.pp + ' jetons' : ''].filter(Boolean).join(' · ');
         el.appendChild(sd);
       }
       return el;
@@ -822,7 +836,7 @@
       const betting = mySeats.filter((s) => s.bet > 0);
       if (!betting.length) { note('Ta mise est à 0 : tu ne joueras pas cette manche.'); return; }
       if (betting.every((s) => s.ready)) note('Mise validée ✔ — en attente des autres joueurs…');
-      else btn('Miser ' + betting.reduce((a, s) => a + s.bet + (s.pp || 0) + (s.t213 || 0), 0) + ' €', 'primary', () => { BJ.setCountCtx(ctx); if (window.Sfx) Sfx.chips(); mutate(opReady); }, anim);
+      else btn('Miser ' + betting.reduce((a, s) => a + s.bet + (s.pp || 0) + (s.t213 || 0), 0) + ' jetons', 'primary', () => { BJ.setCountCtx(ctx); if (window.Sfx) Sfx.chips(); mutate(opReady); }, anim);
       return;
     }
 
@@ -1024,6 +1038,58 @@
     } catch (e) { /* ignore */ }
   }
 
+  // ================= Tables en jetons =================
+  let autoSeat = false, buyAsked = false;
+  /** Paie l'entrée (serveur) puis dépose les jetons sur la table. */
+  async function cashSit(id, amount) {
+    const r = await Casino.mtSit('blackjack', id, amount);
+    if (!r || r.error) { $('lobby-note').textContent = (r && r.error) || 'Impossible de s\'asseoir.'; toast((r && r.error) || 'Impossible de s\'asseoir.'); return false; }
+    try { await net.transact(id, (st) => { opBuyIn(normalize(st), amount); }); } catch (e) { /* ignore */ }
+    return true;
+  }
+  /** « Jouer » : une table publique avec de la place, sinon on en ouvre une (2 tables au plus). */
+  async function autoPlay() {
+    const mt = Casino.mt;
+    if (mt && mt.game === 'blackjack') {
+      // des jetons sont restés sur une table : on y retourne (ou on les récupère si elle a fermé)
+      const alive = await net.activeCount(mt.table).catch(() => 0);
+      if (alive > 0) { autoSeat = true; openTable(mt.table, true); return; }
+      const r = await Casino.mtLeave();
+      if (r && r.payout) Casino.toast('Table fermée', r.payout + ' jetons rendus sur ton compte.', '🪙');
+    }
+    const amount = await Casino.buyInDialog('blackjack');
+    if (!amount) { location.href = Social.hubLink('#multi'); return; }
+    $('lobby-note').textContent = 'Recherche d\'une table…';
+    const list = ((await Social.lobbyList().catch(() => null)) || []).filter((e) => e.game === 'blackjack' && e.pub && e.cash && e.code && !e.vip);
+    let id = null;
+    for (const e of list) { if ((e.free == null ? e.players < 5 : e.free > 0) && (await net.activeCount(e.code).catch(() => 0)) > 0) { id = e.code; break; } }
+    if (!id) {
+      if (list.length >= Casino.MT.TABLES) { $('lobby-note').textContent = 'Les tables publiques sont pleines : réessaie dans un instant.'; return; }
+      const st = initialState('Table publique', { cash: true, public: true, hands: 0, coach: true, sides: true, turnTime: 20, betTime: 15, noHole: true, lk: Math.random().toString(36).slice(2, 10) });
+      st.started = true;
+      try { id = await net.createTable(st); } catch (e) { $('lobby-note').textContent = 'Impossible d\'ouvrir une table. Vérifie ta connexion.'; return; }
+    }
+    if (!(await cashSit(id, amount))) return;
+    autoSeat = true;
+    openTable(id, true);
+  }
+  /** Quitter une table en jetons : on récupère ce qu'il reste (lu par le serveur sur la table). */
+  async function cashLeave() {
+    const chips = state && state.players && state.players[me] ? state.players[me].bankroll : null;
+    const r = await Casino.mtLeave(chips);
+    if (r && !r.error && tableId) { try { await net.transact(tableId, (st) => { if (st.players && st.players[me]) st.players[me].bankroll = 0; }); } catch (e) { /* ignore */ } }
+    if (r && !r.error && !r.none) Casino.toast('Tu quittes la table', 'Tu repars avec ' + r.payout.toLocaleString('fr-FR') + ' jetons (' + (r.net >= 0 ? '+' : '−') + Math.abs(r.net).toLocaleString('fr-FR') + ').', '🪙', r.net > 0 ? 'gold' : '');
+    return r;
+  }
+  /** Rejoindre une table en jetons (par code) sans jetons dessus : on demande combien apporter. */
+  async function askBuyIn() {
+    if (buyAsked) return; buyAsked = true;
+    const amount = await Casino.buyInDialog('blackjack');
+    if (!amount) { buyAsked = false; return; }
+    if (await cashSit(tableId, amount)) autoSeat = true;
+    buyAsked = false;
+  }
+
   function showLobby(note) {
     if (tableId) leaveTable(tableId);
     if (unsubTable) { unsubTable(); unsubTable = null; }
@@ -1158,7 +1224,11 @@
     if (!net || !canWrite || needPseudo()) return;
     const name = $('table-name').value.trim().slice(0, 30) || 'Table de ' + (myName() || names[me] || 'blackjack');
     try {
+      if (!(window.Casino && Casino.isVip())) { $('lobby-note').textContent = 'Les tables privées sont réservées aux membres VIP. Touche « Jouer » dans Multijoueur pour rejoindre une table publique.'; return; }
+      const amount = await Casino.buyInDialog('blackjack');
+      if (!amount) return;
       const st = initialState(name, {
+        cash: true,
         coach: $('set-coach').checked,
         sides: $('set-sides').checked,
         bankroll: parseInt($('set-bankroll').value, 10) || START_BANKROLL,
@@ -1168,8 +1238,11 @@
         public: $('set-public').checked, vip: !!(window.Casino && Casino.isVip() && $('set-vip').checked), lk: Math.random().toString(36).slice(2, 10),
         hands: parseInt($('set-hands').value, 10) || 20,
       });
+      st.started = true;
       const id = await net.createTable(st);
       $('table-name').value = '';
+      if (!(await cashSit(id, amount))) { net.deleteTable(id).catch(() => {}); return; }
+      autoSeat = true;
       openTable(id, true);
       if (window.Casino && Casino.launchFx) Casino.launchFx('blackjack', 'Table créée !', 'Code ' + id + ' · invite tes amis');
     } catch (err) {
@@ -1201,7 +1274,12 @@
     try { await navigator.clipboard.writeText(text + ' — ' + link); toast('Lien d\'invitation copié !'); }
     catch (e) { toast('Code de la table : ' + tableId); }
   });
-  $('leave-table').addEventListener('click', () => { if (lobbyLastInfo && window.Social) Social.lobbyRemove('blackjack', tableId, lobbyLastInfo); lobbyLastInfo = null; showLobby(); if (window.Social && Social.hubLink) location.href = Social.hubLink('#multi'); });
+  $('leave-table').addEventListener('click', async () => {
+    if (state && state.settings.cash && window.Casino && Casino.mt) await cashLeave();
+    if (lobbyLastInfo && window.Social && state && state.creator === me) Social.lobbyRemove('blackjack', tableId, lobbyLastInfo);
+    lobbyLastInfo = null; showLobby();
+    if (window.Social && Social.hubLink) setTimeout(() => { location.href = Social.hubLink('#multi'); }, 900);
+  });
   // Réactions rapides : envoyées par le chat de la table, elles s'envolent chez tout le monde
   if (window.Social) {
     Social.reactionBar($('table-chat-form').parentNode, (emoji) => {
@@ -1245,6 +1323,7 @@
     } else {
       if (window.Casino) Casino.training = false; // entre amis : ça compte pour la progression
       $('bank-label').textContent = 'Jetons';
+      if (document.getElementById('bank-unit')) document.getElementById('bank-unit').textContent = '🪙';
       startMulti();
     }
   }
@@ -1278,7 +1357,10 @@
       $('create-table').hidden = true;
     }
     const code = new URLSearchParams(location.search).get('table'); // lu avant que showLobby nettoie l'adresse
+    const wantAuto = new URLSearchParams(location.search).get('multi') === 'auto';
     showLobby();
+    $('create-table').hidden = !(window.Casino && Casino.isVip());
+    if (wantAuto && !code) { autoPlay(); return; }
     if (code && net.usesCodes) {
       if (myName()) openTable(code.toUpperCase());
       else { $('code-input').value = code.toUpperCase(); needPseudo(); }

@@ -18,7 +18,7 @@
       <button id="tab-solo" class="tab active" role="tab" aria-selected="true">Solo</button>
       <button id="tab-multi" class="tab" role="tab" aria-selected="false">Entre amis</button>
     </nav>
-    <div class="bank"><span id="bank-label">Banque</span> : <strong id="bankroll">1000</strong> € <button id="music-toggle" class="ghost icon-btn" type="button">🎵</button><button id="sound-toggle" class="ghost icon-btn" type="button">🔊</button></div>
+    <div class="bank"><span id="bank-label">Banque</span> : <strong id="bankroll">1000</strong> <span id="bank-unit">€</span> <button id="music-toggle" class="ghost icon-btn" type="button">🎵</button><button id="sound-toggle" class="ghost icon-btn" type="button">🔊</button></div>
   </header>
 
   <main class="layout">
@@ -119,29 +119,12 @@
             <button class="primary" type="submit">Rejoindre</button>
           </form>
           <form id="create-table" class="create-form">
-            <h3>Créer une table</h3>
+            <h3>👑 Table privée (VIP)</h3>
+            <p class="small muted">Ta propre table en jetons : tes amis la rejoignent avec le code. Chacun apporte ses jetons et repart avec ce qu'il lui reste.</p>
             <input id="table-name" maxlength="30" placeholder="Nom de la table (ex. Soirée vendredi)" aria-label="Nom de la table">
-            <label>Durée de la partie
-              <select id="set-hands">
-                <option value="10">10 mains</option>
-                <option value="20" selected>20 mains</option>
-                <option value="30">30 mains</option>
-                <option value="50">50 mains</option>
-              </select>
-            </label>
-            <p class="small muted prize-note">Les jetons de la table ne servent qu'ici. À la fin, le classement rapporte sur la banque du Casino : 1er +50 €, 2e +20 € (à deux joueurs : le gagnant +30 €). Pas de recave : sous 5 jetons, on est éliminé.</p>
-            <label>Jetons de départ (monnaie de la table)
-              <select id="set-bankroll">
-                <option value="500">500 €</option>
-                <option value="1000" selected>1 000 €</option>
-                <option value="2500">2 500 €</option>
-                <option value="5000">5 000 €</option>
-                <option value="10000">10 000 €</option>
-              </select>
-            </label>
-            <label>Règle du croupier
-              <select id="set-rule"><option value="eu" selected>Européenne (pas de carte cachée)</option><option value="us">Américaine (carte cachée)</option></select>
-            </label>
+            <select id="set-hands" hidden><option value="0" selected>Sans fin</option></select>
+            <select id="set-bankroll" hidden><option value="0" selected>Jetons du compte</option></select>
+            <select id="set-rule" hidden><option value="eu" selected>Européenne</option></select>
             <label>Temps pour jouer son tour
               <select id="set-turn"><option value="15">15 s</option><option value="20" selected>20 s</option><option value="30">30 s</option><option value="60">60 s</option></select>
             </label>
@@ -149,10 +132,10 @@
               <select id="set-bettime"><option value="10">10 s</option><option value="15" selected>15 s</option><option value="20">20 s</option><option value="30">30 s</option></select>
             </label>
             <label><input type="checkbox" id="set-coach" checked> Autoriser le coach et les conseils</label>
-            <label class="check"><input type="checkbox" id="set-public" checked> Partie publique : visible par tous dans Multijoueur (sinon il faut le code)</label>
+            <label class="check"><input type="checkbox" id="set-public"> Visible par tous dans Multijoueur (sinon il faut le code)</label>
             <label class="check vip-opt" hidden><input type="checkbox" id="set-vip"> 👑 Club privé VIP : réservé aux membres VIP, prix doublés pour eux</label>
             <label><input type="checkbox" id="set-sides" checked> Autoriser les paris annexes (Paire parfaite, 21+3)</label>
-            <button type="submit" class="primary">Créer la table</button>
+            <button type="submit" class="primary">Créer ma table privée</button>
           </form>
           <p id="lobby-note" class="small warn" role="status"></p>
           <ul id="table-list" class="table-list"><li class="muted">Chargement des tables…</li></ul>

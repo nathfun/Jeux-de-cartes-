@@ -51,24 +51,18 @@
             <button class="primary" type="submit">Rejoindre</button>
           </form>
           <form id="rm-create" class="create-form">
-            <h3>Créer une table</h3>
+            <h3>👑 Table privée (VIP)</h3>
+            <p class="small muted">Ta propre table en jetons : tes amis la rejoignent avec le code. Chacun apporte ses jetons et repart avec ce qu'il lui reste.</p>
             <input id="rm-name" maxlength="30" placeholder="Nom de la table (ex. Soirée roulette)" aria-label="Nom de la table">
-            <div class="setup-grid">
-              <label>Solde de départ
-                <select id="rm-bank"><option value="500">500 €</option><option value="1000" selected>1 000 €</option><option value="5000">5 000 €</option></select>
-              </label>
-              <label>Temps pour miser
-                <select id="rm-bettime"><option value="15">15 s</option><option value="25" selected>25 s</option><option value="40">40 s</option></select>
-              </label>
-              <label>Nombre de tours
-                <select id="rm-rounds"><option value="10">10 tours</option><option value="20" selected>20 tours</option><option value="30">30 tours</option><option value="0">Sans limite</option></select>
-              </label>
-            </div>
-            <p class="small muted prize-note">Les jetons de la table ne servent qu'ici. À la fin, le classement rapporte sur la banque du Casino : 1er +50 €, 2e +20 € (à deux joueurs : le gagnant +30 €).</p>
+            <select id="rm-bank" hidden><option value="0" selected>Jetons du compte</option></select>
+            <select id="rm-rounds" hidden><option value="0" selected>Sans fin</option></select>
+            <label>Temps pour miser
+              <select id="rm-bettime"><option value="15">15 s</option><option value="25" selected>25 s</option><option value="40">40 s</option></select>
+            </label>
             <label class="check"><input type="checkbox" id="rm-coach" checked> Autoriser les aides</label>
-            <label class="check"><input type="checkbox" id="rm-public" checked> Partie publique : visible par tous dans Multijoueur (sinon il faut le code)</label>
+            <label class="check"><input type="checkbox" id="rm-public"> Visible par tous dans Multijoueur (sinon il faut le code)</label>
             <label class="check vip-opt" hidden><input type="checkbox" id="rm-vip"> 👑 Club privé VIP : réservé aux membres VIP, prix doublés pour eux</label>
-            <button type="submit" class="primary">Créer la table</button>
+            <button type="submit" class="primary">Créer ma table privée</button>
           </form>
           <p id="rm-note" class="small warn" role="status"></p>
         </section>

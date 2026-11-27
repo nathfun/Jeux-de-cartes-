@@ -462,6 +462,19 @@
     .shop-daily .sd-item small { font-size: .7rem; }
     /* refonte : anciens systèmes retirés */
     .wheel-panel, .panel.boosters, .panel.market, .panel.deals, #salon-next, #panel-bank, #panel-chest, #mp-new-loto, [data-pp="chest"] { display: none !important; }
+    /* ----- Multijoueur en jetons ----- */
+    .mp-play { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; margin: .4rem 0 .8rem; }
+    .mp-big { display: flex; flex-direction: column; align-items: center; text-align: center; gap: .2rem; padding: 1rem .5rem; border-radius: 16px; text-decoration: none; color: #fff; border: 2px solid rgba(255,255,255,.15); box-shadow: 0 8px 20px rgba(0,0,0,.35); }
+    .mp-big .mp-ic2 { font-size: 2.2rem; } .mp-big b { font-size: 1.05rem; } .mp-big small { font-size: .72rem; opacity: .85; }
+    .mp-big.bj { background: linear-gradient(160deg, #15803d, #052e16); } .mp-big.rl { background: linear-gradient(160deg, #9f1239, #2a0410); } .mp-big.pk { background: linear-gradient(160deg, #1d4ed8, #0b1440); }
+    .mp-vipbox { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-bottom: .8rem; font-size: .85rem; }
+    .mp-vipbox a { color: #1c1300; background: linear-gradient(135deg, #fde047, #f59e0b); text-decoration: none; font-weight: 800; padding: .35rem .7rem; border-radius: 999px; }
+    .mp-vipbox .lock { color: var(--muted); }
+    .mt-held { margin: .2rem 0 .8rem; padding: .7rem .9rem; border-radius: 12px; border: 1px solid #a16207; background: rgba(250,204,21,.08); display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+    .mt-held button, .mt-held a { font: inherit; font-weight: 700; border-radius: 999px; padding: .35rem .8rem; text-decoration: none; cursor: pointer; border: 1px solid #a16207; background: transparent; color: #fde68a; }
+    .mt-held[hidden] { display: none; }
+    .mp-code summary { cursor: pointer; color: var(--muted); margin: .4rem 0; }
+    @media (max-width: 420px) { .mp-big small { font-size: .62rem; } }
     /* ----- La Dette ----- */
     .dette { position: relative; overflow: hidden; border-color: #7c5a12; background: radial-gradient(600px 260px at 100% 0%, rgba(250,204,21,.12), transparent 60%), linear-gradient(160deg, #1d1408, #120d07 60%, #0d0a06); }
     .dette h2 { display: flex; align-items: center; gap: .5rem; margin: 0 0 .4rem; }
@@ -711,23 +724,31 @@
     </section>
 
     <section class="panel mp" data-tab="multi" aria-label="Multijoueur">
-      <h2>Créer une partie</h2>
-      <p class="muted small-p">Choisis le jeu : tu règles la table (jetons de départ, aides, publique ou privée) puis tu invites tes amis.</p>
-      <div class="mp-games">
+      <h2>👥 Jouer avec les autres</h2>
+      <p class="muted small-p">Assieds-toi avec tes jetons à une vraie table : tu joues contre la banque avec les autres joueurs, et tu repars avec ce qu'il te reste.</p>
+      <div id="mt-held" class="mt-held" hidden></div>
+      <div class="mp-play">
+        <a class="mp-big bj" href="blackjack/index.html?multi=auto"><span class="mp-ic2">🂡</span><b>Blackjack</b><small>Jouer maintenant</small></a>
+        <a class="mp-big rl" href="roulette/index.html?multi=auto"><span class="mp-ic2">🎡</span><b>Roulette</b><small>Jouer maintenant</small></a>
+        <a class="mp-big pk" href="poker/index.html?multi=create"><span class="mp-ic2">♠</span><b>Poker</b><small>Crée ta partie ou rejoins-en une</small></a>
+      </div>
+      <div id="mp-vipbox" class="mp-vipbox"></div>
+      <div class="mp-games" hidden style="display:none">
         <a id="mp-new-blackjack" href="blackjack/index.html?multi=create">🂡<span>Blackjack</span></a>
         <a id="mp-new-poker" href="poker/index.html?multi=create">♠<span>Poker</span></a>
         <a id="mp-new-roulette" href="roulette/index.html?multi=create">🎡<span>Roulette</span></a>
         <a id="mp-new-loto" href="loto/salle.html">🎱<span>Loto</span></a>
       </div>
-      <h2>Rejoindre avec un code</h2>
+      <details class="mp-code"><summary>🔑 J'ai un code de table</summary>
       <form id="mp-join" class="mp-join">
         <input id="mp-code" maxlength="6" placeholder="Code de la table (ex. KQ7P)" aria-label="Code de la table" autocapitalize="characters" autocomplete="off">
         <button type="submit">Rejoindre</button>
       </form>
+      </details>
       <p id="mp-note" class="mp-note" role="status"></p>
       <h2>Parties ouvertes <button id="mp-refresh" class="icon-btn" type="button" aria-label="Actualiser">↻</button></h2>
       <div id="mp-list" class="mp-list"><p class="muted">Chargement…</p></div>
-      <p class="muted small-p">🌐 Publique : on rejoint d'un clic. 🔒 Privée : il faut le code donné par l'hôte. Les jetons d'une table ne servent qu'à elle ; à la fin, le classement rapporte sur ta banque (1er +50 €, 2e +20 € ; à deux : +30 € au gagnant).</p>
+      <p class="muted small-p">🌐 Publique : on rejoint d'un clic. 🔒 Privée : il faut le code donné par l'hôte. Au poker, le droit d'entrée forme la cagnotte du podium.</p>
     </section>
 
     <section class="panel" data-tab="multi" aria-label="Tournoi de poker de la semaine">
@@ -1608,7 +1629,31 @@
       const GAME_NAME = { blackjack: 'Blackjack', poker: 'Poker', roulette: 'Roulette', loto: 'Loto' };
       ['blackjack', 'poker', 'roulette'].forEach((g) => { if (window.Social) { const u = new URL(Social.tableLink(g)); u.searchParams.set('multi', 'create'); $('mp-new-' + g).href = u.toString(); } });
       let lobbyTimer = null;
+      function renderMtHeld() {
+        const box = $('mt-held'), mt = Casino.mt, P = Casino.profile;
+        box.innerHTML = '';
+        if (mt) {
+          const G = { blackjack: 'blackjack', roulette: 'roulette' }[mt.game];
+          box.append('🪙 Tu as apporté ' + Math.floor(mt.amount).toLocaleString('fr-FR') + ' jetons à une table de ' + (mt.game === 'roulette' ? 'roulette' : 'blackjack') + '. ');
+          const go = document.createElement('a'); go.href = G + '/index.html?multi=auto'; go.textContent = 'Retourner à la table';
+          const get = document.createElement('button'); get.type = 'button'; get.textContent = 'Récupérer mes jetons';
+          get.onclick = async () => { get.disabled = true; const r = await Casino.mtLeave(); if (r && !r.error) Casino.toast('Jetons récupérés', '+' + (r.payout || 0).toLocaleString('fr-FR') + ' jetons', '🪙', 'gold'); else if (r && r.error) Casino.toast('Table', r.error, '⚠️'); renderMtHeld(); try { render(); } catch (e) { /* ignore */ } };
+          box.append(go, get);
+        } else if (P.pkt) {
+          box.append('♠ Droit d\'entrée de poker en attente (' + P.pkt.amount + ' jetons). ');
+          const get = document.createElement('button'); get.type = 'button'; get.textContent = 'Me le faire rendre';
+          get.onclick = async () => { get.disabled = true; const r = await Casino.pkRefund(); if (r && r.refund) Casino.toast('Droit d\'entrée rendu', '+' + r.refund + ' jetons', '🪙'); else if (r && r.error) Casino.toast('Poker', r.error, '⚠️'); renderMtHeld(); try { render(); } catch (e) { /* ignore */ } };
+          box.append(get);
+        }
+        box.hidden = !box.childNodes.length;
+        const vb = $('mp-vipbox'); vb.innerHTML = '';
+        if (Casino.isVip()) {
+          vb.append('👑 VIP : ');
+          [['blackjack/index.html?multi=create', 'Table privée de blackjack'], ['roulette/index.html?multi=create', 'Table privée de roulette'], ['poker/index.html?multi=create', 'Poker High Roller']].forEach(([h, t]) => { const a = document.createElement('a'); a.href = h; a.textContent = t; vb.appendChild(a); });
+        } else { const l = document.createElement('span'); l.className = 'lock'; l.textContent = '👑 Les tables privées et le poker High Roller sont réservés aux membres VIP.'; vb.appendChild(l); }
+      }
       async function refreshLobby() {
+        renderMtHeld();
         clearTimeout(lobbyTimer);
         if (document.body.dataset.hubtab !== 'multi' || !window.Social) return;
         const list = await Social.lobbyList().catch(() => null);

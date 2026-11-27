@@ -728,6 +728,81 @@ function handle(state, ctx) {
       break;
     }
 
+    // ----- Tables multijoueur en jetons : on s'assoit avec des jetons du compte, on repart avec ce qu'il reste -----
+    case 'mt.sit': {
+      const game = String(d.game), id = String(d.table || '');
+      if (!['blackjack', 'roulette'].includes(game)) fail('Jeu inconnu.');
+      const amount = int(d.amount);
+      if (!(amount >= R.MT.MIN)) fail('Il faut au moins ' + R.MT.MIN + ' jetons pour s\'asseoir.');
+      if (amount > P.wallet) fail('Tu n\'as que ' + Math.floor(P.wallet).toLocaleString('fr-FR') + ' jetons.');
+      if (P.mt && (P.mt.game !== game || P.mt.table !== id)) fail('Tu as encore des jetons sur une autre table : quitte-la d\'abord.');
+      if (!ctx.table) fail('Table introuvable.');
+      if (!ctx.table.settings || !ctx.table.settings.cash) fail('Cette table ne se joue pas en jetons.');
+      P.wallet = round2(P.wallet - amount);
+      P.mt = P.mt ? Object.assign(P.mt, { amount: P.mt.amount + amount }) : { game, table: id, amount, at: now };
+      result = { mt: P.mt, wallet: P.wallet };
+      break;
+    }
+    case 'mt.leave': {
+      if (!P.mt) { result = { payout: 0, none: true }; break; }
+      const t = ctx.table, pl = t && t.players && t.players[ctx.uid];
+      // table disparue (tout le monde est parti) : on rend les jetons apportés
+      const chips = t ? Math.max(0, Number(pl && pl.bankroll) || 0) : P.mt.amount;
+      const payout = Math.floor(Math.min(chips, P.mt.amount * R.MT.CAP));
+      P.wallet = round2(P.wallet + payout);
+      const net = payout - P.mt.amount;
+      result = { payout, brought: P.mt.amount, net, game: P.mt.game };
+      if (net > 0) R.addXP(P, Math.min(60, 10 + net / 20), N);
+      P.totals.multiNet = (P.totals.multiNet || 0) + net;
+      P.mt = null;
+      break;
+    }
+
+    // ----- Poker entre amis : droit d'entrée en jetons et cagnotte -----
+    case 'pk.buyin': {
+      const id = String(d.table || ''), t = ctx.table;
+      if (!t) fail('Table introuvable.');
+      const amount = Math.floor(Number(t.settings && t.settings.buyIn) || 0);
+      if (!(amount > 0)) { result = { free: true }; break; }
+      if (P.pkt && P.pkt.table === id) { result = { already: true, pkt: P.pkt }; break; }
+      if (t.tstats && t.tstats.hands > 0) fail('La partie a déjà commencé.');
+      if (t.settings.hr && !R.isVip(P, now)) fail('Table High Roller : réservée aux membres VIP.');
+      if (amount > P.wallet) fail('Il te faut ' + amount.toLocaleString('fr-FR') + ' jetons pour cette table (tu en as ' + Math.floor(P.wallet).toLocaleString('fr-FR') + ').');
+      if (P.pkt) {
+        // ancien droit d'entrée jamais réglé (table fermée avant de commencer) : rendu
+        P.wallet = round2(P.wallet + P.pkt.amount);
+      }
+      P.wallet = round2(P.wallet - amount);
+      P.pkt = { table: id, amount, at: now };
+      result = { pkt: P.pkt };
+      break;
+    }
+    case 'pk.refund': {
+      if (!P.pkt) { result = { refund: 0 }; break; }
+      const t = ctx.table;
+      if (t && t.tstats && t.tstats.hands > 0 && !t.gameOver) fail('La partie a commencé : ton droit d\'entrée est dans la cagnotte.');
+      if (t && t.gameOver) fail('La partie est finie : récupère tes gains à la fin.');
+      P.wallet = round2(P.wallet + P.pkt.amount);
+      result = { refund: P.pkt.amount };
+      P.pkt = null;
+      break;
+    }
+    case 'pk.claim': {
+      // gains de la cagnotte : droit d'entrée × nombre de joueurs, partagé selon la place
+      if (!P.pkt || P.pkt.table !== String(d.table || '')) { result = { amount: 0 }; break; }
+      const v = verifyTable(ctx.uid, 'poker', ctx.table, now);
+      const pot = P.pkt.amount * v.players;
+      const share = v.players <= 3 ? (v.place === 1 ? 1 : 0) : ({ 1: 0.65, 2: 0.25, 3: 0.1 }[v.place] || 0);
+      const amount = Math.floor(pot * share);
+      P.prizes[v.key] = now;
+      P.wallet = round2(P.wallet + amount);
+      if (amount > 0) R.addXP(P, Math.min(120, 20 + amount / 50), N);
+      P.totals.multiWins = (P.totals.multiWins || 0) + (v.place === 1 ? 1 : 0);
+      P.pkt = null;
+      result = { amount, pot, place: v.place, players: v.players };
+      break;
+    }
+
     // ----- Entre amis : prix de fin de partie, vérifié sur la table -----
     case 'multi.prize': {
       const v = verifyTable(ctx.uid, String(d.game), ctx.table, now);

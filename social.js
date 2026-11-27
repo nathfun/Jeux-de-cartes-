@@ -483,6 +483,7 @@
       players: info.players | 0, max: info.max | 0, pub: !!info.pub, at: t };
     if (info.live) e.live = true;
     if (info.vip) e.vip = true;
+    if (info.cash) { e.cash = true; e.free = info.free | 0; }
     if (info.pub) e.code = code;
     b.set('lobby/' + key, e).catch(() => {});
   }
