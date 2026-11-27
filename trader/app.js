@@ -71,10 +71,66 @@
     const t = performance.now();
     acc += Math.min(30 * 60 * 1000, t - lastReal); lastReal = t; // au plus 30 min de rattrapage
     let n = 0;
-    while (acc >= C.DT * 1000) { acc -= C.DT * 1000; marketStep(); n++; }
+    if (srv()) {
+      // partie réelle : le marché vient du serveur, on rejoue ses pas au rythme normal (on accélère si on prend du retard)
+      if (queue.length > 12) { while (queue.length > 4) applyStep(queue.shift()); acc = 0; }
+      while (acc >= C.DT * 1000 && queue.length) { acc -= C.DT * 1000; applyStep(queue.shift()); n++; }
+      if (!queue.length) acc = Math.min(acc, C.DT * 1000);
+    } else while (acc >= C.DT * 1000) { acc -= C.DT * 1000; marketStep(); n++; }
     if (n) ui();
   }
   setInterval(tick, 50);
+
+  // ---------- Partie réelle : marché et positions tenus par le serveur du Casino ----------
+  const srv = () => S.mode === 'real' && !!window.Casino && Casino.server;
+  let queue = [], lastK = -1, polling = false;
+  function applyStep(st) {
+    clock += C.DT;
+    E.ASSETS.forEach((a, i) => {
+      const m = M[a.id];
+      m.price = st.p[i]; m.burst = st.h[i] ? { dir: st.h[i] } : null;
+      m.hist.push({ t: clock, p: m.price }); if (m.hist.length > HIST) m.hist.shift();
+      if (st.j[i]) news(a, st.j[i]);
+    });
+  }
+  function applySrv(r) {
+    if (!r || r.error) return;
+    if (r.hist) {
+      queue = [];
+      E.ASSETS.forEach((a, i) => { const h = r.hist[i] || [], m = M[a.id]; m.hist = h.map((p, j) => ({ t: clock - (h.length - 1 - j) * C.DT, p })); m.price = h[h.length - 1] || m.price; m.burst = r.halt[i] ? { dir: r.halt[i] } : null; });
+      resetScale = true;
+    } else (r.steps || []).forEach((st) => queue.push(st));
+    lastK = r.k;
+    const before = positions.map((p) => p.id).join(',');
+    positions = (r.positions || []).map((p) => Object.assign({}, p));
+    (r.events || []).forEach((ev) => settled(ev));
+    S.stack = r.stack;
+    if (before !== positions.map((p) => p.id).join(',')) renderPositions(true);
+    ui();
+  }
+  async function poll() {
+    if (!srv() || polling) return;
+    polling = true;
+    const r = await Casino.call('tr.tick', { since: lastK });
+    polling = false;
+    applySrv(r);
+  }
+  setInterval(poll, 1000);
+  /** Position réglée par le serveur (clôture, objectif, limite ou liquidation). */
+  function settled(ev) {
+    const a = assetOf(ev.asset), st = statsOf();
+    st.rounds++; st.wagered += ev.bet; st.won += ev.payout; if (ev.net > st.best) st.best = ev.net;
+    store.bets.real.unshift({ asset: ev.asset, dir: ev.dir, lev: ev.lev, bet: ev.bet, net: ev.net, why: ev.why, at: Date.now() });
+    store.bets.real = store.bets.real.slice(0, 30); persist();
+    const label = (ev.dir > 0 ? 'Achat ' : 'Vente ') + a.short + ' ×' + ev.lev;
+    if (ev.why === 'liq') { toast('💥 ' + label + ' liquidé : −' + fmt(ev.bet) + ' €', true); if (window.Sfx && Sfx.explosion) Sfx.explosion(); }
+    else {
+      const how = ev.why === 'tp' ? 'Objectif atteint · ' : ev.why === 'sl' ? 'Limite de perte · ' : '';
+      toast(how + label + ' clôturé : ' + sgn(ev.net) + ' €', ev.net < 0);
+      if (window.Sfx) { if (ev.net > 0 && Sfx.cashout) Sfx.cashout(); else if (ev.net < 0) Sfx.lose(); }
+    }
+    renderStats();
+  }
 
   // ---------- Positions ----------
   const readBet = () => Math.floor(Number($('bet').value));
@@ -88,6 +144,15 @@
     if (positions.length >= C.MAX_POS) { toast(C.MAX_POS + ' positions au maximum : clôtures-en une.', true); return; }
     if (S.mode === 'train' && S.stack < v) setStack(Math.max(S.stack, window.Casino ? Casino.TRAIN_BANK : 1000));
     if (v > S.stack) { toast('Pas assez d\'argent sur la table.', true); return; }
+    if (srv()) {
+      Casino.call('tr.open', { asset: a.id, dir, lev, bet: v, tp: readPct('tp', 1000), sl: readPct('sl', 80), since: lastK }).then((r) => {
+        if (r && r.error) { toast(r.error, true); return; }
+        applySrv(r);
+        if (window.Sfx) { Sfx.chips(); if (Sfx.tradeOpen) Sfx.tradeOpen(dir); }
+        toast((dir > 0 ? '▲ Achat ' : '▼ Vente ') + a.short + ' ×' + lev + ' · ' + fmt(v) + ' €');
+      });
+      return;
+    }
     setStack(S.stack - v);
     const p = Object.assign(E.open(v, lev, dir, m.price), { id: ++seq, asset: a.id, tp: readPct('tp', 1000), sl: readPct('sl', 80), at: clock });
     p.liq = E.liqPrice(p);
@@ -101,6 +166,7 @@
     if (!p) return;
     const m = M[p.asset];
     if (E.halted(m)) { toast('Cotation suspendue : impossible de clôturer pendant 2 secondes.', true); return; }
+    if (srv()) { Casino.call('tr.close', { id, since: lastK }).then((r) => { if (r && r.error) toast(r.error, true); else applySrv(r); }); return; }
     settle(p, E.payoutOf(p, m.price), 'close');
   }
   function settle(p, payout, why) {
@@ -125,7 +191,7 @@
     }
     renderPositions(true); renderStats(); ui();
   }
-  function closeAll() { positions.slice().forEach((p) => { if (!E.halted(M[p.asset])) settle(p, E.payoutOf(p, M[p.asset].price), 'close'); }); }
+  function closeAll() { positions.slice().forEach((p) => { if (!E.halted(M[p.asset])) { if (srv()) closePos(p.id); else settle(p, E.payoutOf(p, M[p.asset].price), 'close'); } }); }
   // Quitter la page : les krachs en cours vont jusqu'au bout (sinon on pourrait fuir un krach), puis tout est clôturé
   function forceCloseAll() {
     let guard = 0;
@@ -313,6 +379,7 @@
     badge.className = 'mode-badge' + (mode === 'real' ? ' real' : '');
     badge.textContent = mode === 'real' ? '🕴️ La Dette · ta caisse · sans aides' : '🎓 Apprentissage · crédit illimité, aides et conseils';
     $('end-btn').hidden = mode === 'train';
+    if (srv()) { positions = []; queue = []; lastK = -1; poll(); }
     renderStats(); renderAides(); renderPositions(true);
     setTimeout(() => scene.resize(), 0);
     resetScale = true;
@@ -320,10 +387,10 @@
   }
   async function endSession() {
     if (positions.some((p) => E.halted(M[p.asset]))) { toast('Cotation suspendue : attends 2 secondes.', true); return; }
-    closeAll();
+    if (!srv()) closeAll();
     let msg = '';
     if (S.mode === 'real' && window.Casino) {
-      const r = await Casino.cashOut('trader');
+      const r = await Casino.cashOut('trader'); // avec le serveur : il clôture lui-même les positions au cours actuel
       if (r && r.error) { toast(r.error, true); return; }
       const diff = r ? r.diff : 0;
       msg = 'Tu encaisses ' + fmt(r ? r.end : S.stack) + ' € (' + sgn(diff) + ' € par rapport à la somme apportée).';
@@ -338,15 +405,10 @@
   function renderPicker(msg) {
     const box = $('mode-picker');
     if (!window.Casino) { startGame('train', 10000); return; }
-    if (Casino.server && !Casino.learn) {
-      // le marché sera tiré par le serveur du Casino dans une prochaine version
-      box.innerHTML = '<div class="glass" style="padding:1rem"><b>📈 Bourse Flash en partie réelle arrive bientôt avec le serveur du Casino.</b><p class="muted">En attendant, active 🎓 Apprentissage sur l\'accueil pour t\'entraîner avec un crédit illimité.</p></div>';
-      return;
-    }
     Casino.modePicker(box, { game: 'trader', min: C.MIN_BET, suggest: 100, onStart: (mode, amount) => startGame(mode, amount) });
     if (msg) { const p = document.createElement('p'); p.className = 'muted'; p.textContent = msg; box.prepend(p); }
   }
-  window.addEventListener('pagehide', () => { if (S.mode && positions.length) forceCloseAll(); });
+  window.addEventListener('pagehide', () => { if (S.mode && positions.length && !srv()) forceCloseAll(); });
   renderPicker();
   showWallet();
   if (window.Casino) Casino.onChange(() => showWallet());

@@ -152,10 +152,21 @@
     const hitSet = new Set(res.hits), shown = [];
     let found = 0;
     await wait(650);
-    for (const n of res.drawn) {
-      const hit = hitSet.has(n);
+    const near = (n) => picks.some((p) => !hitSet.has(p) && Math.abs(p - n) === 1);
+    const gainNow = () => { const m = (E.PAY[picks.length] || {})[found] || 0; return m * v; };
+    const nextTier = () => { const pay = E.PAY[picks.length] || {}; for (let m = found + 1; m <= picks.length; m++) if (pay[m] && (pay[m] > (pay[found] || 0))) return { m, mult: pay[m] }; return null; };
+    for (let k = 0; k < res.drawn.length; k++) {
+      const n = res.drawn[k], hit = hitSet.has(n), left = C.DRAW - k;
+      // suspense : les 3 dernières boules ralentissent quand un palier de gain est encore possible
+      const tier = nextTier(), decisive = !auto && tier && left <= 3 && tier.m - found <= left;
+      if (decisive) {
+        suspense(left === 1 ? '🎱 DERNIÈRE BOULE…' : left + ' boules restantes…', tier.m - found === 1 ? 'Encore 1 bon numéro pour ' + fmtM(tier.mult) + ' !' : 'Il t\'en faut encore ' + (tier.m - found) + ' pour ' + fmtM(tier.mult));
+        energy = 3.2; if (window.Sfx && Sfx.drumroll) Sfx.drumroll(left === 1 ? 1.6 : 0.9);
+        if (window.Sfx && Sfx.heartbeat) Sfx.heartbeat();
+        await wait(left === 1 ? 1600 : 900);
+      }
       popBall(n, hit);
-      await wait(auto ? 260 : 380);
+      await wait(auto ? 260 : decisive ? 700 : 380);
       shown.push(n); renderTray(shown, hitSet);
       nums[n - 1].classList.add('drawn');
       if (hit) {
@@ -163,10 +174,16 @@
         const h = $('hits'); h.textContent = found + ' / ' + picks.length; h.classList.remove('bump'); void h.offsetWidth; h.classList.add('bump');
         if (window.Sfx) { if (Sfx.gem) Sfx.gem(found); else Sfx.win(); }
         if (window.Casino) Casino.vibrate(25);
-      } else if (window.Sfx && Sfx.tick) Sfx.tick();
-      // suspense : il ne manque qu'un numéro pour le carton plein
-      await wait(found === picks.length - 1 && picks.length >= 4 && shown.length < C.DRAW ? 520 : 0);
+        if (decisive) suspense('✅ ' + n + ' !', gainNow() > 0 ? 'Gain en cours : ' + fmt(gainNow()) + ' €' : '', true);
+      } else {
+        if (window.Sfx && Sfx.tick) Sfx.tick();
+        if (!auto && near(n)) { const el = nums[n - 1]; el.classList.add('near'); setTimeout(() => el.classList.remove('near'), 900); if (!decisive) flashNear(n); }
+        if (decisive) suspense('✕ ' + n, 'Raté…', false);
+      }
+      liveGain(gainNow(), shown.length);
+      if (decisive) { await wait(650); energy = 2.2; }
     }
+    hideSuspense();
     energy = 0.6;
     $('hits').textContent = found + ' / ' + picks.length;
     if (res.stackAfter !== undefined) S.stack = res.stackAfter; else setStack(S.stack + res.payout);
@@ -174,6 +191,27 @@
     finish(v, picks, res);
     busy = false; ui();
     if (auto > 0) { auto--; renderAuto(); if (auto > 0) setTimeout(play, res.payout > 0 ? 1200 : 700); }
+  }
+  // ---------- Suspense : bandeau, gain en direct, « presque ! » ----------
+  function stageBox() { return document.querySelector('.lo-stage'); }
+  function suspense(title, sub, good) {
+    let b = document.getElementById('lo-suspense');
+    if (!b) { b = document.createElement('div'); b.id = 'lo-suspense'; b.className = 'lo-suspense'; b.innerHTML = '<b></b><small></small>'; stageBox().appendChild(b); }
+    b.querySelector('b').textContent = title; b.querySelector('small').textContent = sub || '';
+    b.className = 'lo-suspense show' + (good === true ? ' good' : good === false ? ' bad' : '');
+    stageBox().classList.add('tense');
+  }
+  function hideSuspense() { const b = document.getElementById('lo-suspense'); if (b) b.className = 'lo-suspense'; stageBox().classList.remove('tense'); }
+  function liveGain(g, k) {
+    let e = document.getElementById('lo-live');
+    if (!e) { e = document.createElement('div'); e.id = 'lo-live'; e.className = 'lo-live'; stageBox().appendChild(e); }
+    e.textContent = 'Boule ' + k + ' / ' + C.DRAW + (g > 0 ? ' · gain en cours ' + fmt(g) + ' €' : '');
+    e.classList.toggle('on', g > 0);
+  }
+  function flashNear(n) {
+    let e = document.getElementById('lo-near');
+    if (!e) { e = document.createElement('div'); e.id = 'lo-near'; e.className = 'lo-near'; stageBox().appendChild(e); }
+    e.textContent = 'Presque ! ' + n; e.classList.remove('show'); void e.offsetWidth; e.classList.add('show');
   }
   function finish(bet, picks, res) {
     const st = statsOf(), won = res.payout > 0;

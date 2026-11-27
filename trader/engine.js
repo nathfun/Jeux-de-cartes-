@@ -22,7 +22,7 @@
     FEE: 0.003,        // frais : 0,3 % de la somme engagée (mise × levier)
     LIQ: 0.15,         // liquidation quand il ne reste que 15 % de la mise
     LEVERS: [1, 2, 3, 5, 10, 20],
-    MIN_BET: 1, MAX_BET: 500, MAX_WIN: 10000, MAX_POS: 5,
+    MIN_BET: 1, MAX_BET: 1e9, MAX_WIN: 1e12, MAX_POS: 5,
   };
   // Les trois actions (fictives) : volatilité par √seconde, fréquence et taille des sauts
   const ASSETS = [

@@ -21,6 +21,7 @@ const PL = require('./shared/plinko-engine.js');
 const LO = require('./shared/loto-engine.js');
 const MN = require('./shared/mines-engine.js');
 const GD = require('./shared/gold-engine.js');
+const TR = require('./shared/trader-engine.js');
 const nodeCrypto = require('crypto');
 const hmacHex = (key, msg) => nodeCrypto.createHmac('sha256', key).update(msg).digest('hex');
 const sha256Hex = (t) => nodeCrypto.createHash('sha256').update(t).digest('hex');
@@ -379,6 +380,103 @@ function minesOp(P, S, ctx, sess, track) {
   fail('Opération inconnue.');
 }
 
+
+// ---------- Bourse Flash : le serveur fait vivre le marché (il ne regarde jamais les positions) ----------
+// Le cours avance d'un pas toutes les 0,25 s, calculé à la demande quand le joueur interroge le serveur.
+const TR_HIST = 360, TR_RECENT = 48, TR_MAX_GAP = 2400;
+function trState(S, ctx, now) {
+  const r = () => (ctx.rnd(1 << 30) + 0.5) / (1 << 30);
+  if (!S.tr || !S.tr.m) {
+    const m = {}, hist = {};
+    TR.ASSETS.forEach((a) => {
+      const mk = TR.market(a);
+      for (let i = 0; i < 400; i++) TR.step(mk, a, r);
+      mk.burst = null; hist[a.id] = [];
+      for (let i = 0; i < TR_HIST; i++) { TR.step(mk, a, r); hist[a.id].push(Math.round(mk.price * 1e5) / 1e5); }
+      mk.burst = null; m[a.id] = mk;
+    });
+    S.tr = { m, hist, at: now, k: 0, recent: [], pos: (S.tr && S.tr.pos) || [], seq: (S.tr && S.tr.seq) || 0, events: [] };
+  }
+  return { T: S.tr, r };
+}
+function trSettle(T, ss, p, payout, why, track) {
+  T.pos = T.pos.filter((x) => x.id !== p.id);
+  ss.stack = round2(ss.stack + payout);
+  const net = round2(payout - p.bet);
+  track('tr', { bet: p.bet, net, lev: p.lev, dir: p.dir, liq: why === 'liq', mult: payout / p.bet });
+  T.events.push({ id: p.id, asset: p.asset, dir: p.dir, lev: p.lev, bet: p.bet, net, payout, why });
+}
+/** Fait avancer le marché jusqu'à `now` (liquidations, objectifs et limites à chaque pas). */
+function trAdvance(T, ss, r, now, track, untilCalm) {
+  let n = Math.floor((now - T.at) / (TR.CONFIG.DT * 1000));
+  if (n > TR_MAX_GAP) { T.at = now - TR_MAX_GAP * TR.CONFIG.DT * 1000; n = TR_MAX_GAP; }
+  let guard = 0;
+  const one = () => {
+    const step = { k: ++T.k, p: [], h: [], j: [] };
+    TR.ASSETS.forEach((a) => {
+      const m = T.m[a.id], res = TR.step(m, a, r);
+      const price = Math.round(m.price * 1e5) / 1e5;
+      step.p.push(price); step.h.push(m.burst ? m.burst.dir : 0); step.j.push(res.jump || 0);
+      const h = T.hist[a.id]; h.push(price); if (h.length > TR_HIST) h.shift();
+    });
+    T.recent.push(step); if (T.recent.length > TR_RECENT) T.recent.shift();
+    T.pos.slice().forEach((p) => {
+      const m = T.m[p.asset];
+      if (TR.isLiquidated(p, m.price)) { trSettle(T, ss, p, 0, 'liq', track); return; }
+      if (TR.halted(m)) return;
+      const v = TR.valueAt(p, m.price);
+      if (p.tp && v >= p.bet * (1 + p.tp / 100)) trSettle(T, ss, p, TR.payoutOf(p, m.price), 'tp', track);
+      else if (p.sl && v <= p.bet * (1 - p.sl / 100)) trSettle(T, ss, p, TR.payoutOf(p, m.price), 'sl', track);
+    });
+  };
+  for (let i = 0; i < n; i++) one();
+  T.at += n * TR.CONFIG.DT * 1000;
+  // départ forcé : un krach / une envolée en cours va jusqu'au bout avant de tout clôturer (on ne fuit pas un krach)
+  if (untilCalm) while (T.pos.some((p) => TR.halted(T.m[p.asset])) && guard++ < 40) one();
+}
+function trView(T, ss, since) {
+  const out = { k: T.k, stack: ss.stack, positions: T.pos, events: T.events.splice(0), halt: TR.ASSETS.map((a) => (T.m[a.id].burst ? T.m[a.id].burst.dir : 0)) };
+  const steps = T.recent.filter((x) => x.k > since);
+  if (!(since >= 0) || steps.length >= TR_RECENT || (steps.length && steps[0].k !== since + 1)) out.hist = TR.ASSETS.map((a) => T.hist[a.id].slice());
+  else out.steps = steps;
+  return out;
+}
+function traderOp(P, S, ctx, sess, track, now) {
+  const ss = sess('trader');
+  const { T, r } = trState(S, ctx, now);
+  const d = ctx.data || {};
+  trAdvance(T, ss, r, now, track, false);
+  if (ctx.op === 'tr.open') {
+    const a = TR.ASSETS.find((x) => x.id === String(d.asset));
+    if (!a) fail('Action inconnue.');
+    const bet = int(d.bet), lev = int(d.lev), dir = d.dir === -1 ? -1 : 1;
+    if (TR.halted(T.m[a.id])) fail('Cotation suspendue : attends la fin du ' + (T.m[a.id].burst.dir === 'up' ? 'rallye' : 'krach') + '.');
+    if (!(bet >= R.gameMin(P, 'trader') && bet <= MAX_BET)) fail('Mise entre ' + R.gameMin(P, 'trader') + ' et ' + MAX_BET + ' € à ce palier.');
+    if (!(TR.CONFIG.LEVERS.includes(lev) && lev <= a.maxLev)) fail('Levier impossible pour cette action.');
+    if (T.pos.length >= TR.CONFIG.MAX_POS) fail(TR.CONFIG.MAX_POS + ' positions au maximum : clôtures-en une.');
+    if (bet > ss.stack) fail('Pas assez d\'argent sur la table.');
+    ss.stack = round2(ss.stack - bet);
+    const p = Object.assign(TR.open(bet, lev, dir, T.m[a.id].price), { id: ++T.seq, asset: a.id, tp: Math.max(0, Math.min(1000, int(d.tp) || 0)), sl: Math.max(0, Math.min(80, int(d.sl) || 0)), at: now });
+    p.liq = TR.liqPrice(p);
+    T.pos.push(p);
+  } else if (ctx.op === 'tr.close') {
+    const p = T.pos.find((x) => x.id === int(d.id));
+    if (p) {
+      if (TR.halted(T.m[p.asset])) fail('Cotation suspendue : impossible de clôturer pendant 2 secondes.');
+      trSettle(T, ss, p, TR.payoutOf(p, T.m[p.asset].price), 'close', track);
+    }
+  } else if (ctx.op !== 'tr.tick') fail('Opération inconnue.');
+  return trView(T, ss, Number(d.since));
+}
+/** Fin de partie de Bourse : on clôture tout au cours actuel (après la fin d'un éventuel krach). */
+function traderCloseAll(P, S, ctx, now, track) {
+  if (!S.tr || !S.tr.m || !P.sessions.trader) return;
+  const ss = P.sessions.trader, r = () => (ctx.rnd(1 << 30) + 0.5) / (1 << 30);
+  trAdvance(S.tr, ss, r, now, track, true);
+  S.tr.pos.slice().forEach((p) => trSettle(S.tr, ss, p, TR.payoutOf(p, S.tr.m[p.asset].price), 'close', track));
+  S.tr.events = [];
+}
+
 // ---------- Opérations ----------
 function handle(state, ctx) {
   const now = ctx.now, N = [];
@@ -413,13 +511,14 @@ function handle(state, ctx) {
     }
     if (game === 'slots') S.sl = null;
     if (game === 'blackjack') S.bj = { shoe: S.bj && S.bj.shoe, round: null };
+    if (game === 'trader') traderCloseAll(P, S, ctx, now, track);
   };
   // La journée est-elle finie ? (le chrono est vérifié par le serveur à chaque action)
   if (R.runActive(P) && now >= P.run.dayEnd && ctx.op !== 'run.end') {
     Object.keys(P.sessions).forEach((g) => settle(g, false));
     const r = R.runEndDay(P, now, N, 'time');
     result.dayOver = r.over ? 'over' : 'shop';
-    if (/^(bj|rl|sl|cr|gd|pl|lo|mn|wh|pk|bo)\./.test(ctx.op) || ctx.op === 'session.start' || ctx.op === 'session.cashout') {
+    if (/^(bj|rl|sl|cr|gd|pl|lo|mn|wh|pk|bo|tr)\./.test(ctx.op) || ctx.op === 'session.start' || ctx.op === 'session.cashout') {
       state.player = P; state.secret = S;
       return { state, result: { dayOver: result.dayOver, run: P.run }, notes: N };
     }
@@ -530,7 +629,6 @@ function handle(state, ctx) {
       sess(game);
       if (game === 'slots' && S.sl && S.sl.free > 0) fail('Termine d\'abord tes tours gratuits.');
       if (game === 'poker') fail('Au poker, la partie se termine à la fin du tournoi.');
-      if (game === 'trader') fail('Bourse Flash en partie réelle n\'est pas encore géré par le serveur.');
       settle(game, true);
       const startStack = P.sessions[game].start, endStack = P.sessions[game].stack;
       result.cash = R.cashOut(P, game, N);
@@ -607,6 +705,7 @@ function handle(state, ctx) {
     case 'pl.drop': case 'pl.seed': result = plinkoOp(P, S, ctx, sess, track); break;
     case 'lo.draw': case 'lo.seed': result = lotoOp(P, S, ctx, sess, track); break;
     case 'mn.start': case 'mn.reveal': case 'mn.cashout': case 'mn.seed': result = minesOp(P, S, ctx, sess, track); break;
+    case 'tr.tick': case 'tr.open': case 'tr.close': result = traderOp(P, S, ctx, sess, track, now); break;
 
     // ----- Blackjack : le sabot reste sur le serveur -----
     case 'bj.deal': case 'bj.ins': case 'bj.act': {
@@ -647,7 +746,7 @@ function handle(state, ctx) {
   }
   // Plus assez d'argent nulle part pour miser (caisse + tables, manches finies) : banqueroute
   if (R.runActive(P)) {
-    const busy = (S.bj && S.bj.round && S.bj.round.phase !== 'over') || (S.sl && S.sl.free > 0) || (S.mn && S.mn.round && S.mn.round.active) || (S.cr && S.cr.round && !S.cr.round.done && S.cr.round.bet);
+    const busy = (S.tr && S.tr.pos && S.tr.pos.length > 0) || (S.bj && S.bj.round && S.bj.round.phase !== 'over') || (S.sl && S.sl.free > 0) || (S.mn && S.mn.round && S.mn.round.active) || (S.cr && S.cr.round && !S.cr.round.done && S.cr.round.bet);
     const b = busy ? null : R.runCheckBroke(P, now, N);
     if (b && b.over) result.dayOver = 'over';
   }

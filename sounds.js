@@ -116,6 +116,21 @@
       if (!ac()) return;
       tone(ctx.currentTime, 1500, 'square', 0.06, 0.001, 0.03);
     },
+    /** Battement de cœur (suspense) : deux coups sourds. */
+    heartbeat() {
+      if (!ac()) return;
+      const t = ctx.currentTime;
+      tone(t, 62, 'sine', 0.5, 0.005, 0.18, 48); tone(t + 0.2, 58, 'sine', 0.38, 0.005, 0.2, 44);
+    },
+    /** Roulement de tambour (environ `seconds` secondes) avant une boule décisive. */
+    drumroll(seconds) {
+      if (!ac()) return;
+      const t = ctx.currentTime, n = Math.round((seconds || 1.2) * 22);
+      for (let k = 0; k < n; k++) noiseBurst(t + k / 22, 180 + k * 3, 1.2, 0.05 + 0.09 * (k / n), 0.05);
+    },
+    /** Paquet qui arrive / qu'on déchire. */
+    whoosh() { if (ac()) noiseBurst(ctx.currentTime, 900, 0.7, 0.12, 0.35); },
+    tear() { if (ac()) { const t = ctx.currentTime; for (let k = 0; k < 6; k++) noiseBurst(t + k * 0.03, 2200 - k * 200, 2, 0.1, 0.05); } },
     // Roulette : roulement de la bille sur la piste (bruit filtré qui ralentit), rebonds, annonces
     rouletteRoll(seconds) {
       if (!ac() || !(seconds > 0)) return;
