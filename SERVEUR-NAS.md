@@ -120,6 +120,19 @@ Le script télécharge la dernière version et garde ta config, ta clé, la base
 Si le serveur n'a pas changé, il ne fait rien. Il se met aussi à jour lui-même.
 Tu n'as besoin de le lancer que quand je te dis que **le serveur** a changé : le reste de l'app (jeux, écrans) se met à jour tout seul.
 
+**Coach IA pour les VIP (facultatif)** : la page « Apprendre à jouer » propose aux membres VIP de poser une question à une IA (20 questions par jour et par joueur).
+Pour l'activer, crée une clé sur console.anthropic.com (l'usage est facturé par Anthropic), puis ajoute cette ligne dans `server/.env` sur le NAS et relance le serveur :
+```
+ANTHROPIC_API_KEY=ta-clé-ici
+```
+Sans clé, le reste fonctionne normalement : la case du coach IA indique juste qu'elle n'est pas activée.
+
+**Mode maintenance** : depuis la page admin (section « Maintenance »), tu peux couper le jeu pour tout le monde avec un message.
+Les joueurs voient une bannière et ne peuvent plus jouer jusqu'à ce que tu le désactives.
+
+**Grand Prix du soir** : chaque jour à 21 h (heure de Paris), une course de chevaux commune à tous les joueurs.
+Le résultat vient d'un secret stocké dans `server/data/event-secret` (créé tout seul) : garde-le dans tes sauvegardes.
+
 **Sauvegarde** : toute la base tient dans `server/data/` (fichier `casino.db`).
 Ajoute ce dossier à une tâche de sauvegarde UGOS (quotidienne, vers un autre disque ou le cloud).
 

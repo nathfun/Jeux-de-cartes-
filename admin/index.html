@@ -100,8 +100,13 @@
           <textarea id="ann-text" maxlength="300" rows="2" placeholder="Ex. : Tournoi de poker samedi à 20 h !"></textarea>
           <div class="row2"><button id="ann-save" class="gold" type="button">Publier</button><button id="ann-clear" type="button">Retirer l'annonce</button></div></div>
         <div><h3>🎁 Cadeau pour tout le monde</h3>
-          <div class="row2"><input id="gift" type="number" min="1" step="100" value="1000" style="width:8em"> € <button id="gift-go" class="gold" type="button">Créditer tous les comptes</button></div>
-          <p class="small muted">Ajouté directement dans la banque de chaque joueur (sauf comptes bloqués).</p></div>
+          <div class="row2"><input id="gift" type="number" min="1" step="100" value="100" style="width:8em"> jetons <button id="gift-go" class="gold" type="button">Créditer tous les comptes</button></div>
+          <p class="small muted">Ajouté en jetons sur le compte de chaque joueur (sauf comptes bloqués).</p></div>
+        <div><h3>🛠️ Mode maintenance</h3>
+          <textarea id="mt-msg" maxlength="200" rows="2" placeholder="Ex. : Mise à jour en cours, retour dans 10 minutes !"></textarea>
+          <div class="row2"><button id="mt-on" class="gold" type="button">Activer</button><button id="mt-off" type="button">Désactiver</button></div>
+          <p class="small muted" id="mt-state">…</p>
+          <p class="small muted">Pendant la maintenance, les joueurs voient un bandeau et ne peuvent plus jouer ; leurs parties et leur argent sont gardés et reprennent après. Toi, tu peux continuer à tester.</p></div>
         <div><h3>🧹 Parties ouvertes</h3>
           <p class="small muted" id="lobby-count">…</p>
           <button id="lobby-clear" type="button">Vider la liste des parties</button></div>

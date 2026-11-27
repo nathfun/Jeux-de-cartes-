@@ -25,6 +25,18 @@
     .intro { background: rgba(79,195,247,.08); border: 1px solid #1e5a78; border-radius: 16px; padding: 1rem 1.1rem; line-height: 1.45; }
     .intro b { color: #bae6fd; }
     .games a.game { border-color: #1e5a78; }
+    .learn-rules { background: rgba(0,0,0,.25); border: 1px solid #1e5a78; border-radius: 16px; padding: .8rem 1rem; }
+    .learn-rules h2, .ai-box h2 { margin: 0 0 .5rem; font-size: 1.1rem; }
+    .learn-rules details { border-top: 1px solid rgba(255,255,255,.08); padding: .45rem 0; } .learn-rules summary { cursor: pointer; font-weight: 700; }
+    .learn-rules p { margin: .4rem 0 .2rem; color: #cfe8f3; line-height: 1.45; }
+    .ai-box { background: linear-gradient(160deg, #1f1a0a, #0e0b05); border: 1px solid #a16207; border-radius: 16px; padding: .9rem 1rem; }
+    .ai-vip { font-size: .72rem; background: #facc15; color: #1c1300; border-radius: 999px; padding: .1rem .5rem; vertical-align: middle; }
+    .ai-box form { display: flex; flex-direction: column; gap: .5rem; }
+    .ai-box select, .ai-box textarea { font: inherit; background: #0b0f14; color: var(--text); border: 1px solid #3d2d10; border-radius: 10px; padding: .5rem .7rem; }
+    .ai-box button { font: inherit; font-weight: 900; border: 0; border-radius: 12px; padding: .7rem; background: linear-gradient(135deg, #fde047, #f59e0b); color: #1c1300; cursor: pointer; }
+    .ai-box button:disabled { opacity: .5; }
+    .ai-box.locked form { opacity: .45; pointer-events: none; }
+    .ai-answer { margin-top: .7rem; padding: .7rem .9rem; border-radius: 12px; background: rgba(250,204,21,.08); border: 1px solid #5b4314; line-height: 1.5; white-space: pre-wrap; }
     .reset { align-self: flex-start; font: inherit; background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 10px; padding: .45rem .8rem; cursor: pointer; }
   </style>
 </head>
@@ -32,6 +44,33 @@
   <main>
     <div class="top"><a class="back" href="index.html" aria-label="Retour au lobby">←</a><h1>🎓 Apprentissage</h1></div>
     <p class="intro">Ici, <b>tous les jeux sont ouverts</b>, avec un <b>crédit illimité</b>, les <b>aides</b> et les <b>conseils du coach</b>. Rien ne compte : ni ta partie de La Dette, ni tes jetons, ni tes niveaux. Teste, apprends les règles, rate autant que tu veux !</p>
+    <section class="learn-rules">
+      <h2>📖 Les règles en bref</h2>
+      <details><summary>🂡 Blackjack</summary><p>Approche-toi de 21 sans dépasser, et fais mieux que le croupier. Les figures valent 10, l'As 1 ou 11. Le croupier tire jusqu'à 17. Blackjack (As + figure) paie 3 pour 2. Tu peux tirer, rester, doubler (une carte de plus, mise doublée), séparer une paire, ou abandonner (tu récupères la moitié).</p></details>
+      <details><summary>🎡 Roulette</summary><p>37 cases (0 à 36). Mise sur un numéro (paie 35 fois), deux numéros (17 fois), une douzaine ou une colonne (2 fois), rouge/noir, pair/impair, manque/passe (1 fois). Si le 0 sort, les chances simples ne perdent que la moitié.</p></details>
+      <details><summary>🎰 Machines à sous</summary><p>Choisis ta mise et lance : les symboles alignés sur une ligne paient selon le tableau des gains. Les jokers remplacent les autres symboles, les symboles bonus déclenchent des tours gratuits ou un jeu spécial.</p></details>
+      <details><summary>🎡 Roue de la fortune</summary><p>12 cases : une ×5, une ×2, trois ×1,5 et sept perdantes. La case où s'arrête l'aiguille multiplie ta mise.</p></details>
+      <details><summary>🚀 Rocket Crash</summary><p>Le multiplicateur monte tant que la fusée vole. Retire ta mise avant l'explosion pour gagner mise × multiplicateur. Plus tu attends, plus tu gagnes… et plus tu risques tout.</p></details>
+      <details><summary>💎 Mines</summary><p>25 cases, quelques mines cachées. Chaque diamant trouvé augmente ton gain ; encaisse quand tu veux. Une mine et tout est perdu.</p></details>
+      <details><summary>🔮 Plinko</summary><p>La bille rebondit de picot en picot jusqu'à une case qui multiplie ta mise. Les bords paient le plus mais sont les plus rares.</p></details>
+      <details><summary>🎱 Loto Express</summary><p>Coche 1 à 8 numéros sur 30 ; 10 boules sont tirées. Plus tu trouves de bons numéros, plus le multiplicateur grimpe.</p></details>
+      <details><summary>📈 Bourse Flash</summary><p>Achète si tu penses que le cours monte, vends s'il va baisser. Le levier multiplie gains et pertes ; si la perte est trop forte, la position est liquidée.</p></details>
+      <details><summary>🏇 Course de chevaux</summary><p>Six chevaux, chacun avec sa cote. Mise sur un ou plusieurs : si ton cheval gagne, ta mise est multipliée par sa cote. Les favoris gagnent souvent mais paient peu.</p></details>
+      <details><summary>🔐 Le Braquage</summary><p>3 rouleaux, 5 lignes. Le parrain 🕴️ remplace tout. Trois 🔐 déclenchent Le Coffre : choisis un coffre-fort, jusqu'à ×100 la mise.</p></details>
+      <details><summary>🃏 Boosters</summary><p>Un paquet = 10 cartes (8 communes, 2 rares ou mieux), revendues tout de suite. Les cartes épiques et mieux rejoignent ta collection. Un paquet sur 200 est un God Pack.</p></details>
+      <details><summary>♠ Poker</summary><p>Texas Hold'em : 2 cartes à toi, 5 cartes communes. La meilleure main de 5 cartes gagne le pot. Les blindes montent avec le temps : le dernier joueur avec des jetons remporte la partie.</p></details>
+      <details><summary>🕴️ La Dette</summary><p>Chaque journée dure 10 minutes : atteins le quota en jouant avec ta caisse. Entre deux paliers, achète des objets chez le receleur. Quota raté ou caisse vide : la mafia passe et la partie s'arrête. Tu gardes les jetons et l'XP gagnés.</p></details>
+    </section>
+    <section id="ai-box" class="ai-box">
+      <h2>🤖 Demande au coach <span class="ai-vip">👑 VIP</span></h2>
+      <p class="muted" id="ai-lead">Une question sur une règle ou une stratégie ? Le coach (une IA) te répond en quelques phrases.</p>
+      <form id="ai-form">
+        <select id="ai-game" aria-label="Jeu"><option value="">Tous les jeux</option><option>Blackjack</option><option>Roulette</option><option>Machines à sous</option><option>Roue de la fortune</option><option>Rocket Crash</option><option>Mines</option><option>Plinko</option><option>Loto Express</option><option>Bourse Flash</option><option>Course de chevaux</option><option>Le Braquage</option><option>Boosters</option><option>Poker</option><option>La Dette</option></select>
+        <textarea id="ai-q" maxlength="500" rows="3" placeholder="Ex. : Faut-il doubler avec 11 contre un As ?"></textarea>
+        <button id="ai-send" type="submit">Demander au coach</button>
+      </form>
+      <div id="ai-answer" class="ai-answer" hidden></div>
+    </section>
     <section class="games" aria-label="Jeux">
       <a class="game roue" href="roue/index.html" data-learn="wheel">
         <h2>Roue de la fortune</h2>
@@ -124,6 +163,18 @@
       const r = Casino.profile.run;
       if (r && (r.status === 'playing' || r.status === 'shop' || (r.status === 'over' && !r.seen))) { location.replace('partie.html' + location.search); return; }
       Casino.setLearn(true);
+      // Coach IA : réservé aux VIP (les autres voient la boîte, cadenassée)
+      const box = document.getElementById('ai-box');
+      if (!Casino.isVip()) { box.classList.add('locked'); document.getElementById('ai-lead').innerHTML = 'Réservé aux membres <b>VIP</b> : pose tes questions au coach (une IA) sur les règles et la stratégie. <a href="index.html" style="color:#fde047">Découvrir le club VIP →</a>'; }
+      document.getElementById('ai-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const q = document.getElementById('ai-q').value.trim(), out = document.getElementById('ai-answer'), btn = document.getElementById('ai-send');
+        if (q.length < 3) return;
+        btn.disabled = true; out.hidden = false; out.textContent = 'Le coach réfléchit…';
+        const r = Casino.server ? await Casino.call('ai.ask', { question: q, game: document.getElementById('ai-game').value }) : { error: 'Le coach a besoin du serveur du Casino.' };
+        btn.disabled = false;
+        out.textContent = r && r.error ? '⚠️ ' + r.error : r.answer + (typeof r.left === 'number' ? '\n\n(' + r.left + ' question' + (r.left > 1 ? 's' : '') + ' restante' + (r.left > 1 ? 's' : '') + ' aujourd\'hui)' : '');
+      });
       let armed = null;
       document.getElementById('reset').addEventListener('click', (e) => {
         const b = e.currentTarget;

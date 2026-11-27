@@ -462,6 +462,10 @@
     .shop-daily .sd-item small { font-size: .7rem; }
     /* refonte : anciens systèmes retirés */
     .wheel-panel, .panel.boosters, .panel.market, .panel.deals, #salon-next, #panel-bank, #panel-chest, #mp-new-loto, [data-pp="chest"] { display: none !important; }
+    .news-btn { position: relative; } .news-btn i { position: absolute; top: -3px; right: -3px; width: 10px; height: 10px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+    .news-dlg { position: fixed; inset: 0; z-index: 150; display: grid; place-items: center; padding: 16px; background: rgba(0,0,0,.7); }
+    .news-dlg .box { width: min(520px, 100%); max-height: 85vh; overflow: auto; background: var(--panel); border: 1px solid var(--border); border-radius: 18px; padding: 1rem 1.1rem; }
+    .news-dlg h3 { margin: .2rem 0; color: var(--gold); } .news-dlg small { color: var(--muted); } .news-dlg ul { padding-left: 1.1rem; line-height: 1.5; } .news-dlg li { margin: .25rem 0; }
     /* ----- Coffres mystères ----- */
     .box-panel { border-color: #7c3aed; background: radial-gradient(500px 200px at 100% 0%, rgba(168,85,247,.25), transparent 60%), linear-gradient(160deg, #1a1030, #0f0b1c); }
     .bx-head { display: flex; gap: .8rem; align-items: center; } .bx-head h2 { margin: 0; } .bx-ic { font-size: 2.6rem; animation: bxBob 2s ease-in-out infinite; }
@@ -647,6 +651,22 @@
     .ach-dhead { display: flex; justify-content: space-between; align-items: center; } .ach-dhead h2 { margin: 0; }
     .ach-filters { display: flex; gap: .35rem; margin: .6rem 0; } .ach-filters button { font: inherit; font-size: .8rem; border-radius: 999px; border: 1px solid var(--border); background: transparent; color: var(--muted); padding: .25rem .7rem; cursor: pointer; } .ach-filters button.on { background: var(--gold); color: #222; border-color: var(--gold); }
     .ach small { display: block; color: #3fb950; font-size: .7rem; margin-top: .15rem; }
+    .gp-panel h2 { margin: 0 0 .2rem; color: #fde68a; }
+    .gp-panel .gp-when { font-weight: 800; color: #bae6fd; }
+    .gp-track { display: grid; gap: .35rem; margin: .7rem 0; }
+    .gp-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: .5rem; padding: .45rem .6rem; border-radius: 12px; border: 1px solid var(--border); background: rgba(255,255,255,.03); color: inherit; font: inherit; text-align: left; cursor: pointer; position: relative; overflow: hidden; }
+    .gp-row.sel { border-color: #fbbf24; box-shadow: 0 0 0 1px #fbbf24 inset; }
+    .gp-row.win { border-color: #22c55e; background: rgba(34,197,94,.12); }
+    .gp-row .gp-name { display: flex; align-items: center; gap: .45rem; font-weight: 700; position: relative; z-index: 1; }
+    .gp-row .gp-dot { width: .8rem; height: .8rem; border-radius: 50%; flex: none; border: 1px solid rgba(255,255,255,.4); }
+    .gp-row .gp-odds { font-weight: 800; color: #fde68a; position: relative; z-index: 1; }
+    .gp-row .gp-mine { font-size: .75rem; color: #86efac; font-weight: 700; }
+    .gp-row .gp-run { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: rgba(251,191,36,.18); transition: width .25s linear; }
+    .gp-chips { display: flex; flex-wrap: wrap; gap: .4rem; justify-content: center; margin: .3rem 0 .5rem; }
+    .gp-chips button { min-width: 3.2rem; padding: .45rem .6rem; border-radius: 999px; border: 2px dashed #fbbf24; background: #3b2a06; color: #fde68a; font-weight: 800; cursor: pointer; }
+    .gp-chips button.on { background: #fbbf24; color: #1f1300; }
+    .gp-bet { width: 100%; }
+    .gp-msg { min-height: 1.2em; text-align: center; font-weight: 700; }
   </style>
 </head>
 <body>
@@ -659,6 +679,7 @@
         <p>Le casino entre amis · 100 % fun, 0 € réel.</p>
       </div>
       <div class="head-btns">
+        <button id="news-btn" class="icon-btn news-btn" type="button" title="Nouveautés">🆕<i id="news-dot" hidden></i></button>
         <a id="admin-link" class="icon-btn" href="admin/index.html" hidden title="Administration">🛠️</a>
         <button id="music-toggle" class="icon-btn" type="button">🎵</button>
         <button id="sound-toggle" class="icon-btn" type="button">🔊</button>
@@ -702,7 +723,17 @@
       <a id="learn-btn" class="lp-learn" href="apprendre.html" onclick="this.href='apprendre.html'+location.search">🎓 Apprentissage <small>tous les jeux, crédit illimité, aides du coach</small></a>
     </section>
 
-
+    <section id="gp-panel" class="panel dette gp-panel" aria-label="Grand Prix du soir" hidden>
+      <h2>🏇 Grand Prix du soir</h2>
+      <p class="muted small-p">Une course pour tous les joueurs, chaque soir à <b>21 h</b>. Parie tes jetons sur un cheval avant le départ : s'il gagne, tu touches la cote.</p>
+      <p id="gp-when" class="gp-when"></p>
+      <div id="gp-track" class="gp-track"></div>
+      <div id="gp-form">
+        <div id="gp-chips" class="gp-chips"></div>
+        <button id="gp-bet" class="dt-cta gp-bet" type="button" disabled>Choisis un cheval</button>
+      </div>
+      <p id="gp-msg" class="gp-msg" role="status"></p>
+    </section>
 
     <section class="panel wheel-panel" aria-label="Roue du jour">
       <div class="wh-wrap">
@@ -984,6 +1015,7 @@
   <script src="firebase-config.js"></script>
   <script src="gate.js"></script>
   <script src="casino-rules.js"></script>
+  <script src="news.js"></script>
   <script src="profile.js"></script>
   <script src="account.js"></script>
   <script src="social.js"></script>
@@ -1574,6 +1606,23 @@
         });
       }
 
+      // ---------- Nouveautés ----------
+      (function () {
+        const news = window.CASINO_NEWS || [], last = news[0] && news[0].date;
+        let seen = ''; try { seen = localStorage.getItem('casino-news-seen') || ''; } catch (e) { /* ignore */ }
+        $('news-dot').hidden = !last || seen >= last;
+        $('news-btn').addEventListener('click', () => {
+          const o = document.createElement('div'); o.className = 'news-dlg';
+          const box = document.createElement('div'); box.className = 'box'; o.appendChild(box);
+          box.innerHTML = '<h2 style="margin:0 0 .4rem">🆕 Nouveautés</h2>';
+          news.forEach((n) => { const h = document.createElement('h3'); h.textContent = n.title; const d = document.createElement('small'); d.textContent = new Date(n.date + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }); const ul = document.createElement('ul'); n.items.forEach((t) => { const li = document.createElement('li'); li.textContent = t; ul.appendChild(li); }); box.append(h, d, ul); });
+          const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'bonus-btn'; ok.textContent = 'Super !'; ok.onclick = () => o.remove(); box.appendChild(ok);
+          o.addEventListener('click', (e) => { if (e.target === o) o.remove(); });
+          document.body.appendChild(o);
+          try { localStorage.setItem('casino-news-seen', last || ''); } catch (e) { /* ignore */ }
+          $('news-dot').hidden = true;
+        });
+      })();
       // ---------- Coffres mystères ----------
       function renderBoxes() {
         const b = Casino.boxInfo(), vip = Casino.isVip();
@@ -1995,6 +2044,85 @@
       });
       Casino.onChange(render);
       render();
+
+    // ---------- Grand Prix du soir (21 h, pour tous les joueurs) ----------
+    (function grandPrix() {
+      const box = $('gp-panel'); if (!box || !Casino.server) return;
+      let info = null, pick = -1, amount = 50, raced = '', tick = null;
+      const fmt = (n) => Math.floor(n).toLocaleString('fr-FR');
+      function when() {
+        if (!info) return;
+        const left = info.start - Date.now();
+        if (info.open && left <= 0) { load(); return; }
+        if (info.open) { const h = Math.floor(left / 3600000), m = Math.floor(left / 60000) % 60, sec = Math.floor(left / 1000) % 60; $('gp-when').textContent = '⏱ Départ dans ' + (h ? h + ' h ' : '') + String(m).padStart(2, '0') + ' min ' + String(sec).padStart(2, '0') + ' s'; }
+        else $('gp-when').textContent = '🏁 La course de ce soir est terminée. Prochain Grand Prix demain à 21 h.';
+      }
+      function render(winShown) {
+        const my = (info.my && info.my.bets) || {}, total = Object.values(my).reduce((a, b) => a + b, 0);
+        const tr = $('gp-track'); tr.innerHTML = '';
+        info.card.odds.forEach((o, i) => {
+          const b = document.createElement('button'); b.type = 'button';
+          b.className = 'gp-row' + (i === pick && info.open ? ' sel' : '') + (winShown && i === info.win ? ' win' : '');
+          b.innerHTML = '<span class="gp-run"></span><span class="gp-name"><span class="gp-dot"></span><span></span></span><span class="gp-odds">×' + o.toLocaleString('fr-FR') + '</span>';
+          b.querySelector('.gp-dot').style.background = window.CasinoRules.HORSES[i].c;
+          b.querySelector('.gp-name span:last-child').textContent = (winShown && i === info.win ? '🏆 ' : '') + info.horses[i] + (my[i] ? ' ' : '');
+          if (my[i]) { const t = document.createElement('span'); t.className = 'gp-mine'; t.textContent = '· ta mise ' + fmt(my[i]); b.querySelector('.gp-name').appendChild(t); }
+          b.disabled = !info.open;
+          b.addEventListener('click', () => { pick = i; render(false); });
+          tr.appendChild(b);
+        });
+        $('gp-form').hidden = !info.open;
+        const ch = $('gp-chips'); ch.innerHTML = '';
+        [10, 50, 100, 250, 500].forEach((v) => { const c = document.createElement('button'); c.type = 'button'; c.textContent = v; c.className = v === amount ? 'on' : ''; c.addEventListener('click', () => { amount = v; render(false); }); ch.appendChild(c); });
+        const btn = $('gp-bet'); btn.disabled = pick < 0;
+        btn.textContent = pick < 0 ? 'Choisis un cheval' : 'Parier ' + fmt(amount) + ' jetons sur ' + info.horses[pick] + ' (gain ' + fmt(amount * info.card.odds[pick]) + ')';
+        if (info.open) $('gp-msg').textContent = total ? 'Tes paris de ce soir : ' + fmt(total) + ' jetons.' : '';
+        when();
+      }
+      function race() {
+        // course animée (même déroulé pour tout le monde : il vient du serveur), puis le résultat et les gains
+        raced = info.day;
+        const rows = [...$('gp-track').querySelectorAll('.gp-row .gp-run')];
+        let s = info.seed || 1; const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+        const pos = [0, 0, 0, 0, 0, 0], N = 40; let k = 0;
+        $('gp-msg').textContent = '🏇 Ils sont partis !';
+        const step = () => {
+          k++;
+          for (let i = 0; i < 6; i++) pos[i] += (i === info.win ? 2.55 : 2.2) + rnd() * 0.9;
+          const lead = Math.max(...pos.map((p, i) => (i === info.win ? 0 : p)));
+          if (k >= N - 4) pos[info.win] = Math.max(pos[info.win], lead + 2);
+          const top = Math.max(...pos);
+          rows.forEach((r, i) => { r.style.width = Math.min(100, pos[i] / top * (k / N) * 100) + '%'; });
+          if (k < N) setTimeout(step, 150);
+          else {
+            render(true);
+            const my = (info.my && info.my.bets) || {}, gain = Math.floor((my[info.win] || 0) * info.card.odds[info.win]);
+            $('gp-msg').textContent = '🏆 ' + info.horses[info.win] + ' remporte le Grand Prix !' + (Object.keys(my).length ? (gain ? ' Tu gagnes ' + fmt(gain) + ' jetons 🎉' : ' Pas de chance pour tes paris ce soir.') : '');
+            if (gain && window.Sfx) try { Sfx.win(); } catch (e) { /* ignore */ }
+            Casino.release();
+          }
+        };
+        step();
+      }
+      async function load() {
+        try {
+          const seen = localStorage.getItem('gp-seen');
+          Casino.hold();
+          info = await Casino.call('ev.info', {});
+          box.hidden = false;
+          if (!info.open && seen !== info.day) { render(false); try { localStorage.setItem('gp-seen', info.day); } catch (e) { /* ignore */ } race(); }
+          else { render(!info.open); Casino.release(); }
+          clearInterval(tick); tick = setInterval(when, 1000);
+        } catch (e) { Casino.release(); }
+      }
+      $('gp-bet').addEventListener('click', async () => {
+        if (pick < 0) return;
+        $('gp-bet').disabled = true;
+        try { info = await Casino.call('ev.bet', { horse: pick, amount }); $('gp-msg').textContent = '✔ Pari enregistré !'; render(false); }
+        catch (e) { $('gp-msg').textContent = e.message || 'Pari impossible.'; $('gp-bet').disabled = false; }
+      });
+      load();
+    })();
       if (Casino.server) Casino.sync();
       setInterval(render, 30000);
     })();

@@ -17,6 +17,42 @@ const crypto = require('crypto');
 const core = require('../core/core.js');
 const R = require('../core/shared/casino-rules.js');
 const store = require('./store.js');
+// Conseils de l'IA pour les membres VIP (Claude, via le SDK officiel) : actifs seulement si ANTHROPIC_API_KEY est défini dans .env
+let anthropic = null;
+try { if (process.env.ANTHROPIC_API_KEY) { const A = require('@anthropic-ai/sdk'); anthropic = new (A.default || A.Anthropic || A)(); } } catch (e) { console.error('[casino] SDK Anthropic indisponible :', e.message); }
+const AI_PER_DAY = 20, aiUse = new Map();
+// Mode maintenance : réglé depuis l'administration, gardé sur le disque (survit aux redémarrages)
+const fs0 = require('fs'), path0 = require('path');
+const MAINT_FILE = () => path0.join(process.env.DATA_DIR || path0.join(__dirname, '..', 'data'), 'maintenance.json');
+let maint = { on: false, msg: '' };
+// Grand Prix du soir (21 h, heure de Paris) : course de chevaux pour tous les joueurs, paris en jetons.
+// Le tableau et le vainqueur du jour viennent d'un secret gardé sur le NAS (personne ne peut les deviner à l'avance).
+const EV_HOUR = 21, EV_MAX = 1000, EV_MAX_VIP = 2500, EV_MIN = 10;
+let evSecret = '';
+try { evSecret = fs0.readFileSync(path0.join(process.env.DATA_DIR || path0.join(__dirname, '..', 'data'), 'event-secret'), 'utf8'); } catch (e) {
+  evSecret = require('crypto').randomBytes(32).toString('hex');
+  try { fs0.writeFileSync(path0.join(process.env.DATA_DIR || path0.join(__dirname, '..', 'data'), 'event-secret'), evSecret); } catch (er) { /* ignore */ }
+}
+function evRng(day, what) { let i = 0; return (n) => { const h = require('crypto').createHmac('sha256', evSecret).update(day + ':' + what + ':' + (i++)).digest(); return h.readUInt32BE(0) % n; }; }
+function evOf(day) { const card = R.horseCard(evRng(day, 'card')); return { card, win: R.horseRace(card, evRng(day, 'win')), seed: evRng(day, 'seed')(1e9) }; }
+/** Heure de départ du Grand Prix du jour `day` (AAAA-MM-JJ, Paris) en millisecondes. */
+function evStart(day) {
+  const guess = Date.parse(day + 'T' + String(EV_HOUR).padStart(2, '0') + ':00:00Z');
+  const paris = new Date(new Date(guess).toLocaleString('en-US', { timeZone: 'Europe/Paris' })), utc = new Date(new Date(guess).toLocaleString('en-US', { timeZone: 'UTC' }));
+  return guess - (paris - utc);
+}
+function evEdit(uid, op, fn) {
+  return serial(uid, async () => {
+    const before = db.load(uid);
+    if (!before.player) throw userError('Joue d\'abord une partie pour créer ton compte sur le serveur.');
+    const after = JSON.parse(JSON.stringify(before));
+    after.player = R.normalize(after.player, Date.now());
+    const out = fn(after.player);
+    db.save(uid, op, before, after, Date.now());
+    return { out, player: after.player };
+  });
+}
+try { maint = Object.assign(maint, JSON.parse(fs0.readFileSync(MAINT_FILE(), 'utf8'))); } catch (e) { /* pas de maintenance */ }
 
 const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = process.env.DATA_DIR || '/data';
@@ -25,7 +61,7 @@ const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'jeux-de-cartes-81cdf';
 const DB_URL = process.env.FIREBASE_DATABASE_URL || 'https://jeux-de-cartes-81cdf-default-rtdb.europe-west1.firebasedatabase.app';
 const MAX_BODY = 32 * 1024;
 // version du serveur (affichée dans l'admin et sur /health) : à changer à chaque mise à jour du serveur
-const SERVER_VERSION = '2026.11.27-9';
+const SERVER_VERSION = '2026.11.27-10';
 const TABLES = { blackjack: 'tables/', poker: 'ptables/', roulette: 'rtables/', loto: 'ltables/' };
 
 // ---------- Firebase (vérification des comptes, profil public, lecture des tables entre amis) ----------
@@ -285,6 +321,64 @@ async function casino(uid, token, op, data) {
   // un visiteur sans compte (connexion anonyme) ne crée rien sur le serveur : il faut un compte pour jouer
   if (token.firebase && token.firebase.sign_in_provider === 'anonymous') throw userError('Connecte-toi à ton compte pour jouer.');
   if (await isBanned(uid)) throw userError('Ton compte a été bloqué par l\'administrateur du Casino.');
+  // Grand Prix du soir (événement de 21 h)
+  if (op === 'ev.info' || op === 'ev.bet' || op === 'ev.claim') {
+    const now = Date.now(), day = R.today(now), start = evStart(day), open = now < start;
+    const ev = evOf(day), d = data || {};
+    const r = await evEdit(uid, op, (P) => {
+      const notes = [];
+      // gains d'un Grand Prix passé (ou de celui de ce soir, une fois couru)
+      if (P.ev && !P.ev.paid && (P.ev.day < day || (P.ev.day === day && !open))) {
+        const e = evOf(P.ev.day), stake = Number(P.ev.bets[e.win]) || 0, gain = Math.floor(stake * e.card.odds[e.win]);
+        P.ev.paid = true; P.ev.win = e.win; P.ev.gain = gain;
+        if (gain > 0) { P.wallet = Math.round((P.wallet + gain) * 100) / 100; notes.push({ kind: 'gold', icon: '🏇', title: 'Grand Prix : ' + R.HORSES[e.win].name + ' gagne !', text: '+' + gain.toLocaleString('fr-FR') + ' jetons' }); }
+      }
+      if (op === 'ev.bet') {
+        if (!open) throw userError('Les paris du Grand Prix de ce soir sont fermés : reviens demain !');
+        const h = Math.floor(Number(d.horse)), amount = Math.floor(Number(d.amount));
+        if (!(h >= 0 && h < 6)) throw userError('Cheval inconnu.');
+        if (!(amount >= EV_MIN)) throw userError('Pari minimum : ' + EV_MIN + ' jetons.');
+        if (!P.ev || P.ev.day !== day) P.ev = { day, bets: {} };
+        const total = Object.values(P.ev.bets).reduce((a, b) => a + b, 0), max = R.isVip(P, now) ? EV_MAX_VIP : EV_MAX;
+        if (total + amount > max) throw userError('Au plus ' + max.toLocaleString('fr-FR') + ' jetons par Grand Prix' + (R.isVip(P, now) ? '.' : ' (2 500 pour les VIP 👑).'));
+        if (amount > P.wallet) throw userError('Tu n\'as que ' + Math.floor(P.wallet) + ' jetons.');
+        P.wallet = Math.round((P.wallet - amount) * 100) / 100;
+        P.ev.bets[h] = (P.ev.bets[h] || 0) + amount;
+      }
+      return notes;
+    });
+    const P = r.player;
+    return { result: { day, start, open, card: ev.card, horses: R.HORSES.map((x) => x.name), win: open ? null : ev.win, seed: open ? null : ev.seed, my: P.ev && P.ev.day === day ? P.ev : null }, notes: r.out, player: P };
+  }
+  // Conseils de l'IA (membres VIP) : une question courte sur les règles ou la stratégie d'un jeu
+  if (op === 'ai.ask') {
+    const P = db.has(uid) ? db.load(uid).player : null;
+    if (!P || !R.isVip(P, Date.now())) throw userError('Les conseils de l\'IA sont réservés aux membres VIP 👑.');
+    if (!anthropic) throw userError('Les conseils de l\'IA arrivent bientôt : l\'administrateur doit encore les activer.');
+    const q = String((data && data.question) || '').trim().slice(0, 500), game = String((data && data.game) || '').slice(0, 40);
+    if (q.length < 3) throw userError('Pose ta question en quelques mots.');
+    const day = R.today(Date.now()), k = uid + ':' + day, n = aiUse.get(k) || 0;
+    if (n >= AI_PER_DAY) throw userError('Tu as posé tes ' + AI_PER_DAY + ' questions du jour : reviens demain !');
+    aiUse.set(k, n + 1);
+    try {
+      const response = await anthropic.beta.messages.create({
+        model: 'claude-opus-5-5',
+        max_tokens: 1200,
+        output_config: { effort: 'low' },
+        betas: ['server-side-fallback-2026-07-01'],
+        fallbacks: 'default',
+        system: 'Tu es le coach du Lucky Lounge, un casino de jeux gratuits entre amis (aucun argent réel). Tu réponds en français, en 2 à 6 phrases claires, aux questions sur les règles et la stratégie des jeux du Lounge : blackjack (règle européenne), roulette européenne, machines à sous, Rocket Crash, Plinko, Mines, Loto Express, Bourse Flash, course de chevaux, Le Braquage, boosters, poker Texas Hold\'em, et le mode La Dette (paliers, quotas). Rappelle si besoin que le hasard ne se bat pas sur la durée et que l\'avantage de la maison existe. Si la question sort de ce cadre, ramène gentiment vers les jeux.',
+        messages: [{ role: 'user', content: (game ? '[Jeu : ' + game + '] ' : '') + q }],
+      });
+      if (response.stop_reason === 'refusal') return { result: { answer: 'Je ne peux pas répondre à cette question. Pose-moi plutôt une question sur les règles ou la stratégie d\'un jeu du Lounge !', left: AI_PER_DAY - n - 1 } };
+      const answer = response.content.filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
+      return { result: { answer: answer || 'Je n\'ai pas de réponse pour le moment.', left: AI_PER_DAY - n - 1 } };
+    } catch (e) {
+      aiUse.set(k, n); // la question n'est pas comptée si le service a échoué
+      console.error('[casino] IA :', e && e.status, e && e.message);
+      throw userError(e && e.status === 429 ? 'Le coach est très demandé : réessaie dans une minute.' : 'Le coach ne répond pas pour le moment. Réessaie plus tard.');
+    }
+  }
   // marché, échanges, duels : plusieurs joueurs à la fois (module deals.js)
   if (deals.isDealOp(op)) {
     // refonte (version 3) : marché, échanges, duels, cotes et Loto entre amis payant sont retirés
@@ -504,6 +598,12 @@ async function adminOp(uid, op, d) {
       return { brief: brief(target, st), owned: st.player.owned || {}, achievements: st.player.achievements || {}, ledger: db.ledgerOf(target, 40) };
     }
     case 'dashboard': return dashboard();
+    case 'maintenance': {
+      maint = { on: !!d.on, msg: String(d.msg || '').slice(0, 200), at: now };
+      try { fs0.writeFileSync(MAINT_FILE(), JSON.stringify(maint)); } catch (e) { /* ignore */ }
+      return { maintenance: maint };
+    }
+    case 'maintenance.get': return { maintenance: maint };
     case 'status': return Object.assign(status(), { backups: { dir: BACKUP_DIR, list: listBackups().slice(0, 12), error: lastBackupError } });
     case 'backup': { const b = makeBackup(true); return { ok: true, backup: b, list: listBackups().slice(0, 12) }; }
     case 'vip': {
@@ -561,6 +661,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (req.method === 'GET' && url.pathname === '/api/push-key') { send(req, res, 200, { key: vapid.publicKey }); return; }
+    if (req.method === 'GET' && url.pathname === '/api/info') { send(req, res, 200, { version: SERVER_VERSION, maintenance: maint.on ? { on: true, msg: maint.msg } : { on: false } }); return; }
     if (req.method === 'GET' && url.pathname === '/health') { send(req, res, 200, Object.assign({ ok: true, version: SERVER_VERSION, at: Date.now() }, db.stats())); return; }
     if (req.method !== 'POST' || (url.pathname !== '/api/casino' && url.pathname !== '/api/admin')) { send(req, res, 404, { error: 'Introuvable.' }); return; }
     if (req.headers.origin && !ORIGINS.includes(req.headers.origin) && !ORIGINS.includes('*')) { send(req, res, 403, { error: 'Origine non autorisée.' }); return; }
@@ -582,6 +683,8 @@ const server = http.createServer(async (req, res) => {
       send(req, res, 200, out);
       return;
     }
+    // maintenance : les joueurs sont mis en pause (leurs parties sont gardées et reprennent après), les administrateurs passent
+    if (maint.on && body.op !== 'sync' && !(await isAdmin(token.uid))) { send(req, res, 503, { error: '🛠️ ' + (maint.msg || 'Le Casino est en maintenance : reviens dans quelques minutes, tes parties sont gardées.'), maintenance: true }); return; }
     const out = await casino(token.uid, token, body.op, body.data);
     send(req, res, 200, out);
   } catch (e) {

@@ -186,6 +186,7 @@
         let r = await send(false);
         if (r.status === 401) r = await send(true); // jeton expiré : on le renouvelle une fois
         const j = await r.json().catch(() => ({}));
+        if (j.maintenance) showMaint(j.error);
         if (!r.ok) return { error: j.error === 'Opération inconnue.' ? 'Le serveur du Casino n\'est pas à jour pour cette fonction : l\'administrateur doit lancer la mise à jour du NAS (sudo sh /volume1/docker/casino/update.sh).' : j.error || 'Erreur du serveur (' + r.status + ').' };
         res = j;
       } else res = (await f.fn({ op, data: data || {} })).data;
@@ -197,6 +198,18 @@
       const msg = e && e.code === 'functions/failed-precondition' ? e.message : (e && e.code === 'functions/unavailable') || /network|internet|fetch/i.test(String(e && e.message)) ? 'Pas de connexion au serveur.' : errText(e);
       return { error: msg };
     }
+  }
+  // ---------- Maintenance : bandeau en haut de l'écran ----------
+  function showMaint(text) {
+    if (typeof document === 'undefined') return;
+    injectStyle();
+    let b = document.getElementById('casino-maint');
+    if (!text) { if (b) b.remove(); return; }
+    if (!b) { b = document.createElement('div'); b.id = 'casino-maint'; document.body.appendChild(b); }
+    b.textContent = text;
+  }
+  if (SERVER && API && typeof fetch !== 'undefined') {
+    fetch(API + '/api/info').then((r) => r.json()).then((j) => { if (j && j.maintenance && j.maintenance.on) showMaint('🛠️ ' + (j.maintenance.msg || 'Le Casino est en maintenance : reviens dans quelques minutes, tes parties sont gardées.')); }).catch(() => {});
   }
   let syncing = null;
   function sync() {
@@ -1232,6 +1245,7 @@
     const ringCss = (R.SHOP.frame || []).filter((f) => f.ring).map((f) => '.fr-' + f.id + '{border-color:' + f.ring + ' !important;box-shadow:0 0 0 2px ' + f.ring + ',0 0 16px ' + f.glow + ' !important;' + (f.anim === 'hue' ? 'animation:fr-hue 4s linear infinite;' : f.anim === 'pulse' ? 'animation:fr-pulse 1.8s ease-in-out infinite;' : '') + '}').join('');
     s.textContent = ringCss + `
 .cm-leaving body > *:not(.run-hud) { visibility: hidden !important; }
+#casino-maint { position: fixed; top: 0; left: 0; right: 0; z-index: 300; padding: max(.5rem, env(safe-area-inset-top)) 16px .5rem; text-align: center; font: 800 .9rem/1.3 system-ui, sans-serif; color: #1c1300; background: linear-gradient(90deg, #fde047, #f59e0b); box-shadow: 0 4px 16px rgba(0,0,0,.4); }
 .run-hud { position: fixed; z-index: 70; left: 50%; transform: translateX(-50%); bottom: max(10px, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: .5rem; padding: .35rem .7rem; border-radius: 999px;
   background: rgba(12,10,8,.92); border: 1px solid rgba(250,204,21,.45); color: #fde68a; font: 700 .82rem/1.2 system-ui, sans-serif; text-decoration: none; box-shadow: 0 8px 24px rgba(0,0,0,.5); white-space: nowrap; max-width: calc(100vw - 32px); }
 .run-hud[hidden] { display: none; }

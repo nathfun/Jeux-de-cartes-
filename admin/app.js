@@ -243,13 +243,18 @@
   $('ann-clear').addEventListener('click', async () => {
     try { await D.remove(ref('announce')); $('ann-text').value = ''; tmsg('Annonce retirée.', 'ok'); } catch (e) { tmsg('Refusé : ' + e.message, 'err'); }
   });
+  // maintenance
+  async function mtState() { if (!API) { $('mt-state').textContent = 'Demande le serveur du NAS.'; return; } try { const r = await adm('maintenance.get', {}); $('mt-state').textContent = r.maintenance.on ? '🟠 Maintenance ACTIVE' + (r.maintenance.msg ? ' : « ' + r.maintenance.msg + ' »' : '') : '🟢 Le Casino est ouvert.'; if (r.maintenance.msg && !$('mt-msg').value) $('mt-msg').value = r.maintenance.msg; } catch (e) { $('mt-state').textContent = 'Serveur pas à jour pour la maintenance.'; } }
+  $('mt-on').addEventListener('click', async () => { try { await adm('maintenance', { on: true, msg: $('mt-msg').value.trim() }); tmsg('Maintenance activée.', 'ok'); } catch (e) { tmsg('Refusé : ' + e.message, 'err'); } mtState(); });
+  $('mt-off').addEventListener('click', async () => { try { await adm('maintenance', { on: false, msg: '' }); tmsg('Maintenance terminée : le Casino est rouvert.', 'ok'); } catch (e) { tmsg('Refusé : ' + e.message, 'err'); } mtState(); });
+  setTimeout(mtState, 1500);
   $('gift-go').addEventListener('click', async () => {
     const v = Math.round(Number($('gift').value) || 0);
     if (!(v > 0)) return;
     const list = players.filter((p) => !banned[p.uid]);
     if (!sure('Créditer ' + fmt(v) + ' € à ' + list.length + ' compte(s) ?')) return;
     $('gift-go').disabled = true;
-    if (API) { try { const r = await adm('gift', { amount: v }); tmsg(fmt(v) + ' € crédités à ' + r.count + ' compte(s).', 'ok'); load(); } catch (e) { tmsg('Refusé : ' + e.message, 'err'); } $('gift-go').disabled = false; return; }
+    if (API) { try { const r = await adm('gift', { amount: v }); tmsg(fmt(v) + ' jetons crédités à ' + r.count + ' compte(s).', 'ok'); load(); } catch (e) { tmsg('Refusé : ' + e.message, 'err'); } $('gift-go').disabled = false; return; }
     let ok = 0;
     for (const p of list) { try { await bankSet(p.uid, (o) => { o.wallet = Math.round(((o.wallet || 0) + v) * 100) / 100; }); ok++; } catch (e) { /* compte suivant */ } }
     $('gift-go').disabled = false;
