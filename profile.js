@@ -32,10 +32,29 @@
   function localDefaults() { return { equipped: Object.assign({}, R.DEFAULT_EQUIP), settings: { music: false, vibrate: true } }; }
   let lastWallet = null, txReason = null;
   const bootAt = Date.now();
+  // Page restaurée depuis le cache du navigateur (bouton retour), autre onglet, retour sur l'app :
+  // on relit le profil enregistré pour ne jamais réécrire une vieille copie par-dessus (ex. une partie de La Dette en cours)
+  function reloadFromStorage() {
+    if (!P) return;
+    let raw = null;
+    try { raw = localStorage.getItem(KEY); } catch (e) { /* ignore */ }
+    if (!raw) return;
+    let saved = null; try { saved = JSON.parse(raw); } catch (e) { return; }
+    if (!saved || (saved.savedAt || 0) <= (P.savedAt || 0) && JSON.stringify(saved.run || null) === JSON.stringify(P.run || null)) return;
+    P = null; load();
+    listeners.forEach((f) => { try { f(P); } catch (e) { /* ignore */ } });
+  }
+  if (typeof window !== 'undefined') {
+    window.addEventListener('pageshow', (e) => { if (e.persisted) reloadFromStorage(); });
+    window.addEventListener('storage', (e) => { if (e.key === KEY) reloadFromStorage(); });
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reloadFromStorage(); });
+  }
+  let knownStamp = 0;
   function load() {
     if (P) return P;
     let raw = null;
     try { raw = JSON.parse(localStorage.getItem(KEY)); } catch (e) { /* ignore */ }
+    knownStamp = (raw && raw.savedAt) || 0;
     P = Object.assign(localDefaults(), R.normalize(raw, Date.now()), raw ? pick(raw, LOCAL_KEYS) : {});
     if (P._econMigrated) { delete P._econMigrated; setTimeout(() => { try { save(); } catch (e) { /* ignore */ } }, 0); }
     if (!raw || !raw.pseudo) { try { P.pseudo = P.pseudo || localStorage.getItem('bj-pseudo') || ''; } catch (e) { /* ignore */ } }
@@ -81,8 +100,16 @@
       document.body.appendChild(o); ok.focus();
     });
   }
+  // Une autre page a enregistré le profil depuis qu'on l'a lu ? On garde son état de jeu (partie, tables, argent…)
+  const GAME_KEYS = ['run', 'sessions', 'wallet', 'xp', 'totals', 'bestPalier', 'lastRun', 'achievements', 'daily', 'bonus', 'vipUntil', 'owned', 'season'];
+  function storedProfile() { try { return JSON.parse(localStorage.getItem(KEY)); } catch (e) { return null; } }
   function save(keepStamp) {
-    if (!keepStamp) P.savedAt = Date.now();
+    if (!keepStamp) {
+      const st = storedProfile();
+      if (st && (st.savedAt || 0) > knownStamp) GAME_KEYS.forEach((k) => { if (st[k] !== undefined) P[k] = st[k]; });
+      P.savedAt = Math.max(Date.now(), (st && st.savedAt || 0) + 1);
+    }
+    knownStamp = P.savedAt || 0;
     // historique de la banque : dernière valeur de chaque jour (31 jours)
     if (typeof P.wallet === 'number') {
       P.bankHist = P.bankHist || {};
@@ -269,6 +296,8 @@
   // Mode sans serveur : les mêmes règles appliquées localement
   function local(fn) {
     load();
+    const st = storedProfile();
+    if (st && (st.savedAt || 0) > knownStamp) { P = null; load(); } // une autre page a joué entre-temps : on repart de son état
     const N = [];
     const out = fn(N);
     save();
@@ -594,11 +623,11 @@
     const panel = mk('div', 'cm-panel');
     const cur = P.sessions[opts.game];
     // Pas de journée de La Dette en cours, ou jeu pas encore débloqué : retour à l'accueil
-    const lockMsg = !R.runActive(P) ? ['Aucune journée en cours', 'Les jeux se jouent pendant une partie de La Dette : lance-la depuis l\'accueil (ou active 🎓 Apprentissage pour t\'entraîner).']
+    const lockMsg = !R.runActive(P) ? ['Aucune journée en cours', 'Les jeux se jouent pendant une partie de La Dette : lance-la depuis le lobby (ou passe par 🎓 Apprentissage pour t\'entraîner).']
       : !cur && !R.isUnlocked(P, opts.game) ? ['🔒 Se débloque au palier ' + (R.RUN.UNLOCK[opts.game] || '?'), 'Continue de rembourser la dette pour ouvrir ce jeu.'] : null;
     if (lockMsg && !cur) {
       panel.append(mk('div', 'cm-label', lockMsg[0]), mk('p', 'cm-sub', lockMsg[1]));
-      const back = mk('a', 'cm-cta', '← Retour à l\'accueil'); back.href = '../index.html#play';
+      const back = mk('a', 'cm-cta', R.runActive(P) ? '← Retour à la partie' : '← Retour au lobby'); back.href = R.runActive(P) ? '../partie.html' : '../index.html';
       panel.appendChild(back);
       card.appendChild(panel); box.append(card);
       return;
@@ -678,7 +707,7 @@
     if (typeof document === 'undefined' || !R.runActive(load())) return;
     injectStyle();
     if (!hudEl) {
-      hudEl = document.createElement('a'); hudEl.className = 'run-hud'; hudEl.href = '../index.html#play'; hudEl.title = 'Retour au bureau du parrain';
+      hudEl = document.createElement('a'); hudEl.className = 'run-hud'; hudEl.href = '../partie.html'; hudEl.title = 'Retour à la partie';
       document.body.appendChild(hudEl);
       document.body.style.paddingBottom = 'calc(64px + env(safe-area-inset-bottom))';
     }
@@ -702,15 +731,15 @@
   /** Réponse du serveur : fin de journée, banqueroute, table perdue → écran par-dessus le jeu. */
   function runWatch(res) {
     if (typeof document === 'undefined' || !(hudEl || document.querySelector('.cm-host'))) return;
-    if (res.dayOver) return runOverlay(res.dayOver === 'over' ? '🕴️ La mafia est passée…' : '🔔 La journée est terminée', res.dayOver === 'over' ? 'Ta partie de La Dette est finie. Va voir le parrain pour le bilan.' : 'Le parrain fait les comptes. Retourne à son bureau pour la suite.');
+    if (res.dayOver) return runOverlay(res.dayOver === 'over' ? '🕴️ La mafia est passée…' : '🔔 La journée est terminée', res.dayOver === 'over' ? 'Ta partie de La Dette est finie. Retourne à la partie pour le bilan.' : 'Le parrain fait les comptes. Retourne à la partie pour la suite.');
     const g = res.tableLost && res.tableLost.game;
-    if (g && document.querySelector('.cm-host')) runOverlay('💸 Table perdue', 'Il ne restait plus assez sur la table pour payer la mise minimale. Retourne au bureau choisir un autre jeu… ou revenir avec plus d\'argent.');
+    if (g && document.querySelector('.cm-host')) runOverlay('💸 Table perdue', 'Il ne restait plus assez sur la table pour payer la mise minimale. Retourne à la partie choisir un autre jeu… ou revenir avec plus d\'argent.');
   }
   function runOverlay(title, text) {
     if (document.querySelector('.run-over')) return;
     injectStyle();
     const ov = mk('div', 'run-over'), box = mk('div', 'ro-box');
-    const go = mk('a', 'cm-cta', 'Retour au bureau du parrain'); go.href = '../index.html#play';
+    const go = mk('a', 'cm-cta', 'Retour à la partie'); go.href = '../partie.html';
     box.append(mk('div', 'ro-title', title), mk('p', '', text), go);
     ov.appendChild(box); document.body.appendChild(ov);
   }

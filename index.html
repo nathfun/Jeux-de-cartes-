@@ -492,6 +492,12 @@
     .games a.game .lock-badge { position: absolute; top: 10px; right: 10px; z-index: 2; font-size: .74rem; font-weight: 900; padding: .2rem .55rem; border-radius: 999px; background: rgba(0,0,0,.75); color: #fde68a; border: 1px solid #5b4314; }
     .games a.game.roue .mini-fortune { margin-top: auto; width: 64px; height: 64px; border-radius: 50%; border: 4px solid #b45309; background: conic-gradient(#1f2937 0 56%, #475569 0 70%, #0e7490 0 83%, #15803d 0 92%, #7c3aed 0 96%, #c2410c 0 98.5%, #be123c 0 99.5%, #ca8a04 0); }
     @media (prefers-reduced-motion: no-preference) { a.game:hover .mini-fortune { animation: spin 2s linear infinite; } }
+    .lobby-play { text-align: center; padding: 1.6rem 1.1rem; }
+    .lobby-play .lp-art { font-size: 3.4rem; line-height: 1; filter: drop-shadow(0 6px 14px rgba(0,0,0,.6)); }
+    .lobby-play h2 { justify-content: center; font-size: 1.9rem; letter-spacing: .04em; color: #fde68a; margin: .3rem 0 .4rem; }
+    .lobby-play .lp-start { width: 100%; max-width: 360px; font-size: 1.25rem; padding: 1rem; margin: .4rem auto 0; display: block; }
+    .lobby-play .lp-learn { display: block; max-width: 360px; margin: .9rem auto 0; padding: .7rem 1rem; border-radius: 14px; border: 1px solid #1e5a78; background: rgba(79,195,247,.08); color: #bae6fd; text-decoration: none; font-weight: 800; }
+    .lobby-play .lp-learn small { display: block; font-weight: 400; color: #7fb6cf; font-size: .78rem; margin-top: .15rem; }
     /* écran de la mafia et histoire */
     .mafia { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 16px; background: radial-gradient(circle at 50% 30%, rgba(127,29,29,.55), rgba(0,0,0,.95) 70%); }
     .mafia .mf-box { width: min(460px, 100%); text-align: center; background: #120c08; border: 2px solid #7f1d1d; border-radius: 22px; padding: 1.4rem 1.2rem; box-shadow: 0 30px 80px rgba(0,0,0,.8); animation: mfIn .6s cubic-bezier(.2,1.3,.4,1); }
@@ -612,10 +618,19 @@
     </header>
 
     <nav class="hub-tabs" role="tablist" aria-label="Sections">
-      <button id="tab-play" class="on" type="button" role="tab" aria-selected="true">🎰 Jeux</button>
+      <button id="tab-play" class="on" type="button" role="tab" aria-selected="true">🕴️ Jouer</button>
       <button id="tab-multi" type="button" role="tab" aria-selected="false">👥 Multijoueur</button>
       <button id="tab-shop" type="button" role="tab" aria-selected="false">🎨 Mon style</button>
     </nav>
+
+    <section id="lobby-play" class="panel dette lobby-play" aria-label="La Dette">
+      <div class="lp-art" aria-hidden="true">🕴️</div>
+      <h2>La Dette</h2>
+      <p class="dt-sub">Ton frère doit une fortune au parrain. Rembourse-le palier après palier : chaque journée de 10 minutes a son quota… et les quotas grimpent vite. Jusqu'où iras-tu ?</p>
+      <button id="lp-start" class="dt-cta lp-start" type="button">▶ Lancer une partie</button>
+      <p id="lp-best" class="dt-best"></p>
+      <a id="learn-btn" class="lp-learn" href="apprendre.html" onclick="this.href='apprendre.html'+location.search">🎓 Apprentissage <small>tous les jeux, crédit illimité, aides du coach</small></a>
+    </section>
 
     <section class="panel profile" aria-label="Mon profil">
       <button id="avatar" class="avatar" type="button" aria-label="Changer d'avatar">🎩</button>
@@ -638,14 +653,7 @@
       </div>
     </section>
 
-    <section class="panel learn-switch" aria-label="Mode de jeu">
-      <div class="ls-seg" role="radiogroup" aria-label="Mode de jeu">
-        <button id="ls-real" type="button" role="radio">🕴️ La Dette</button>
-        <button id="ls-learn" type="button" role="radio">🎓 Apprentissage</button>
-      </div>
-      <p id="ls-text" class="ls-text"></p>
-      <div class="ls-reset" id="ls-reset-row" hidden><button id="ls-reset" type="button" class="small">♻️ Remettre l'apprentissage à zéro</button><span id="ls-reset-msg" class="muted small"></span></div>
-    </section>
+
 
     <section class="panel wheel-panel" aria-label="Roue du jour">
       <div class="wh-wrap">
@@ -672,70 +680,8 @@
       <div id="vp-buy" class="vp-buy"></div>
     </section>
 
-    <section id="dette" class="panel dette" aria-label="La Dette"></section>
 
-    <section class="games" aria-label="Jeux">
-      <a class="game roue" href="roue/index.html" data-game="wheel">
-        <h2>Roue de la fortune</h2>
-        <p>Mise et lance la grande roue : la case où s'arrête l'aiguille multiplie ta mise, jusqu'à ×25. Simple, rapide… et redoutable.</p>
-        <div class="tags"><span>Nouveau</span><span>Jusqu'à ×25</span><span>Palier 1</span></div>
-        <div class="mini-fortune" aria-hidden="true"></div>
-      </a>
-      <a class="game" href="blackjack/index.html" data-game="blackjack">
-        <h2>Blackjack</h2>
-        <p>Un coach analyse chaque décision, t'apprend la stratégie de base et le comptage Hi-Lo. Joue seul ou à 5 places entre amis.</p>
-        <div class="tags"><span>Solo + coach</span><span>Entre amis</span><span>Comptage</span><span>Paris annexes</span></div>
-        <div class="mini-cards" aria-hidden="true"><span>A♠</span><span class="r">K♥</span></div>
-      </a>
-      <a class="game" href="poker/index.html" data-game="poker">
-        <h2>Poker</h2>
-        <p>Texas Hold'em contre des bots avec un coach qui t'explique chaque coup, ou entre amis avec un code de table : chacun ne voit que ses cartes.</p>
-        <div class="tags"><span>Hold'em</span><span>Solo + coach</span><span>Entre amis</span></div>
-        <div class="mini-cards" aria-hidden="true"><span class="r">Q♦</span><span>J♣</span></div>
-      </a>
-      <a class="game roulette" href="roulette/index.html" data-game="roulette">
-        <h2>Roulette</h2>
-        <p>Roulette européenne avec une vraie roue et sa bille, « Faites vos jeux » et « Rien ne va plus ». Les aides t'expliquent chaque mise et ses chances.</p>
-        <div class="tags"><span>Solo + aides</span><span>Entre amis</span><span>Règles françaises</span></div>
-        <div class="mini-wheel" aria-hidden="true"></div>
-      </a>
-      <a class="game crash" href="crash/index.html" data-game="crash">
-        <h2>Rocket Crash</h2>
-        <p>La fusée décolle, le multiplicateur s'envole… retire ta mise avant l'explosion ! Retrait automatique, historique et équité vérifiable.</p>
-        <div class="tags"><span>Nouveau</span><span>Multiplicateur</span><span>RTP 97 %</span></div>
-        <div class="mini-rocket" aria-hidden="true"><span class="mr-mult">2.47×</span><span class="mr-rocket">🚀</span></div>
-      </a>
-      <a class="game plinko" href="plinko/index.html" data-game="plinko">
-        <h2>Plinko</h2>
-        <p>Lâche des billes qui rebondissent de picot en picot jusqu'aux cases à multiplicateurs. Choisis le risque et le nombre de rangées, lâche-en une ou cent !</p>
-        <div class="tags"><span>Nouveau</span><span>Jusqu'à ×1 000</span><span>RTP 97 %</span></div>
-        <div class="mini-plinko" aria-hidden="true"><b></b><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-      </a>
-      <a class="game trader" href="trader/index.html" data-game="trader">
-        <h2>Bourse Flash</h2>
-        <p>Trois actions cotent en direct : achète si ça va monter, vends si ça va baisser, et clôture au bon moment. Effet de levier, krachs, envolées… et liquidation !</p>
-        <div class="tags"><span>Nouveau</span><span>Levier ×20</span><span>Achat / Vente</span></div>
-        <svg class="mini-chart" viewBox="0 0 180 34" aria-hidden="true"><defs><linearGradient id="mc" x1="0" x2="1"><stop offset="0" stop-color="#f472b6"/><stop offset="1" stop-color="#34d399"/></linearGradient></defs><polyline fill="none" stroke="url(#mc)" stroke-width="2.5" stroke-linejoin="round" points="0,22 15,18 28,24 42,14 55,17 66,26 78,30 90,21 104,23 118,12 130,15 144,8 158,11 170,4 180,6"/></svg>
-      </a>
-      <a class="game mines" href="mines/index.html" data-game="mines">
-        <h2>Mines</h2>
-        <p>25 cases, des mines cachées. Chaque diamant fait grimper ton gain : encaisse avant de tomber sur une mine ! Choisis de 1 à 24 mines.</p>
-        <div class="tags"><span>Nouveau</span><span>Jusqu'à ×24 000</span><span>RTP 97 %</span></div>
-        <div class="mini-mines" aria-hidden="true"><i class="g">💎</i><i></i><i class="g">💎</i><i></i><i>💣</i></div>
-      </a>
-      <a class="game loto" href="loto/index.html" data-game="loto">
-        <h2>Loto Express</h2>
-        <p>Coche de 1 à 8 numéros sur 30, la sphère tire 10 boules. Trouve tous tes numéros pour décrocher le carton plein, jusqu'à ×3 500 !</p>
-        <div class="tags"><span>Nouveau</span><span>Tirage en direct</span><span>Carton plein ×3 500</span></div>
-        <div class="mini-loto" aria-hidden="true"><i>7</i><i class="h">13</i><i>21</i><i class="h">33</i><i>40</i></div>
-      </a>
-      <a class="game slots" href="slots/machines.html" data-game="slots">
-        <h2>Machines à sous</h2>
-        <p>Deux machines : la classique <b>Casino Royal</b> et la nouvelle <b>Ruée vers l'Or</b> avec son bonus Le Filon et ses 4 jackpots. Bats le record du mois !</p>
-        <div class="tags"><span>Nouveau</span><span>2 machines</span><span>Record du mois</span></div>
-        <div class="mini-reels" aria-hidden="true"><span>7️⃣</span><span>7️⃣</span><span>7️⃣</span></div>
-      </a>
-    </section>
+
 
     <section class="panel" aria-label="Saison">
       <h2>🏆 Saison de <span id="season-name"></span> <small id="season-end" class="muted" style="font-weight:400;font-size:.8rem"></small></h2>
@@ -999,174 +945,18 @@
         });
       }
 
-      // =================== La Dette ===================
+      // =================== Lobby : lancer une partie de La Dette ===================
       const RR = window.CasinoRules;
-      const GAME_PATH = { wheel: 'roue/index.html', blackjack: 'blackjack/index.html', roulette: 'roulette/index.html', slots: 'slots/index.html', gold: 'gold/index.html', crash: 'crash/index.html', plinko: 'plinko/index.html', trader: 'trader/index.html', mines: 'mines/index.html', loto: 'loto/index.html' };
-      const UNLOCK_NAME = (g) => (Casino.GAMES[g] || { boosters: 'Boosters', horses: 'Course de chevaux' }[g] || g);
-      const STORY = [
-        ['🌧️', 'Une nuit, à Marseille…', 'Ton frère a disparu en laissant une ardoise énorme chez le parrain du quartier. Et le parrain veut son argent.'],
-        ['🕴️', 'Le parrain te reçoit', '« Ton frère me doit beaucoup. Tu vas rembourser, une journée à la fois. Chaque soir, mes hommes passent compter la caisse. »'],
-        ['💼', 'Les règles du jeu', 'Chaque journée dure 10 minutes avec un quota à atteindre. Tu prends l\'argent de ta caisse, tu le poses sur les tables du Lounge… et tu le fais fructifier.'],
-        ['🛍️', 'Entre deux journées', 'Le surplus sert à acheter des objets chez le receleur. Chaque palier débloque de nouveaux jeux, mais les quotas grimpent vite.'],
-        ['🔫', 'Et si tu échoues…', 'Quota raté ou caisse vide : la mafia passe, la partie s\'arrête. Tu gardes les jetons et l\'XP gagnés. Jusqu\'où iras-tu ?'],
-      ];
-      function showStory(then) {
-        let k = 0;
-        const ov = document.createElement('div'); ov.className = 'mafia story';
-        const box = document.createElement('div'); box.className = 'mf-box'; ov.appendChild(box);
-        const draw = () => {
-          const [ic, t, x] = STORY[k];
-          box.innerHTML = '<div class="mf-icons"></div><h3></h3><p></p><div class="mf-dots"></div>';
-          box.querySelector('.mf-icons').textContent = ic; box.querySelector('h3').textContent = t; box.querySelector('p').textContent = x;
-          box.querySelector('.mf-dots').innerHTML = STORY.map((_, i) => '<i class="' + (i === k ? 'on' : '') + '"></i>').join('');
-          const b = document.createElement('button'); b.type = 'button'; b.textContent = k < STORY.length - 1 ? 'Suite ›' : 'J\'accepte la dette';
-          b.onclick = () => { if (k < STORY.length - 1) { k++; draw(); } else { ov.remove(); try { localStorage.setItem('dette-story', '1'); } catch (e) { /* ignore */ } then(); } };
-          box.appendChild(b);
-        };
-        draw(); document.body.appendChild(ov);
-      }
-      function showMafia(run) {
-        if (document.querySelector('.mafia')) return;
-        const why = { quota: 'Tu n\'as pas atteint le quota de la journée.', banqueroute: 'Ta caisse est vide : banqueroute.', abandon: 'Tu as jeté l\'éponge.' }[run.why] || '';
-        const rw = run.reward || { jetons: 0, xp: 0 };
-        const ov = document.createElement('div'); ov.className = 'mafia';
-        ov.innerHTML = '<div class="mf-box"><div class="mf-icons">🕴️🕴️🕴️</div><h3>La mafia est passée…</h3><p class="mf-why"></p><p class="mf-sum"></p><div class="mf-rw"></div><button type="button">Retour au Lounge</button></div>';
-        ov.querySelector('.mf-why').textContent = why;
-        ov.querySelector('.mf-sum').textContent = (run.reached > 1 ? 'Tu as tenu ' + (run.reached - 1) + ' palier' + (run.reached > 2 ? 's' : '') + ' avant de tomber au palier ' + run.reached + '.' : 'Tu es tombé dès le premier palier.') + ' Meilleur palier : ' + (Casino.profile.bestPalier || 0) + '.';
-        ov.querySelector('.mf-rw').innerHTML = '<span>🪙 +' + fmt(rw.jetons) + ' jetons</span><span>⭐ +' + fmt(rw.xp) + ' XP</span>';
-        ov.querySelector('button').onclick = async () => { ov.remove(); await Casino.runCall('run.seen'); render(); };
-        if (window.Sfx && Sfx.lose) Sfx.lose();
-        document.body.appendChild(ov);
-      }
-      let detteKey = '', detteBusy = false;
-      async function runOp(op, data) {
-        if (detteBusy) return null; detteBusy = true; detteKey = '';
-        const r = await Casino.runCall(op, data);
-        detteBusy = false;
-        if (r && r.error) Casino.toast('La Dette', r.error, '🕴️');
-        render();
-        return r;
-      }
+      Casino.setLearn(false);
+      // une partie en cours ? on est « dans la partie » : impossible de rester dans le lobby
+      function inRun() { const r = Casino.profile.run; return !!(r && (r.status === 'playing' || r.status === 'shop' || (r.status === 'over' && !r.seen))); }
+      if (inRun()) location.replace('partie.html' + location.search);
+      $('lp-start').addEventListener('click', () => { location.href = 'partie.html' + (location.search ? location.search + '&' : '?') + 'start=1'; });
       function renderDette() {
-        const box = $('dette'), P = Casino.profile, r = P.run;
-        // vignettes des jeux : débloquées selon le palier
-        document.querySelectorAll('.games a.game[data-game]').forEach((a) => {
-          const g = a.dataset.game, need = RR.RUN.UNLOCK[g];
-          const locked = !Casino.learn && (g === 'poker' || !r || r.status !== 'playing' || !(need <= r.palier));
-          a.classList.toggle('locked', locked);
-          let lb = a.querySelector('.lock-badge');
-          const txt = !locked ? '' : g === 'poker' ? '👥 Multijoueur' : !need ? '🔒 Bientôt' : r && r.status === 'playing' ? '🔒 Palier ' + need : need > 1 ? '🔒 Palier ' + need : '🕴️ Lance La Dette';
-          if (txt) { if (!lb) { lb = document.createElement('span'); lb.className = 'lock-badge'; a.appendChild(lb); } lb.textContent = txt; } else if (lb) lb.remove();
-        });
-        if (r && r.status === 'over' && !r.seen) showMafia(r);
-        const key = JSON.stringify([r && r.status, r && r.palier, r && Math.floor(r.cash), r && r.offer, r && r.items, Object.keys(P.sessions || {}).map((g) => g + Math.floor(P.sessions[g].stack)), P.bestPalier, Casino.learn]);
-        if (key !== detteKey) { detteKey = key; drawDette(box, P, r); }
-        tickDette();
+        if (inRun()) { location.replace('partie.html' + location.search); return; }
+        const P = Casino.profile;
+        $('lp-best').textContent = 'Meilleur palier : ' + (P.bestPalier || 0) + (P.lastRun ? ' · dernière partie : palier ' + P.lastRun.palier + ', +' + fmt(P.lastRun.jetons) + ' jetons' : '') + ' · départ avec ' + fmt(Casino.isVip() ? RR.RUN.START_CASH_VIP : RR.RUN.START_CASH) + ' €' + (Casino.isVip() ? ' (VIP)' : '');
       }
-      function drawDette(box, P, r) {
-        box.innerHTML = '';
-        const h = document.createElement('h2'); box.appendChild(h);
-        const sub = document.createElement('p'); sub.className = 'dt-sub'; box.appendChild(sub);
-        const btn = (cls, txt, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = txt; b.onclick = fn; return b; };
-        const stat = (label, val, cls) => { const d = document.createElement('div'); if (cls) d.className = cls; d.innerHTML = '<small></small><b></b>'; d.firstChild.textContent = label; d.lastChild.textContent = val; return d; };
-        if (!r || r.status === 'over') {
-          h.textContent = '🕴️ La Dette';
-          sub.textContent = 'Ton frère doit une fortune au parrain. Rembourse-le palier après palier : chaque journée de 10 minutes a son quota, et les quotas grimpent vite. Jusqu\'où iras-tu ?';
-          const row = document.createElement('div'); row.className = 'dt-row';
-          row.append(btn('dt-cta', '▶ Commencer une partie', () => {
-            let seen = false; try { seen = localStorage.getItem('dette-story') === '1'; } catch (e) { /* ignore */ }
-            if (seen) runOp('run.start'); else showStory(() => runOp('run.start'));
-          }), btn('dt-ghost', '📜 L\'histoire', () => showStory(() => {})));
-          box.appendChild(row);
-          const best = document.createElement('p'); best.className = 'dt-best';
-          best.textContent = 'Meilleur palier : ' + (P.bestPalier || 0) + (P.lastRun ? ' · dernière partie : palier ' + P.lastRun.palier + ', +' + fmt(P.lastRun.jetons) + ' jetons' : '') + ' · départ avec ' + fmt(Casino.isVip() ? RR.RUN.START_CASH_VIP : RR.RUN.START_CASH) + ' €' + (Casino.isVip() ? ' (VIP)' : '');
-          box.appendChild(best);
-          return;
-        }
-        if (r.status === 'playing') {
-          const tot = RR.runTotal(P);
-          h.textContent = '🕴️ Palier ' + r.palier + ' · la journée';
-          sub.textContent = 'Atteins le quota avant la fin du chrono. Une fois le quota atteint, tu peux continuer à jouer (gourmandise !) ou fermer la journée.';
-          const st = document.createElement('div'); st.className = 'dt-stats';
-          st.append(stat('Chrono', '–', 'dt-clock'), stat('Caisse', fmt(r.cash) + ' €'), stat('Quota', fmt(r.quota) + ' €'), stat('Mises', RR.gameMin(P, 'blackjack') + ' à ' + fmt(RR.maxBet(P, Date.now())) + ' €'));
-          box.appendChild(st);
-          const bar = document.createElement('div'); bar.className = 'dt-bar' + (tot >= r.quota ? ' ok' : '');
-          const pc = Math.min(100, tot / r.quota * 100);
-          bar.innerHTML = '<i style="width:' + pc + '%"></i><span></span>';
-          bar.lastChild.textContent = fmt(tot) + ' € / ' + fmt(r.quota) + ' €' + (tot >= r.quota ? ' ✔ quota atteint' : ' · encore ' + fmt(r.quota - tot) + ' €');
-          box.appendChild(bar);
-          const ses = P.sessions || {};
-          if (Object.keys(ses).length) {
-            const tb = document.createElement('div'); tb.className = 'dt-tables';
-            Object.keys(ses).forEach((g) => { const a = document.createElement('a'); a.href = GAME_PATH[g] || '#'; a.textContent = (Casino.GAMES[g] || g) + ' : ' + fmt(ses[g].stack) + ' €'; tb.appendChild(a); });
-            box.appendChild(tb);
-          }
-          const own = Object.keys(r.items || {}).filter((k) => RR.runItem(k));
-          if (own.length) { const o = document.createElement('p'); o.className = 'dt-owned'; o.textContent = 'Dans ta poche : ' + own.map((k) => RR.runItem(k).icon + ' ' + RR.runItem(k).name).join(', '); box.appendChild(o); }
-          const row = document.createElement('div'); row.className = 'dt-row';
-          row.append(btn('dt-cta', tot >= r.quota ? '🔒 Fermer la journée' : '🔒 Fermer la journée…', async () => {
-            const ok = tot >= r.quota || await Casino.confirm({ icon: '🔫', title: 'Fermer la journée sans le quota ?', text: 'Il te manque ' + fmt(r.quota - tot) + ' €. Si tu fermes maintenant, la mafia passe et la partie est terminée.', ok: 'Fermer quand même' });
-            if (ok) runOp('run.end');
-          }));
-          row.append(btn('dt-ghost', 'Abandonner la partie', async () => {
-            if (await Casino.confirm({ icon: '🏳️', title: 'Abandonner la partie ?', text: 'La mafia passe tout de suite. Tu gardes les jetons des paliers déjà réussis.', ok: 'Abandonner' })) runOp('run.abandon');
-          }));
-          box.appendChild(row);
-          return;
-        }
-        // Boutique entre deux paliers
-        const next = r.palier + 1, nq = Math.round(RR.quotaOf(next) * (r.items && r.items.pret ? 1.15 : 1));
-        h.textContent = '✅ Palier ' + r.palier + ' remboursé !';
-        const news = Object.keys(RR.RUN.UNLOCK).filter((g) => RR.RUN.UNLOCK[g] === next);
-        sub.textContent = 'Le receleur ouvre sa boutique. Prochain quota : ' + fmt(nq) + ' €' + (news.length ? ' · nouveau au palier ' + next + ' : ' + news.map(UNLOCK_NAME).join(', ') : '') + '.';
-        const st = document.createElement('div'); st.className = 'dt-stats';
-        st.append(stat('Caisse', fmt(r.cash) + ' €'), stat('Palier suivant', String(next)), stat('Quota suivant', fmt(nq) + ' €'));
-        box.appendChild(st);
-        const shop = document.createElement('div'); shop.className = 'dt-shop';
-        (r.offer || []).forEach((id) => {
-          const it = RR.runItem(id); if (!it) return;
-          const price = RR.itemPrice(it, r.palier);
-          const c = document.createElement('div'); c.className = 'dt-item';
-          c.innerHTML = '<span class="ic"></span><b></b><p></p>';
-          c.querySelector('.ic').textContent = it.icon; c.querySelector('b').textContent = it.name; c.querySelector('p').textContent = it.text;
-          const b = btn('', '', async () => {
-            if (!(await Casino.confirm({ icon: it.icon, title: 'Acheter « ' + it.name + ' » ?', text: it.text, price, from: r.cash, unit: '€', fromLabel: 'Ta caisse', ok: 'Acheter' }))) return;
-            const res = await runOp('run.buy', { id });
-            if (res && !res.error) Casino.toast('Receleur', it.name + ' : c\'est dans ta poche.', it.icon, 'gold');
-          });
-          b.textContent = id === 'pret' ? 'Accepter le prêt' : 'Acheter · ' + fmt(price) + ' €';
-          b.disabled = r.cash < price;
-          c.appendChild(b); shop.appendChild(c);
-        });
-        if (!shop.children.length) shop.innerHTML = '<p class="dt-owned">Le receleur n\'a plus rien pour toi.</p>';
-        box.appendChild(shop);
-        const own = Object.keys(r.items || {}).filter((k) => RR.runItem(k));
-        if (own.length) { const o = document.createElement('p'); o.className = 'dt-owned'; o.textContent = 'Dans ta poche : ' + own.map((k) => RR.runItem(k).icon + ' ' + RR.runItem(k).name).join(', '); box.appendChild(o); }
-        const row = document.createElement('div'); row.className = 'dt-row';
-        row.append(btn('dt-cta', '▶ Commencer le palier ' + next, () => runOp('run.next')));
-        row.append(btn('dt-ghost', 'Encaisser et arrêter là', async () => {
-          if (await Casino.confirm({ icon: '🏳️', title: 'Arrêter la partie ?', text: 'Tu touches les jetons des ' + r.palier + ' paliers réussis. La partie se termine.', ok: 'Arrêter' })) runOp('run.abandon');
-        }));
-        box.appendChild(row);
-      }
-      let tickBusy = false;
-      function tickDette() {
-        const r = Casino.profile.run, el = document.querySelector('#dette .dt-clock');
-        if (!r || r.status !== 'playing' || !el) return;
-        const left = r.dayEnd - Date.now(), t = Math.max(0, Math.ceil(left / 1000));
-        el.lastChild.textContent = Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0');
-        el.classList.toggle('late', left < 60000);
-        if (left <= 0 && !tickBusy) { tickBusy = true; Casino.runTick().finally(() => { tickBusy = false; detteKey = ''; render(); }); }
-      }
-      setInterval(tickDette, 500);
-      document.querySelector('.games').addEventListener('click', (e) => {
-        const a = e.target.closest('a.game.locked'); if (!a) return;
-        e.preventDefault();
-        const g = a.dataset.game, r = Casino.profile.run;
-        if (g === 'poker') { location.href = a.href; return; }
-        Casino.toast('La Dette', !r || r.status === 'over' ? 'Lance d\'abord une partie de La Dette (ou passe en 🎓 Apprentissage pour t\'entraîner).' : r.status === 'shop' ? 'Commence le palier suivant pour rejouer.' : RR.RUN.UNLOCK[g] ? 'Ce jeu se débloque au palier ' + RR.RUN.UNLOCK[g] + '.' : 'Ce jeu arrive bientôt dans La Dette.', '🕴️');
-        $('dette').scrollIntoView({ behavior: 'smooth', block: 'center' });
-      });
       function render() {
         const P = Casino.profile;
         const lv = Casino.levelOf(P.xp), cur = Casino.need(lv), nxt = Casino.need(lv + 1);
@@ -1808,36 +1598,7 @@
       }
       Casino.onChange(() => renderShop());
       // ---------- Partie réelle / Apprentissage ----------
-      function renderLearn() {
-        const on = Casino.learn;
-        document.body.classList.toggle('learning', on);
-        $('ls-real').classList.toggle('on', !on); $('ls-learn').classList.toggle('on', on);
-        $('ls-real').setAttribute('aria-checked', !on); $('ls-learn').setAttribute('aria-checked', on);
-        $('ls-reset-row').hidden = !on;
-        $('ls-text').textContent = on
-          ? '🎓 Apprentissage : dans tous les jeux, crédit illimité, aides et conseils du coach. Rien ne compte pour la banque, les niveaux et les défis.'
-          : '🕴️ La Dette : les jeux se jouent avec la caisse de ta partie en cours, sans aides. Gains, niveaux, défis et succès comptent.';
-      }
-      // Remise à zéro de l'apprentissage : statistiques, coach et historiques d'entraînement de tous les jeux
-      // (le crédit d'apprentissage repart de 10 000 € à chaque partie ; la banque et la progression ne bougent pas)
-      function resetLearning() {
-        const ls = (k, fn) => { try { const raw = localStorage.getItem(k); if (raw == null) return; const v = fn(JSON.parse(raw)); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignore */ } };
-        ['crash-v1', 'plinko-v1', 'trader-v1', 'mines-v1', 'loto-v1'].forEach((k) => ls(k, (v) => { if (v.stats) v.stats.train = { rounds: 0, wagered: 0, won: 0, best: 0 }; if (v.bets) v.bets.train = []; return v; }));
-        ls('blackjack-coach-v1', (v) => ({ bankroll: v.bankroll })); // le coach repart de zéro, la somme d'une partie réelle en cours est gardée
-        ls('poker-coach-v1', () => null);
-      }
-      let resetArmed = null;
-      $('ls-reset').addEventListener('click', () => {
-        const b = $('ls-reset');
-        if (!resetArmed) { b.classList.add('armed'); b.textContent = 'Sûr ? Toutes les stats d\'apprentissage seront effacées'; resetArmed = setTimeout(() => { resetArmed = null; b.classList.remove('armed'); b.textContent = '♻️ Remettre l\'apprentissage à zéro'; }, 4000); return; }
-        clearTimeout(resetArmed); resetArmed = null; resetLearning();
-        b.classList.remove('armed'); b.textContent = '♻️ Remettre l\'apprentissage à zéro';
-        $('ls-reset-msg').textContent = '✔ Apprentissage remis à zéro : statistiques et coach effacés, crédit à 10 000 €.';
-        if (window.Sfx) Sfx.chips();
-      });
-      $('ls-real').addEventListener('click', () => { Casino.setLearn(false); renderLearn(); });
-      $('ls-learn').addEventListener('click', () => { Casino.setLearn(true); renderLearn(); });
-      renderLearn();
+
       // ---------- Multijoueur ----------
       const GAME_ICON = { blackjack: '🂡', poker: '♠', roulette: '🎡', loto: '🎱' };
       const GAME_NAME = { blackjack: 'Blackjack', poker: 'Poker', roulette: 'Roulette', loto: 'Loto' };
@@ -1951,8 +1712,8 @@
       const TOUR_KEY = 'casino-tour-v1';
       const TOUR = [
         { sel: '.profile', tab: 'play', title: 'Bienvenue sur Lucky Lounge ! 🎉', text: 'Voici ton profil : ta banque de départ (10 000 € virtuels), ton niveau et ton bonus du jour. Rien à payer, jamais.' },
-        { sel: '.games', tab: 'play', title: 'Choisis un jeu', text: 'Touche un jeu pour jouer avec ta banque. Chaque partie te rapporte de l\'XP, fait avancer tes défis et peut débloquer des succès.' },
-        { sel: '.learn-switch', tab: 'play', title: 'Envie d\'apprendre d\'abord ?', text: 'Passe en 🎓 Apprentissage : crédit illimité, aides et conseils du coach dans tous les jeux. Reviens en 💰 Partie réelle quand tu es prêt.' },
+        { sel: '#lobby-play', tab: 'play', title: 'La Dette', text: 'Lance une partie : 10 minutes par journée pour atteindre le quota du parrain, palier après palier. Une fois lancée, tu restes dans la partie jusqu\'au bout !' },
+        { sel: '#learn-btn', tab: 'play', title: 'Envie d\'apprendre d\'abord ?', text: 'L\'Apprentissage ouvre tous les jeux avec un crédit illimité et les conseils du coach. Rien ne compte : entraîne-toi tranquille.' },
         { sel: '#challenges', tab: 'play', title: 'Reviens chaque jour', text: 'Trois défis du jour à relever et un bonus quotidien qui grimpe si tu viens plusieurs jours d\'affilée.' },
         { sel: '#tab-shop', tab: 'play', title: '🎨 Mon style', text: 'Tapis, cartes, avatars, cadres, fusées… Touche un objet pour l\'essayer, puis équipe-le ou achète-le avec ta banque.' },
         { sel: '#tab-multi', tab: 'play', title: '👥 Entre amis', text: 'Crée une table et invite tes amis. Avec ton lien de parrainage, vous gagnez +2 000 € chacun !' },

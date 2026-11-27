@@ -566,14 +566,13 @@
   // Les 3 défis du jour (choisis selon la date ; 3 jeux sur 4, qui tournent)
   function ensureDaily(P, now) {
     const d = today(now);
-    if (P.daily && P.daily.date === d) return P.daily;
+    if (P.daily && P.daily.date === d && P.daily.list.length <= 3) return P.daily;
     let h = 0;
     for (const c of d) h = (h * 31 + c.charCodeAt(0)) >>> 0;
     const pick = (game) => { const list = CHALLENGES.filter((c) => c.game === game); return list[h % list.length]; };
-    const all = ['Blackjack', 'Poker', 'Roulette', 'Machine à sous', 'Rocket Crash', 'Plinko', 'Bourse Flash', 'Mines'];
-    const games = all.filter((g, i) => i !== (h >>> 3) % all.length);
+    // 3 défis par jour, sur les jeux ouverts dès le palier 1 de La Dette
+    const games = ['Blackjack', 'Roulette', 'Machine à sous'];
     const ids = games.map((g) => pick(g).id);
-    if (h % 3 === 0) ids[h % 3] = 'any_win1000';
     P.daily = { date: d, list: ids.map((id) => ({ id, progress: 0, done: false, claimed: false })) };
     return P.daily;
   }

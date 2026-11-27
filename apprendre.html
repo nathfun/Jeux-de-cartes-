@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Apprentissage</title>
+  <meta name="theme-color" content="#06202c">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="games.css">
+  <script src="firebase-config.js"></script>
+  <script src="gate.js"></script>
+  <style>
+    :root { --bg: #10151c; --panel: #1a2129; --border: #2a333d; --text: #e8ecef; --muted: #9aa5b1; color-scheme: dark; }
+    * { box-sizing: border-box; } [hidden] { display: none !important; }
+    body { margin: 0; min-height: 100vh; color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+    main { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.1rem; }
+    .top { display: flex; align-items: center; gap: .7rem; }
+    .top h1 { margin: 0; font-size: 1.4rem; flex: 1; }
+    .top a.back { color: #fde68a; text-decoration: none; font-size: 1.4rem; font-weight: 800; }
+    .muted { color: var(--muted); }
+    body { background: radial-gradient(900px 500px at 50% -10%, #0c3b52 0%, transparent 60%), #07131b; }
+    .intro { background: rgba(79,195,247,.08); border: 1px solid #1e5a78; border-radius: 16px; padding: 1rem 1.1rem; line-height: 1.45; }
+    .intro b { color: #bae6fd; }
+    .games a.game { border-color: #1e5a78; }
+    .reset { align-self: flex-start; font: inherit; background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 10px; padding: .45rem .8rem; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="top"><a class="back" href="index.html" aria-label="Retour au lobby">←</a><h1>🎓 Apprentissage</h1></div>
+    <p class="intro">Ici, <b>tous les jeux sont ouverts</b>, avec un <b>crédit illimité</b>, les <b>aides</b> et les <b>conseils du coach</b>. Rien ne compte : ni ta partie de La Dette, ni tes jetons, ni tes niveaux. Teste, apprends les règles, rate autant que tu veux !</p>
+    <section class="games" aria-label="Jeux">
+      <a class="game roue" href="roue/index.html" data-learn="wheel">
+        <h2>Roue de la fortune</h2>
+        <p>Mise et lance la grande roue : la case où s'arrête l'aiguille multiplie ta mise, jusqu'à ×25. Simple, rapide… et redoutable.</p>
+        <div class="tags"><span>Nouveau</span><span>Jusqu'à ×25</span><span>Palier 1</span></div>
+        <div class="mini-fortune" aria-hidden="true"></div>
+      </a>
+      <a class="game" href="blackjack/index.html" data-learn="blackjack">
+        <h2>Blackjack</h2>
+        <p>Un coach analyse chaque décision, t'apprend la stratégie de base et le comptage Hi-Lo. Joue seul ou à 5 places entre amis.</p>
+        <div class="tags"><span>Solo + coach</span><span>Entre amis</span><span>Comptage</span><span>Paris annexes</span></div>
+        <div class="mini-cards" aria-hidden="true"><span>A♠</span><span class="r">K♥</span></div>
+      </a>
+      <a class="game" href="poker/index.html" data-learn="poker">
+        <h2>Poker</h2>
+        <p>Texas Hold'em contre des bots avec un coach qui t'explique chaque coup, ou entre amis avec un code de table : chacun ne voit que ses cartes.</p>
+        <div class="tags"><span>Hold'em</span><span>Solo + coach</span><span>Entre amis</span></div>
+        <div class="mini-cards" aria-hidden="true"><span class="r">Q♦</span><span>J♣</span></div>
+      </a>
+      <a class="game roulette" href="roulette/index.html" data-learn="roulette">
+        <h2>Roulette</h2>
+        <p>Roulette européenne avec une vraie roue et sa bille, « Faites vos jeux » et « Rien ne va plus ». Les aides t'expliquent chaque mise et ses chances.</p>
+        <div class="tags"><span>Solo + aides</span><span>Entre amis</span><span>Règles françaises</span></div>
+        <div class="mini-wheel" aria-hidden="true"></div>
+      </a>
+      <a class="game crash" href="crash/index.html" data-learn="crash">
+        <h2>Rocket Crash</h2>
+        <p>La fusée décolle, le multiplicateur s'envole… retire ta mise avant l'explosion ! Retrait automatique, historique et équité vérifiable.</p>
+        <div class="tags"><span>Nouveau</span><span>Multiplicateur</span><span>RTP 97 %</span></div>
+        <div class="mini-rocket" aria-hidden="true"><span class="mr-mult">2.47×</span><span class="mr-rocket">🚀</span></div>
+      </a>
+      <a class="game plinko" href="plinko/index.html" data-learn="plinko">
+        <h2>Plinko</h2>
+        <p>Lâche des billes qui rebondissent de picot en picot jusqu'aux cases à multiplicateurs. Choisis le risque et le nombre de rangées, lâche-en une ou cent !</p>
+        <div class="tags"><span>Nouveau</span><span>Jusqu'à ×1 000</span><span>RTP 97 %</span></div>
+        <div class="mini-plinko" aria-hidden="true"><b></b><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      </a>
+      <a class="game trader" href="trader/index.html" data-learn="trader">
+        <h2>Bourse Flash</h2>
+        <p>Trois actions cotent en direct : achète si ça va monter, vends si ça va baisser, et clôture au bon moment. Effet de levier, krachs, envolées… et liquidation !</p>
+        <div class="tags"><span>Nouveau</span><span>Levier ×20</span><span>Achat / Vente</span></div>
+        <svg class="mini-chart" viewBox="0 0 180 34" aria-hidden="true"><defs><linearGradient id="mc" x1="0" x2="1"><stop offset="0" stop-color="#f472b6"/><stop offset="1" stop-color="#34d399"/></linearGradient></defs><polyline fill="none" stroke="url(#mc)" stroke-width="2.5" stroke-linejoin="round" points="0,22 15,18 28,24 42,14 55,17 66,26 78,30 90,21 104,23 118,12 130,15 144,8 158,11 170,4 180,6"/></svg>
+      </a>
+      <a class="game mines" href="mines/index.html" data-learn="mines">
+        <h2>Mines</h2>
+        <p>25 cases, des mines cachées. Chaque diamant fait grimper ton gain : encaisse avant de tomber sur une mine ! Choisis de 1 à 24 mines.</p>
+        <div class="tags"><span>Nouveau</span><span>Jusqu'à ×24 000</span><span>RTP 97 %</span></div>
+        <div class="mini-mines" aria-hidden="true"><i class="g">💎</i><i></i><i class="g">💎</i><i></i><i>💣</i></div>
+      </a>
+      <a class="game loto" href="loto/index.html" data-learn="loto">
+        <h2>Loto Express</h2>
+        <p>Coche de 1 à 8 numéros sur 30, la sphère tire 10 boules. Trouve tous tes numéros pour décrocher le carton plein, jusqu'à ×3 500 !</p>
+        <div class="tags"><span>Nouveau</span><span>Tirage en direct</span><span>Carton plein ×3 500</span></div>
+        <div class="mini-loto" aria-hidden="true"><i>7</i><i class="h">13</i><i>21</i><i class="h">33</i><i>40</i></div>
+      </a>
+      <a class="game slots" href="slots/machines.html" data-learn="slots">
+        <h2>Machines à sous</h2>
+        <p>Deux machines : la classique <b>Casino Royal</b> et la nouvelle <b>Ruée vers l'Or</b> avec son bonus Le Filon et ses 4 jackpots. Bats le record du mois !</p>
+        <div class="tags"><span>Nouveau</span><span>2 machines</span><span>Record du mois</span></div>
+        <div class="mini-reels" aria-hidden="true"><span>7️⃣</span><span>7️⃣</span><span>7️⃣</span></div>
+      </a>
+    </section>
+    <button id="reset" class="reset" type="button">♻️ Remettre l'apprentissage à zéro</button>
+  </main>
+  <script src="sounds.js"></script>
+  <script src="casino-rules.js"></script>
+  <script src="profile.js"></script>
+  <script src="account.js"></script>
+  <script>
+    (function () {
+      // une partie de La Dette en cours : on ne la quitte pas pour l'apprentissage
+      const r = Casino.profile.run;
+      if (r && (r.status === 'playing' || r.status === 'shop' || (r.status === 'over' && !r.seen))) { location.replace('partie.html' + location.search); return; }
+      Casino.setLearn(true);
+      let armed = null;
+      document.getElementById('reset').addEventListener('click', (e) => {
+        const b = e.currentTarget;
+        if (!armed) { b.textContent = 'Touche encore pour confirmer'; armed = setTimeout(() => { armed = null; b.textContent = '♻️ Remettre l\'apprentissage à zéro'; }, 3000); return; }
+        clearTimeout(armed); armed = null;
+        const ls = (k, fn) => { try { const raw = localStorage.getItem(k); if (raw == null) return; const v = fn(JSON.parse(raw)); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (er) { /* ignore */ } };
+        ['crash-v1', 'plinko-v1', 'trader-v1', 'mines-v1', 'loto-v1'].forEach((k) => ls(k, (v) => { if (v.stats) v.stats.train = { rounds: 0, wagered: 0, won: 0, best: 0 }; if (v.bets) v.bets.train = []; return v; }));
+        ls('blackjack-coach-v1', (v) => ({ bankroll: v.bankroll }));
+        ls('poker-coach-v1', () => null);
+        b.textContent = '✔ Apprentissage remis à zéro';
+      });
+    })();
+  </script>
+  <script src="pwa.js"></script>
+</body>
+</html>
