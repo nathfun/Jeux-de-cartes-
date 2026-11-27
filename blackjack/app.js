@@ -273,7 +273,7 @@
     let srvPhase = null;
     if (srvMode()) {
       const r = await Casino.call('bj.deal', { bet, pp: side.pp, t213: side.t213 });
-      if (r.error) { busy = false; setMessage('⚠️ ' + r.error); render(); return; }
+      if (r.error) { busy = false; if (/déjà en cours/i.test(r.error)) { await resyncReal(); return; } setMessage('⚠️ ' + r.error); render(); return; }
       srvQueue = r.cards.slice(); srvStack = r.stack; srvPhase = r.phase;
       setMessage(r.shuffled ? 'Le sabot est mélangé à nouveau.' : 'Distribution…');
     } else if (shoe.length < DECKS * 52 * 0.25) {
@@ -352,6 +352,13 @@
     startTimer(() => act('S'));
   }
 
+  async function resyncReal() {
+    stopTimer();
+    const r = await Casino.startSession('blackjack', 0);
+    round = null; srvQueue = [];
+    if (r && r.session) { stats.bankroll = r.session.stack; setMessage('La main précédente était déjà terminée : elle a été réglée. Place ta mise.'); render(); return; }
+    mode = null; showSolo();
+  }
   async function act(action) {
     if (busy || !round || round.phase !== 'playing') return;
     const opts = availableActions();
@@ -365,7 +372,12 @@
     busy = true;
     if (srvMode()) {
       const r = await Casino.call('bj.act', { action });
-      if (r.error) { busy = false; setMessage('⚠️ ' + r.error); render(); return; }
+      if (r.error) {
+        busy = false;
+        // la main a déjà été réglée côté serveur (page restaurée, journée finie…) : on se resynchronise
+        if (/pas le moment|Aucune/i.test(r.error)) { await resyncReal(); return; }
+        setMessage('⚠️ ' + r.error); render(); return;
+      }
       srvQueue = srvQueue.concat(r.cards); srvStack = r.stack;
     }
 
@@ -677,7 +689,7 @@
   let timerId = null, timerEnd = 0, timerTotal = 0, lastTick = 0;
   function startTimer(onExpire) {
     stopTimer();
-    const secs = parseInt($('opt-timer').value, 10) || 0;
+    const tEl = document.getElementById('opt-timer'), secs = tEl ? parseInt(tEl.value, 10) || 0 : 0;
     if (!secs) return;
     timerTotal = secs * 1000;
     timerEnd = Date.now() + timerTotal;
@@ -1019,7 +1031,7 @@
   $('deal').addEventListener('click', deal);
   document.querySelectorAll('[data-action]').forEach((b) => b.addEventListener('click', () => act(b.dataset.action)));
   $('hint').addEventListener('click', showHint);
-  try { const r = localStorage.getItem('bj-rule'); if (r) $('opt-rule').value = r; } catch (e) { /* ignore */ }
+  $('opt-rule').value = 'eu'; // règle européenne par défaut (on peut passer en américaine en apprentissage)
   $('opt-rule').addEventListener('change', () => {
     try { localStorage.setItem('bj-rule', $('opt-rule').value); } catch (e) { /* ignore */ }
     renderChart();
@@ -1099,7 +1111,7 @@
     const badge = $('mode-badge');
     badge.hidden = !playing || mode === 'defi';
     badge.className = 'cm-badge mode-line' + (mode === 'real' ? ' real' : '');
-    badge.textContent = mode === 'real' ? '💰 Partie réelle · sans aides · « Encaisser » ramène tes jetons à la banque' : '🎓 Apprentissage · crédit illimité, aides et conseils · ne compte pas';
+    badge.textContent = mode === 'real' ? '🕴️ La Dette · sans aides · « Encaisser » ramène l\'argent dans ta caisse' : '🎓 Apprentissage · crédit illimité, aides et conseils · ne compte pas';
     $('cashout').hidden = mode === 'defi' || mode === 'train';
     $('bank-label').textContent = mode === 'real' ? 'Sur la table' : mode === 'train' ? 'Crédit d\'apprentissage' : mode === 'defi' ? 'Jetons de défi' : 'Caisse';
     if (!mode && window.Casino) { $('bankroll').textContent = (Math.round(Casino.wallet() * 100) / 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 }); }

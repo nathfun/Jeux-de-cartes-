@@ -623,14 +623,6 @@
       <button id="tab-shop" type="button" role="tab" aria-selected="false">🎨 Mon style</button>
     </nav>
 
-    <section id="lobby-play" class="panel dette lobby-play" aria-label="La Dette">
-      <div class="lp-art" aria-hidden="true">🕴️</div>
-      <h2>La Dette</h2>
-      <p class="dt-sub">Ton frère doit une fortune au parrain. Rembourse-le palier après palier : chaque journée de 10 minutes a son quota… et les quotas grimpent vite. Jusqu'où iras-tu ?</p>
-      <button id="lp-start" class="dt-cta lp-start" type="button">▶ Lancer une partie</button>
-      <p id="lp-best" class="dt-best"></p>
-      <a id="learn-btn" class="lp-learn" href="apprendre.html" onclick="this.href='apprendre.html'+location.search">🎓 Apprentissage <small>tous les jeux, crédit illimité, aides du coach</small></a>
-    </section>
 
     <section class="panel profile" aria-label="Mon profil">
       <button id="avatar" class="avatar" type="button" aria-label="Changer d'avatar">🎩</button>
@@ -651,6 +643,15 @@
         <div id="in-play" class="in-play" hidden></div>
         <div id="lifetime" class="stats-row"></div>
       </div>
+    </section>
+
+    <section id="lobby-play" class="panel dette lobby-play" aria-label="La Dette">
+      <div class="lp-art" aria-hidden="true">🕴️</div>
+      <h2>La Dette</h2>
+      <p class="dt-sub">Ton frère doit une fortune au parrain. Rembourse-le palier après palier : chaque journée de 10 minutes a son quota… et les quotas grimpent vite. Jusqu'où iras-tu ?</p>
+      <button id="lp-start" class="dt-cta lp-start" type="button">▶ Lancer une partie</button>
+      <p id="lp-best" class="dt-best"></p>
+      <a id="learn-btn" class="lp-learn" href="apprendre.html" onclick="this.href='apprendre.html'+location.search">🎓 Apprentissage <small>tous les jeux, crédit illimité, aides du coach</small></a>
     </section>
 
 
@@ -966,10 +967,9 @@
         const tt = Casino.itemOf('title', Casino.equipped('title'));
         $('lvl-title').textContent = tt && tt.id ? '« ' + tt.name + ' »' : Casino.title(lv);
         $('avatar').className = 'avatar fr-' + Casino.equipped('frame');
-        const vip = Casino.vip(), nextVip = Casino.VIP.find((x) => x.lvl > lv);
-        $('vip-badge').textContent = Casino.salonText(); $('vip-badge').className = 'vip-badge v-' + vip.id + (Casino.isVip() ? ' is-pass' : '');
-        $('vip-badge').title = 'Mises du palier en cours (elles montent avec les paliers de La Dette)'; void nextVip;
-        $('salon-next').textContent = nextVip ? 'Prochain salon : ' + nextVip.icon + ' ' + nextVip.name + ' au niveau ' + nextVip.lvl + ' (encore ' + (nextVip.lvl - lv) + ' niveau' + (nextVip.lvl - lv > 1 ? 'x' : '') + ') · mise max ' + fmt(nextVip.max * (Casino.isVip() ? 2 : 1)) + ' €' : '💎 Tu es dans le salon le plus prestigieux.';
+        // plus de salons : les mises dépendent du palier de La Dette ; le badge ne montre que le pass VIP
+        $('vip-badge').hidden = !Casino.isVip(); $('vip-badge').textContent = '👑 VIP'; $('vip-badge').className = 'vip-badge is-pass';
+        $('vip-badge').title = 'Membre du club VIP';
         renderVip(); renderWheel();
         $('xpfill').style.width = Math.round(((P.xp - cur) / (nxt - cur)) * 100) + '%';
         $('xp-text').textContent = fmt(P.xp - cur) + ' / ' + fmt(nxt - cur) + ' XP jusqu\'au niveau ' + (lv + 1);
@@ -1830,8 +1830,6 @@
       renderAccount();
       $('opt-vibrate').addEventListener('change', (e) => { Casino.setSetting('vibrate', e.target.checked); if (e.target.checked) Casino.vibrate(40); });
       $('vip-badge').addEventListener('click', () => {
-        const lv = Casino.levelOf(Casino.profile.xp);
-        Casino.toast('Salons (selon ton niveau)', Casino.VIP.map((v) => (lv >= v.lvl ? '✓ ' : '🔒 ') + v.icon + ' ' + v.name + ' (niv. ' + v.lvl + ') : ' + fmt(v.max) + ' € max').join(' · ') + (Casino.isVip() ? ' — doublé avec ton pass VIP 👑' : ' — le pass VIP double ces mises'), '🥂');
         $('vip-panel').scrollIntoView({ behavior: 'smooth', block: 'center' });
       });
       Casino.onChange(render);

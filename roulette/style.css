@@ -220,3 +220,7 @@ input:not([type]), input[type="text"] { font: inherit; background: #10151c; colo
 
 /* v9 : on choisit Apprentissage / Multijoueur sur l'accueil */
 .topbar .tabs { display: none !important; }
+/* le 0 : un vrai jeton vert bien centré (en vertical, la case est très large) */
+.spot.plein.green .num { width: auto; height: 62%; max-height: 62%; aspect-ratio: 1; background: #0a5c2e; border: 2px solid rgba(255,255,255,.7); box-shadow: 0 2px 6px rgba(0,0,0,.35); }
+.tapis.vertical .spot.plein.green { border-radius: 46% 46% 0 0 / 70% 70% 0 0; }
+.tapis.vertical .spot.out { font-size: clamp(.6rem, 2.8vw, .8rem); letter-spacing: .08em; }

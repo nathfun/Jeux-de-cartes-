@@ -6,19 +6,10 @@
   const fmt = (v) => (Math.round(v * 100) / 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 });
   const S = { mode: null, stack: 0, betIx: 0, busy: false, angle: 0, hist: [] };
   const TOTAL = SEG.reduce((a, x) => a + x.w, 0);
-  // cases étalées sur la roue : les grosses cases sont réparties entre les petites
-  const ORDER = [];
-  (function build() {
-    // les cases gagnantes (×1,5 et plus) sont découpées en morceaux et intercalées entre les cases ×0 et ×0,5
-    const groups = SEG.map((x, i) => i).filter((i) => SEG[i].m >= 1.5).map((i) => { const k = Math.max(1, Math.round(SEG[i].w / 6)); return Array.from({ length: k }, () => ({ i, w: SEG[i].w / k })); });
-    const big = [];
-    while (groups.some((g) => g.length)) groups.forEach((g) => { if (g.length) big.push(g.shift()); });
-    const n = big.length, half = Math.ceil(n / 2);
-    big.forEach((p, k) => { ORDER.push(p); ORDER.push({ i: 0, w: SEG[0].w / n }); if (k % 2 === 0) ORDER.push({ i: 1, w: SEG[1].w / half }); });
-  })();
-  // angles de départ de chaque morceau
+  // une case = une part égale de la roue, dans l'ordre défini par les règles
+  const ORDER = SEG.map((x, i) => ({ i, w: x.w }));
   let acc = 0; ORDER.forEach((p) => { p.a0 = acc / TOTAL * Math.PI * 2; acc += p.w; p.a1 = acc / TOTAL * Math.PI * 2; });
-  const label = (m) => (m === 0 ? '×0' : '×' + String(m).replace('.', ','));
+  const label = (m) => (m === 0 ? '✕' : '×' + String(m).replace('.', ','));
 
   const cv = $('wheel'), cx = cv.getContext('2d');
   function draw() {
@@ -29,10 +20,13 @@
       const s = SEG[p.i];
       cx.beginPath(); cx.moveTo(0, 0); cx.arc(0, 0, r, p.a0 - Math.PI / 2, p.a1 - Math.PI / 2); cx.closePath();
       cx.fillStyle = s.c; cx.fill(); cx.strokeStyle = 'rgba(0,0,0,.35)'; cx.lineWidth = 2; cx.stroke();
-      if (p.a1 - p.a0 > 0.09) {
-        cx.save(); cx.rotate((p.a0 + p.a1) / 2); cx.fillStyle = '#fff'; cx.font = '800 ' + (p.a1 - p.a0 > 0.25 ? 30 : 22) + 'px system-ui'; cx.textAlign = 'center';
-        cx.fillText(label(s.m), 0, -r + 42); cx.restore();
-      }
+      cx.save(); cx.rotate((p.a0 + p.a1) / 2); cx.translate(0, -r + 70);
+      // étiquette toujours à l'endroit, même quand la case passe en bas de la roue
+      const abs = (((p.a0 + p.a1) / 2 + S.angle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+      if (abs > Math.PI / 2 && abs < Math.PI * 1.5) cx.rotate(Math.PI);
+      cx.textAlign = 'center'; cx.textBaseline = 'middle';
+      cx.fillStyle = s.m ? '#fff' : 'rgba(255,255,255,.35)'; cx.font = '900 ' + (s.m >= 5 ? 40 : 34) + 'px system-ui';
+      cx.fillText(label(s.m), 0, 0); cx.restore();
     });
     cx.restore();
     // jante et moyeu
@@ -40,7 +34,8 @@
     cx.beginPath(); cx.arc(W / 2, W / 2, 46, 0, Math.PI * 2); cx.fillStyle = '#facc15'; cx.fill();
     cx.fillStyle = '#1c1300'; cx.font = '900 34px system-ui'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText('🎡', W / 2, W / 2 + 2); cx.textBaseline = 'alphabetic';
   }
-  $('legend').innerHTML = SEG.map((s) => '<span><i style="background:' + s.c + '"></i>' + label(s.m) + ' · ' + (s.w / TOTAL * 100).toFixed(1).replace('.', ',') + ' %</span>').join('');
+  const groups = {}; SEG.forEach((s) => { groups[s.m] = groups[s.m] || { m: s.m, c: s.c, w: 0 }; groups[s.m].w += s.w; });
+  $('legend').innerHTML = Object.values(groups).sort((a, b) => b.m - a.m).map((g) => '<span><i style="background:' + g.c + '"></i>' + label(g.m) + ' · ' + g.w + ' case' + (g.w > 1 ? 's' : '') + ' sur ' + TOTAL + '</span>').join('');
 
   const bets = () => {
     const max = window.Casino && S.mode === 'real' ? Casino.maxBet() : 500, min = window.Casino && S.mode === 'real' ? Casino.minBet('wheel') : 1;
@@ -59,7 +54,7 @@
 
   function animateTo(idx) {
     // un morceau de la case tirée, au hasard, puis un point au hasard dedans
-    const ps = ORDER.filter((p) => p.i === idx), p = ps[Math.floor(Math.random() * ps.length)];
+    const p = ORDER[idx];
     const target = p.a0 + (p.a1 - p.a0) * (0.15 + Math.random() * 0.7);
     const from = S.angle, base = from - (from % (Math.PI * 2));
     const end = base + Math.PI * 2 * 6 + (Math.PI * 2 - target);
@@ -98,7 +93,7 @@
     el.textContent = win > 0 ? '+' + fmt(win) + ' €' : 'Perdu';
     el.className = 'rw-result' + (win > b ? ' win' : '');
     if (window.Sfx) { if (win > b) Sfx.win(); else if (!win && Sfx.lose) Sfx.lose(); }
-    if (SEG[idx].m >= 10 && window.Casino && Casino.bigWin) Casino.bigWin(win, b);
+    if (SEG[idx].m >= 5 && window.Casino && Casino.bigWin) Casino.bigWin(win, b);
     S.busy = false; ui(); showWallet();
   }
   $('spin').addEventListener('click', spin);

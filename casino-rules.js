@@ -492,7 +492,7 @@
   }
 
   function addXP(P, n, N) {
-    const before = levelOf(P.xp), salonBefore = vipOf(P);
+    const before = levelOf(P.xp);
     if (isVip(P)) n *= 1.25;
     P.xp += Math.round(n);
     ensureSeason(P, Date.now(), N).xp += Math.round(n);
@@ -502,8 +502,6 @@
       const unlocked = [];
       for (let l = before + 1; l <= after; l++) unlocksAt(l).forEach((it) => unlocked.push(it.name + (it.price ? ' (boutique)' : '')));
       N.push({ kind: 'level', title: 'Niveau ' + after + ' !', text: title(after) + (unlocked.length ? ' — nouveau : ' + unlocked.slice(0, 4).join(', ') + (unlocked.length > 4 ? '…' : '') : ''), icon: '⬆️' });
-      const salon = vipOf(P);
-      if (salon.id !== salonBefore.id) N.push({ kind: 'salon', title: 'Nouveau salon : ' + salon.name, text: 'Tu peux maintenant miser jusqu\'à ' + salon.max + ' € par coup' + (isVip(P) ? ' (' + salon.max * 2 + ' € avec ton pass VIP)' : '') + '.', icon: salon.icon, salon: salon.id, max: salon.max });
       if (after >= 10) unlock(P, 'lvl10', N);
       if (after >= 20) unlock(P, 'lvl20', N);
       if (after >= 30) unlock(P, 'lvl30', N);
@@ -1030,10 +1028,11 @@
     const m = runMinBet(P);
     return game === 'blackjack' ? m : Math.max(1, niceDown(m / 5));
   }
-  // Roue de la fortune : 8 cases de tailles différentes, redistribution ≈ 95 %
+  // Roue de la fortune : 12 cases égales, dans l'ordre de la roue (redistribution ≈ 95,8 %)
   const FORTUNE = [
-    { m: 0, w: 114, c: '#1f2937' }, { m: 0.5, w: 28, c: '#475569' }, { m: 1.5, w: 26, c: '#0e7490' }, { m: 2, w: 18, c: '#15803d' },
-    { m: 3, w: 8, c: '#7c3aed' }, { m: 5, w: 5, c: '#c2410c' }, { m: 10, w: 3, c: '#be123c' }, { m: 25, w: 1, c: '#ca8a04' },
+    { m: 5, w: 1, c: '#c2410c' }, { m: 0, w: 1, c: '#1f2937' }, { m: 1.5, w: 1, c: '#0e7490' }, { m: 0, w: 1, c: '#374151' },
+    { m: 2, w: 1, c: '#15803d' }, { m: 0, w: 1, c: '#1f2937' }, { m: 1.5, w: 1, c: '#0e7490' }, { m: 0, w: 1, c: '#374151' },
+    { m: 0, w: 1, c: '#1f2937' }, { m: 1.5, w: 1, c: '#0e7490' }, { m: 0, w: 1, c: '#374151' }, { m: 0, w: 1, c: '#1f2937' },
   ];
   const runActive = (P) => !!(P && P.run && P.run.status === 'playing');
   const runTotal = (P) => Math.round(((P.run ? P.run.cash : 0) + Object.values(P.sessions || {}).reduce((a, x) => a + (x.stack || 0), 0)) * 100) / 100;

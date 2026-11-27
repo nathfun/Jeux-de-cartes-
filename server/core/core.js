@@ -483,7 +483,7 @@ function handle(state, ctx) {
       while (x >= R.FORTUNE[idx].w) { x -= R.FORTUNE[idx].w; idx++; }
       const win = round2(bet * R.FORTUNE[idx].m);
       ss.stack = round2(ss.stack - bet + win);
-      track('sl', { bet, net: round2(win - bet), jackpot: R.FORTUNE[idx].m >= 25, freeTrigger: false });
+      track('sl', { bet, net: round2(win - bet), jackpot: R.FORTUNE[idx].m >= 5, freeTrigger: false });
       result = { index: idx, mult: R.FORTUNE[idx].m, win, stack: ss.stack };
       break;
     }

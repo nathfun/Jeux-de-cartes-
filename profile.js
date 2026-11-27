@@ -45,7 +45,8 @@
     listeners.forEach((f) => { try { f(P); } catch (e) { /* ignore */ } });
   }
   if (typeof window !== 'undefined') {
-    window.addEventListener('pageshow', (e) => { if (e.persisted) reloadFromStorage(); });
+    // page de jeu restaurée par le bouton retour : la main affichée peut être périmée, on recharge pour repartir de l'état du serveur
+    window.addEventListener('pageshow', (e) => { if (!e.persisted) return; if (document.querySelector('.cm-host, .run-hud')) location.reload(); else reloadFromStorage(); });
     window.addEventListener('storage', (e) => { if (e.key === KEY) reloadFromStorage(); });
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reloadFromStorage(); });
   }
@@ -1025,7 +1026,7 @@
     isVip() { return R.isVip(load(), Date.now()); },
     vipUntil() { return R.isVip(load(), Date.now()) ? load().vipUntil : 0; },
     /** Texte court : « 🥈 Salon Argent · max 100 € » (+ couronne si VIP). */
-    salonText() { const p = load(); return (R.isVip(p, Date.now()) ? '👑 VIP · ' : '') + 'mises ' + R.gameMin(p, 'blackjack') + ' à ' + R.maxBet(p, Date.now()).toLocaleString('fr-FR') + ' €'; },
+    salonText() { const p = load(), r = p.run; return (R.isVip(p, Date.now()) ? '👑 ' : '') + (r && r.status !== 'over' ? '🕴️ Palier ' + r.palier + ' · ' : '') + 'mises ' + R.gameMin(p, 'blackjack') + ' à ' + R.maxBet(p, Date.now()).toLocaleString('fr-FR') + ' €'; },
     async buyVip(pass) {
       if (SERVER) { const r = await call('vip.buy', { pass }); return r.error ? r : Object.assign({ ok: true }, r); }
       if (BANK) return { error: 'Le pass VIP demande le serveur du Casino.' };
