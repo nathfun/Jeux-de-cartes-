@@ -22,6 +22,7 @@ const LO = require('./shared/loto-engine.js');
 const MN = require('./shared/mines-engine.js');
 const GD = require('./shared/gold-engine.js');
 const TR = require('./shared/trader-engine.js');
+const HS = require('./shared/heist-engine.js');
 const nodeCrypto = require('crypto');
 const hmacHex = (key, msg) => nodeCrypto.createHmac('sha256', key).update(msg).digest('hex');
 const sha256Hex = (t) => nodeCrypto.createHash('sha256').update(t).digest('hex');
@@ -518,7 +519,7 @@ function handle(state, ctx) {
     Object.keys(P.sessions).forEach((g) => settle(g, false));
     const r = R.runEndDay(P, now, N, 'time');
     result.dayOver = r.over ? 'over' : 'shop';
-    if (/^(bj|rl|sl|cr|gd|pl|lo|mn|wh|pk|bo|tr)\./.test(ctx.op) || ctx.op === 'session.start' || ctx.op === 'session.cashout') {
+    if (/^(bj|rl|sl|cr|gd|pl|lo|mn|wh|pk|bo|tr|hc|hs)\./.test(ctx.op) || ctx.op === 'session.start' || ctx.op === 'session.cashout') {
       state.player = P; state.secret = S;
       return { state, result: { dayOver: result.dayOver, run: P.run }, notes: N };
     }
@@ -582,6 +583,43 @@ function handle(state, ctx) {
       if (r.error) fail(r.error);
       track('sl', { bet: r.price, net: Math.round((r.total - r.price) * 100) / 100, jackpot: r.god || r.cards.some((c) => c.rarity === 'ultime'), freeTrigger: false });
       result = r;
+      break;
+    }
+
+    // ----- Le Braquage (machine à sous du palier 10) -----
+    case 'hs.spin': {
+      const ss = sess('heist');
+      const bet = int(d.bet);
+      if (!(R.BET_STEPS.includes(bet) && bet >= R.gameMin(P, 'heist') && bet <= MAX_BET)) fail('Mise invalide (au plus ' + MAX_BET + ' € à ce palier).');
+      if (bet > ss.stack) fail('Pas assez d\'argent sur la table.');
+      const r = HS.spin(bet, () => ctx.rnd(1 << 30) / (1 << 30));
+      ss.stack = round2(ss.stack - bet + r.total);
+      track('sl', { bet, net: round2(r.total - bet), jackpot: !!r.bonus && r.bonus.mult >= 25, freeTrigger: !!r.bonus });
+      result = Object.assign(r, { stack: ss.stack });
+      break;
+    }
+
+    // ----- Course de chevaux (palier 8) -----
+    case 'hc.card': { sess('horses'); S.hc = S.hc || { card: R.horseCard(ctx.rnd) }; result = { card: S.hc.card, stack: P.sessions.horses.stack }; break; }
+    case 'hc.race': {
+      const ss = sess('horses');
+      S.hc = S.hc || { card: R.horseCard(ctx.rnd) };
+      const card = S.hc.card, bets = d.bets || {}, min = R.gameMin(P, 'horses');
+      let staked = 0;
+      Object.keys(bets).forEach((k) => {
+        const i = int(+k), v = int(bets[k]);
+        if (!(i >= 0 && i < 6)) fail('Cheval inconnu.');
+        if (!(v >= min && v <= MAX_BET)) fail('Mise entre ' + min + ' et ' + MAX_BET + ' € par cheval à ce palier.');
+        staked += v;
+      });
+      if (!staked) fail('Aucun pari.');
+      if (staked > ss.stack) fail('Pas assez d\'argent sur la table.');
+      const win = R.horseRace(card, ctx.rnd);
+      const back = round2((int(bets[win]) || 0) * card.odds[win]);
+      ss.stack = round2(ss.stack - staked + back);
+      track('sl', { bet: staked, net: round2(back - staked), jackpot: back >= staked * 8 && back > 0, freeTrigger: false });
+      S.hc.card = R.horseCard(ctx.rnd);
+      result = { win, back, staked, odds: card.odds, seed: ctx.rnd(1e9), next: S.hc.card, stack: ss.stack };
       break;
     }
 

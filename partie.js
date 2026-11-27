@@ -11,7 +11,7 @@
   if (wantStart) history.replaceState(null, '', location.pathname + QS);
   Casino.setLearn(false);
 
-  const GAME_PATH = { boosters: 'boosters/index.html', wheel: 'roue/index.html', blackjack: 'blackjack/index.html', roulette: 'roulette/index.html', slots: 'slots/index.html', gold: 'gold/index.html', crash: 'crash/index.html', plinko: 'plinko/index.html', trader: 'trader/index.html', mines: 'mines/index.html', loto: 'loto/index.html' };
+  const GAME_PATH = { horses: 'courses/index.html', heist: 'heist/index.html', boosters: 'boosters/index.html', wheel: 'roue/index.html', blackjack: 'blackjack/index.html', roulette: 'roulette/index.html', slots: 'slots/index.html', gold: 'gold/index.html', crash: 'crash/index.html', plinko: 'plinko/index.html', trader: 'trader/index.html', mines: 'mines/index.html', loto: 'loto/index.html' };
   const NAME = (g) => (Casino.GAMES[g] || { boosters: 'Boosters', horses: 'Course de chevaux', slots: 'Casino Royal' }[g] || g);
 
   // ---------- Histoire ----------

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Le Braquage</title>
+  <meta name="theme-color" content="#0b0a10">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../icons/icon-192.png">
+  <link rel="stylesheet" href="../crash/style.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="../firebase-config.js"></script>
+  <script src="../gate.js"></script>
+</head>
+<body class="crash-page hs-page">
+  <header class="topbar">
+    <h1><a id="home-link" class="home-link" href="../index.html" hidden aria-label="Retour">←</a> 🔐 Le Braquage</h1>
+    <div class="bank"><span id="bank-label">Caisse</span> : <strong id="wallet">–</strong> € <button id="sound-toggle" class="ghost icon-btn" type="button">🔊</button></div>
+  </header>
+  <main class="hs-main">
+    <section id="setup" class="glass setup">
+      <h2>🔐 Le Braquage</h2>
+      <p class="muted">Trois rouleaux, cinq lignes. Le parrain 🕴️ remplace tous les symboles. Trois 🔐 n'importe où : tu choisis un coffre-fort à braquer, jusqu'à ×100 ta mise (×200 avec quatre 🔐) !</p>
+      <div id="mode-picker"></div>
+    </section>
+    <section id="game" hidden>
+      <div id="mode-badge" class="mode-badge"></div>
+      <div class="hs-machine">
+        <div class="hs-title">LE BRAQUAGE</div>
+        <div id="grid" class="hs-grid"></div>
+        <div id="win" class="hs-win" role="status">Bonne chance !</div>
+      </div>
+      <div class="glass hs-controls">
+        <div class="hs-bet"><button id="bet-minus" type="button">−</button><div><small>Mise</small><b id="bet">–</b></div><button id="bet-plus" type="button">+</button></div>
+        <button id="spin" class="hs-spin" type="button">BRAQUER</button>
+        <div class="hs-stack"><small>Sur la table</small><b id="stack">–</b></div>
+        <button id="end-btn" class="btn-ghost" type="button">Encaisser et quitter</button>
+      </div>
+      <div class="glass hs-pay" id="pay"></div>
+    </section>
+  </main>
+  <div id="safes" class="hs-safes" hidden></div>
+  <script src="../sounds.js"></script>
+  <script src="../casino-rules.js"></script>
+  <script src="../profile.js"></script>
+  <script src="../account.js"></script>
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+  <script src="../pwa.js"></script>
+</body>
+</html>

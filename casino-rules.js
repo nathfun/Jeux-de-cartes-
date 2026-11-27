@@ -485,7 +485,7 @@
   const refDone = (P) => (P.bestPalier || 0) >= 1;
   // Tables multijoueur en jetons (blackjack, roulette) : mise d'entrée minimale, gain plafonné (×CAP de l'apport)
   const MT = { MIN: 50, CAP: 10, TABLES: 2, PRESETS: [100, 250, 500, 1000] };
-  const GAMES = { blackjack: 'Blackjack', poker: 'Poker', roulette: 'Roulette', slots: 'Machine à sous', crash: 'Rocket Crash', plinko: 'Plinko', trader: 'Bourse Flash', mines: 'Mines', gold: 'Ruée vers l\'Or', loto: 'Loto Express', wheel: 'Roue de la fortune', boosters: 'Boosters' };
+  const GAMES = { blackjack: 'Blackjack', poker: 'Poker', roulette: 'Roulette', slots: 'Machine à sous', crash: 'Rocket Crash', plinko: 'Plinko', trader: 'Bourse Flash', mines: 'Mines', gold: 'Ruée vers l\'Or', loto: 'Loto Express', wheel: 'Roue de la fortune', boosters: 'Boosters', horses: 'Course de chevaux', heist: 'Le Braquage' };
   const pad = (n) => String(n).padStart(2, '0');
   // Date du jour (et de la veille) à l'heure de Paris : les défis et le bonus changent à minuit
   function dayOf(ms) {
@@ -1122,6 +1122,26 @@
     return { kind: pick.kind, id: pick.id, rarity, dup, jetons, paid: !!paid };
   }
 
+
+  // ---------- Course de chevaux (palier 8) : 6 chevaux, une cote chacun, le serveur tire le vainqueur ----------
+  const HORSES = [
+    { name: 'Éclair Noir', c: '#111827' }, { name: 'Petit Bluff', c: '#b91c1c' }, { name: 'Jackpot', c: '#ca8a04' },
+    { name: 'Dame de Cœur', c: '#db2777' }, { name: 'Mistral', c: '#2563eb' }, { name: 'Va-Tout', c: '#16a34a' },
+  ];
+  const HORSE_P = [0.32, 0.22, 0.17, 0.13, 0.10, 0.06], HORSE_RTP = 0.92;
+  /** Nouvelle course : les chances sont redistribuées entre les chevaux (la « forme du jour »). */
+  function horseCard(rnd) {
+    const order = [0, 1, 2, 3, 4, 5];
+    for (let i = 5; i > 0; i--) { const j = rnd(i + 1); [order[i], order[j]] = [order[j], order[i]]; }
+    const p = []; order.forEach((h, k) => { p[h] = HORSE_P[k]; });
+    return { p, odds: p.map((x) => Math.floor(HORSE_RTP / x * 10) / 10), id: rnd(1e9) };
+  }
+  function horseRace(card, rnd) {
+    const x = rnd(1e6) / 1e6; let acc = 0, win = 5;
+    for (let i = 0; i < 6; i++) { acc += card.p[i]; if (x < acc) { win = i; break; } }
+    return win;
+  }
+
   // =====================================================================================================
   // ---------- Boosters de La Dette : 10 cartes revendues tout de suite dans la caisse ----------
   // =====================================================================================================
@@ -1178,7 +1198,7 @@
   const RUN = {
     START_CASH: 1000, START_CASH_VIP: 1500, DAY_MS: 10 * 60000, VIP_BET: 1.6,
     // jeux débloqués selon le palier (le reste viendra : boosters, loto, bourse, course de chevaux…)
-    UNLOCK: { blackjack: 1, roulette: 1, slots: 1, wheel: 1, crash: 2, mines: 3, boosters: 3, plinko: 4, gold: 5, loto: 6, trader: 7, horses: 8 },
+    UNLOCK: { blackjack: 1, roulette: 1, slots: 1, wheel: 1, crash: 2, mines: 3, boosters: 3, plinko: 4, gold: 5, loto: 6, trader: 7, horses: 8, heist: 10 },
   };
   const QUOTAS = [1500, 2500, 4000, 6500, 10000, 16000, 25000, 40000, 65000, 100000, 160000, 250000, 400000, 650000, 1000000];
   /** Arrondi « joli » : 1, 1,5, 2, 2,5, 3, 4, 5, 6, 8 × 10^k (vers le bas). */
@@ -1325,7 +1345,7 @@
     if (r.items.sablier) { extra += 4 * 60000 * r.items.sablier; delete r.items.sablier; }
     r.status = 'playing'; r.dayStart = now; r.dayEnd = now + RUN.DAY_MS + extra; r.dayStartTotal = r.cash; r.offer = null;
     const news = Object.keys(RUN.UNLOCK).filter((g) => RUN.UNLOCK[g] === r.palier);
-    N.push({ kind: 'run', title: 'Palier ' + r.palier, text: 'Quota : ' + r.quota.toLocaleString('fr-FR') + ' €.' + (news.length ? ' Nouveau : ' + news.map((g) => GAMES[g] || (g === 'wheel' ? 'Roue de la fortune' : g === 'boosters' ? 'Boosters' : g === 'horses' ? 'Course de chevaux' : g)).join(', ') + ' !' : ''), icon: '🕴️' });
+    N.push({ kind: 'run', title: 'Palier ' + r.palier, text: 'Quota : ' + r.quota.toLocaleString('fr-FR') + ' €.' + (news.length ? ' Nouveau : ' + news.map((g) => GAMES[g] || g).join(', ') + ' !' : ''), icon: '🕴️' });
     return { run: r };
   }
 
@@ -1394,6 +1414,7 @@
     bonusInfo, claimBonus, claimChallenge, timeInfo, startTime, claimTime, startSession, cashOut,
     prizeFor, prizeText, applyPrize, publicProfile, REF_BONUS, REF_MIN_HANDS, REF_MAX, refDone, MT,
     COL_CATS, COLLECTION, COL_BY_ID, COTE_BASE, INSTANT_RATE, instantPrice, coteOf, rarityOfKey, countOf, instantSell,
+    HORSES, horseCard, horseRace,
     BOX, boxInfo, openBox, priceOf, inPromo, SHOP_PROMO, VIP_DISCOUNT,
     SERIES, PACK, PACK_MULT, packPrice, seriesOpen, openPack,
     RUN, QUOTAS, BET_STEPS, gameMin, FORTUNE, quotaOf, niceDown, palierFactor, runMaxBet, runMinBet, runActive, runTotal, isUnlocked, RUN_ITEMS, runItem, itemPrice, runReward,

@@ -13,6 +13,7 @@ const files = {
   'gold/engine.js': 'gold-engine.js',
   'loto/engine.js': 'loto-engine.js',
   'trader/engine.js': 'trader-engine.js',
+  'heist/engine.js': 'heist-engine.js',
   'blackjack/strategy.js': 'strategy.js',
   'blackjack/sidebets.js': 'sidebets.js',
   'poker/eval.js': 'eval.js',

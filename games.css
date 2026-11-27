@@ -72,3 +72,7 @@ a.game:focus-visible { border-color: var(--gold); }
 .mini-pack { margin-top: auto; display: flex; gap: .3rem; }
 .mini-pack span { width: 40px; height: 56px; display: grid; place-items: center; font-size: 1.4rem; border-radius: 8px; background: repeating-linear-gradient(45deg, #2e1065, #2e1065 6px, #4c1d95 6px, #4c1d95 12px); border: 2px solid #a78bfa; }
 .mini-pack span:nth-child(2) { transform: translateY(-6px); border-color: #fde047; box-shadow: 0 0 12px rgba(253,224,71,.6); }
+.game.horses { background: radial-gradient(ellipse at 30% 10%, #3f6212 0%, #1a2e05 55%, #0a1302 100%); border-color: #65a30d; }
+.mini-race { margin-top: auto; display: flex; gap: .4rem; font-size: 1.8rem; } .mini-race span:not(:last-child) { transform: scaleX(-1); }
+.game.heist { background: radial-gradient(ellipse at 30% 10%, #3b0a2a 0%, #18181b 55%, #09090b 100%); border-color: #ca8a04; }
+.game.heist h2 { color: #fde047; }

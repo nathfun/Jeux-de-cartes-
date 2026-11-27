@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Course de chevaux</title>
+  <meta name="theme-color" content="#0c1a0c">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../icons/icon-192.png">
+  <link rel="stylesheet" href="../crash/style.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="../firebase-config.js"></script>
+  <script src="../gate.js"></script>
+</head>
+<body class="crash-page hc-page">
+  <header class="topbar">
+    <h1><a id="home-link" class="home-link" href="../index.html" hidden aria-label="Retour">←</a> 🏇 Course de chevaux</h1>
+    <div class="bank"><span id="bank-label">Caisse</span> : <strong id="wallet">–</strong> € <button id="sound-toggle" class="ghost icon-btn" type="button">🔊</button></div>
+  </header>
+  <main class="hc-main">
+    <section id="setup" class="glass setup">
+      <h2>🏇 Course de chevaux</h2>
+      <p class="muted">Six chevaux, chacun avec sa cote. Parie sur un ou plusieurs chevaux, puis regarde la course : si ton cheval gagne, ta mise est multipliée par sa cote.</p>
+      <div id="mode-picker"></div>
+    </section>
+    <section id="game" hidden>
+      <div id="mode-badge" class="mode-badge"></div>
+      <div class="hc-track glass" id="track" aria-label="La piste"></div>
+      <div id="hc-result" class="hc-result" role="status"></div>
+      <div class="glass">
+        <div class="hc-chips" id="chips"></div>
+        <div id="card" class="hc-card"></div>
+        <div class="hc-row">
+          <button id="clear" class="btn-ghost" type="button">Effacer</button>
+          <button id="go" class="hc-go" type="button">🏁 Lancer la course</button>
+        </div>
+        <div class="hc-row"><span class="muted">Sur la table</span><b id="stack">–</b><button id="end-btn" class="btn-ghost" type="button">Encaisser et quitter</button></div>
+      </div>
+      <ol id="history" class="hc-hist" aria-label="Derniers vainqueurs"></ol>
+    </section>
+  </main>
+  <script src="../sounds.js"></script>
+  <script src="../casino-rules.js"></script>
+  <script src="../profile.js"></script>
+  <script src="../account.js"></script>
+  <script src="app.js"></script>
+  <script src="../pwa.js"></script>
+</body>
+</html>
