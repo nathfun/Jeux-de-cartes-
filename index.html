@@ -784,9 +784,9 @@
 
     <section class="panel referral" data-tab="multi" aria-label="Parrainage">
       <h2>🎁 Parrainage</h2>
-      <p class="ref-lead">Invite tes amis : quand ils ont joué leurs <b>10 premières parties</b>, vous recevez <b>+2 000 € chacun</b>.</p>
+      <p class="ref-lead">Invite tes amis : quand ils réussissent leur <b>premier palier de La Dette</b>, vous recevez <b>+150 jetons chacun</b>.</p>
       <div class="ref-link"><input id="ref-url" readonly aria-label="Ton lien de parrainage"><button id="ref-share" type="button" class="bonus-btn">📤 Inviter</button><button id="ref-copy" type="button" class="icon-btn">Copier</button></div>
-      <div class="ref-stats"><span>Filleuls récompensés : <b id="ref-count">0</b></span><span>Gagné : <b id="ref-earned">0 €</b></span></div>
+      <div class="ref-stats"><span>Filleuls récompensés : <b id="ref-count">0</b></span><span>Gagné : <b id="ref-earned">0 jeton</b></span></div>
       <div id="ref-me" class="ref-me"></div>
     </section>
 
@@ -968,8 +968,11 @@
         $('lvl-title').textContent = tt && tt.id ? '« ' + tt.name + ' »' : Casino.title(lv);
         $('avatar').className = 'avatar fr-' + Casino.equipped('frame');
         // plus de salons : les mises dépendent du palier de La Dette ; le badge ne montre que le pass VIP
-        $('vip-badge').hidden = !Casino.isVip(); $('vip-badge').textContent = '👑 VIP'; $('vip-badge').className = 'vip-badge is-pass';
-        $('vip-badge').title = 'Membre du club VIP';
+        const isV = Casino.isVip();
+        $('vip-badge').hidden = false;
+        $('vip-badge').textContent = isV ? '👑 VIP jusqu\'au ' + new Date(Casino.vipUntil()).toLocaleDateString('fr-FR') : 'Pas VIP';
+        $('vip-badge').className = 'vip-badge' + (isV ? ' is-pass' : '');
+        $('vip-badge').title = isV ? 'Membre du club VIP' : 'Touche pour découvrir le club VIP';
         renderVip(); renderWheel();
         $('xpfill').style.width = Math.round(((P.xp - cur) / (nxt - cur)) * 100) + '%';
         $('xp-text').textContent = fmt(P.xp - cur) + ' / ' + fmt(nxt - cur) + ' XP jusqu\'au niveau ' + (lv + 1);
@@ -1262,7 +1265,8 @@
       const BASE_AV = () => Casino.AVATARS.map((id) => ({ id, name: 'Avatar', level: 1, price: 0, base: true }));
       // objets rares : visibles seulement le jour où ils sont en boutique (ou si on les a déjà)
       const inOffer = (kind, id) => Casino.dailyOffer().some((x) => x.kind === kind && x.id === id);
-      const listOf = (kind) => (kind === 'avatar' ? BASE_AV().concat(Casino.SHOP.avatar) : Casino.SHOP[kind]).filter((it) => !it.daily || Casino.owns(kind, it.id) || inOffer(kind, it.id));
+      // les objets « à trouver dans les boosters » (ancien système) sont rangés en attendant les coffres mystères
+      const listOf = (kind) => (kind === 'avatar' ? BASE_AV().concat(Casino.SHOP.avatar) : Casino.SHOP[kind]).filter((it) => (!it.daily || Casino.owns(kind, it.id) || inOffer(kind, it.id)) && (!it.card || Casino.owns(kind, it.id)));
       let styleSel = null, styleFilter = 'all';
       function isEquipped(kind, it) { return kind === 'avatar' ? Casino.profile.avatar === it.id : Casino.equipped(kind) === it.id; }
       // état d'un objet pour le joueur
@@ -1523,7 +1527,7 @@
         $('shop-lvl').textContent = lv;
         // collection : tout ce que le joueur peut porter
         let mine = 0, all = 0;
-        Object.keys(Casino.SHOP).forEach((k) => Casino.SHOP[k].forEach((it) => { if ((it.exclusive || it.daily) && !Casino.owns(k, it.id)) return; all++; if (Casino.canUse(k, it.id)) mine++; }));
+        Object.keys(Casino.SHOP).forEach((k) => Casino.SHOP[k].forEach((it) => { if ((it.exclusive || it.daily || it.card) && !Casino.owns(k, it.id)) return; all++; if (Casino.canUse(k, it.id)) mine++; }));
         $('shop-owned').textContent = mine + ' / ' + all + ' objets';
         $('st-collect-fill').style.width = Math.round(mine / all * 100) + '%';
         renderStage(); renderAction(); renderBoosters();
@@ -1716,7 +1720,7 @@
         { sel: '#learn-btn', tab: 'play', title: 'Envie d\'apprendre d\'abord ?', text: 'L\'Apprentissage ouvre tous les jeux avec un crédit illimité et les conseils du coach. Rien ne compte : entraîne-toi tranquille.' },
         { sel: '#challenges', tab: 'play', title: 'Reviens chaque jour', text: 'Trois défis du jour à relever et un bonus quotidien qui grimpe si tu viens plusieurs jours d\'affilée.' },
         { sel: '#tab-shop', tab: 'play', title: '🎨 Mon style', text: 'Tapis, cartes, avatars, cadres, fusées… Touche un objet pour l\'essayer, puis équipe-le ou achète-le avec ta banque.' },
-        { sel: '#tab-multi', tab: 'play', title: '👥 Entre amis', text: 'Crée une table et invite tes amis. Avec ton lien de parrainage, vous gagnez +2 000 € chacun !' },
+        { sel: '#tab-multi', tab: 'play', title: '👥 Entre amis', text: 'Crée une table et invite tes amis. Avec ton lien de parrainage, vous gagnez +150 jetons chacun !' },
       ];
       function startTour(force) {
         try { if (!force && localStorage.getItem(TOUR_KEY)) return; } catch (e) { /* ignore */ }
@@ -1763,14 +1767,14 @@
       const REF_KEY = 'casino-ref';
       try { const q = new URLSearchParams(location.search).get('ref'); if (q && /^[A-Za-z0-9]{6}$/.test(q)) localStorage.setItem(REF_KEY, q.toUpperCase()); } catch (e) { /* ignore */ }
       const pendingRef = () => { try { return localStorage.getItem(REF_KEY); } catch (e) { return null; } };
-      if (pendingRef()) { const r = $('aw-ref'); r.hidden = false; r.innerHTML = '🎁 <b>Un ami t\'invite !</b> Crée ton compte : après tes 10 premières parties, vous recevez <b>+2 000 € chacun</b>.'; }
+      if (pendingRef()) { const r = $('aw-ref'); r.hidden = false; r.innerHTML = '🎁 <b>Un ami t\'invite !</b> Crée ton compte : quand tu réussis ton premier palier de La Dette, vous recevez <b>+150 jetons chacun</b>.'; }
       async function applyRef() {
         const code = pendingRef();
         if (!code || !Casino.server || !Casino.refLink) return;
         const r = await Casino.refLink(code);
         try { localStorage.removeItem(REF_KEY); } catch (e) { /* ignore */ }
         if (r && !r.error) {
-          Casino.toast('Parrainé par ' + r.name, 'Joue tes ' + r.need + ' premières parties pour débloquer +2 000 € (pour toi et pour ' + r.name + ').', '🎁', 'gold');
+          Casino.toast('Parrainé par ' + r.name, 'Réussis ton premier palier de La Dette pour débloquer +' + (Casino.REF_BONUS || 150) + ' jetons (pour toi et pour ' + r.name + ').', '🎁', 'gold');
           if (window.Social && Social.addFriendUid) Social.addFriendUid(r.uid);
         } else if (r && r.error && !/déjà un parrain/.test(r.error)) Casino.toast('Parrainage', r.error, '🎁');
       }
@@ -1781,21 +1785,19 @@
         $('ref-url').value = code ? base + '?ref=' + code : 'Connecte-toi pour avoir ton lien';
         const P = Casino.profile, n = Math.min(P.refCount || 0, Casino.REF_MAX || 25);
         $('ref-count').textContent = String(P.refCount || 0);
-        $('ref-earned').textContent = fmt(n * (Casino.REF_BONUS || 2000)) + ' €';
+        $('ref-earned').textContent = fmt(n * (Casino.REF_BONUS || 150)) + ' jetons';
         const me = $('ref-me'); me.innerHTML = '';
         if (P.refBy && !P.refPaid) {
-          const left = Math.max(0, (Casino.REF_MIN_HANDS || 10) - (P.totals.hands || 0));
-          me.innerHTML = '<div class="ref-prog"><span></span><div class="xpbar"><div></div></div></div>';
-          me.querySelector('span').textContent = 'Parrainé par ' + (P.refByName || 'un ami') + ' : encore ' + left + ' partie' + (left > 1 ? 's' : '') + ' en mode réel pour débloquer +2 000 €';
-          me.querySelector('.xpbar div').style.width = Math.round(Math.min(1, (P.totals.hands || 0) / (Casino.REF_MIN_HANDS || 10)) * 100) + '%';
+          me.innerHTML = '<div class="ref-prog"><span></span></div>';
+          me.querySelector('span').textContent = 'Parrainé par ' + (P.refByName || 'un ami') + ' : réussis ton premier palier de La Dette pour débloquer +' + (Casino.REF_BONUS || 150) + ' jetons chacun.';
         } else if (P.refPaid) me.textContent = '✔ Parrainage de ' + (P.refByName || 'ton ami') + ' débloqué.';
-        else if (Casino.server && (P.totals.hands || 0) < (Casino.REF_MIN_HANDS || 10)) {
+        else if (Casino.server && !(P.bestPalier >= 1)) {
           me.innerHTML = '<form class="inline-form" id="ref-form"><input id="ref-code" maxlength="6" placeholder="Code d\'un parrain" aria-label="Code de ton parrain" autocapitalize="characters"><button type="submit" class="icon-btn">Valider</button></form>';
           $('ref-form').addEventListener('submit', async (e) => { e.preventDefault(); try { localStorage.setItem(REF_KEY, $('ref-code').value.trim().toUpperCase()); } catch (er) { /* ignore */ } await applyRef(); renderReferral(); });
         }
       }
       $('ref-copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('ref-url').value); $('ref-copy').textContent = 'Copié ✓'; setTimeout(() => { $('ref-copy').textContent = 'Copier'; }, 1500); } catch (e) { $('ref-url').select(); } });
-      $('ref-share').addEventListener('click', () => Social.shareLink($('ref-url').value, 'Viens jouer avec moi sur Lucky Lounge 🎰 : +2 000 € offerts pour toi et moi quand tu as joué tes 10 premières parties !'));
+      $('ref-share').addEventListener('click', () => Social.shareLink($('ref-url').value, 'Viens jouer avec moi sur Lucky Lounge 🎰 : +150 jetons pour toi et moi quand tu réussis ton premier palier de La Dette !'));
 
       $('acc-form').addEventListener('submit', async (e) => {
         e.preventDefault();

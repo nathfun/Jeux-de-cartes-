@@ -77,8 +77,9 @@
     S.stack -= b; ui();
     let idx, win;
     if (S.mode === 'real' && window.Casino && Casino.server) {
+      Casino.hold();
       const r = await Casino.call('wh.spin', { bet: b });
-      if (!r || r.error || r.index === undefined) { S.stack += b; S.busy = false; ui(); if (r && r.error) Casino.toast('Roue', r.error, '⚠️', 'loss'); return; }
+      if (!r || r.error || r.index === undefined) { Casino.release(); S.stack += b; S.busy = false; ui(); if (r && r.error) Casino.toast('Roue', r.error, '⚠️', 'loss'); return; }
       idx = r.index; win = r.win;
       await animateTo(idx); S.stack = r.stack;
     } else {
@@ -95,6 +96,7 @@
     if (window.Sfx) { if (win > b) Sfx.win(); else if (!win && Sfx.lose) Sfx.lose(); }
     if (SEG[idx].m >= 5 && window.Casino && Casino.bigWin) Casino.bigWin(win, b);
     S.busy = false; ui(); showWallet();
+    if (window.Casino && Casino.release) setTimeout(() => Casino.release(), 600);
   }
   $('spin').addEventListener('click', spin);
   $('bet-minus').addEventListener('click', () => { S.betIx = Math.max(0, S.betIx - 1); ui(); if (window.Sfx) Sfx.chips(); });

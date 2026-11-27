@@ -50,8 +50,9 @@
     S.busy = true; ui();
     let r;
     if (S.mode === 'real') {
+      Casino.hold();
       r = await Casino.openPack(S.series);
-      if (!r || r.error) { S.busy = false; ui(); Casino.toast('Boosters', (r && r.error) || 'Impossible d\'ouvrir le paquet.', '⚠️'); return; }
+      if (!r || r.error) { Casino.release(); S.busy = false; ui(); Casino.toast('Boosters', (r && r.error) || 'Impossible d\'ouvrir le paquet.', '⚠️'); return; }
       S.stack = r.stack;
     } else {
       const fake = { stack: S.stack }, P = { run: { palier: 99 }, totals: {}, col: {} };
@@ -62,6 +63,7 @@
     S.hist.push({ price: r.price, total: r.total, god: r.god, best: R.RARITY[best.rarity].name + ' : ' + R.COL_BY_ID[best.id].name });
     await show(r);
     S.busy = false; ui();
+    if (Casino.holding) Casino.release();
   }
 
   function cardFace(c, big) {

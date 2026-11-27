@@ -156,8 +156,10 @@
     // Partie réelle avec le serveur : c'est lui qui tire les rouleaux et compte l'argent
     let srv = null;
     if (S.mode === 'real' && window.Casino && Casino.server) {
+      Casino.hold();
       srv = await Casino.call('sl.spin', { bet: b });
       if (srv.error) {
+        Casino.release();
         if (!free) { addWallet(b); S.staked -= b; } else S.free++;
         S.spinning = false;
         $('win-text').textContent = '⚠️ ' + srv.error;
@@ -178,6 +180,7 @@
     if (free) S.freeWon += res.total;
     showWins(res);
     explain(res, b, free);
+    if (srv && window.Casino) setTimeout(() => Casino.release(), 700);
 
     const net = res.total - (free ? 0 : b);
     if (window.Casino) Casino.track('sl', { bet: free ? 0 : b, net, jackpot: res.jackpot, freeTrigger: res.freeSpins > 0 });

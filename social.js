@@ -238,8 +238,8 @@
     // statistiques
     const sec = (title) => { const s = el('div', 'pp-sec'); s.appendChild(el('h3', '', title)); box.appendChild(s); return s; };
     const st = el('div', 'pp-stats');
-    [[fmt(pr.wallet) + ' €', 'Banque'], [fmt(c.hands || pr.hands), 'Mains et tours'], [(c.hands ? Math.round((c.wins || 0) / c.hands * 100) : 0) + ' %', 'Gagnés'],
-      ['+' + fmt(c.biggestWin || pr.biggestWin) + ' €', 'Plus gros gain'], [(pr.achievements || 0) + ' / ' + Casino.ACHIEVEMENTS.length, 'Succès'], [fmt(c.multiWins), 'Victoires entre amis']]
+    [['🪙 ' + fmt(pr.wallet), 'Jetons'], ['🕴️ ' + (pr.bestPalier || 0), 'Meilleur palier'], [fmt(c.hands || pr.hands), 'Mains et tours'], [(c.hands ? Math.round((c.wins || 0) / c.hands * 100) : 0) + ' %', 'Gagnés'],
+      ['+' + fmt(c.biggestWin || pr.biggestWin) + ' €', 'Plus gros gain'], [(pr.achievements || 0) + ' / ' + Casino.ACHIEVEMENTS.length, 'Succès']]
       .forEach(([v, l]) => { const d = el('div'); d.append(el('b', '', v), el('small', '', l)); st.appendChild(d); });
     sec('Statistiques').appendChild(st);
     // les 5 plus belles cartes Légendes
@@ -303,7 +303,7 @@
         const li = el('li');
         li.append(el('span', '', m.place === 1 ? '🥇' : m.place === 2 ? '🥈' : m.place === 3 ? '🥉' : m.place + 'e'),
           el('span', '', (GAME_LABEL[m.game] || m.game) + ' · ' + m.players + ' joueurs · ' + new Date(m.at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })),
-          el('span', m.prize ? 'w' : '', m.prize ? '+' + fmt(m.prize) + ' €' : '–'));
+          el('span', m.prize ? 'w' : '', m.prize ? '+' + fmt(m.prize) + ' jetons' : '–'));
         ul.appendChild(li);
       });
       hs.appendChild(ul);

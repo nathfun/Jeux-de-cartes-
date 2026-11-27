@@ -155,7 +155,10 @@
     }
     showNotes(res && res.notes);
   }
+  // Pendant une animation de jeu (roue qui tourne, rouleaux, tirage…), les annonces attendent la fin : pas de spoiler
+  let holding = false, held = [], holdTimer = null;
   function showNotes(notes) {
+    if (holding) { held = held.concat(notes || []); return; }
     (notes || []).forEach((n) => {
       toast(n.title, n.text, n.icon, n.kind);
       if (n.kind === 'salon' || n.kind === 'vip') celebrate(n);
@@ -318,10 +321,18 @@
     }
     return c;
   }
+  let leavingPage = false;
   function toast(title, text, icon, kind) {
+    if (leavingPage) return; // on quitte la page : pas d'annonce en double
     const c = container();
+    // pas de doublon, et 2 annonces au plus à l'écran (les plus anciennes s'effacent)
+    const dup = Array.from(c.querySelectorAll('.casino-toast')).find((x) => x.dataset.t === title + '|' + (text || ''));
+    if (dup) return;
+    const all = c.querySelectorAll('.casino-toast');
+    if (all.length >= 2) all[0].remove();
     const el = document.createElement('div');
     el.className = 'casino-toast ' + (kind || '');
+    el.dataset.t = title + '|' + (text || '');
     const i = document.createElement('span'); i.className = 'ct-icon'; i.textContent = icon || '⭐';
     const b = document.createElement('div');
     const t = document.createElement('b'); t.textContent = title;
@@ -691,6 +702,7 @@
     const draw = () => {
       const p = load(), r = p.run;
       if (!r || r.status !== 'playing') { hudEl.hidden = true; return; }
+      if (holding && hudEl.childElementCount) { const t = hudEl.querySelector('.rh-t'); if (t) t.textContent = '⏱ ' + fmtClock(r.dayEnd - Date.now()); return; }
       hudEl.hidden = false;
       const left = r.dayEnd - Date.now(), tot = R.runTotal(p), pc = Math.min(100, tot / r.quota * 100);
       hudEl.classList.toggle('late', left < 60000);
@@ -775,6 +787,10 @@
     },
     runTick() { return Casino.runCall('sync').then((r) => { const p = load(); if (p.run && p.run.status !== 'playing') runWatch({ dayOver: p.run.status === 'over' ? 'over' : 'shop' }); return r; }); },
     runHud,
+    /** Retient les annonces (et le bandeau du quota) jusqu'à la fin de l'animation en cours. */
+    hold() { holding = true; clearTimeout(holdTimer); holdTimer = setTimeout(() => Casino.release(), 20000); },
+    release() { clearTimeout(holdTimer); if (!holding) return; holding = false; const n = held; held = []; showNotes(n); listeners.forEach((f) => { try { f(load()); } catch (e) { /* ignore */ } }); },
+    get holding() { return holding; },
     /** Ouvre un booster de La Dette (serveur, ou mêmes règles dans le navigateur sans serveur). */
     async openPack(series) {
       if (SERVER) return call('bo.open', { series });
@@ -921,6 +937,17 @@
     },
     /** Encaisse : la somme sur la table revient à la banque. { start, end, diff } ou { error } */
     async cashOut(game, extra) {
+      const r = await Casino.cashOutRaw(game, extra);
+      // La Dette : « Encaisser et quitter » ramène directement à la partie (tous les jeux disponibles)
+      if (r && !r.error && load().run && load().run.status !== 'over' && typeof location !== 'undefined' && document.querySelector('.cm-host, .run-hud')) {
+        Casino.training = false;
+        leavingPage = true;
+        setTimeout(() => { location.href = '../partie.html' + (/[?&]backend=local/.test(location.search) ? '?backend=local' : ''); }, 120);
+        return Object.assign({}, r, { leaving: true });
+      }
+      return r;
+    },
+    async cashOutRaw(game, extra) {
       if (SERVER) { const r = await call('session.cashout', { game }); return r.error ? r : r.cash; }
       if (BANK) {
         const ss0 = load().sessions[game];

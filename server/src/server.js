@@ -25,7 +25,7 @@ const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'jeux-de-cartes-81cdf';
 const DB_URL = process.env.FIREBASE_DATABASE_URL || 'https://jeux-de-cartes-81cdf-default-rtdb.europe-west1.firebasedatabase.app';
 const MAX_BODY = 32 * 1024;
 // version du serveur (affichée dans l'admin et sur /health) : à changer à chaque mise à jour du serveur
-const SERVER_VERSION = '2026.11.27-5';
+const SERVER_VERSION = '2026.11.27-6';
 const TABLES = { blackjack: 'tables/', poker: 'ptables/', roulette: 'rtables/', loto: 'ltables/' };
 
 // ---------- Firebase (vérification des comptes, profil public, lecture des tables entre amis) ----------
@@ -336,16 +336,16 @@ async function casino(uid, token, op, data) {
     const out = core.handle(copy, ctx);          // lève une GameError si l'action est refusée : rien n'est enregistré
     const P = out.state.player;
     // parrainage : le filleul a assez joué → +REF_BONUS pour lui (et pour son parrain juste après)
-    if (P.refBy && !P.refPaid && (P.totals.hands || 0) >= R.REF_MIN_HANDS) {
+    if (P.refBy && !P.refPaid && R.refDone(P)) {
       P.refPaid = ctx.now;
       P.wallet = Math.round((P.wallet + R.REF_BONUS) * 100) / 100;
-      out.notes.push({ title: 'Parrainage débloqué !', text: '+' + R.REF_BONUS.toLocaleString('fr-FR') + ' € grâce à ' + (P.refByName || 'ton parrain') + '. Il reçoit la même chose !', icon: '🎁', kind: 'gold' });
+      out.notes.push({ title: 'Parrainage débloqué !', text: '+' + R.REF_BONUS.toLocaleString('fr-FR') + ' jetons grâce à ' + (P.refByName || 'ton parrain') + '. Il reçoit la même chose !', icon: '🎁', kind: 'gold' });
       payReferrer = { uid: P.refBy, name: P.pseudo || 'Un ami' };
     }
     // avis au parrain : ses filleuls qui ont débloqué la récompense depuis sa dernière visite
     if (Array.isArray(P.inbox) && P.inbox.length) { P.inbox.forEach((x) => out.notes.push({ title: x.title, text: x.text, icon: x.icon, kind: 'gold' })); P.inbox = []; }
     if (Array.isArray(P.refInbox) && P.refInbox.length) {
-      P.refInbox.forEach((x) => out.notes.push({ title: 'Ton filleul a débloqué le parrainage', text: x.name + ' a joué ses premières parties : +' + R.REF_BONUS.toLocaleString('fr-FR') + ' € pour toi !', icon: '🎁', kind: 'gold' }));
+      P.refInbox.forEach((x) => out.notes.push({ title: 'Ton filleul a débloqué le parrainage', text: x.name + ' a réussi son premier palier : +' + R.REF_BONUS.toLocaleString('fr-FR') + ' jetons pour toi !', icon: '🎁', kind: 'gold' }));
       P.refInbox = [];
     }
     db.save(uid, op, before, out.state, ctx.now);

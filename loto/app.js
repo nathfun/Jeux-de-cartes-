@@ -136,8 +136,9 @@
     busy = true; clearDraw(); ui();
     let res;
     if (srv()) {
+      Casino.hold();
       const r = await Casino.call('lo.draw', { bet: v, picks });
-      if (r.error) { busy = false; toast(r.error, true); stopAuto(); ui(); return; }
+      if (r.error) { Casino.release(); busy = false; toast(r.error, true); stopAuto(); ui(); return; }
       res = { drawn: r.drawn, hits: r.hits, mult: r.mult, payout: r.payout, net: r.net, jackpot: r.jackpot, hash: r.hash, nonce: r.nonce, stackAfter: r.stack };
       S.stack = Math.round((r.stack - r.payout) * 100) / 100; // la mise part tout de suite, le gain arrive à la fin de l'animation
     } else {
@@ -234,6 +235,7 @@
     else if (won && res.mult >= 20 && window.Casino) setTimeout(() => Casino.bigWin(res.payout, 'LOTO ' + fmtM(res.mult) + ' !'), 300);
     $('pf-hash').textContent = res.hash || '–'; $('pf-nonce').textContent = String(res.nonce || 0);
     renderHistory(); renderStats();
+    if (window.Casino && Casino.holding) setTimeout(() => Casino.release(), 800);
   }
   function stopAuto() { auto = 0; renderAuto(); }
   function renderAuto() { const b = $('auto-btn'); b.classList.toggle('on', auto > 0); b.textContent = auto > 0 ? '⏹ Stop (' + auto + ')' : '🔁 Auto ×10'; }

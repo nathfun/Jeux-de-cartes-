@@ -543,7 +543,7 @@ function handle(state, ctx) {
       if (P.refBy) fail('Tu as déjà un parrain.');
       if (!ctx.refUid) fail('Code de parrainage inconnu.');
       if (ctx.refUid === ctx.uid) fail('Tu ne peux pas être ton propre parrain.');
-      if ((P.totals.hands || 0) >= R.REF_MIN_HANDS) fail('Le parrainage est réservé aux nouveaux joueurs.');
+      if (R.refDone(P)) fail('Le parrainage est réservé aux nouveaux joueurs (avant leur premier palier réussi).');
       P.refBy = ctx.refUid; P.refByName = String(ctx.refName || 'Un ami').slice(0, 16); P.refAt = now;
       result = { uid: ctx.refUid, name: P.refByName, need: R.REF_MIN_HANDS };
       break;

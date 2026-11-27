@@ -92,8 +92,9 @@
     winText('');
     let r;
     if (srv()) {
+      Casino.hold();
       r = await Casino.call('gd.spin', { bet: b });
-      if (r.error) { winText('⚠️ ' + r.error); S.busy = false; $('spin').disabled = false; $('cashout').disabled = false; stopAuto(); return; }
+      if (r.error) { Casino.release(); winText('⚠️ ' + r.error); S.busy = false; $('spin').disabled = false; $('cashout').disabled = false; stopAuto(); return; }
     } else r = E.play(b, rng);
     if (!srv()) S.stack = Math.round((S.stack - b) * 100) / 100;
     else S.stack = Math.round((r.stack - r.total) * 100) / 100; // le gain s'affiche à la fin de l'animation
@@ -137,6 +138,7 @@
     if (r.total >= b * 15 && window.Casino) Casino.bigWin(r.total, r.jackpot ? 'JACKPOT ' + E.JACKPOTS[r.jackpot].name + ' !' : r.bonus ? 'LE FILON !' : 'GROS GAIN !');
     showWallet(); renderStats();
     S.busy = false; $('spin').disabled = false; $('cashout').disabled = false;
+    if (window.Casino && Casino.holding) setTimeout(() => Casino.release(), 500);
     if (S.auto > 0) { S.auto--; updateAuto(); if (S.auto > 0) setTimeout(spin, turbo() ? 250 : 600); }
   }
 
