@@ -220,3 +220,4 @@ input:not([type]), input[type="text"] { font: inherit; background: #10151c; colo
 /* Table High Roller (VIP) : tapis noir et or */
 body.high-roller .table, body.high-roller .poker-table, body.high-roller #pm-table .felt { background: radial-gradient(ellipse at center, #3a2a08 0%, #1a1204 60%, #0b0802 100%) !important; border-color: #d4a017 !important; box-shadow: 0 0 0 4px #7a5a10, 0 0 40px rgba(212,160,23,.45) !important; }
 body.high-roller #pm-table-name::before { content: '👑 HIGH ROLLER · '; color: #fde047; }
+.leave-btn { font-weight: 800; background: #7f1d1d; border: 1px solid #b91c1c; color: #fff; padding: .5rem .9rem; border-radius: 10px; }

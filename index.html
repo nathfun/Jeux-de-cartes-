@@ -473,6 +473,23 @@
     .mt-held { margin: .2rem 0 .8rem; padding: .7rem .9rem; border-radius: 12px; border: 1px solid #a16207; background: rgba(250,204,21,.08); display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
     .mt-held button, .mt-held a { font: inherit; font-weight: 700; border-radius: 999px; padding: .35rem .8rem; text-decoration: none; cursor: pointer; border: 1px solid #a16207; background: transparent; color: #fde68a; }
     .mt-held[hidden] { display: none; }
+    #vip-panel.flash { box-shadow: 0 0 0 3px #facc15, 0 0 40px rgba(250,204,21,.6); transition: box-shadow .3s; }
+    .mp-vip-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; margin-bottom: .8rem; }
+    .mp-vip-opts a { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: .15rem; padding: .7rem .4rem; border-radius: 14px; text-decoration: none; color: #1c1300; font-weight: 800; font-size: .82rem; background: linear-gradient(135deg, #fde047, #f59e0b); }
+    .mp-vip-opts a span { font-size: 1.4rem; }
+    .mp-vip-opts a.locked { background: linear-gradient(135deg, #3a3220, #1d1a12); color: #9c8b5e; border: 1px dashed #7a6420; }
+    .mp-vip-opts a.locked::after { content: '🔒 VIP'; position: absolute; top: -8px; right: -6px; font-size: .68rem; background: #facc15; color: #1c1300; padding: .1rem .4rem; border-radius: 999px; }
+    .mp-pick { position: fixed; inset: 0; z-index: 130; display: grid; place-items: end center; background: rgba(0,0,0,.65); }
+    .mp-pick .box { width: min(520px, 100%); max-height: 85vh; overflow: auto; background: var(--panel); border: 1px solid var(--border); border-radius: 20px 20px 0 0; padding: 1rem 1rem max(1rem, env(safe-area-inset-bottom)); animation: mpUp .25s ease-out; }
+    @media (min-width: 600px) { .mp-pick { place-items: center; } .mp-pick .box { border-radius: 20px; } }
+    @keyframes mpUp { from { transform: translateY(40px); opacity: 0; } }
+    .mp-pick h3 { margin: 0 0 .6rem; display: flex; align-items: center; gap: .5rem; } .mp-pick h3 button { margin-left: auto; }
+    .mp-pick .row { display: flex; align-items: center; gap: .6rem; padding: .6rem .7rem; border-radius: 12px; background: rgba(0,0,0,.25); border: 1px solid var(--border); margin-bottom: .45rem; }
+    .mp-pick .row div { flex: 1; min-width: 0; } .mp-pick .row small { display: block; color: var(--muted); }
+    .mp-pick .go { font: inherit; font-weight: 800; border: 0; border-radius: 999px; padding: .45rem .9rem; background: var(--gold); color: #222; text-decoration: none; }
+    .mp-pick .go:disabled, .mp-pick .go.off { opacity: .45; pointer-events: none; }
+    .mp-pick .create { display: block; width: 100%; text-align: center; margin: .6rem 0; padding: .8rem; font-size: 1.05rem; }
+    .mp-pick form { display: flex; gap: .4rem; margin-top: .5rem; } .mp-pick form input { flex: 1; min-width: 0; font: inherit; padding: .5rem .7rem; border-radius: 10px; border: 1px solid var(--border); background: #0b0f14; color: var(--text); text-transform: uppercase; }
     .mp-code summary { cursor: pointer; color: var(--muted); margin: .4rem 0; }
     @media (max-width: 420px) { .mp-big small { font-size: .62rem; } }
     /* ----- La Dette ----- */
@@ -728,9 +745,9 @@
       <p class="muted small-p">Assieds-toi avec tes jetons à une vraie table : tu joues contre la banque avec les autres joueurs, et tu repars avec ce qu'il te reste.</p>
       <div id="mt-held" class="mt-held" hidden></div>
       <div class="mp-play">
-        <a class="mp-big bj" href="blackjack/index.html?multi=auto"><span class="mp-ic2">🂡</span><b>Blackjack</b><small>Jouer maintenant</small></a>
-        <a class="mp-big rl" href="roulette/index.html?multi=auto"><span class="mp-ic2">🎡</span><b>Roulette</b><small>Jouer maintenant</small></a>
-        <a class="mp-big pk" href="poker/index.html?multi=create"><span class="mp-ic2">♠</span><b>Poker</b><small>Crée ta partie ou rejoins-en une</small></a>
+        <a class="mp-big bj" href="blackjack/index.html?multi=auto" data-mp="blackjack"><span class="mp-ic2">🂡</span><b>Blackjack</b><small>Tables en jetons</small></a>
+        <a class="mp-big rl" href="roulette/index.html?multi=auto" data-mp="roulette"><span class="mp-ic2">🎡</span><b>Roulette</b><small>Tables en jetons</small></a>
+        <a class="mp-big pk" href="poker/index.html?multi=create" data-mp="poker"><span class="mp-ic2">♠</span><b>Poker</b><small>Tournoi entre joueurs</small></a>
       </div>
       <div id="mp-vipbox" class="mp-vipbox"></div>
       <div class="mp-games" hidden style="display:none">
@@ -739,16 +756,15 @@
         <a id="mp-new-roulette" href="roulette/index.html?multi=create">🎡<span>Roulette</span></a>
         <a id="mp-new-loto" href="loto/salle.html">🎱<span>Loto</span></a>
       </div>
-      <details class="mp-code"><summary>🔑 J'ai un code de table</summary>
+      <details class="mp-code" hidden style="display:none"><summary>🔑 J'ai un code de table</summary>
       <form id="mp-join" class="mp-join">
         <input id="mp-code" maxlength="6" placeholder="Code de la table (ex. KQ7P)" aria-label="Code de la table" autocapitalize="characters" autocomplete="off">
         <button type="submit">Rejoindre</button>
       </form>
       </details>
       <p id="mp-note" class="mp-note" role="status"></p>
-      <h2>Parties ouvertes <button id="mp-refresh" class="icon-btn" type="button" aria-label="Actualiser">↻</button></h2>
-      <div id="mp-list" class="mp-list"><p class="muted">Chargement…</p></div>
-      <p class="muted small-p">🌐 Publique : on rejoint d'un clic. 🔒 Privée : il faut le code donné par l'hôte. Au poker, le droit d'entrée forme la cagnotte du podium.</p>
+      <div hidden style="display:none"><button id="mp-refresh" class="icon-btn" type="button" aria-label="Actualiser">↻</button><div id="mp-list" class="mp-list"></div></div>
+      
     </section>
 
     <section class="panel" data-tab="multi" aria-label="Tournoi de poker de la semaine">
@@ -1646,12 +1662,49 @@
           box.append(get);
         }
         box.hidden = !box.childNodes.length;
-        const vb = $('mp-vipbox'); vb.innerHTML = '';
-        if (Casino.isVip()) {
-          vb.append('👑 VIP : ');
-          [['blackjack/index.html?multi=create', 'Table privée de blackjack'], ['roulette/index.html?multi=create', 'Table privée de roulette'], ['poker/index.html?multi=create', 'Poker High Roller']].forEach(([h, t]) => { const a = document.createElement('a'); a.href = h; a.textContent = t; vb.appendChild(a); });
-        } else { const l = document.createElement('span'); l.className = 'lock'; l.textContent = '👑 Les tables privées et le poker High Roller sont réservés aux membres VIP.'; vb.appendChild(l); }
+        const vb = $('mp-vipbox'); vb.innerHTML = ''; vb.className = 'mp-vip-opts';
+        const vip = Casino.isVip();
+        [['🂡', 'Table privée de blackjack', 'blackjack/index.html?multi=create'], ['🎡', 'Table privée de roulette', 'roulette/index.html?multi=create'], ['👑', 'Poker High Roller', 'poker/index.html?multi=create&hr=1']].forEach(([ic, t, h]) => {
+          const a = document.createElement('a'); a.href = vip ? h : '#vip-panel'; a.className = vip ? '' : 'locked';
+          a.innerHTML = '<span></span>'; a.firstChild.textContent = ic; a.append(t);
+          if (!vip) a.addEventListener('click', (e) => { e.preventDefault(); setHubTab('play'); setTimeout(() => { $('vip-panel').scrollIntoView({ behavior: 'smooth', block: 'center' }); $('vip-panel').classList.add('flash'); setTimeout(() => $('vip-panel').classList.remove('flash'), 1600); }, 150); Casino.toast('Réservé au club VIP 👑', 'Prends le pass VIP pour créer tes tables privées et jouer au poker High Roller.', '👑'); });
+          vb.appendChild(a);
+        });
       }
+      // ----- Choix d'une table : tables ouvertes, créer une partie, code d'une table privée -----
+      const MP_NAME = { blackjack: 'Blackjack', roulette: 'Roulette', poker: 'Poker' }, MP_ICON = { blackjack: '🂡', roulette: '🎡', poker: '♠' }, MP_MAX = { blackjack: 5, roulette: 8, poker: 6 };
+      async function openPicker(game) {
+        const o = document.createElement('div'); o.className = 'mp-pick';
+        const box = document.createElement('div'); box.className = 'box'; o.appendChild(box);
+        o.addEventListener('click', (e) => { if (e.target === o) o.remove(); });
+        box.innerHTML = '<h3></h3><div class="list"><p class="muted">Recherche des tables…</p></div>';
+        box.querySelector('h3').textContent = MP_ICON[game] + ' ' + MP_NAME[game];
+        const x = document.createElement('button'); x.type = 'button'; x.className = 'icon-btn'; x.textContent = '✕'; x.onclick = () => o.remove(); box.querySelector('h3').appendChild(x);
+        document.body.appendChild(o);
+        const all = ((await Social.lobbyList().catch(() => null)) || []).filter((e) => e.game === game && e.pub && e.code && (game === 'poker' || e.cash));
+        const list = box.querySelector('.list'); list.innerHTML = '';
+        if (!all.length) list.innerHTML = '<p class="muted">Aucune table ouverte pour le moment.</p>';
+        all.forEach((e) => {
+          const max = e.max || MP_MAX[game], free = e.free != null ? e.free : Math.max(0, max - (e.players || 0)), full = free <= 0 || (game === 'poker' && e.live);
+          const r = document.createElement('div'); r.className = 'row';
+          r.innerHTML = '<div><b></b><small></small></div>';
+          r.querySelector('b').textContent = (e.vip ? '👑 ' : '') + e.name;
+          r.querySelector('small').textContent = (e.players || 0) + ' joueur' + ((e.players || 0) > 1 ? 's' : '') + ' · ' + (full ? (game === 'poker' && e.live ? 'partie en cours' : 'complète') : free + ' place' + (free > 1 ? 's' : '') + ' libre' + (free > 1 ? 's' : ''));
+          const go = document.createElement('a'); go.className = 'go' + (full ? ' off' : ''); go.textContent = full ? 'Complète' : 'Rejoindre';
+          go.href = game + '/index.html?multi=1&table=' + encodeURIComponent(e.code);
+          r.appendChild(go); list.appendChild(r);
+        });
+        const pubCount = all.filter((e) => !e.vip).length, limit = game !== 'poker' && pubCount >= Casino.MT.TABLES;
+        const c = document.createElement('a'); c.className = 'go create' + (limit ? ' off' : '');
+        c.textContent = limit ? 'Les ' + Casino.MT.TABLES + ' tables publiques sont ouvertes : rejoins-en une' : '➕ Créer une partie';
+        c.href = game === 'poker' ? 'poker/index.html?multi=create' : game + '/index.html?multi=new';
+        box.appendChild(c);
+        const f = document.createElement('form');
+        f.innerHTML = '<input maxlength="6" placeholder="Code d\'une table privée" aria-label="Code de la table" autocapitalize="characters" autocomplete="off"><button type="submit" class="go">Rejoindre</button>';
+        f.addEventListener('submit', (ev) => { ev.preventDefault(); const code = f.querySelector('input').value.trim().toUpperCase().replace(/[^A-Z0-9]/g, ''); if (code.length >= 4) location.href = game + '/index.html?multi=1&table=' + code; });
+        box.appendChild(f);
+      }
+      document.querySelectorAll('[data-mp]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); openPicker(a.dataset.mp); }));
       async function refreshLobby() {
         renderMtHeld();
         clearTimeout(lobbyTimer);

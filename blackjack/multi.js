@@ -775,24 +775,26 @@
       bets.className = 'seat-bets';
       const line = document.createElement('div');
       line.className = 'row';
+      line.classList.add('chips', 'seat-chips');
       [5, 10, 25, 100].forEach((v) => {
         const b = document.createElement('button');
-        b.className = 'mini-chip';
-        b.textContent = '+' + v;
+        b.className = 'chip'; b.dataset.chip = v; b.type = 'button';
+        b.textContent = v;
+        b.title = 'Ajouter ' + v + ' jetons';
         b.disabled = working;
         b.addEventListener('click', () => { if (window.Sfx) Sfx.chips(); mutate((x) => opBet(x, i, 'bet', v)); });
         line.appendChild(b);
       });
-      const clr = document.createElement('button');
-      clr.className = 'ghost small';
-      clr.textContent = '0';
-      clr.title = 'Remettre la mise à zéro';
-      clr.addEventListener('click', () => mutate((x) => opBet(x, i, 'bet', 0)));
-      line.appendChild(clr);
       bets.appendChild(line);
+      const clr = document.createElement('button');
+      clr.className = 'skip-btn'; clr.type = 'button';
+      clr.textContent = s.bet ? '✋ Ne pas jouer ce tour (mise à 0)' : '✋ Je ne joue pas ce tour';
+      clr.disabled = working || !s.bet;
+      clr.addEventListener('click', () => mutate((x) => opBet(x, i, 'bet', 0)));
+      bets.appendChild(clr);
       const leave = document.createElement('button');
       leave.className = 'ghost small';
-      leave.textContent = 'Quitter la place';
+      leave.textContent = 'Libérer cette place';
       leave.addEventListener('click', () => mutate((x) => opLeave(x, i)));
       bets.appendChild(leave);
       el.appendChild(bets);
@@ -1048,7 +1050,7 @@
     return true;
   }
   /** « Jouer » : une table publique avec de la place, sinon on en ouvre une (2 tables au plus). */
-  async function autoPlay() {
+  async function autoPlay(onlyNew) {
     const mt = Casino.mt;
     if (mt && mt.game === 'blackjack') {
       // des jetons sont restés sur une table : on y retourne (ou on les récupère si elle a fermé)
@@ -1062,9 +1064,9 @@
     $('lobby-note').textContent = 'Recherche d\'une table…';
     const list = ((await Social.lobbyList().catch(() => null)) || []).filter((e) => e.game === 'blackjack' && e.pub && e.cash && e.code && !e.vip);
     let id = null;
-    for (const e of list) { if ((e.free == null ? e.players < 5 : e.free > 0) && (await net.activeCount(e.code).catch(() => 0)) > 0) { id = e.code; break; } }
+    for (const e of (onlyNew ? [] : list)) { if ((e.free == null ? e.players < 5 : e.free > 0) && (await net.activeCount(e.code).catch(() => 0)) > 0) { id = e.code; break; } }
     if (!id) {
-      if (list.length >= Casino.MT.TABLES) { $('lobby-note').textContent = 'Les tables publiques sont pleines : réessaie dans un instant.'; return; }
+      if (list.length >= Casino.MT.TABLES && !onlyNew) { $('lobby-note').textContent = 'Les tables publiques sont pleines : réessaie dans un instant.'; return; }
       const st = initialState('Table publique', { cash: true, public: true, hands: 0, coach: true, sides: true, turnTime: 20, betTime: 15, noHole: true, lk: Math.random().toString(36).slice(2, 10) });
       st.started = true;
       try { id = await net.createTable(st); } catch (e) { $('lobby-note').textContent = 'Impossible d\'ouvrir une table. Vérifie ta connexion.'; return; }
@@ -1357,10 +1359,10 @@
       $('create-table').hidden = true;
     }
     const code = new URLSearchParams(location.search).get('table'); // lu avant que showLobby nettoie l'adresse
-    const wantAuto = new URLSearchParams(location.search).get('multi') === 'auto';
+    const wantAuto = ['auto', 'new'].includes(new URLSearchParams(location.search).get('multi')), wantNew = new URLSearchParams(location.search).get('multi') === 'new';
     showLobby();
     $('create-table').hidden = !(window.Casino && Casino.isVip());
-    if (wantAuto && !code) { autoPlay(); return; }
+    if (wantAuto && !code) { autoPlay(wantNew); return; }
     if (code && net.usesCodes) {
       if (myName()) openTable(code.toUpperCase());
       else { $('code-input').value = code.toUpperCase(); needPseudo(); }

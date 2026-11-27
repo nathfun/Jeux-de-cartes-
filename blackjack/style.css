@@ -462,3 +462,9 @@ body.no-coach .coach-bubble { display: none; }
 
 /* v9 : on choisit Apprentissage / Multijoueur sur l'accueil */
 .topbar .tabs { display: none !important; }
+/* table en jetons : gros bouton pour partir, jetons de mise lisibles, « je ne joue pas » */
+.leave-btn { font-weight: 800; background: #7f1d1d; border-color: #b91c1c; color: #fff; padding: .5rem .9rem; border-radius: 10px; }
+.leave-btn:hover:not(:disabled) { background: #991b1b; }
+.seat-chips { justify-content: center; flex-wrap: wrap; margin: .3rem 0; }
+.seat-chips .chip { width: 46px; height: 46px; font-size: .9rem; }
+.skip-btn { display: block; width: 100%; margin: .3rem 0; font-weight: 700; background: rgba(0,0,0,.35); border: 1px dashed rgba(255,255,255,.4); }

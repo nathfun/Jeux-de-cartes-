@@ -143,7 +143,7 @@
 
         <div id="mtable" class="table multi" hidden>
           <div class="mtable-head">
-            <button id="leave-table" class="ghost small">← Tables</button>
+            <button id="leave-table" class="leave-btn" type="button">🚪 Quitter la table</button>
             <strong id="mtable-name"></strong>
             <span id="mtable-code" class="code-badge" hidden>Code <b id="mtable-code-value"></b>
               <button id="invite" class="ghost small" type="button">Inviter</button></span>
@@ -154,7 +154,7 @@
             <div id="m-dealer-cards" class="cards"></div>
           </div>
           <div id="m-message" class="message" role="status"></div>
-          <ol id="m-steps" class="steps" aria-label="Étapes de la main">
+          <ol id="m-steps" class="steps" aria-label="Étapes de la main" hidden style="display:none">
             <li data-step="bet">Mises</li><li data-step="play">Jeu</li><li data-step="dealer">Croupier</li><li data-step="result">Résultats</li>
           </ol>
           <div id="m-timer" class="timer" hidden><div id="m-timer-bar" class="timer-bar"></div><span id="m-timer-text"></span></div>

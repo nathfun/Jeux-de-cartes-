@@ -619,13 +619,13 @@
     // Partie réelle déjà en cours dans ce jeu : on la reprend directement
     if (P.sessions[opts.game] && !opts.noAutoResume) {
       box.innerHTML = '';
-      box.appendChild(mk('p', 'cm-wait', 'Reprise de ta partie…'));
+      const sec0 = box.closest('section'); if (sec0) sec0.style.visibility = 'hidden';
       runHud();
       Casino.startSession(opts.game, P.sessions[opts.game].stack).then((r) => {
+        if (sec0) sec0.style.visibility = '';
         if (!r || r.error) { opts.noAutoResume = true; modePicker(box, opts); return; }
         Casino.training = false;
         opts.onStart('real', r.session.stack, true, r);
-        launchFx(opts.game, 'Partie reprise', fmtE(r.session.stack) + ' sur la table');
       });
       return;
     }
@@ -638,6 +638,20 @@
     // Pas de journée de La Dette en cours, ou jeu pas encore débloqué : retour à l'accueil
     const lockMsg = !R.runActive(P) ? ['Aucune journée en cours', 'Les jeux se jouent pendant une partie de La Dette : lance-la depuis le lobby (ou passe par 🎓 Apprentissage pour t\'entraîner).']
       : !cur && !R.isUnlocked(P, opts.game) ? ['🔒 Se débloque au palier ' + (R.RUN.UNLOCK[opts.game] || '?'), 'Continue de rembourser la dette pour ouvrir ce jeu.'] : null;
+    // La Dette : en arrivant sur un jeu, on s'assoit tout de suite avec toute la caisse, sans afficher l'écran de lancement
+    if (!lockMsg && !cur && !autoSat[opts.game] && R.runTotal(P) >= R.gameMin(P, opts.game)) {
+      autoSat[opts.game] = true;
+      box.innerHTML = '';
+      runHud();
+      const sec = box.closest('section'); if (sec) sec.style.visibility = 'hidden';
+      Casino.startSession(opts.game, R.runTotal(P), true).then((r) => {
+        if (sec) sec.style.visibility = '';
+        if (!r || r.error) { modePicker(box, opts); return; }
+        Casino.training = false;
+        opts.onStart('real', r.session.stack, !!r.resumed, r);
+      });
+      return;
+    }
     if (lockMsg && !cur) {
       panel.append(mk('div', 'cm-label', lockMsg[0]), mk('p', 'cm-sub', lockMsg[1]));
       const back = mk('a', 'cm-cta', R.runActive(P) ? '← Retour à la partie' : '← Retour au lobby'); back.href = R.runActive(P) ? '../partie.html' : '../index.html';
@@ -979,6 +993,7 @@
       if (r && !r.error && load().run && load().run.status !== 'over' && typeof location !== 'undefined' && document.querySelector('.cm-host, .run-hud')) {
         Casino.training = false;
         leavingPage = true;
+        document.documentElement.classList.add('cm-leaving');
         setTimeout(() => { location.href = '../partie.html' + (/[?&]backend=local/.test(location.search) ? '?backend=local' : ''); }, 120);
         return Object.assign({}, r, { leaving: true });
       }
@@ -1207,6 +1222,7 @@
     const s = document.createElement('style');
     const ringCss = (R.SHOP.frame || []).filter((f) => f.ring).map((f) => '.fr-' + f.id + '{border-color:' + f.ring + ' !important;box-shadow:0 0 0 2px ' + f.ring + ',0 0 16px ' + f.glow + ' !important;' + (f.anim === 'hue' ? 'animation:fr-hue 4s linear infinite;' : f.anim === 'pulse' ? 'animation:fr-pulse 1.8s ease-in-out infinite;' : '') + '}').join('');
     s.textContent = ringCss + `
+.cm-leaving body > *:not(.run-hud) { visibility: hidden !important; }
 .run-hud { position: fixed; z-index: 70; left: 50%; transform: translateX(-50%); bottom: max(10px, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: .5rem; padding: .35rem .7rem; border-radius: 999px;
   background: rgba(12,10,8,.92); border: 1px solid rgba(250,204,21,.45); color: #fde68a; font: 700 .82rem/1.2 system-ui, sans-serif; text-decoration: none; box-shadow: 0 8px 24px rgba(0,0,0,.5); white-space: nowrap; max-width: calc(100vw - 32px); }
 .run-hud[hidden] { display: none; }

@@ -883,7 +883,7 @@
     $('s-accuracy').textContent = acc;
     $('s-decisions').textContent = stats.decisions;
     $('s-hands').textContent = stats.hands;
-    $('s-net').textContent = (stats.net > 0 ? '+' : '') + stats.net + ' €';
+    $('s-net').textContent = (stats.net > 0 ? '+' : '') + stats.net + (document.body.dataset.mode === 'multi' ? ' jetons' : ' €');
     $('s-net').style.color = stats.net > 0 ? 'var(--good)' : stats.net < 0 ? 'var(--bad)' : '';
 
     const bars = $('cat-bars');

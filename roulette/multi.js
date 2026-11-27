@@ -355,7 +355,7 @@
     try { await net.transact(id, (x) => { normalize(x); opJoin(x); x.players[me].bankroll = (x.players[me].bankroll || 0) + amount; x.players[me].out = false; }); } catch (e) { /* ignore */ }
     return true;
   }
-  async function autoPlay() {
+  async function autoPlay(onlyNew) {
     const mt = Casino.mt;
     if (mt && mt.game === 'roulette') {
       if ((await net.activeCount(mt.table).catch(() => 0)) > 0) { sitting = true; openTable(mt.table, true); return; }
@@ -367,9 +367,9 @@
     $('rm-note').textContent = 'Recherche d\'une table…';
     const list = ((await Social.lobbyList().catch(() => null)) || []).filter((e) => e.game === 'roulette' && e.pub && e.cash && e.code && !e.vip);
     let id = null;
-    for (const e of list) { if ((e.free == null ? e.players < 8 : e.free > 0) && (await net.activeCount(e.code).catch(() => 0)) > 0) { id = e.code; break; } }
+    for (const e of (onlyNew ? [] : list)) { if ((e.free == null ? e.players < 8 : e.free > 0) && (await net.activeCount(e.code).catch(() => 0)) > 0) { id = e.code; break; } }
     if (!id) {
-      if (list.length >= Casino.MT.TABLES) { $('rm-note').textContent = 'Les tables publiques sont pleines : réessaie dans un instant.'; return; }
+      if (list.length >= Casino.MT.TABLES && !onlyNew) { $('rm-note').textContent = 'Les tables publiques sont pleines : réessaie dans un instant.'; return; }
       const x = initial('Roulette publique', { cash: true, bank: 0, betTime: 25, rounds: 0, coach: true, public: true, lk: Math.random().toString(36).slice(2, 10) });
       x.started = true;
       try { id = await net.createTable(x); } catch (e) { $('rm-note').textContent = 'Impossible d\'ouvrir une table. Vérifie ta connexion.'; return; }
@@ -551,10 +551,10 @@
     net = n; me = n.me;
     $('rm-pseudo').value = myName();
     const code = new URLSearchParams(location.search).get('table');
-    const wantAuto = new URLSearchParams(location.search).get('multi') === 'auto';
+    const wantAuto = ['auto', 'new'].includes(new URLSearchParams(location.search).get('multi')), wantNew = new URLSearchParams(location.search).get('multi') === 'new';
     showLobby();
     $('rm-create').hidden = !(window.Casino && Casino.isVip());
-    if (wantAuto && !code) { autoPlay(); return; }
+    if (wantAuto && !code) { autoPlay(wantNew); return; }
     if (code) {
       if (myName()) openTable(code.toUpperCase());
       else { $('rm-code').value = code.toUpperCase(); needPseudo(); }

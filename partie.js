@@ -134,11 +134,6 @@
       ? 'Tu peux clôturer le palier maintenant… ou continuer à jouer pour gonfler ta caisse (le surplus rapporte des jetons et sert chez le receleur). Attention : la journée se clôture toute seule à la fin du chrono.'
       : 'Choisis un jeu ci-dessous et apporte de l\'argent de ta caisse. Mises de ' + R.gameMin(P, 'blackjack') + ' à ' + fmt(R.maxBet(P, Date.now())) + ' € à ce palier.'));
     const ses = P.sessions || {};
-    if (Object.keys(ses).length) {
-      const tb = el('div', 'tables');
-      Object.keys(ses).forEach((g) => { const a = el('a', '', '⏸ ' + NAME(g) + ' : ' + fmt(ses[g].stack) + ' €'); a.href = GAME_PATH[g] || '#'; tb.appendChild(a); });
-      card.appendChild(tb);
-    }
     const own = Object.keys(r.items || {}).filter((x) => R.runItem(x));
     if (own.length) card.appendChild(el('p', 'owned', 'Dans ta poche : ' + own.map((x) => R.runItem(x).icon + ' ' + R.runItem(x).name).join(', ')));
     const b = el('button', 'cta' + (ok ? ' pulse' : ''), ok ? '🔒 Clôturer le palier ' + r.palier : '🔒 Fermer la journée…'); b.type = 'button';
@@ -157,9 +152,7 @@
       a.classList.toggle('locked', locked);
       let lb = a.querySelector('.lock-badge');
       if (locked) { if (!lb) { lb = el('span', 'lock-badge'); a.appendChild(lb); } lb.textContent = '🔒 Palier ' + need; } else if (lb) lb.remove();
-      const live = ses[g]; a.classList.toggle('live', !!live);
-      let bd = a.querySelector('.live-badge');
-      if (live) { if (!bd) { bd = el('span', 'live-badge'); a.prepend(bd); } bd.textContent = '⏸ ' + fmt(live.stack) + ' € sur la table · Reprendre ›'; } else if (bd) bd.remove();
+      void ses;
     });
   }
   function drawShop(P, r) {

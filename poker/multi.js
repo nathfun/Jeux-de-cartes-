@@ -813,6 +813,7 @@
   $('pm-coach-yes').addEventListener('click', () => { $('pm-coach-dialog').close(); setCoach(true); });
   $('pm-coach-no').addEventListener('click', () => { $('pm-coach-dialog').close(); setCoach(false); });
   $('pm-coach-dialog').addEventListener('cancel', (e) => e.preventDefault());
+  if (/[?&]hr=1/.test(location.search)) setTimeout(() => { const o = Array.from(document.querySelectorAll('#pm-buyin option')).find((x) => x.dataset.hr); if (o) o.selected = true; }, 0);
   window.addEventListener('resize', () => render());
 
   // ---------- Onglets ----------
