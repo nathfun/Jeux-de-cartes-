@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Boosters</title>
+  <meta name="theme-color" content="#0b0a14">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+  <script src="../firebase-config.js"></script>
+  <script src="../gate.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1><a id="home-link" class="home-link" href="../index.html" hidden aria-label="Retour">←</a> 🃏 Boosters</h1>
+    <div class="bank"><span id="bank-label">Caisse</span> : <strong id="wallet">–</strong> € <button id="sound-toggle" class="icon-btn" type="button">🔊</button></div>
+  </header>
+  <main>
+    <section id="setup" class="glass">
+      <h2>🃏 Boosters</h2>
+      <p class="muted">Chaque paquet contient 10 cartes : 8 communes et 2 rares ou mieux. Toutes les cartes sont revendues tout de suite dans ta caisse… et les épiques, légendaires, mythiques et ultimes rejoignent aussi ta collection (visible sur ton profil). Un paquet sur 200 est un <b>God Pack</b> !</p>
+      <div id="mode-picker"></div>
+    </section>
+    <section id="game" hidden>
+      <div id="mode-badge" class="mode-badge"></div>
+      <div class="glass">
+        <h2>Choisis ta série</h2>
+        <div id="series" class="series"></div>
+        <div id="odds" class="odds"></div>
+      </div>
+      <div class="glass open-row">
+        <button id="open" class="open-btn" type="button">Ouvrir un paquet</button>
+        <div class="stack"><small id="stack-label">Sur la table</small><b id="stack">–</b></div>
+        <button id="end-btn" class="icon-btn" type="button">Encaisser et quitter</button>
+      </div>
+      <div class="glass">
+        <h2>Tes derniers paquets</h2>
+        <ol id="hist" class="hist"><li class="muted">Aucun paquet ouvert pour l'instant.</li></ol>
+      </div>
+    </section>
+  </main>
+  <script src="../sounds.js"></script>
+  <script src="../casino-rules.js"></script>
+  <script src="../profile.js"></script>
+  <script src="../account.js"></script>
+  <script src="app.js"></script>
+  <script src="../pwa.js"></script>
+</body>
+</html>

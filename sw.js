@@ -1,5 +1,5 @@
 // Service worker : réseau d'abord (pour toujours avoir la dernière version), cache en secours hors ligne.
-const CACHE = 'casino-v58';
+const CACHE = 'casino-v59';
 const CORE = [
   './', './index.html', './manifest.webmanifest', './pwa.js', './firebase-config.js', './sounds.js', './casino-rules.js', './profile.js', './social.js', './account.js', './gate.js',
   './icons/icon-192.png', './icons/icon-512.png',
@@ -19,6 +19,7 @@ const CORE = [
   './loto/', './loto/index.html', './loto/style.css', './loto/engine.js', './loto/app.js', './loto/salle.html', './loto/salle.css', './loto/multi.js',
   './slots/', './slots/index.html', './slots/style.css', './slots/engine.js', './slots/app.js',
   './partie.html', './partie.js', './apprendre.html', './games.css',
+  './boosters/', './boosters/index.html', './boosters/style.css', './boosters/app.js',
   './roue/', './roue/index.html', './roue/style.css', './roue/app.js',
 ];
 self.addEventListener('install', (e) => {

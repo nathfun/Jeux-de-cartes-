@@ -152,8 +152,9 @@
     epique: { name: 'Épique', w: 105, shard: 50, craft: 400, color: '#a855f7' },
     legendaire: { name: 'Légendaire', w: 40, shard: 200, craft: 1600, color: '#f59e0b' },
     mythique: { name: 'Mythique', w: 5, shard: 1000, craft: 8000, color: '#ef4444' },
+    ultime: { name: 'Ultime', w: 0, shard: 5000, craft: 40000, color: '#22d3ee' },
   };
-  const RARITY_ORDER = ['commun', 'rare', 'epique', 'legendaire', 'mythique'];
+  const RARITY_ORDER = ['commun', 'rare', 'epique', 'legendaire', 'mythique', 'ultime'];
   const card = (r, o) => Object.assign({ level: 1, price: 0, card: r }, o);
   FELTS.push(
     card('commun', { id: 'c_sable', name: 'Sable chaud', a: '#8a6d3b', b: '#5a4522' }), card('commun', { id: 'c_menthe', name: 'Menthe', a: '#2f7d6d', b: '#1b4d43' }), card('commun', { id: 'c_ardoise', name: 'Ardoise', a: '#3b4654', b: '#232b35' }),
@@ -447,7 +448,7 @@
   const START_WALLET = 500; // jetons de départ d'un nouveau compte
   // Parrainage : le filleul et son parrain reçoivent REF_BONUS chacun quand le filleul a joué REF_MIN_HANDS mains ou tours
   const REF_BONUS = 200, REF_MIN_HANDS = 10, REF_MAX = 25;
-  const GAMES = { blackjack: 'Blackjack', poker: 'Poker', roulette: 'Roulette', slots: 'Machine à sous', crash: 'Rocket Crash', plinko: 'Plinko', trader: 'Bourse Flash', mines: 'Mines', gold: 'Ruée vers l\'Or', loto: 'Loto Express', wheel: 'Roue de la fortune' };
+  const GAMES = { blackjack: 'Blackjack', poker: 'Poker', roulette: 'Roulette', slots: 'Machine à sous', crash: 'Rocket Crash', plinko: 'Plinko', trader: 'Bourse Flash', mines: 'Mines', gold: 'Ruée vers l\'Or', loto: 'Loto Express', wheel: 'Roue de la fortune', boosters: 'Boosters' };
   const pad = (n) => String(n).padStart(2, '0');
   // Date du jour (et de la veille) à l'heure de Paris : les défis et le bonus changent à minuit
   function dayOf(ms) {
@@ -707,6 +708,12 @@
     monument: { name: 'Monuments', icon: '🏛️', a: '#6b7280', b: '#1f2937' },
     mytho: { name: 'Mythologie', icon: '⚡', a: '#7c3aed', b: '#1e0b3b' },
     espace: { name: 'Espace', icon: '🪐', a: '#1d4ed8', b: '#020617' },
+    // série 2 : Pègre & Casino (personnages et lieux inventés)
+    pegre: { name: 'La Pègre', icon: '🕴️', a: '#3f3f46', b: '#09090b' },
+    casino: { name: 'Le Casino', icon: '🎰', a: '#9f1239', b: '#1c0410' },
+    // série 3 : L'Âge d'or (années folles et grandes heures de Las Vegas)
+    folles: { name: 'Années folles', icon: '🎷', a: '#a16207', b: '#1c1003' },
+    vegas: { name: 'Las Vegas', icon: '🌵', a: '#c026d3', b: '#1e0526' },
   };
   const COLLECTION = [
     ["pays_de", "pays", "commun", "🇩🇪", "Allemagne", "Le pays compte plus de 20 000 châteaux."],
@@ -823,10 +830,66 @@
     ["espace_soleil", "espace", "legendaire", "☀️", "Soleil", "Sa lumière met environ 8 minutes à nous parvenir."],
     ["espace_voielactee", "espace", "legendaire", "🌌", "Voie lactée", "Notre galaxie compte entre 100 et 400 milliards d'étoiles."],
     ["espace_trounoir", "espace", "mythique", "⚫", "Trou noir", "Rien, pas même la lumière, ne peut s'en échapper."],
-  ].map(([id, cat, rarity, icon, name, fact], i) => ({ id, cat, rarity, icon, name, fact, n: i + 1 }));
+    // ----- série 1 : cartes Ultimes -----
+    ["espace_bigbang", "espace", "ultime", "💥", "Big Bang", "Il y a 13,8 milliards d'années, tout l'Univers tenait dans un point."],
+    ["mytho_atlantide", "mytho", "ultime", "🔱", "Atlantide", "Platon décrivait une île engloutie en un seul jour et une seule nuit."],
+    ["monument_merveilles", "monument", "ultime", "🏺", "Les 7 Merveilles", "Des sept merveilles du monde antique, seule la pyramide de Khéops existe encore."],
+    // ----- série 2 : Pègre & Casino -----
+    ["pg_jeton", "casino", "commun", "🪙", "Jeton d'un euro", "Le plus petit jeton du casino… et pourtant tout commence par lui."],
+    ["pg_des", "casino", "commun", "🎲", "Paire de dés", "La somme 7 est la plus fréquente : 6 combinaisons sur 36."],
+    ["pg_cigare", "pegre", "commun", "🚬", "Cigare", "Dans l'arrière-salle, l'air est toujours un peu bleu."],
+    ["pg_feutre", "pegre", "commun", "🎩", "Chapeau de feutre", "On le garde sur la tête, même pour jouer aux cartes."],
+    ["pg_croupier", "casino", "commun", "🧑‍💼", "Croupier", "« Faites vos jeux… rien ne va plus ! »"],
+    ["pg_valet", "casino", "commun", "🃏", "Valet de pique", "Le joker du tripot : toujours là quand on ne l'attend pas."],
+    ["pg_bandit", "casino", "commun", "🎰", "Bandit manchot", "On l'appelait ainsi à cause de son levier… et de son appétit."],
+    ["pg_tapis", "casino", "commun", "🟩", "Tapis vert", "Le feutre vert repose les yeux des joueurs pendant des heures."],
+    ["pg_billet", "pegre", "commun", "💵", "Billet froissé", "Il est passé par beaucoup de mains avant d'arriver dans la tienne."],
+    ["pg_cle", "pegre", "commun", "🗝️", "Clé de l'arrière-salle", "Seuls les habitués savent quelle porte elle ouvre."],
+    ["pg_videur", "pegre", "rare", "🦍", "Le Videur", "Il ne parle pas beaucoup. Il n'en a pas besoin."],
+    ["pg_chanteuse", "casino", "rare", "🎤", "La Chanteuse du club", "Sa voix fait oublier aux joueurs qu'ils sont en train de perdre."],
+    ["pg_comptable", "pegre", "rare", "🧮", "Le Comptable", "Il connaît chaque centime de la dette. Chaque centime."],
+    ["pg_roulette", "casino", "rare", "🎡", "Roulette dorée", "37 cases, une seule bille, et tous les regards sur elle."],
+    ["pg_valise", "pegre", "rare", "💼", "Valise de billets", "Ne demande pas d'où elle vient."],
+    ["pg_consigliere", "pegre", "epique", "🧠", "Le Consigliere", "Le conseiller du parrain : il pense toujours trois coups d'avance."],
+    ["pg_coffre", "casino", "epique", "🔐", "Le Coffre-fort", "Trois serrures, deux gardes, un seul code."],
+    ["pg_limousine", "pegre", "epique", "🚘", "La Limousine", "Quand elle s'arrête devant le casino, la musique s'arrête aussi."],
+    ["pg_tripot", "pegre", "epique", "🕯️", "Le Tripot clandestin", "Derrière une blanchisserie, on joue jusqu'à l'aube."],
+    ["pg_parrain", "pegre", "legendaire", "🕴️", "Le Parrain", "Il n'oublie jamais une dette. Ni un service rendu."],
+    ["pg_minuit", "casino", "legendaire", "🌃", "Le Casino de minuit", "À minuit, les vraies parties commencent."],
+    ["pg_diamant", "pegre", "legendaire", "💎", "Le Diamant noir", "Volé trois fois, jamais retrouvé. Jusqu'à aujourd'hui."],
+    ["pg_famille", "pegre", "mythique", "👨‍👩‍👦", "La Famille", "On n'entre pas dans la Famille. On y naît… ou on lui doit tout."],
+    ["pg_jackpot", "casino", "mythique", "🍀", "Le Jackpot maudit", "Celui qui le touche gagne tout… sauf la paix."],
+    ["pg_dette", "pegre", "ultime", "📜", "La Dette éternelle", "Le contrat signé par ton frère. L'encre n'a jamais séché."],
+    // ----- série 3 : L'Âge d'or -----
+    ["ao_charleston", "folles", "commun", "💃", "Charleston", "La danse qui a fait trembler les parquets des années 1920."],
+    ["ao_gramophone", "folles", "commun", "📯", "Gramophone", "Il suffit de tourner la manivelle pour que la fête commence."],
+    ["ao_plume", "folles", "commun", "🪶", "Boa de plumes", "Indispensable pour entrer au cabaret."],
+    ["ao_cocktail", "folles", "commun", "🍸", "Cocktail", "Pendant la Prohibition, on le servait dans des tasses à thé."],
+    ["ao_neon", "vegas", "commun", "💡", "Enseigne au néon", "Las Vegas brille si fort qu'on la voit de l'espace."],
+    ["ao_decapotable", "vegas", "commun", "🚗", "Décapotable", "Cheveux au vent sur la route du désert."],
+    ["ao_jukebox", "vegas", "commun", "📻", "Juke-box", "Une pièce, une chanson, et toute la salle chante."],
+    ["ao_micro", "vegas", "commun", "🎙️", "Micro chromé", "Celui des crooners, brillant comme une étoile."],
+    ["ao_smoking", "folles", "commun", "🤵", "Smoking", "La tenue obligatoire des grandes soirées."],
+    ["ao_paillettes", "vegas", "commun", "✨", "Paillettes", "Il y en a partout, même là où on ne les cherche pas."],
+    ["ao_saxo", "folles", "rare", "🎷", "Saxophone", "L'âme du jazz, née dans les clubs enfumés."],
+    ["ao_speakeasy", "folles", "rare", "🚪", "Speakeasy", "Un bar secret : il fallait chuchoter le mot de passe."],
+    ["ao_dancing", "folles", "rare", "🪩", "Le Dancing", "On y dansait jusqu'à ce que les musiciens s'endorment."],
+    ["ao_showgirl", "vegas", "rare", "👑", "Meneuse de revue", "Une coiffe de plumes plus haute qu'une porte."],
+    ["ao_strip", "vegas", "rare", "🛣️", "Le Strip", "Le boulevard des casinos, illuminé jour et nuit."],
+    ["ao_bigband", "folles", "epique", "🎺", "Big band", "Vingt musiciens, un seul swing."],
+    ["ao_hotel", "vegas", "epique", "🏨", "Hôtel-casino", "On peut y vivre une semaine sans jamais voir le soleil."],
+    ["ao_desert", "vegas", "epique", "🏜️", "Désert du Nevada", "Au milieu de nulle part, une ville est sortie du sable."],
+    ["ao_mariage", "vegas", "epique", "💒", "Mariage express", "Dix minutes, deux témoins, et un sosie de chanteur."],
+    ["ao_prohibition", "folles", "legendaire", "🥃", "Prohibition", "De 1920 à 1933, l'alcool était interdit aux États-Unis… officiellement."],
+    ["ao_vegas50", "vegas", "legendaire", "🌆", "Las Vegas 1950", "L'âge d'or des casinos : les plus grandes stars sur scène chaque soir."],
+    ["ao_crooner", "vegas", "legendaire", "🎶", "Le Crooner", "Une voix de velours, un verre à la main, un chapeau penché."],
+    ["ao_nuit", "vegas", "mythique", "🌙", "La Nuit éternelle", "À Vegas, il n'y a pas d'horloge : la nuit ne finit jamais."],
+    ["ao_krach", "folles", "mythique", "📉", "Le Grand Krach", "Octobre 1929 : en quelques jours, la Bourse s'effondre et la fête s'arrête."],
+    ["ao_agedor", "vegas", "ultime", "🏆", "L'Âge d'or", "La carte la plus rare du Lounge : la fête qui ne s'arrête jamais."],
+  ].map(([id, cat, rarity, icon, name, fact], i) => ({ id, cat, rarity, icon, name, fact, n: i + 1, series: /^pg_/.test(id) ? 's2' : /^ao_/.test(id) ? 's3' : 's1' }));
   const COL_BY_ID = Object.fromEntries(COLLECTION.map((c) => [c.id, c]));
   // Cote de départ selon la rareté (le marché la fait bouger) ; vente immédiate au Casino : 40 % de la cote, plafonnée
-  const COTE_BASE = { commun: 20, rare: 60, epique: 200, legendaire: 800, mythique: 4000 };
+  const COTE_BASE = { commun: 20, rare: 60, epique: 200, legendaire: 800, mythique: 4000, ultime: 20000 };
   const INSTANT_RATE = 0.4;
   const rarityOfKey = (key) => { const i = key.indexOf(':'), k = key.slice(0, i), id = key.slice(i + 1); if (k === 'col') return COL_BY_ID[id] ? COL_BY_ID[id].rarity : null; const it = itemOf(k, id); return it ? it.card || (it.daily ? 'rare' : null) : null; };
   /** Prix de vente immédiate au Casino (ne dépasse jamais la moitié de la cote de départ : pas de profit en revendant des boosters). */
@@ -989,6 +1052,56 @@
   }
 
   // Parties réelles : on apporte une somme de la banque, on encaisse quand on veut
+
+
+  // =====================================================================================================
+  // ---------- Boosters de La Dette : 10 cartes revendues tout de suite dans la caisse ----------
+  // =====================================================================================================
+  const SERIES = [
+    { id: 's1', name: 'Légendes', icon: '📜', palier: 3, color: '#7c3aed' },
+    { id: 's2', name: 'Pègre & Casino', icon: '🕴️', palier: 5, color: '#9f1239' },
+    { id: 's3', name: "L'Âge d'or", icon: '🎷', palier: 8, color: '#a16207' },
+  ];
+  // 8 communes, puis 2 cartes rare ou mieux ; 1 paquet sur 200 est un « God Pack » (10 légendaires ou mieux)
+  const PACK = { SIZE: 10, COMMONS: 8, GOD: 200, RTP: 0.92, PRICE_PCT: 0.04,
+    HIGH: { rare: 700, epique: 220, legendaire: 65, mythique: 13, ultime: 2 },
+    GODW: { legendaire: 800, mythique: 170, ultime: 30 } };
+  // valeur de revente (en fraction du prix du paquet), recalée pour que le paquet rende PACK.RTP en moyenne
+  const PACK_MULT = (() => {
+    const base = { commun: 0.03, rare: 0.12, epique: 0.4, legendaire: 1.5, mythique: 6, ultime: 40 };
+    const avg = (w) => { const t = Object.values(w).reduce((a, b) => a + b, 0); return Object.keys(w).reduce((a, r) => a + w[r] / t * base[r], 0); };
+    const normal = PACK.COMMONS * base.commun + (PACK.SIZE - PACK.COMMONS) * avg(PACK.HIGH), god = PACK.SIZE * avg(PACK.GODW);
+    const ev = (1 - 1 / PACK.GOD) * normal + god / PACK.GOD, k = PACK.RTP / ev;
+    const out = {}; Object.keys(base).forEach((r) => { out[r] = base[r] * k; });
+    return out;
+  })();
+  const packPrice = (P) => Math.max(10, niceDown(quotaOf(P && P.run ? P.run.palier : 3) * PACK.PRICE_PCT));
+  const seriesOpen = (P, id) => { const se = SERIES.find((x) => x.id === id); return !!(se && P.run && P.run.palier >= se.palier); };
+  function pickWeighted(w, rnd) { const keys = Object.keys(w), t = keys.reduce((a, k) => a + w[k], 0); let x = rnd(t); for (const k of keys) { if (x < w[k]) return k; x -= w[k]; } return keys[0]; }
+  /** Ouvre un paquet de la série `id` avec l'argent de la table `ss` : les cartes sont revendues aussitôt, les épiques et mieux vont dans la collection. */
+  function openPack(P, ss, id, rnd) {
+    if (!seriesOpen(P, id)) return { error: 'Cette série n\'est pas encore ouverte.' };
+    const price = packPrice(P);
+    if (ss.stack < price) return { error: 'Il te faut ' + price.toLocaleString('fr-FR') + ' € sur la table.' };
+    ss.stack = Math.round((ss.stack - price) * 100) / 100;
+    const god = rnd(PACK.GOD) === 0, list = COLLECTION.filter((c) => c.series === id), cards = [];
+    for (let i = 0; i < PACK.SIZE; i++) {
+      let r = god ? pickWeighted(PACK.GODW, rnd) : i < PACK.COMMONS ? 'commun' : pickWeighted(PACK.HIGH, rnd);
+      let pool = list.filter((c) => c.rarity === r);
+      while (!pool.length && r !== 'commun') { r = RARITY_ORDER[RARITY_ORDER.indexOf(r) - 1]; pool = list.filter((c) => c.rarity === r); }
+      const c = pool[rnd(pool.length)];
+      const value = Math.round(price * PACK_MULT[r] * 100) / 100;
+      const keep = RARITY_ORDER.indexOf(r) >= RARITY_ORDER.indexOf('epique');
+      P.col = P.col || {};
+      const isNew = keep && !P.col[c.id];
+      if (keep) P.col[c.id] = (P.col[c.id] || 0) + 1;
+      cards.push({ kind: 'col', id: c.id, rarity: r, value, keep, isNew, count: keep ? P.col[c.id] : 0 });
+    }
+    const total = Math.round(cards.reduce((a, c) => a + c.value, 0) * 100) / 100;
+    ss.stack = Math.round((ss.stack + total) * 100) / 100;
+    P.totals.packs = (P.totals.packs || 0) + 1;
+    return { cards, total, price, god, stack: ss.stack };
+  }
 
   // =====================================================================================================
   // ---------- Mode « La Dette » : monter le plus haut possible, un palier (une journée) à la fois ----------
@@ -1210,6 +1323,7 @@
     bonusInfo, claimBonus, claimChallenge, timeInfo, startTime, claimTime, startSession, cashOut,
     prizeFor, prizeText, applyPrize, publicProfile, REF_BONUS, REF_MIN_HANDS, REF_MAX,
     COL_CATS, COLLECTION, COL_BY_ID, COTE_BASE, INSTANT_RATE, instantPrice, coteOf, rarityOfKey, countOf, instantSell,
+    SERIES, PACK, PACK_MULT, packPrice, seriesOpen, openPack,
     RUN, QUOTAS, BET_STEPS, gameMin, FORTUNE, quotaOf, niceDown, palierFactor, runMaxBet, runMinBet, runActive, runTotal, isUnlocked, RUN_ITEMS, runItem, itemPrice, runReward,
     runStart, runEndDay, runOver, runCheckBroke, runTick, runBuy, runNext,
     LOTO, lotoDiscount, lotoPackCost,

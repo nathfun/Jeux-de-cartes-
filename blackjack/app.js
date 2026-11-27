@@ -254,7 +254,7 @@
     const canDouble = two && affordable;
     const canSplit = two && affordable && round.hands.length < MAX_HANDS &&
       Strategy.cardValue(h.cards[0].rank) === Strategy.cardValue(h.cards[1].rank);
-    const canSurrender = two && round.hands.length === 1 && !h.split && !soloEnhc(); // pas d'abandon en règle européenne
+    const canSurrender = two && round.hands.length === 1 && !h.split; // abandon : on récupère la moitié de la mise
     return { H: true, S: true, D: canDouble, P: canSplit, R: canSurrender };
   }
 

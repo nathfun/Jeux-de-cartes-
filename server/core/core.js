@@ -159,10 +159,13 @@ function bjEngine(sess, bj, rnd, out) {
       const can = {
         H: true, S: true, D: two && affordable,
         P: two && affordable && r.hands.length < MAX_HANDS && ST.cardValue(h.cards[0].rank) === ST.cardValue(h.cards[1].rank),
+        // abandon : sur les deux premières cartes, sans séparation (on récupère la moitié de la mise)
+        R: two && r.hands.length === 1 && !h.split,
       };
       if (!can[action]) fail('Action impossible.');
       if (action === 'H') { h.cards.push(draw()); if (value(h.cards).total >= 21) h.done = true; }
       else if (action === 'S') h.done = true;
+      else if (action === 'R') { h.surrendered = true; h.done = true; }
       else if (action === 'D') { sess.stack = round2(sess.stack - h.bet); h.bet *= 2; h.doubled = true; h.cards.push(draw()); h.done = true; }
       else if (action === 'P') {
         sess.stack = round2(sess.stack - h.bet);
@@ -416,7 +419,7 @@ function handle(state, ctx) {
     Object.keys(P.sessions).forEach((g) => settle(g, false));
     const r = R.runEndDay(P, now, N, 'time');
     result.dayOver = r.over ? 'over' : 'shop';
-    if (/^(bj|rl|sl|cr|gd|pl|lo|mn|wh|pk)\./.test(ctx.op) || ctx.op === 'session.start' || ctx.op === 'session.cashout') {
+    if (/^(bj|rl|sl|cr|gd|pl|lo|mn|wh|pk|bo)\./.test(ctx.op) || ctx.op === 'session.start' || ctx.op === 'session.cashout') {
       state.player = P; state.secret = S;
       return { state, result: { dayOver: result.dayOver, run: P.run }, notes: N };
     }
@@ -471,6 +474,16 @@ function handle(state, ctx) {
       break;
     }
     case 'run.seen': { if (P.run && P.run.status === 'over') P.run.seen = true; break; }
+
+    // ----- Boosters (jeu de la partie, dès le palier 3) : le serveur tire les 10 cartes -----
+    case 'bo.open': {
+      const ss = sess('boosters');
+      const r = R.openPack(P, ss, String(d.series), ctx.rnd);
+      if (r.error) fail(r.error);
+      track('sl', { bet: r.price, net: Math.round((r.total - r.price) * 100) / 100, jackpot: r.god || r.cards.some((c) => c.rarity === 'ultime'), freeTrigger: false });
+      result = r;
+      break;
+    }
 
     // ----- Roue de la fortune (jeu de la partie) -----
     case 'wh.spin': {
@@ -532,6 +545,8 @@ function handle(state, ctx) {
       let staked = 0;
       for (const k of Object.keys(bets)) {
         const v = bets[k];
+        const minIn = R.gameMin(P, 'roulette'), outside = B.byKey[k] && ['simple', 'douzaine', 'colonne'].includes(B.byKey[k].type);
+        if (B.byKey[k] && P.run && v < (outside ? minIn * 2 : minIn)) fail('Mise minimale : ' + (outside ? minIn * 2 : minIn) + ' € ' + (outside ? 'sur les chances simples, douzaines et colonnes.' : 'sur un numéro.'));
         const cap = B.byKey[k] ? Math.min(Math.round(B.byKey[k].max * R.palierFactor(P.run ? P.run.palier : 1) * (R.isVip(P, now) ? R.RUN.VIP_BET : 1)), MAX_BET) : 0;
         if (!B.byKey[k] || !(int(v) >= 1) || v > cap) fail('Mise invalide sur ' + k + ' (au plus ' + cap + ' €).');
         staked += v;

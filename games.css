@@ -67,3 +67,8 @@ a.game:focus-visible { border-color: var(--gold); }
 .games a.game.live { position: relative; border-color: #f59e0b !important; box-shadow: 0 0 0 2px rgba(245,158,11,.6), 0 0 28px rgba(245,158,11,.45); animation: liveGlow 1.8s ease-in-out infinite; }
 .live-badge { position: absolute; top: -11px; left: 12px; right: 12px; z-index: 2; text-align: center; font-size: .74rem; font-weight: 900; color: #2a1d00; background: linear-gradient(135deg, #fde047, #f59e0b); border-radius: 999px; padding: .2rem .6rem; box-shadow: 0 4px 12px rgba(0,0,0,.4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @keyframes liveGlow { 50% { box-shadow: 0 0 0 2px rgba(245,158,11,.9), 0 0 42px rgba(245,158,11,.7); } }
+.game.boosters { background: radial-gradient(ellipse at 30% 10%, #4c1d95 0%, #1e0b3b 55%, #0b0616 100%); border-color: #7c3aed; }
+.game.boosters h2 { background: linear-gradient(90deg, #c4b5fd, #f472b6, #fde047); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.mini-pack { margin-top: auto; display: flex; gap: .3rem; }
+.mini-pack span { width: 40px; height: 56px; display: grid; place-items: center; font-size: 1.4rem; border-radius: 8px; background: repeating-linear-gradient(45deg, #2e1065, #2e1065 6px, #4c1d95 6px, #4c1d95 12px); border: 2px solid #a78bfa; }
+.mini-pack span:nth-child(2) { transform: translateY(-6px); border-color: #fde047; box-shadow: 0 0 12px rgba(253,224,71,.6); }

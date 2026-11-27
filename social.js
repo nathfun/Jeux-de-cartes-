@@ -162,7 +162,7 @@
     ['frame', 'rocket', 'ball', 'theme', 'felt', 'back', 'chips', 'effect', 'title'].forEach((k) => { try { eq[k] = Casino.equipped(k); } catch (e) { /* ignore */ } });
     const owned = Object.keys(p.owned || {}).length;
     // vitrine des cartes Légendes : les 5 plus précieuses (rareté puis cote de départ)
-    const ORD = ['commun', 'rare', 'epique', 'legendaire', 'mythique'];
+    const ORD = ['commun', 'rare', 'epique', 'legendaire', 'mythique', 'ultime'];
     const col = Object.entries(p.col || {}).filter(([id, n]) => n > 0 && Casino.COL_BY_ID && Casino.COL_BY_ID[id]);
     const topCards = col.sort((a, b) => ORD.indexOf(Casino.COL_BY_ID[b[0]].rarity) - ORD.indexOf(Casino.COL_BY_ID[a[0]].rarity) || b[1] - a[1]).slice(0, 5).map(([id, n]) => ({ id, n }));
     return {

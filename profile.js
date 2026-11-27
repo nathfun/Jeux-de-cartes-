@@ -356,7 +356,7 @@
     if (opts.fact && !opts.locked) { const f = document.createElement('div'); f.className = 'lg-fact'; f.textContent = c.fact; d.appendChild(f); }
     if (opts.cote) { const v = document.createElement('div'); v.className = 'lg-cote'; v.textContent = 'Cote ' + Math.round(opts.cote).toLocaleString('fr-FR') + ' €'; d.appendChild(v); }
     if (opts.count > 1) { const b = document.createElement('span'); b.className = 'lg-count'; b.textContent = '×' + opts.count; d.appendChild(b); }
-    if (c.rarity === 'legendaire' || c.rarity === 'mythique') { const h = document.createElement('i'); h.className = 'lg-holo'; d.appendChild(h); }
+    if (c.rarity === 'legendaire' || c.rarity === 'mythique' || c.rarity === 'ultime') { const h = document.createElement('i'); h.className = 'lg-holo'; d.appendChild(h); }
     return d;
   }
 
@@ -775,6 +775,12 @@
     },
     runTick() { return Casino.runCall('sync').then((r) => { const p = load(); if (p.run && p.run.status !== 'playing') runWatch({ dayOver: p.run.status === 'over' ? 'over' : 'shop' }); return r; }); },
     runHud,
+    /** Ouvre un booster de La Dette (serveur, ou mêmes règles dans le navigateur sans serveur). */
+    async openPack(series) {
+      if (SERVER) return call('bo.open', { series });
+      return local(() => { const ss = P.sessions.boosters; if (!ss) return { error: 'Aucune somme sur la table.' }; return R.openPack(P, ss, series, (n) => Math.floor(Math.random() * n)); });
+    },
+    SERIES: R.SERIES, packPrice() { return R.packPrice(load()); }, seriesOpen(id) { return R.seriesOpen(load(), id); },
     // Mode sans serveur uniquement (les jeux ne touchent jamais la banque directement avec le serveur)
     setWallet(v) { if (SERVER) return; if (BANK) return Casino.addWallet(v - load().wallet); local((N) => { P.wallet = Math.max(0, Math.round(v * 100) / 100); R.checkWallet(P, N); }); },
     addWallet(v) {
@@ -1172,6 +1178,7 @@ a.cm-cta { display: block; text-align: center; text-decoration: none; }
 .lg-card.locked .lg-art { font-size: 2.6em; color: rgba(255,255,255,.5); }
 .lg-card .lg-holo { position: absolute; inset: -50%; background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,.35) 48%, rgba(255,200,255,.25) 52%, transparent 60%); animation: lg-holo 3.2s linear infinite; pointer-events: none; }
 .lg-card.r-mythique { box-shadow: 0 0 22px var(--rc), 0 6px 16px rgba(0,0,0,.45); }
+.lg-card.r-ultime { border-color: #22d3ee; box-shadow: 0 0 26px #22d3ee, 0 0 10px #f472b6, 0 6px 16px rgba(0,0,0,.45); animation: fr-hue 4s linear infinite; }
 @keyframes lg-holo { from { transform: translateX(-35%) rotate(0deg); } to { transform: translateX(35%) rotate(0deg); } }
 .casino-celebrate { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; background: radial-gradient(circle at 50% 45%, rgba(40,30,8,.92), rgba(0,0,0,.92)); overflow: hidden; animation: cc-fade .35s both; font: 15px system-ui, sans-serif; color: #f8f3e6; }
 .casino-celebrate.out { animation: cc-fade .35s reverse both; }
