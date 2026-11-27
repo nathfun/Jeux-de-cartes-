@@ -161,7 +161,12 @@
     const eq = {};
     ['frame', 'rocket', 'ball', 'theme', 'felt', 'back', 'chips', 'effect', 'title'].forEach((k) => { try { eq[k] = Casino.equipped(k); } catch (e) { /* ignore */ } });
     const owned = Object.keys(p.owned || {}).length;
+    // vitrine des cartes Légendes : les 5 plus précieuses (rareté puis cote de départ)
+    const ORD = ['commun', 'rare', 'epique', 'legendaire', 'mythique'];
+    const col = Object.entries(p.col || {}).filter(([id, n]) => n > 0 && Casino.COL_BY_ID && Casino.COL_BY_ID[id]);
+    const topCards = col.sort((a, b) => ORD.indexOf(Casino.COL_BY_ID[b[0]].rarity) - ORD.indexOf(Casino.COL_BY_ID[a[0]].rarity) || b[1] - a[1]).slice(0, 5).map(([id, n]) => ({ id, n }));
     return {
+      topCards, colHave: col.length, colAll: (Casino.COLLECTION || []).length,
       since: p.createdAt || null, hands: T.hands || 0, wins: T.wins || 0, biggestWin: Math.round(T.biggestWin || 0), multiWins: T.multiWins || 0,
       streak: (p.bonus && p.bonus.streak) || 0, fav: counts[fav] ? fav : null, counts, ach, eq, owned,
       season: p.season ? { id: p.season.id, xp: p.season.xp || 0 } : null,
@@ -194,6 +199,8 @@
 .pp-hist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .3rem; font-size: .85rem; }
 .pp-hist li { display: grid; grid-template-columns: auto 1fr auto; gap: .5rem; align-items: center; background: rgba(255,255,255,.04); border-radius: 10px; padding: .35rem .6rem; } .pp-hist .w { color: #3fb950; font-weight: 800; }
 .pp-games { display: flex; flex-direction: column; gap: .3rem; font-size: .82rem; } .pp-games div { display: grid; grid-template-columns: 9.5em 1fr auto; gap: .5rem; align-items: center; } .pp-games .pp-bar { display: block; background: rgba(255,255,255,.06); border-radius: 999px; } .pp-games i { display: block; height: 7px; border-radius: 999px; background: linear-gradient(90deg, #f2c14e, #4fc3f7); }
+.pp-cards { display: flex; gap: .4rem; flex-wrap: wrap; justify-content: center; }
+.pp-sales { display: flex; flex-direction: column; gap: .3rem; } .pp-sale { display: grid; grid-template-columns: 1fr auto auto; gap: .5rem; align-items: center; background: rgba(255,255,255,.04); border-radius: 10px; padding: .35rem .6rem; font-size: .88rem; } .pp-sale b { color: #f2c14e; } .pp-sale button { font: inherit; font-size: .8rem; font-weight: 800; border: 0; border-radius: 999px; padding: .25rem .7rem; background: #f2c14e; color: #222; cursor: pointer; }
 @keyframes pp-f { from { opacity: 0; } } @keyframes pp-in { from { opacity: 0; transform: translateY(24px) scale(.96); } } @keyframes pp-float { 50% { transform: translateY(-5px); } }
 @media (prefers-reduced-motion: reduce) { .pp, .pp-av, .pp-ov { animation: none; } }`;
     document.head.appendChild(s);
@@ -203,9 +210,9 @@
     profStyle();
     const b = await backend();
     let pr = row && row.card ? row : null;
-    if (!pr && b) { pr = await b.get('profiles/' + uid).catch(() => null); if (pr) { const w = await b.get('bank/' + uid + '/wallet').catch(() => null); if (typeof w === 'number') pr.wallet = Math.round(w); } }
+    if (!pr && b) { pr = await b.get('profiles/' + uid).catch(() => null); if (pr && !(window.Casino && Casino.server)) { const w = await b.get('bank/' + uid + '/wallet').catch(() => null); if (typeof w === 'number') pr.wallet = Math.round(w); } }
     const me = b && uid === b.uid;
-    if (me) pr = Object.assign({}, pr || {}, { pseudo: P().pseudo || 'Joueur', avatar: P().avatar, xp: P().xp, level: Casino.levelOf(P().xp), card: publicCard(P()), achievements: Object.keys(P().achievements).length, frame: Casino.equipped('frame') });
+    if (me) pr = Object.assign({}, pr || {}, { pseudo: P().pseudo || 'Joueur', avatar: P().avatar, xp: P().xp, wallet: P().wallet, level: Casino.levelOf(P().xp), card: publicCard(P()), achievements: Object.keys(P().achievements).length, frame: Casino.equipped('frame') });
     if (!pr) { if (window.Casino) Casino.toast('Profil introuvable', 'Ce joueur n\'a pas encore de profil public.', '👤'); return; }
     const c = pr.card || {};
     const fmt = (n) => Math.round(n || 0).toLocaleString('fr-FR');
@@ -235,6 +242,37 @@
       ['+' + fmt(c.biggestWin || pr.biggestWin) + ' €', 'Plus gros gain'], [(pr.achievements || 0) + ' / ' + Casino.ACHIEVEMENTS.length, 'Succès'], [fmt(c.multiWins), 'Victoires entre amis']]
       .forEach(([v, l]) => { const d = el('div'); d.append(el('b', '', v), el('small', '', l)); st.appendChild(d); });
     sec('Statistiques').appendChild(st);
+    // les 5 plus belles cartes Légendes
+    if (c.topCards && c.topCards.length && Casino.cardEl) {
+      const w = el('div', 'pp-cards');
+      c.topCards.forEach((x) => { const cd = Casino.cardEl(x.id, { count: x.n }); cd.classList.add('xs'); w.appendChild(cd); });
+      sec('Plus belles cartes · ' + (c.colHave || 0) + ' / ' + (c.colAll || 114) + ' Légendes').appendChild(w);
+    }
+    // ventes en cours sur le marché (avec le serveur du Casino)
+    if (window.Casino && Casino.server && Casino.deal) {
+      const s3 = sec('En vente sur le marché'); const list = el('div', 'pp-sales'); list.appendChild(el('small', '', 'Chargement…')); s3.appendChild(list);
+      Casino.deal('mk.of', { uid }).then((r) => {
+        list.innerHTML = '';
+        const items = (r && r.listings) || [];
+        if (!items.length) { list.appendChild(el('small', '', 'Rien en vente pour le moment.')); return; }
+        items.forEach((l) => {
+          const row2 = el('div', 'pp-sale');
+          const ico = l.kind === 'col' && Casino.COL_BY_ID[l.item] ? Casino.COL_BY_ID[l.item].icon : '🎨';
+          row2.append(el('span', '', ico + ' ' + l.name), el('b', '', fmt(l.price) + ' €'));
+          if (!me) {
+            const bb = el('button', '', 'Acheter'); bb.type = 'button';
+            bb.onclick = async () => {
+              if (!(await Casino.confirm({ icon: '🛍️', title: 'Acheter « ' + l.name + ' » ?', text: 'Vendu par ' + (pr.pseudo || 'ce joueur') + '.', price: l.price, ok: 'Acheter pour ' + fmt(l.price) + ' €' }))) return;
+              bb.disabled = true; const x2 = await Casino.deal('mk.buy', { id: l.id });
+              if (x2.error) { Casino.toast('Achat impossible', x2.error, '⚠️'); bb.disabled = false; return; }
+              Casino.toast('Acheté !', l.name + ' rejoint ta collection.', '🛍️', 'gold'); row2.remove();
+            };
+            row2.appendChild(bb);
+          }
+          list.appendChild(row2);
+        });
+      }).catch(() => { list.innerHTML = ''; list.appendChild(el('small', '', 'Marché indisponible.')); });
+    }
     // jeux préférés
     if (c.counts) {
       const top = Object.entries(c.counts).filter((e) => e[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 4);
@@ -305,8 +343,8 @@
       const pr = await b.get('profiles/' + u);
       if (!pr) return null;
       // la banque affichée vient de bank/<uid>, protégée par les règles (le profil, lui, est écrit par le joueur)
-      const w = await b.get('bank/' + u + '/wallet').catch(() => null);
-      if (typeof w === 'number') pr.wallet = Math.round(w);
+      // sans le serveur du NAS, la banque protégée est dans bank/<uid> ; avec le serveur, c'est lui qui publie le profil
+      if (!(window.Casino && Casino.server)) { const w = await b.get('bank/' + u + '/wallet').catch(() => null); if (typeof w === 'number') pr.wallet = Math.round(w); }
       return Object.assign({ uid: u, me: u === b.uid }, pr);
     }));
     return rows.filter(Boolean);

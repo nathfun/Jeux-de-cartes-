@@ -388,6 +388,7 @@ module.exports = function makeDeals({ db, serial, R, core, rtdb, TABLES, pushTo,
     'trade.inventory': inventory,
     'duel.new': duelNew, 'duel.accept': (u, d) => duelAnswer(u, d, true), 'duel.decline': (u, d) => duelAnswer(u, d, false), 'duel.settle': duelSettle,
     'deals.list': list,
+    'mk.of': (u, d) => ({ listings: db.marketOpenOf(String(d.uid || '')).slice(0, 20).map((l) => ({ id: l.id, kind: l.kind, item: l.item, name: itemName(l.kind, l.item), rarity: l.rarity, price: l.price })) }),
     'col.cotes': () => ({ cotes: cotes() }), 'col.sell': instantSell,
     'loto.buy': lotoBuy, 'loto.refund': lotoRefundOne, 'loto.settle': lotoSettle, 'loto.info': lotoInfo,
   };

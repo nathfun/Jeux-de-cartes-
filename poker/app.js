@@ -84,7 +84,7 @@
     // Entraînement : gratuit avec coach ; tournoi réel : droit d'entrée, sans coach, compte pour la progression
     const real = !!window.Casino && pkMode() === 'real';
     const buyIn = real ? parseInt($('set-buyin').value, 10) || 0 : 0;
-    if (buyIn && Casino.wallet() < buyIn) { $('buyin-note').textContent = 'Ta banque est insuffisante pour ce droit d\'entrée (' + Casino.wallet().toLocaleString('fr-FR') + ' €). Passe par la banque du temps sur l\'accueil.'; return; }
+    if (buyIn && Casino.wallet() < buyIn) { $('buyin-note').textContent = 'Ta banque est insuffisante pour ce droit d\'entrée (' + Casino.wallet().toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €). Passe par la banque du temps sur l\'accueil.'; return; }
     if (buyIn) {
       // un tournoi réel abandonné (page fermée) est perdu : son droit d'entrée ne revient pas
       if (Casino.session('poker')) { Casino.setStack('poker', 0); await Casino.cashOut('poker'); }
@@ -690,9 +690,9 @@
       $('buyin-info').hidden = !real;
       $('start').textContent = real ? (Casino.session('poker') && Casino.server ? 'Reprendre le tournoi en cours' : 'Payer et commencer le tournoi') : 'Commencer l\'entraînement';
       const b = parseInt($('set-buyin').value, 10) || 0, n = parseInt($('set-opponents').value, 10) + 1;
-      if (!b) { $('buyin-info').textContent = 'Partie gratuite : pas de cagnotte. Portefeuille : ' + Casino.wallet().toLocaleString('fr-FR') + ' €.'; return; }
+      if (!b) { $('buyin-info').textContent = 'Partie gratuite : pas de cagnotte. Portefeuille : ' + Casino.wallet().toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €.'; return; }
       const pool = b * n;
-      $('buyin-info').textContent = 'Cagnotte : ' + pool.toLocaleString('fr-FR') + ' € — ' + (n <= 3 ? 'le vainqueur remporte tout.' : '1er ' + Math.round(pool * 0.65).toLocaleString('fr-FR') + ' €, 2e ' + Math.round(pool * 0.25).toLocaleString('fr-FR') + ' €, 3e ' + Math.round(pool * 0.1).toLocaleString('fr-FR') + ' €.') + ' Portefeuille : ' + Casino.wallet().toLocaleString('fr-FR') + ' €.';
+      $('buyin-info').textContent = 'Cagnotte : ' + pool.toLocaleString('fr-FR') + ' € — ' + (n <= 3 ? 'le vainqueur remporte tout.' : '1er ' + Math.round(pool * 0.65).toLocaleString('fr-FR') + ' €, 2e ' + Math.round(pool * 0.25).toLocaleString('fr-FR') + ' €, 3e ' + Math.round(pool * 0.1).toLocaleString('fr-FR') + ' €.') + ' Portefeuille : ' + Casino.wallet().toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €.';
     };
     ['set-buyin', 'set-opponents'].forEach((id) => $(id).addEventListener('change', info));
     document.querySelectorAll('input[name="pk-mode"]').forEach((r) => r.addEventListener('change', info));

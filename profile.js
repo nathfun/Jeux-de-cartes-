@@ -694,7 +694,7 @@
     call, sync, firebase,
     get profile() { return load(); },
     onChange(f) { listeners.push(f); },
-    wallet() { return load().wallet; },
+    wallet() { return Math.round((load().wallet || 0) * 100) / 100; },
     // Mode sans serveur uniquement (les jeux ne touchent jamais la banque directement avec le serveur)
     setWallet(v) { if (SERVER) return; if (BANK) return Casino.addWallet(v - load().wallet); local((N) => { P.wallet = Math.max(0, Math.round(v * 100) / 100); R.checkWallet(P, N); }); },
     addWallet(v) {

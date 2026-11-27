@@ -473,6 +473,7 @@
     P.achievements = P.achievements || {};
     P.sessions = P.sessions || {};
     P.prizes = P.prizes || {};
+    P.wallet = Math.round((Number(P.wallet) || 0) * 100) / 100; // pas de 1199,9999999 € (arrondi au centime)
     P.bonus = P.bonus || { last: null, streak: 0 };
     // Nouvelle économie (version 2) : tout l'argent ÷ 10, une seule fois. L'argent laissé sur les tables revient en banque.
     if (P.econ !== 2) {

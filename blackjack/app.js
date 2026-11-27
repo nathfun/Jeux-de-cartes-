@@ -1102,7 +1102,7 @@
     badge.textContent = mode === 'real' ? '💰 Partie réelle · sans aides · « Encaisser » ramène tes jetons à la banque' : '🎓 Apprentissage · crédit illimité, aides et conseils · ne compte pas';
     $('cashout').hidden = mode === 'defi' || mode === 'train';
     $('bank-label').textContent = mode === 'real' ? 'Sur la table' : mode === 'train' ? 'Crédit d\'apprentissage' : mode === 'defi' ? 'Jetons de défi' : 'Banque';
-    if (!mode && window.Casino) { $('bankroll').textContent = Casino.wallet(); }
+    if (!mode && window.Casino) { $('bankroll').textContent = (Math.round(Casino.wallet() * 100) / 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 }); }
     $('cashout').textContent = mode === 'train' ? 'Terminer' : 'Encaisser';
     if (!playing) { renderPicker(); return; }
     render();
