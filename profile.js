@@ -64,7 +64,7 @@
   }
   function pick(o, keys) { const r = {}; keys.forEach((k) => { if (o[k] !== undefined) r[k] = o[k]; }); return r; }
   const listeners = [];
-  const TX_LABEL = { 'shop.buy': 'achat en boutique', 'vip.buy': 'pass VIP' };
+  const TX_LABEL = { 'shop.buy': 'achat en boutique', 'vip.buy': 'pass VIP', 'box.open': 'coffre mystère' };
   function txBanner(delta, why) {
     injectStyle();
     const c = container(), el = document.createElement('div');
@@ -811,6 +811,15 @@
       return local(() => { if (!P.mt) return { payout: 0, none: true }; const brought = P.mt.amount, payout = Math.floor(Math.min(chips == null ? brought : chips, brought * R.MT.CAP)); P.wallet += payout; P.mt = null; return { payout, brought, net: payout - brought }; });
     },
     get mt() { return load().mt || null; },
+    // ----- Coffres mystères et prix de la boutique -----
+    boxInfo() { return R.boxInfo(load(), Date.now()); },
+    async openBox(paid) {
+      if (SERVER) return call('box.open', { paid: !!paid });
+      return local((N) => R.openBox(P, !!paid, Date.now(), (n) => Math.floor(Math.random() * n), N));
+    },
+    priceOf(kind, id) { return R.priceOf(load(), kind, id, Date.now()); },
+    inPromo(kind, id) { return R.inPromo(kind, id, Date.now()); },
+    VIP_DISCOUNT: R.VIP_DISCOUNT, SHOP_PROMO: R.SHOP_PROMO,
     // ----- Poker entre amis : droit d'entrée et cagnotte -----
     async pkBuyIn(table) { if (SERVER) return call('pk.buyin', { table }); return { free: true }; },
     async pkRefund() { if (SERVER) return call('pk.refund', {}); return { refund: 0 }; },
@@ -943,12 +952,12 @@
       load();
       const it = R.itemOf(kind, id);
       if (!it) return { error: 'Objet introuvable.' };
-      if (SERVER) { const r = await call('shop.buy', { kind, id }); return r.error ? r : { ok: true, price: it.price }; }
+      if (SERVER) { const r = await call('shop.buy', { kind, id }); return r.error ? r : { ok: true, price: r.price }; }
       const chk = R.buyItem(JSON.parse(JSON.stringify(P)), kind, id, []);
       if (chk.error) return chk;
       if (BANK) { const r = await bankOp('spend', -it.price, null, (N) => R.buyItem(P, kind, id, N)); return r.error ? r : { ok: true, price: it.price }; }
       const r = local((N) => R.buyItem(P, kind, id, N));
-      return r.error ? r : { ok: true, price: it.price };
+      return r.error ? r : { ok: true, price: r.price };
     },
     // ---------- Parties réelles ----------
     training: false,

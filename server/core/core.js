@@ -551,6 +551,7 @@ function handle(state, ctx) {
     case 'bonus.claim': result.amount = R.claimBonus(P, now, N); break;
     case 'challenge.claim': result.amount = R.claimChallenge(P, String(d.id), now, N); break;
     case 'vip.buy': { const r = R.buyVip(P, String(d.pass), now, N); if (r.error) fail(r.error); result = r; break; }
+    case 'box.open': { const r = R.openBox(P, !!d.paid, now, ctx.rnd, N); if (r.error) fail(r.error); result = r; break; }
     case 'booster.open': case 'card.craft': case 'wheel.spin': case 'chest.claim': case 'rescue.claim':
       fail('Cette fonction a été retirée du Casino.');
       break;
@@ -577,7 +578,7 @@ function handle(state, ctx) {
     // ----- Boosters (jeu de la partie, dès le palier 3) : le serveur tire les 10 cartes -----
     case 'bo.open': {
       const ss = sess('boosters');
-      const r = R.openPack(P, ss, String(d.series), ctx.rnd);
+      const r = R.openPack(P, ss, String(d.series), ctx.rnd, N);
       if (r.error) fail(r.error);
       track('sl', { bet: r.price, net: Math.round((r.total - r.price) * 100) / 100, jackpot: r.god || r.cards.some((c) => c.rarity === 'ultime'), freeTrigger: false });
       result = r;
@@ -752,7 +753,7 @@ function handle(state, ctx) {
       P.wallet = round2(P.wallet + payout);
       const net = payout - P.mt.amount;
       result = { payout, brought: P.mt.amount, net, game: P.mt.game };
-      if (net > 0) R.addXP(P, Math.min(60, 10 + net / 20), N);
+      if (net > 0) { R.addXP(P, Math.min(60, 10 + net / 20), N); R.unlock(P, 'mt_win', N); }
       P.totals.multiNet = (P.totals.multiNet || 0) + net;
       P.mt = null;
       break;
@@ -796,7 +797,7 @@ function handle(state, ctx) {
       const amount = Math.floor(pot * share);
       P.prizes[v.key] = now;
       P.wallet = round2(P.wallet + amount);
-      if (amount > 0) R.addXP(P, Math.min(120, 20 + amount / 50), N);
+      if (amount > 0) { R.addXP(P, Math.min(120, 20 + amount / 50), N); R.unlock(P, 'pk_pot', N); }
       P.totals.multiWins = (P.totals.multiWins || 0) + (v.place === 1 ? 1 : 0);
       P.pkt = null;
       result = { amount, pot, place: v.place, players: v.players };

@@ -222,6 +222,12 @@
   TITLES.push({ id: 'membre_vip', name: 'Membre VIP', level: 1, price: 0, vipOnly: true });
   THEMES.push({ id: 'lounge', name: 'Lounge VIP', level: 1, price: 0, vipOnly: true, bg: '#0b0906', panel: '#17120a', border: '#5c4516', accent: '#f5c542' });
   EFFECTS.push({ id: 'champagne', name: 'Champagne VIP', level: 1, price: 0, vipOnly: true, emojis: ['🍾', '🥂', '✨', '👑'] });
+  // Nouveautés de la refonte : La Dette et le club VIP (objets VIP portés tant que le pass est actif)
+  TITLES.push({ id: 'rembourseur', name: 'Bon payeur', level: 3, price: 300 }, { id: 'parrain', name: 'Le Parrain', level: 1, price: 0, exclusive: 'La Dette : réussir le palier 10' });
+  FELTS.push({ id: 'famille', name: 'Tapis de la Famille', level: 6, price: 800, a: '#3f3f46', b: '#09090b' },
+    { id: 'or_vip', name: 'Or massif VIP', level: 1, price: 0, vipOnly: true, a: '#a16207', b: '#3a2a08' });
+  BACKS.push({ id: 'vip_noir', name: 'Noir et or VIP', level: 1, price: 0, vipOnly: true, a: '#1c1917', b: '#ca8a04' });
+  AVATAR_ITEMS.push({ id: '🕴️', name: 'Homme de main', level: 4, price: 400 }, { id: '🤵', name: 'Gentleman VIP', level: 1, price: 0, vipOnly: true });
   // Objets rares : vendus seulement le jour où ils sont dans la « boutique du jour »
   FELTS.push({ id: 'aurore', name: 'Aurore boréale', level: 1, price: 900, a: '#0f766e', b: '#4c1d95', daily: true });
   BACKS.push({ id: 'holo', name: 'Holographique', level: 1, price: 700, a: '#67e8f9', b: '#f0abfc', daily: true });
@@ -246,21 +252,38 @@
   const ownKey = (kind, id) => kind + ':' + id;
   /** Boutique du jour : 3 objets rares, choisis selon la date (les mêmes pour tout le monde). */
   function dailyOffer(now) {
-    const pool = [];
-    Object.keys(SHOP).forEach((k) => SHOP[k].forEach((it) => { if (it.daily) pool.push({ kind: k, id: it.id }); }));
+    const pool = [], promo = [];
+    Object.keys(SHOP).forEach((k) => SHOP[k].forEach((it) => {
+      if (it.daily) pool.push({ kind: k, id: it.id });
+      else if (it.price > 0 && !it.card && !it.vipOnly && !it.exclusive && !it.luxe) promo.push({ kind: k, id: it.id, promo: SHOP_PROMO, early: true });
+    }));
     let h = 0; for (const c of dayOf(now || Date.now())) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-    const out = [], left = pool.slice();
+    const out = [], left = pool.slice(), lp = promo.slice();
     for (let i = 0; i < 3 && left.length; i++) { h = (h * 1103515245 + 12345) >>> 0; out.push(left.splice(h % left.length, 1)[0]); }
+    // 2 promotions du jour (même les objets d'un niveau pas encore atteint)
+    for (let i = 0; i < 2 && lp.length; i++) { h = (h * 1103515245 + 12345) >>> 0; out.push(lp.splice(h % lp.length, 1)[0]); }
     return out;
   }
+  const SHOP_PROMO = 30, VIP_DISCOUNT = 20;
+  /** Prix payé : promotion du jour (−30 %) puis remise VIP (−20 %). */
+  function priceOf(P, kind, id, now) {
+    const it = itemOf(kind, id);
+    if (!it || !it.price) return 0;
+    const o = dailyOffer(now || Date.now()).find((x) => x.kind === kind && x.id === id && x.promo);
+    let p = it.price * (o ? 1 - o.promo / 100 : 1);
+    if (isVip(P, now)) p *= 1 - VIP_DISCOUNT / 100;
+    return Math.max(1, Math.round(p / 10) * 10);
+  }
+  const inPromo = (kind, id, now) => dailyOffer(now || Date.now()).some((x) => x.kind === kind && x.id === id && x.promo);
   /** L'objet est-il utilisable : niveau atteint, et offert ou acheté. */
   function canUse(P, kind, id) {
     const it = itemOf(kind, id);
     if (!it) return false;
     if (it.vipOnly) return isVip(P);
     if (it.exclusive || it.daily || it.card) return !!(P.owned && P.owned[ownKey(kind, id)]);
+    if (P.owned && P.owned[ownKey(kind, id)]) return true;
     if (levelOf(P.xp) < it.level) return false;
-    return !it.price || !!(P.owned && P.owned[ownKey(kind, id)]);
+    return !it.price;
   }
   /** Achat : vérifie le niveau, le prix et la banque. Renvoie le prix payé, ou un message d'erreur. */
   function buyItem(P, kind, id, N) {
@@ -268,16 +291,17 @@
     if (!it || !it.price) return { error: 'Objet introuvable.' };
     P.owned = P.owned || {};
     if (P.owned[ownKey(kind, id)]) return { error: 'Tu l\'as déjà.' };
-    if (levelOf(P.xp) < it.level) return { error: 'Débloqué au niveau ' + it.level + '.' };
+    if (levelOf(P.xp) < it.level && !inPromo(kind, id)) return { error: 'Débloqué au niveau ' + it.level + '.' };
     if (it.daily && !dailyOffer(Date.now()).some((x) => x.kind === kind && x.id === id)) return { error: 'Cet objet n\'est pas dans la boutique du jour.' };
-    if (P.wallet < it.price) return { error: 'Il te manque ' + Math.ceil(it.price - P.wallet).toLocaleString('fr-FR') + ' €.' };
-    P.wallet -= it.price;
+    const price = priceOf(P, kind, id, Date.now());
+    if (P.wallet < price) return { error: 'Il te manque ' + Math.ceil(price - P.wallet).toLocaleString('fr-FR') + ' jetons.' };
+    P.wallet -= price;
     P.owned[ownKey(kind, id)] = Date.now();
     const n = Object.keys(P.owned).length;
     if (n >= 1) unlock(P, 'shop1', N);
     if (n >= 10) unlock(P, 'shop10', N);
     if (n >= 25) unlock(P, 'shop25', N);
-    return { price: it.price };
+    return { price };
   }
   /** Ce que chaque niveau débloque (offert ou disponible à l'achat). */
   function unlocksAt(level) {
@@ -370,6 +394,15 @@
     { id: 'run_p3', icon: '💼', name: 'Homme de confiance', text: 'Réussir le palier 3' },
     { id: 'run_p5', icon: '🎩', name: 'Bras droit', text: 'Réussir le palier 5' },
     { id: 'run_p10', icon: '👑', name: 'Le nouveau parrain', text: 'Réussir le palier 10' },
+    { id: 'run_p15', icon: '💎', name: 'Intouchable', text: 'Réussir le palier 15' },
+    { id: 'run_p20', icon: '🏛️', name: 'Empire du jeu', text: 'Réussir le palier 20' },
+    { id: 'box1', icon: '🎁', name: 'Curieux', text: 'Ouvrir un coffre mystère' },
+    { id: 'box25', icon: '🧰', name: 'Chasseur de trésors', text: 'Ouvrir 25 coffres mystères' },
+    { id: 'box_myth', icon: '🌈', name: 'Le coffre des dieux', text: 'Trouver un objet mythique dans un coffre' },
+    { id: 'god_pack', icon: '🌟', name: 'Béni des dieux', text: 'Ouvrir un God Pack' },
+    { id: 'ultime', icon: '💠', name: 'L\'impossible', text: 'Trouver une carte Ultime' },
+    { id: 'mt_win', icon: '🪙', name: 'Table gagnante', text: 'Quitter une table multijoueur avec plus de jetons qu\'en arrivant' },
+    { id: 'pk_pot', icon: '♠', name: 'Rafle la cagnotte', text: 'Gagner une cagnotte de poker' },
     { id: 'cards10', icon: '🃏', name: 'Collectionneur', text: 'Ouvrir 10 cartes de booster' },
     { id: 'mythic', icon: '🔴', name: 'Mythique !', text: 'Obtenir une carte mythique' },
     { id: 'lo_five', icon: '🎱', name: 'Cinq sur la grille', text: 'Trouver 5 bons numéros au Loto Express' },
@@ -395,13 +428,14 @@
     { id: 'month', name: 'Pass VIP · 30 jours', days: 30, price: 25000, best: true },
   ];
   const VIP_PERKS = [
-    { icon: '💶', text: '1 500 € au départ de chaque partie (au lieu de 1 000 €)' },
+    { icon: '💶', text: 'La Dette : 1 500 € au départ de chaque partie (au lieu de 1 000 €)' },
     { icon: '💰', text: 'Limites de mise relevées d\'environ 60 % à chaque palier' },
-    { icon: '🎁', text: 'Bonus de connexion du jour plus élevé (×1,5)' },
-    { icon: '🔒', text: 'Tables privées de blackjack et de roulette (bientôt)' },
-    { icon: '📦', text: '2 coffres mystères gratuits par jour (bientôt)' },
-    { icon: '🏷️', text: 'Remises sur la boutique (bientôt)' },
-    { icon: '👑', text: 'Couronne, cadre, titre et thème VIP réservés aux membres' },
+    { icon: '🎁', text: '2 coffres mystères gratuits par jour (au lieu d\'1)' },
+    { icon: '🏷️', text: '−20 % sur toute la boutique et sur les coffres' },
+    { icon: '🔒', text: 'Tables privées de blackjack et de roulette pour jouer entre amis' },
+    { icon: '♠', text: 'Poker High Roller : grosses cagnottes, tapis noir et or' },
+    { icon: '🎉', text: 'Bonus de connexion du jour ×1,5' },
+    { icon: '👑', text: 'Couronne, titre, thème, tapis, dos de cartes, avatar et effet VIP offerts' },
   ];
   const isVip = (P, now) => !!(P && P.vipUntil && P.vipUntil > (now || Date.now()));
   const maxBet = (P, now) => runMaxBet(P, now);
@@ -1057,6 +1091,37 @@
   // Parties réelles : on apporte une somme de la banque, on encaisse quand on veut
 
 
+
+  // ---------- Coffres mystères : un objet de style au hasard (rareté), et des jetons ----------
+  const BOX = { FREE: 1, FREE_VIP: 2, PRICE: 400, JETONS: [20, 150], DUP: { commun: 40, rare: 100, epique: 250, legendaire: 800, mythique: 2500 } };
+  const boxPool = () => { const out = []; Object.keys(SHOP).forEach((k) => SHOP[k].forEach((it) => { if (it.card) out.push({ kind: k, id: it.id, rarity: it.card }); })); return out; };
+  function boxInfo(P, now) {
+    const d = today(now), used = P.box && P.box.day === d ? P.box.n : 0, max = isVip(P, now) ? BOX.FREE_VIP : BOX.FREE;
+    const pool = boxPool(), have = pool.filter((x) => P.owned && P.owned[ownKey(x.kind, x.id)]).length;
+    return { free: Math.max(0, max - used), max, price: Math.round(BOX.PRICE * (isVip(P, now) ? 1 - VIP_DISCOUNT / 100 : 1)), have, all: pool.length, opened: P.totals.boxes || 0 };
+  }
+  function openBox(P, paid, now, rnd, N) {
+    const info = boxInfo(P, now), d = today(now);
+    if (paid) { if (P.wallet < info.price) return { error: 'Il te manque ' + Math.ceil(info.price - P.wallet).toLocaleString('fr-FR') + ' jetons.' }; P.wallet -= info.price; }
+    else { if (!info.free) return { error: 'Plus de coffre gratuit aujourd\'hui : reviens demain !' }; P.box = { day: d, n: (P.box && P.box.day === d ? P.box.n : 0) + 1 }; }
+    const w = { commun: 600, rare: 250, epique: 105, legendaire: 40, mythique: 5 };
+    const keys = Object.keys(w), tot = keys.reduce((a, k) => a + w[k], 0);
+    let x = rnd(tot), rarity = keys[0];
+    for (const k of keys) { if (x < w[k]) { rarity = k; break; } x -= w[k]; }
+    P.owned = P.owned || {};
+    const pool = boxPool().filter((it) => it.rarity === rarity), fresh = pool.filter((it) => !P.owned[ownKey(it.kind, it.id)]);
+    const list = fresh.length ? fresh : pool, pick = list[rnd(list.length)];
+    const dup = !fresh.length;
+    let jetons = BOX.JETONS[0] + rnd(BOX.JETONS[1] - BOX.JETONS[0] + 1);
+    if (dup) jetons += BOX.DUP[rarity]; else P.owned[ownKey(pick.kind, pick.id)] = now;
+    P.wallet = Math.round((P.wallet + jetons) * 100) / 100;
+    P.totals.boxes = (P.totals.boxes || 0) + 1;
+    unlock(P, 'box1', N);
+    if (P.totals.boxes >= 25) unlock(P, 'box25', N);
+    if (rarity === 'mythique') unlock(P, 'box_myth', N);
+    return { kind: pick.kind, id: pick.id, rarity, dup, jetons, paid: !!paid };
+  }
+
   // =====================================================================================================
   // ---------- Boosters de La Dette : 10 cartes revendues tout de suite dans la caisse ----------
   // =====================================================================================================
@@ -1082,7 +1147,7 @@
   const seriesOpen = (P, id) => { const se = SERIES.find((x) => x.id === id); return !!(se && P.run && P.run.palier >= se.palier); };
   function pickWeighted(w, rnd) { const keys = Object.keys(w), t = keys.reduce((a, k) => a + w[k], 0); let x = rnd(t); for (const k of keys) { if (x < w[k]) return k; x -= w[k]; } return keys[0]; }
   /** Ouvre un paquet de la série `id` avec l'argent de la table `ss` : les cartes sont revendues aussitôt, les épiques et mieux vont dans la collection. */
-  function openPack(P, ss, id, rnd) {
+  function openPack(P, ss, id, rnd, N) {
     if (!seriesOpen(P, id)) return { error: 'Cette série n\'est pas encore ouverte.' };
     const price = packPrice(P);
     if (ss.stack < price) return { error: 'Il te faut ' + price.toLocaleString('fr-FR') + ' € sur la table.' };
@@ -1103,6 +1168,7 @@
     const total = Math.round(cards.reduce((a, c) => a + c.value, 0) * 100) / 100;
     ss.stack = Math.round((ss.stack + total) * 100) / 100;
     P.totals.packs = (P.totals.packs || 0) + 1;
+    if (N) { if (god) unlock(P, 'god_pack', N); if (cards.some((c) => c.rarity === 'ultime')) unlock(P, 'ultime', N); }
     return { cards, total, price, god, stack: ss.stack };
   }
 
@@ -1200,7 +1266,9 @@
     unlock(P, 'run_p1', N);
     if (r.palier >= 3) unlock(P, 'run_p3', N);
     if (r.palier >= 5) unlock(P, 'run_p5', N);
-    if (r.palier >= 10) unlock(P, 'run_p10', N);
+    if (r.palier >= 10) { unlock(P, 'run_p10', N); P.owned = P.owned || {}; if (!P.owned['title:parrain']) { P.owned['title:parrain'] = now; N.push({ kind: 'gold', title: 'Titre exclusif : Le Parrain', text: 'Tu peux le porter dans « Mon style ».', icon: '🕴️' }); } }
+    if (r.palier >= 15) unlock(P, 'run_p15', N);
+    if (r.palier >= 20) unlock(P, 'run_p20', N);
     P.bestPalier = Math.max(P.bestPalier || 0, r.palier);
     N.push({ kind: 'gold', title: '✅ Palier ' + r.palier + ' réussi !', text: 'Quota atteint avec ' + Math.round(r.cash).toLocaleString('fr-FR') + ' €. Prochain quota : ' + quotaOf(r.palier + 1).toLocaleString('fr-FR') + ' €.', icon: '🏆' });
     return { ok: true, run: r };
@@ -1326,6 +1394,7 @@
     bonusInfo, claimBonus, claimChallenge, timeInfo, startTime, claimTime, startSession, cashOut,
     prizeFor, prizeText, applyPrize, publicProfile, REF_BONUS, REF_MIN_HANDS, REF_MAX, refDone, MT,
     COL_CATS, COLLECTION, COL_BY_ID, COTE_BASE, INSTANT_RATE, instantPrice, coteOf, rarityOfKey, countOf, instantSell,
+    BOX, boxInfo, openBox, priceOf, inPromo, SHOP_PROMO, VIP_DISCOUNT,
     SERIES, PACK, PACK_MULT, packPrice, seriesOpen, openPack,
     RUN, QUOTAS, BET_STEPS, gameMin, FORTUNE, quotaOf, niceDown, palierFactor, runMaxBet, runMinBet, runActive, runTotal, isUnlocked, RUN_ITEMS, runItem, itemPrice, runReward,
     runStart, runEndDay, runOver, runCheckBroke, runTick, runBuy, runNext,

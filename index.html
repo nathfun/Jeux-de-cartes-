@@ -462,6 +462,24 @@
     .shop-daily .sd-item small { font-size: .7rem; }
     /* refonte : anciens systèmes retirés */
     .wheel-panel, .panel.boosters, .panel.market, .panel.deals, #salon-next, #panel-bank, #panel-chest, #mp-new-loto, [data-pp="chest"] { display: none !important; }
+    /* ----- Coffres mystères ----- */
+    .box-panel { border-color: #7c3aed; background: radial-gradient(500px 200px at 100% 0%, rgba(168,85,247,.25), transparent 60%), linear-gradient(160deg, #1a1030, #0f0b1c); }
+    .bx-head { display: flex; gap: .8rem; align-items: center; } .bx-head h2 { margin: 0; } .bx-ic { font-size: 2.6rem; animation: bxBob 2s ease-in-out infinite; }
+    @keyframes bxBob { 50% { transform: translateY(-4px) rotate(-4deg); } }
+    .bx-rar { display: flex; flex-wrap: wrap; gap: .3rem; margin: .6rem 0; } .bx-rar span { font-size: .72rem; font-weight: 800; padding: .12rem .5rem; border-radius: 999px; border: 1px solid; }
+    .bx-btns { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+    .bx-btn { font: inherit; font-weight: 900; border-radius: 14px; padding: .8rem .5rem; cursor: pointer; border: 2px solid #7c3aed; background: rgba(124,58,237,.18); color: #ede9fe; }
+    .bx-btn.gold { border: 0; background: linear-gradient(135deg, #fde047, #f59e0b); color: #1c1300; } .bx-btn:disabled { opacity: .45; cursor: not-allowed; }
+    .bx-open { position: fixed; inset: 0; z-index: 140; display: grid; place-items: center; padding: 16px; background: radial-gradient(circle at 50% 40%, #2a1650, #05040a 75%); }
+    .bx-open .chest { font-size: 7rem; cursor: pointer; animation: bxIn .6s cubic-bezier(.2,1.4,.4,1); filter: drop-shadow(0 0 30px rgba(168,85,247,.6)); }
+    .bx-open .chest.shake { animation: bxShake .1s linear infinite; }
+    @keyframes bxIn { from { transform: translateY(80vh) scale(.4); } } @keyframes bxShake { 25% { transform: translate(3px, -2px) rotate(3deg); } 75% { transform: translate(-3px, 2px) rotate(-3deg); } }
+    .bx-open .prize { text-align: center; animation: bxPop .6s cubic-bezier(.2,1.6,.4,1); } @keyframes bxPop { from { transform: scale(.2); opacity: 0; } }
+    .bx-open .prize .pv-big { width: 150px; height: 110px; margin: 0 auto .6rem; border-radius: 16px; display: grid; place-items: center; font-size: 3rem; overflow: hidden; border: 3px solid var(--rc); box-shadow: 0 0 40px var(--rc); }
+    .bx-open .prize .rr { font-weight: 900; letter-spacing: .1em; color: var(--rc); text-transform: uppercase; } .bx-open .prize h3 { margin: .2rem 0; font-size: 1.4rem; color: #fff; }
+    .bx-open .prize p { color: #c4b5fd; } .bx-open .prize button { margin-top: .6rem; }
+    .bx-open .tip { color: #c4b5fd; margin-top: .8rem; text-align: center; }
+    .sd-item.promo { border-color: #ef4444 !important; box-shadow: 0 0 12px rgba(239,68,68,.35); }
     /* ----- Multijoueur en jetons ----- */
     .mp-play { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; margin: .4rem 0 .8rem; }
     .mp-big { display: flex; flex-direction: column; align-items: center; text-align: center; gap: .2rem; padding: 1rem .5rem; border-radius: 16px; text-decoration: none; color: #fff; border: 2px solid rgba(255,255,255,.15); box-shadow: 0 8px 20px rgba(0,0,0,.35); }
@@ -874,6 +892,12 @@
       <div id="mk-list" class="mk-list"></div>
     </section>
 
+
+    <section id="box-panel" class="panel box-panel" data-tab="shop" aria-label="Coffres mystères">
+      <div class="bx-head"><span class="bx-ic">🎁</span><div><h2>Coffres mystères</h2><p id="bx-sub" class="muted small-p"></p></div></div>
+      <div class="bx-rar" id="bx-rar"></div>
+      <div class="bx-btns"><button id="bx-free" class="bx-btn gold" type="button"></button><button id="bx-buy" class="bx-btn" type="button"></button></div>
+    </section>
 
     <section class="panel style" data-tab="shop" aria-label="Mon style">
       <div class="st-top">
@@ -1303,7 +1327,7 @@
       // objets rares : visibles seulement le jour où ils sont en boutique (ou si on les a déjà)
       const inOffer = (kind, id) => Casino.dailyOffer().some((x) => x.kind === kind && x.id === id);
       // les objets « à trouver dans les boosters » (ancien système) sont rangés en attendant les coffres mystères
-      const listOf = (kind) => (kind === 'avatar' ? BASE_AV().concat(Casino.SHOP.avatar) : Casino.SHOP[kind]).filter((it) => (!it.daily || Casino.owns(kind, it.id) || inOffer(kind, it.id)) && (!it.card || Casino.owns(kind, it.id)));
+      const listOf = (kind) => (kind === 'avatar' ? BASE_AV().concat(Casino.SHOP.avatar) : Casino.SHOP[kind]).filter((it) => !it.daily || Casino.owns(kind, it.id) || inOffer(kind, it.id));
       let styleSel = null, styleFilter = 'all';
       function isEquipped(kind, it) { return kind === 'avatar' ? Casino.profile.avatar === it.id : Casino.equipped(kind) === it.id; }
       // état d'un objet pour le joueur
@@ -1314,7 +1338,7 @@
         if (it.exclusive) return 'excl';
         if (it.card) return 'card';
         if (it.vipOnly) return 'vip';
-        if (lv < it.level) return 'lock';
+        if (lv < it.level && !Casino.inPromo(kind, it.id)) return 'lock';
         return 'buy';
       }
       // l'aperçu montre le style équipé, avec l'objet essayé à la place
@@ -1351,32 +1375,25 @@
         if (st === 'on') { act.textContent = '✓ Déjà porté'; act.disabled = true; return; }
         if (st === 'mine') { act.textContent = '✨ Équiper'; act.classList.add('go'); act.onclick = () => wear(kind, it); return; }
         if (st === 'excl') { act.textContent = '🏆 ' + it.exclusive; act.disabled = true; return; }
-        if (st === 'vip') { act.textContent = '👑 Réservé aux membres VIP'; act.disabled = true; return; }
+        if (st === 'vip') { act.textContent = '👑 Offert aux membres VIP · découvrir le club'; act.classList.add('buy'); act.onclick = () => { setHubTab('play'); setTimeout(() => { $('vip-panel').scrollIntoView({ behavior: 'smooth', block: 'center' }); $('vip-panel').classList.add('flash'); setTimeout(() => $('vip-panel').classList.remove('flash'), 1600); }, 150); }; return; }
         if (st === 'card') {
-          const cost = Casino.RARITY[it.card].craft, sh = Casino.boosters().shards, ck = 'craft:' + kind + ':' + it.id;
-          if (sh < cost) { act.textContent = '🃏 Carte ' + Casino.RARITY[it.card].name.toLowerCase() + ' : à trouver dans les boosters (ou ' + fmt(cost) + ' ✨, tu en as ' + fmt(sh) + ')'; act.disabled = true; return; }
+          act.textContent = '🎁 ' + Casino.RARITY[it.card].name + ' : à trouver dans les coffres mystères';
           act.classList.add('buy');
-          act.textContent = '✨ Fabriquer pour ' + fmt(cost) + ' éclats';
-          act.onclick = async () => {
-            if (!(await Casino.confirm({ icon: '✨', title: 'Fabriquer « ' + it.name + ' » ?', text: 'Coût : ' + fmt(cost) + ' éclats (tu en as ' + fmt(sh) + ').', ok: 'Fabriquer' }))) return;
-            act.disabled = true;
-            const r = await Casino.craftCard(kind, it.id);
-            if (r.error) { Casino.toast('Fabrication impossible', r.error, '⚠️'); renderShop(); return; }
-            celebrate('−' + fmt(cost) + ' ✨'); Casino.toast('Carte fabriquée !', it.name + ' rejoint ta collection.', '🃏', 'gold'); wear(kind, it, true);
-          };
+          act.onclick = () => $('box-panel').scrollIntoView({ behavior: 'smooth', block: 'center' });
           return;
         }
-        if (st === 'lock') { act.textContent = '🔒 Se débloque au niveau ' + it.level + (it.price ? ' (puis ' + fmt(it.price) + ' €)' : ' (offert)'); act.disabled = true; return; }
+        if (st === 'lock') { act.textContent = '🔒 Se débloque au niveau ' + it.level + (it.price ? ' (puis ' + fmt(Casino.priceOf(kind, it.id)) + ' jetons)' : ' (offert)'); act.disabled = true; return; }
         const key = kind + ':' + it.id;
-        if (P.wallet < it.price) { act.textContent = 'Il te manque ' + fmt(it.price - P.wallet) + ' jetons'; act.disabled = true; return; }
+        const price = Casino.priceOf(kind, it.id);
+        if (P.wallet < price) { act.textContent = 'Il te manque ' + fmt(price - P.wallet) + ' jetons'; act.disabled = true; return; }
         act.classList.add('buy');
-        act.textContent = '🛒 Acheter ' + fmt(it.price) + ' jetons';
+        act.textContent = '🛒 Acheter ' + fmt(price) + ' jetons' + (price < it.price ? ' (au lieu de ' + fmt(it.price) + ')' : '');
         act.onclick = async () => {
-          if (!(await Casino.confirm({ icon: '🛍️', title: 'Acheter « ' + it.name + ' » ?', text: Casino.SHOP_LABELS[kind] + ' · il sera équipé tout de suite.', price: it.price, ok: 'Acheter pour ' + fmt(it.price) + ' jetons' }))) return;
+          if (!(await Casino.confirm({ icon: '🛍️', title: 'Acheter « ' + it.name + ' » ?', text: Casino.SHOP_LABELS[kind] + ' · il sera équipé tout de suite.', price, ok: 'Acheter pour ' + fmt(price) + ' jetons' }))) return;
           act.disabled = true; act.textContent = '…';
           const r = await Casino.buy(kind, it.id);
           if (r.error) { Casino.toast('Achat impossible', r.error, '⚠️'); renderShop(); return; }
-          celebrate(it.price ? '−' + fmt(it.price) + ' jetons' : '');
+          celebrate(price ? '−' + fmt(price) + ' jetons' : '');
           Casino.toast('Acheté !', it.name + ' est à toi et déjà équipé.', '🛍️', 'gold');
           wear(kind, it, true);
         };
@@ -1557,20 +1574,63 @@
         });
       }
 
+      // ---------- Coffres mystères ----------
+      function renderBoxes() {
+        const b = Casino.boxInfo(), vip = Casino.isVip();
+        $('bx-sub').textContent = 'Un objet de style au hasard (souvent introuvable ailleurs) + des jetons. ' + (vip ? '👑 2 coffres gratuits par jour et −20 % pour toi.' : '1 coffre gratuit par jour (2 pour les VIP).') + ' Collection : ' + b.have + ' / ' + b.all + '.';
+        $('bx-free').textContent = b.free ? '🎁 Ouvrir mon coffre gratuit' + (b.max > 1 ? ' (' + b.free + ')' : '') : '✔ Coffre gratuit ouvert · reviens demain';
+        $('bx-free').disabled = !b.free;
+        $('bx-buy').textContent = '🪙 Acheter un coffre · ' + fmt(b.price) + ' jetons';
+        $('bx-buy').disabled = Casino.profile.wallet < b.price;
+        const rr = $('bx-rar'); if (!rr.children.length) { [['commun', 60], ['rare', 25], ['epique', 10.5], ['legendaire', 4], ['mythique', 0.5]].forEach(([r, p]) => { const x = document.createElement('span'); x.style.color = x.style.borderColor = Casino.RARITY[r].color; x.textContent = Casino.RARITY[r].name + ' ' + String(p).replace('.', ',') + ' %'; rr.appendChild(x); }); }
+      }
+      async function openBoxFx(paid) {
+        if (paid && !(await Casino.confirm({ icon: '🎁', title: 'Acheter un coffre mystère ?', text: 'Un objet de style au hasard et des jetons.', price: Casino.boxInfo().price, ok: 'Ouvrir' }))) return;
+        $('bx-free').disabled = $('bx-buy').disabled = true;
+        const o = document.createElement('div'); o.className = 'bx-open';
+        const ch = document.createElement('div'); ch.className = 'chest'; ch.textContent = '🎁';
+        const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = 'Ouverture…';
+        const wrap = document.createElement('div'); wrap.append(ch, tip); o.appendChild(wrap); document.body.appendChild(o);
+        Casino.hold && Casino.hold();
+        const [r] = await Promise.all([Casino.openBox(paid), new Promise((res) => setTimeout(res, 700))]);
+        if (!r || r.error) { o.remove(); if (Casino.release) Casino.release(); Casino.toast('Coffre', (r && r.error) || 'Impossible d\'ouvrir le coffre.', '⚠️'); renderBoxes(); return; }
+        const rk = ['commun', 'rare', 'epique', 'legendaire', 'mythique'].indexOf(r.rarity);
+        tip.textContent = 'Touche le coffre !';
+        ch.onclick = async () => {
+          ch.onclick = null; ch.classList.add('shake'); tip.textContent = rk >= 3 ? '… quelque chose brille très fort …' : '';
+          if (window.Sfx && Sfx.heartbeat && rk >= 2) Sfx.heartbeat();
+          await new Promise((res) => setTimeout(res, 500 + rk * 500));
+          const it = Casino.SHOP[r.kind].find((x) => x.id === r.id) || { name: r.id };
+          const pz = document.createElement('div'); pz.className = 'prize'; pz.style.setProperty('--rc', Casino.RARITY[r.rarity].color);
+          const pv = preview(r.kind, it); pv.classList.add('pv-big');
+          const rr = document.createElement('div'); rr.className = 'rr'; rr.textContent = Casino.RARITY[r.rarity].name;
+          const h = document.createElement('h3'); h.textContent = it.name;
+          const p = document.createElement('p'); p.textContent = Casino.SHOP_LABELS[r.kind] + (r.dup ? ' · déjà à toi : converti en jetons' : ' · nouveau !') + ' · +' + fmt(r.jetons) + ' jetons';
+          const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'bonus-btn'; ok.textContent = r.dup ? 'Super !' : '✨ Équiper';
+          ok.onclick = () => { o.remove(); if (Casino.release) Casino.release(); if (!r.dup) wear(r.kind, it, true); renderBoxes(); render(); };
+          pz.append(pv, rr, h, p, ok);
+          wrap.innerHTML = ''; wrap.appendChild(pz);
+          if (window.Sfx) { if (rk >= 3 && Sfx.win) Sfx.win(); else if (Sfx.chips) Sfx.chips(); }
+          if (rk >= 3 && Casino.bigWin) setTimeout(() => Casino.bigWin(r.jetons, Casino.RARITY[r.rarity].name.toUpperCase() + ' !'), 200);
+        };
+      }
+      $('bx-free').addEventListener('click', () => openBoxFx(false));
+      $('bx-buy').addEventListener('click', () => openBoxFx(true));
       function renderShop() {
+        try { renderBoxes(); } catch (e) { /* ignore */ }
         if (document.body.dataset.hubtab !== 'shop') return;
         const P = Casino.profile, lv = Casino.levelOf(P.xp);
         $('shop-wallet').textContent = fmt(P.wallet);
         $('shop-lvl').textContent = lv;
         // collection : tout ce que le joueur peut porter
         let mine = 0, all = 0;
-        Object.keys(Casino.SHOP).forEach((k) => Casino.SHOP[k].forEach((it) => { if ((it.exclusive || it.daily || it.card) && !Casino.owns(k, it.id)) return; all++; if (Casino.canUse(k, it.id)) mine++; }));
+        Object.keys(Casino.SHOP).forEach((k) => Casino.SHOP[k].forEach((it) => { if ((it.exclusive || it.daily) && !Casino.owns(k, it.id)) return; all++; if (Casino.canUse(k, it.id)) mine++; }));
         $('shop-owned').textContent = mine + ' / ' + all + ' objets';
         $('st-collect-fill').style.width = Math.round(mine / all * 100) + '%';
         renderStage(); renderAction(); renderBoosters();
         // boutique du jour : 3 objets rares, les mêmes pour tout le monde, changés chaque nuit à minuit
         const dl = $('shop-daily'); dl.innerHTML = '';
-        const dh = document.createElement('div'); dh.className = 'sd-head'; dh.innerHTML = '<b>🌟 Boutique du jour</b><small class="muted">Objets rares · changent à minuit</small>'; dl.appendChild(dh);
+        const dh = document.createElement('div'); dh.className = 'sd-head'; dh.innerHTML = '<b>🌟 Boutique du jour</b><small class="muted">3 objets rares + 2 promos −30 % · changent à minuit</small>'; dl.appendChild(dh);
         const drow = document.createElement('div'); drow.className = 'sd-row';
         Casino.dailyOffer().forEach((o) => {
           const it = Casino.SHOP[o.kind].find((x) => x.id === o.id); if (!it) return;
@@ -1578,7 +1638,8 @@
           const card = document.createElement('button'); card.type = 'button'; card.className = 'sh-item sd-item st-' + st + (styleSel && styleSel.kind === o.kind && styleSel.id === it.id ? ' sel' : '');
           card.appendChild(preview(o.kind, it));
           const nm = document.createElement('b'); nm.textContent = it.name; card.appendChild(nm);
-          const tag = document.createElement('span'); tag.className = 'st-tag t-' + st; tag.textContent = st === 'buy' ? '🛒 ' + fmt(it.price) + ' 🪙' : st === 'on' ? '✓ Porté' : '✅ À toi'; card.appendChild(tag);
+          const tag = document.createElement('span'); tag.className = 'st-tag t-' + st; tag.textContent = st === 'buy' ? '🛒 ' + fmt(Casino.priceOf(o.kind, it.id)) + ' 🪙' + (o.promo ? ' · −' + o.promo + ' %' : '') : st === 'on' ? '✓ Porté' : '✅ À toi'; card.appendChild(tag);
+          if (o.promo) card.classList.add('promo');
           const kd = document.createElement('small'); kd.className = 'muted'; kd.textContent = KIND_ICON[o.kind] + ' ' + Casino.SHOP_LABELS[o.kind]; card.appendChild(kd);
           card.addEventListener('click', () => { shopCat = o.kind; if (st === 'mine') { wear(o.kind, it); return; } styleSel = st === 'on' ? null : { kind: o.kind, id: it.id }; armedBuy = null; renderShop(); $('st-stage').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
           drow.appendChild(card);
@@ -1603,7 +1664,7 @@
           card.appendChild(preview(shopCat, it));
           const nm = document.createElement('b'); nm.textContent = it.base ? 'Avatar ' + it.id : it.name; card.appendChild(nm);
           const tag = document.createElement('span'); tag.className = 'st-tag t-' + st;
-          tag.textContent = st === 'buy' ? '🛒 ' + fmt(it.price) + ' 🪙' : st === 'lock' ? '🔒 Niv. ' + it.level : st === 'card' ? '🃏 ' + Casino.RARITY[it.card].name : st === 'vip' ? '👑 VIP' : LBL[st];
+          tag.textContent = st === 'buy' ? '🛒 ' + fmt(Casino.priceOf(shopCat, it.id)) + ' 🪙' : st === 'lock' ? '🔒 Niv. ' + it.level : st === 'card' ? '🎁 ' + Casino.RARITY[it.card].name : st === 'vip' ? '👑 VIP' : LBL[st];
           if (it.card && st !== 'card') tag.textContent += ' · ' + Casino.RARITY[it.card].name;
           card.appendChild(tag);
           card.addEventListener('click', () => {
