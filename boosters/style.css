@@ -106,8 +106,8 @@ main { max-width: 820px; margin: 0 auto; padding: 1rem max(16px, env(safe-area-i
 .bp-sum { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; max-width: 720px; }
 .bp-sum .bo-card { width: 112px; height: 164px; cursor: default; } .bp-sum .bo-front { font-size: .8rem; } .bp-sum .bo-front .pv { width: 70px; height: 50px; font-size: 1.6rem; }
 @media (max-width: 520px) { .bo-card.bp-big { width: 230px; height: 350px; } .bo-card.bp-big .lg-card.big { width: 230px; height: 350px; font-size: 16px; } .bp-stage { min-height: 360px; } .bp-sum .bo-card { width: 96px; height: 140px; } }
-/* bilan : les 10 cartes en 2 rangées de 5, le total au-dessus */
-.bp-open .bp-sum { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .4rem; width: min(640px, 100%); padding: 0 8px; }
+/* bilan : les 8 cartes en 2 rangées de 4, le total au-dessus */
+.bp-open .bp-sum { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .4rem; width: min(640px, 100%); padding: 0 8px; }
 .bp-open .bp-sum .bo-card { width: 100%; height: auto; aspect-ratio: 112 / 164; }
 .bp-open .bp-sum .lg-card { font-size: 6.5px; }
 @media (min-width: 600px) { .bp-open .bp-sum .lg-card { font-size: 9px; } }

@@ -882,6 +882,36 @@
     ["pg_tapis", "casino", "commun", "🟩", "Tapis vert", "Le feutre vert repose les yeux des joueurs pendant des heures."],
     ["pg_billet", "pegre", "commun", "💵", "Billet froissé", "Il est passé par beaucoup de mains avant d'arriver dans la tienne."],
     ["pg_cle", "pegre", "commun", "🗝️", "Clé de l'arrière-salle", "Seuls les habitués savent quelle porte elle ouvre."],
+    ["pg_as", "casino", "commun", "🂡", "As de pique", "La carte la plus célèbre du jeu : certains y voient un porte-bonheur, d'autres un mauvais présage."],
+    ["pg_trefle", "casino", "commun", "♣️", "Trèfle", "Le trèfle à quatre feuilles : une chance sur dix mille d'en trouver un dans un pré."],
+    ["pg_sabot", "casino", "commun", "🗃️", "Sabot de cartes", "Au blackjack, le croupier y range six jeux mélangés pour décourager les compteurs."],
+    ["pg_rateau", "casino", "commun", "🧹", "Râteau du croupier", "À la roulette, il ramasse les mises perdantes d'un seul geste."],
+    ["pg_plaque", "casino", "commun", "🟪", "Plaque de casino", "Les gros montants se jouent avec des plaques rectangulaires plutôt que des jetons."],
+    ["pg_bille", "casino", "commun", "⚪", "Bille d'ivoire", "Autrefois en ivoire, la bille de roulette est aujourd'hui en résine ou en céramique."],
+    ["pg_ticket", "casino", "commun", "🎟️", "Ticket de caisse", "Les machines modernes ne crachent plus de pièces, mais des tickets."],
+    ["pg_cocktail", "casino", "commun", "🍹", "Cocktail offert", "Les casinos offrent les boissons : un joueur détendu joue plus longtemps."],
+    ["pg_horloge", "casino", "commun", "🕰️", "Horloge absente", "Dans un casino, il n'y a jamais d'horloge : on ne doit pas voir le temps passer."],
+    ["pg_moquette", "casino", "commun", "🌀", "Moquette à motifs", "Ses motifs chargés guident l'œil… vers les tables de jeu."],
+    ["pg_lunettes", "pegre", "commun", "🕶️", "Lunettes noires", "Pour que personne ne lise ton jeu dans tes yeux."],
+    ["pg_bague", "pegre", "commun", "💍", "Chevalière", "On l'embrasse pour montrer son respect au chef de famille."],
+    ["pg_journal", "pegre", "commun", "📰", "Journal du matin", "Les nouvelles de la nuit tiennent en une page… celle des faits divers."],
+    ["pg_telephone", "pegre", "commun", "☎️", "Téléphone à cadran", "Une ligne directe vers le bureau du parrain. Ne jamais le faire attendre."],
+    ["pg_cafe", "pegre", "commun", "☕", "Espresso serré", "Les affaires importantes se règlent autour d'un petit café."],
+    ["pg_pizza", "pegre", "commun", "🍕", "Pizzeria du coin", "La façade parfaite : on y entre pour une pizza, on en sort avec une dette."],
+    ["pg_fleur", "pegre", "commun", "🌹", "Œillet à la boutonnière", "Un détail d'élégance pour les grandes occasions."],
+    ["pg_enveloppe", "pegre", "commun", "✉️", "Enveloppe épaisse", "Elle passe de main en main sans jamais être ouverte en public."],
+    ["pg_montre", "pegre", "commun", "⌚", "Montre en or", "Elle indique l'heure… et surtout le rang de celui qui la porte."],
+    ["pg_voiture", "pegre", "commun", "🚗", "Berline noire", "Toujours garée moteur allumé, juste devant la porte."],
+    ["pg_croupiere", "casino", "rare", "👩‍💼", "La Croupière vedette", "Ses mains distribuent cent cartes à l'heure sans jamais trembler."],
+    ["pg_highroller", "casino", "rare", "🤑", "Le Flambeur", "Il mise en une soirée ce que d'autres gagnent en une année."],
+    ["pg_poker", "casino", "rare", "♠️", "Quinte flush royale", "La meilleure main du poker : environ une chance sur 650 000."],
+    ["pg_salonprive", "casino", "rare", "🛋️", "Le Salon privé", "Derrière le rideau de velours, les mises n'ont plus de limite."],
+    ["pg_camera", "casino", "rare", "📹", "L'Œil du ciel", "Des centaines de caméras surveillent chaque table depuis le plafond."],
+    ["pg_detective", "pegre", "rare", "🕵️", "Le Détective", "Il suit la piste de l'argent depuis des années."],
+    ["pg_avocat", "pegre", "rare", "⚖️", "L'Avocat de la famille", "Il n'a jamais perdu un procès. Personne ne sait vraiment pourquoi."],
+    ["pg_chauffeur", "pegre", "rare", "🧢", "Le Chauffeur", "Il connaît toutes les rues de la ville, surtout les plus discrètes."],
+    ["pg_bijoutier", "pegre", "rare", "💎", "Le Receleur", "Il ne pose jamais de questions sur l'origine des bijoux."],
+    ["pg_port", "pegre", "rare", "⚓", "Les Docks", "La nuit, les cargaisons changent de mains sur les quais de Marseille."],
     ["pg_videur", "pegre", "rare", "🦍", "Le Videur", "Il ne parle pas beaucoup. Il n'en a pas besoin."],
     ["pg_chanteuse", "casino", "rare", "🎤", "La Chanteuse du club", "Sa voix fait oublier aux joueurs qu'ils sont en train de perdre."],
     ["pg_comptable", "pegre", "rare", "🧮", "Le Comptable", "Il connaît chaque centime de la dette. Chaque centime."],
@@ -908,6 +938,36 @@
     ["ao_micro", "vegas", "commun", "🎙️", "Micro chromé", "Celui des crooners, brillant comme une étoile."],
     ["ao_smoking", "folles", "commun", "🤵", "Smoking", "La tenue obligatoire des grandes soirées."],
     ["ao_paillettes", "vegas", "commun", "✨", "Paillettes", "Il y en a partout, même là où on ne les cherche pas."],
+    ["ao_chapeau", "folles", "commun", "👒", "Chapeau cloche", "Le chapeau à la mode des années 1920, enfoncé jusqu'aux sourcils."],
+    ["ao_perles", "folles", "commun", "📿", "Collier de perles", "Porté très long, il se balançait au rythme du charleston."],
+    ["ao_fumecigarette", "folles", "commun", "🚬", "Fume-cigarette", "Plus il était long, plus on paraissait élégant."],
+    ["ao_piano", "folles", "commun", "🎹", "Piano bastringue", "Un piano un peu désaccordé, parfait pour le ragtime."],
+    ["ao_trompette", "folles", "commun", "🎺", "Trompette bouchée", "Une sourdine dans le pavillon, et le son devient feutré."],
+    ["ao_disque", "folles", "commun", "💿", "Disque 78 tours", "Trois minutes de musique par face, pas une seconde de plus."],
+    ["ao_telegramme", "folles", "commun", "📨", "Télégramme", "Facturé au mot : on écrivait court. STOP."],
+    ["ao_canotier", "folles", "commun", "🎩", "Canotier", "Le chapeau de paille des beaux jours, idéal pour les croisières."],
+    ["ao_eventail", "folles", "commun", "🪭", "Éventail", "Accessoire indispensable des danseuses de revue."],
+    ["ao_champagne", "folles", "commun", "🍾", "Coupe de champagne", "On la remplissait en pyramide pour les grandes soirées."],
+    ["ao_machine", "vegas", "commun", "🎰", "Machine à un dollar", "Les premières machines de Vegas acceptaient les dollars en argent."],
+    ["ao_motel", "vegas", "commun", "🏩", "Motel au néon", "Une chambre, une piscine, et un panneau qui clignote toute la nuit."],
+    ["ao_cactus", "vegas", "commun", "🌵", "Cactus", "Le seul habitant du désert qui ne joue jamais."],
+    ["ao_milkshake", "vegas", "commun", "🥤", "Milk-shake", "Servi dans les diners, avec une paille et une cerise."],
+    ["ao_des", "vegas", "commun", "🎲", "Dés de craps", "Au craps, toute la table crie quand le lanceur fait un 7."],
+    ["ao_station", "vegas", "commun", "⛽", "Station-service", "Le dernier arrêt avant de traverser le désert jusqu'à la ville."],
+    ["ao_flamant", "vegas", "commun", "🦩", "Flamant rose", "Le symbole rose d'un des plus vieux casinos du Strip."],
+    ["ao_carte", "vegas", "commun", "🗺️", "Carte routière", "Route 66 : de Chicago à Los Angeles, en passant par l'Ouest."],
+    ["ao_diner", "vegas", "commun", "🍔", "Diner ouvert la nuit", "Un burger à 4 h du matin, entre deux parties."],
+    ["ao_lunettescoeur", "vegas", "commun", "😎", "Lunettes de soleil", "Indispensables pour sortir d'un casino en plein jour."],
+    ["ao_orchestre", "folles", "rare", "🎻", "L'Orchestre du palace", "Ils jouaient même quand la salle était vide."],
+    ["ao_danseuse", "folles", "rare", "💃", "La Reine du cabaret", "Ses plumes et ses paillettes faisaient se lever toute la salle."],
+    ["ao_contrebandier", "folles", "rare", "🛶", "Le Contrebandier", "Pendant la Prohibition, il faisait passer les bouteilles par la mer."],
+    ["ao_paquebot", "folles", "rare", "🚢", "Le Paquebot", "Traverser l'Atlantique en première classe : une semaine de fête."],
+    ["ao_cinema", "folles", "rare", "🎞️", "Le Cinéma muet", "Un pianiste jouait en direct pendant la projection."],
+    ["ao_elvis", "vegas", "rare", "🕺", "Le Roi de la scène", "Une banane, un costume à paillettes, et la foule en délire."],
+    ["ao_magicien", "vegas", "rare", "🎩", "Le Magicien", "Il fait disparaître des tigres… et parfois tes jetons."],
+    ["ao_fontaines", "vegas", "rare", "⛲", "Les Fontaines dansantes", "Des jets d'eau qui dansent en musique devant un grand hôtel."],
+    ["ao_boxe", "vegas", "rare", "🥊", "Le Grand Combat", "Les plus grands combats de boxe se sont joués à Vegas."],
+    ["ao_chapelle", "vegas", "rare", "⛪", "La Petite Chapelle", "On s'y marie sans rendez-vous, parfois en costume de pirate."],
     ["ao_saxo", "folles", "rare", "🎷", "Saxophone", "L'âme du jazz, née dans les clubs enfumés."],
     ["ao_speakeasy", "folles", "rare", "🚪", "Speakeasy", "Un bar secret : il fallait chuchoter le mot de passe."],
     ["ao_dancing", "folles", "rare", "🪩", "Le Dancing", "On y dansait jusqu'à ce que les musiciens s'endorment."],
@@ -1175,12 +1235,12 @@
     { id: 's3', name: "L'Âge d'or", icon: '🎷', palier: 6, color: '#a16207' },
   ];
   // 8 communes, puis 2 cartes rare ou mieux ; 1 paquet sur 200 est un « God Pack » (10 légendaires ou mieux)
-  const PACK = { SIZE: 10, COMMONS: 8, GOD: 400, RTP: 0.95, PRICE_PCT: 0.04,
+  const PACK = { SIZE: 8, COMMONS: 6, GOD: 400, RTP: 0.95, PRICE_PCT: 0.04,
     HIGH: { rare: 870, epique: 95, legendaire: 28, mythique: 6, ultime: 1 },
     GODW: { epique: 600, legendaire: 330, mythique: 60, ultime: 10 } };
   // valeur de revente de chaque carte, en fraction du prix du paquet : chaque carte a SON prix dans la fourchette de sa rareté.
-  // Une épique rend toujours le paquet gagnant : 8 communes (≥ 0,025) + 1 rare (≥ 0,09) + 1 épique (≥ 0,72) ≥ 1,01 × le prix.
-  const PACK_RANGE = { commun: [0.025, 0.055], rare: [0.09, 0.17], epique: [0.72, 0.95], legendaire: [1.4, 2.0], mythique: [4, 6], ultime: [18, 24] };
+  // Une épique rend toujours le paquet gagnant : 6 communes (≥ 0,035) + 1 rare (≥ 0,09) + 1 épique (≥ 0,73) ≥ 1,03 × le prix.
+  const PACK_RANGE = { commun: [0.035, 0.075], rare: [0.09, 0.17], epique: [0.73, 0.95], legendaire: [1.4, 2.0], mythique: [4, 6], ultime: [18, 24] };
   const PACK_MULT = Object.fromEntries(Object.entries(PACK_RANGE).map(([r, [a, b]]) => [r, (a + b) / 2]));
   /** Multiplicateur d'une carte précise (toujours le même pour une carte donnée). */
   function cardMult(id, rarity) {
@@ -1450,7 +1510,7 @@
   }
 
   // version des règles : le serveur et l'app doivent avoir la même (sinon : serveur du NAS à mettre à jour)
-  const RULES_VERSION = '2026.11.30-2';
+  const RULES_VERSION = '2026.12.01-1';
   const api = {
     RULES_VERSION,
     weekOf, weekPoints, ensureWeek, SEASON_TIERS, seasonOf, seasonTier, seasonName, ensureSeason,

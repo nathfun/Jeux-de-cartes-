@@ -62,7 +62,7 @@ const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'jeux-de-cartes-81cdf';
 const DB_URL = process.env.FIREBASE_DATABASE_URL || 'https://jeux-de-cartes-81cdf-default-rtdb.europe-west1.firebasedatabase.app';
 const MAX_BODY = 32 * 1024;
 // version du serveur (affichée dans l'admin et sur /health) : à changer à chaque mise à jour du serveur
-const SERVER_VERSION = '2026.11.30-2';
+const SERVER_VERSION = '2026.12.01-1';
 const TABLES = { blackjack: 'tables/', poker: 'ptables/', roulette: 'rtables/', loto: 'ltables/' };
 
 // ---------- Firebase (vérification des comptes, profil public, lecture des tables entre amis) ----------

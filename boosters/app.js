@@ -1,4 +1,4 @@
-/* Boosters du Parrain (dès le palier 2) : on ouvre des paquets de 10 cartes, revendues aussitôt dans la caisse. */
+/* Boosters du Parrain (dès le palier 2) : on ouvre des paquets de 8 cartes, revendues aussitôt dans la caisse. */
 (function () {
   'use strict';
   const R = window.CasinoRules;
@@ -64,7 +64,7 @@
       if (S.stack < 100) { S.busy = false; ui(); return; }
       S.stack = Math.round((S.stack - 100 + r.total) * 100) / 100;
       const me = (window.Casino && Casino.profile) || {};
-      r.cards.forEach((c) => { c.fresh = !((me.dex || {})[c.id] || (me.col || {})[c.id]); });
+      const seenNow = {}; r.cards.forEach((c) => { c.fresh = !((me.dex || {})[c.id] || (me.col || {})[c.id] || seenNow[c.id]); seenNow[c.id] = 1; });
     }
     const best = r.cards.reduce((m, c) => (RANK[c.rarity] > RANK[m.rarity] ? c : m), r.cards[0]);
     S.hist.push({ price: r.price, total: r.total, god: r.god, best: R.RARITY[best.rarity].name + ' : ' + R.COL_BY_ID[best.id].name });
@@ -93,7 +93,7 @@
       layer.appendChild(p); setTimeout(() => p.remove(), 1900);
     }
   }
-  /** Le paquet arrive, on le déchire, puis les 10 cartes une à une (le suspense monte avec la rareté). */
+  /** Le paquet arrive, on le déchire, puis les 8 cartes une à une (le suspense monte avec la rareté). */
   function show(r) {
     return new Promise((done) => {
       const cards = r.cards, se = R.SERIES.find((x) => x.id === S.series);
@@ -109,7 +109,7 @@
       document.body.appendChild(o);
       const best = cards.reduce((m, c) => Math.max(m, RANK[c.rarity]), 0);
       const pk = document.createElement('div'); pk.className = 'bp-pack' + (best >= 3 || r.god ? ' hot' : '');
-      pk.innerHTML = '<div class="bp-flap"></div><div class="bp-body"><span class="bp-clover"></span><b></b><small>BOOSTER · 10 CARTES</small></div><i class="bp-shine"></i>';
+      pk.innerHTML = '<div class="bp-flap"></div><div class="bp-body"><span class="bp-clover"></span><b></b><small>BOOSTER · 8 CARTES</small></div><i class="bp-shine"></i>';
       pk.querySelector('.bp-clover').textContent = se.icon; pk.querySelector('b').textContent = se.name.toUpperCase();
       stage.appendChild(pk);
       if (window.Sfx && Sfx.whoosh) Sfx.whoosh();

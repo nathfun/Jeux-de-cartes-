@@ -1,5 +1,9 @@
 /* Nouveautés du Lucky Lounge : la plus récente en premier. Ajoute une entrée à chaque mise à jour. */
 window.CASINO_NEWS = [
+  { date: '2026-12-01', title: '60 nouvelles cartes', items: [
+    '🃏 Pègre & Casino et L\'Âge d\'or : 20 communes et 10 rares de plus chacune (227 cartes en tout).',
+    '📦 Paquets de 8 cartes : 6 communes et 2 rares ou mieux. Une épique rend toujours le paquet gagnant.',
+  ] },
   { date: '2026-11-30', title: 'Le Parrain plus juste', items: [
     '📈 Quotas +30 % par palier, et toujours au moins +20 % sur ta caisse : un jackpot ne fait plus sauter 10 paliers.',
     '💼 Un seul bouton « Encaisser », le même sur tous les jeux, sans confirmation.',
