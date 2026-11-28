@@ -473,7 +473,7 @@
     x.fillText((o.icon ? o.icon + '  ' : '') + (o.game || ''), W / 2, 560);
     x.fillStyle = '#fff'; x.font = '900 86px system-ui, sans-serif'; x.fillText(o.title || 'GROS GAIN !', W / 2, 680, W - 120);
     x.shadowColor = 'rgba(242,193,78,.8)'; x.shadowBlur = 40; x.fillStyle = '#f2c14e'; x.font = '900 170px system-ui, sans-serif';
-    x.fillText('+' + Math.round(o.amount).toLocaleString('fr-FR') + ' €', W / 2, 880, W - 80); x.shadowBlur = 0;
+    x.fillText('+' + Math.round(o.amount).toLocaleString('fr-FR') + (o.unit || ' €'), W / 2, 880, W - 80); x.shadowBlur = 0;
     x.fillStyle = '#cbd5e1'; x.font = '600 44px system-ui, sans-serif';
     x.fillText((P.avatar || '🎩') + '  ' + (P.pseudo || 'Un joueur') + ' · niveau ' + levelOf(P.xp), W / 2, 990);
     x.fillStyle = 'rgba(255,255,255,.08)'; x.beginPath(); x.roundRect ? x.roundRect(110, 1080, W - 220, 170, 40) : x.rect(110, 1080, W - 220, 170); x.fill();
@@ -486,7 +486,7 @@
   async function shareWin(o) {
     const code = P.friendCode;
     const url = SITE + 'index.html' + (code ? '?ref=' + code : '');
-    const text = (o.title || 'Gros gain') + ' : +' + Math.round(o.amount).toLocaleString('fr-FR') + ' € sur Lucky Lounge 🎰' + (code ? ' — rejoins-moi, +2 000 € offerts pour toi et moi !' : '');
+    const text = (o.title || 'Gros gain') + ' : +' + Math.round(o.amount).toLocaleString('fr-FR') + (o.unit || ' €') + ' sur Lucky Lounge 🎰' + (code ? ' — rejoins-moi : +' + (R.REF_BONUS || 150) + ' jetons offerts pour toi et moi !' : '');
     try {
       const blob = await winCard(o);
       const file = blob && new File([blob], 'lucky-lounge-gain.png', { type: 'image/png' });
@@ -531,7 +531,7 @@
     const sh = document.createElement('button'); sh.type = 'button'; sh.className = 'cb-share'; sh.textContent = '📤 Partager ce gain';
     let kept = false;
     sh.addEventListener('click', (e) => { e.stopPropagation(); kept = true; o.classList.remove('out'); sh.disabled = true; sh.textContent = 'Préparation…';
-      shareWin({ amount, title: label || 'GROS GAIN !', game: g ? R.GAMES[g] : '', icon: g ? GAME_ICON[g] : '🎰' }).finally(() => { sh.disabled = false; sh.textContent = '📤 Partager ce gain'; setTimeout(() => o.remove(), 1500); }); });
+      shareWin({ amount, unit, title: label || 'GROS GAIN !', game: g ? R.GAMES[g] : '', icon: g ? GAME_ICON[g] : '🎰' }).finally(() => { sh.disabled = false; sh.textContent = '📤 Partager ce gain'; setTimeout(() => o.remove(), 1500); }); });
     box.appendChild(sh);
     o.addEventListener('click', () => o.remove());
     setTimeout(() => { if (!kept) o.classList.add('out'); }, 5200);
@@ -1316,9 +1316,10 @@
     s.textContent = ringCss + `
 .cm-leaving body > *:not(.run-hud) { visibility: hidden !important; }
 /* finitions communes : arrivée en fondu, appui sur les boutons */
+* { -webkit-tap-highlight-color: transparent; }
 @keyframes cm-pagein { from { opacity: 0; transform: translateY(6px); } }
 body > main, body > header { animation: cm-pagein .35s ease-out both; }
-button:not(:disabled):active, a.cm-cta:active, .game:active { scale: .97; transition: scale .06s; }
+a.cm-cta:active, .rh-cash:active:not(:disabled), .cm-cta:active:not(:disabled) { scale: .97; transition: scale .06s; }
 .rh-delta { position: fixed; z-index: 71; left: 50%; margin-left: 60px; bottom: calc(52px + env(safe-area-inset-bottom)); font-weight: 900; font-size: .9rem; pointer-events: none; animation: cm-delta 1.4s ease-out forwards; text-shadow: 0 2px 6px rgba(0,0,0,.8); }
 .rh-delta.up { color: #4ade80; } .rh-delta.down { color: #f87171; }
 @keyframes cm-delta { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-26px); opacity: 0; } }

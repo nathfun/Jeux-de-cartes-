@@ -274,8 +274,10 @@
     busy = true;
     let srvPhase = null;
     if (srvMode()) {
+      // le résultat (caisse, annonces) attend la fin de la main : pas de spoiler avant que le croupier ait joué
+      Casino.hold();
       const r = await Casino.call('bj.deal', { bet, pp: side.pp, t213: side.t213 });
-      if (r.error) { busy = false; if (/déjà en cours/i.test(r.error)) { await resyncReal(); return; } setMessage('⚠️ ' + r.error); render(); return; }
+      if (r.error) { Casino.release(); busy = false; if (/déjà en cours/i.test(r.error)) { await resyncReal(); return; } setMessage('⚠️ ' + r.error); render(); return; }
       srvQueue = r.cards.slice(); srvStack = r.stack; srvPhase = r.phase;
       setMessage(r.shuffled ? 'Le sabot est mélangé à nouveau.' : 'Distribution…');
     } else if (shoe.length < DECKS * 52 * 0.25) {
@@ -315,6 +317,7 @@
       const offer = srvMode() ? srvPhase === 'insurance' : cost > 0 && stats.bankroll >= cost;
       const took = offer ? await askInsurance(cost) : false;
       if (srvMode() && offer) {
+        Casino.hold();
         const r = await Casino.call('bj.ins', { take: took });
         if (!r.error) { srvQueue = srvQueue.concat(r.cards); srvStack = r.stack; }
       }
@@ -373,8 +376,10 @@
     recordDecision(rec, action);
     busy = true;
     if (srvMode()) {
+      Casino.hold();
       const r = await Casino.call('bj.act', { action });
       if (r.error) {
+        Casino.release();
         busy = false;
         // la main a déjà été réglée côté serveur (page restaurée, journée finie…) : on se resynchronise
         if (/pas le moment|Aucune/i.test(r.error)) { await resyncReal(); return; }
@@ -540,6 +545,7 @@
       appendFeedbackNote('Entraînement : ton crédit est rechargé à ' + TRAIN_BANK + ' €.');
       stats.bankroll = TRAIN_BANK;
     }
+    if (window.Casino && Casino.holding) setTimeout(() => Casino.release(), 400); // la main est finie : la caisse peut se mettre à jour
     if (stats.bankroll < minBet() && mode === 'real') setTimeout(() => endSession(true), 2500);
     if (bet > stats.bankroll) bet = Math.max(0, Math.floor(Math.min(bet, stats.bankroll)));
     saveStats();

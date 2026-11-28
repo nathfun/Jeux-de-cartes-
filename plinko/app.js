@@ -70,8 +70,9 @@
     try {
       let nonce, path, slot, res, srvStack = null;
       if (srv()) {
+        Casino.hold(); // le gain de la bille ne s'affiche qu'à son arrivée
         const r = await Casino.call('pl.drop', { bet: v, rows, risk });
-        if (r.error) { setStack(S.stack + v); toast(r.error, true); return false; }
+        if (r.error) { if (!inPlay().length) Casino.release(); setStack(S.stack + v); toast(r.error, true); return false; }
         nonce = r.nonce; path = r.path; slot = r.slot; res = { mult: r.mult, payout: r.payout, net: r.net };
         srvStack = r.stack; // la table du serveur, gains de toutes les billes compris
       } else {
@@ -108,6 +109,7 @@
     if (window.Sfx && Sfx.plinkLand) Sfx.plinkLand(b.mult);
     if (window.Casino && S.mode === 'real' && !Casino.server) Casino.track('pl', { bet: b.bet, net: b.net, mult: b.mult, edge: b.slot === 0 || b.slot === b.rows });
     if (b.mult >= 25 && window.Casino) setTimeout(() => Casino.bigWin(b.payout, 'PLINKO ' + fmtM(b.mult) + ' !'), 250);
+    if (window.Casino && Casino.holding && !inPlay().length) setTimeout(() => { if (!inPlay().length) Casino.release(); }, 300);
     const last = $('last');
     last.textContent = fmtM(b.mult) + (b.mult >= 1 ? ' · +' + fmt(b.payout) + ' €' : '');
     last.className = b.mult >= 10 ? 'epic' : b.mult >= 1 ? 'win' : 'lose';
