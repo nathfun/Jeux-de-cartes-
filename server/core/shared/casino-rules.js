@@ -1344,10 +1344,14 @@
     return { over: true, why, reward: rw, run: r };
   }
   /** Banqueroute : plus assez d'argent nulle part pour miser. */
+  /** Somme minimale pour jouer à un jeu de la partie (mise minimale, ou prix d'un paquet pour les boosters). */
+  function gameEntry(P, game) { return game === 'boosters' ? packPrice(P) : gameMin(P, game); }
+  /** Reste-t-il au moins un jeu débloqué accessible avec l'argent de la partie (caisse + tables) ? */
+  function canPlayAny(P) { const t = runTotal(P); return Object.keys(RUN.UNLOCK).some((g) => isUnlocked(P, g) && gameEntry(P, g) <= t + 1e-9); }
   function runCheckBroke(P, now, N) {
     const r = P.run;
     if (!runActive(P)) return null;
-    if (runTotal(P) >= gameMin(P, 'roulette')) return null;
+    if (canPlayAny(P)) return null;
     if (r.items.parapluie) { delete r.items.parapluie; r.cash = Math.round(r.quota * 0.1); N.push({ kind: 'gold', title: '☂️ Parapluie', text: 'Le parrain te dépanne de ' + r.cash.toLocaleString('fr-FR') + ' €. Dernière chance !', icon: '☂️' }); return null; }
     return runOver(P, now, N, 'banqueroute');
   }
@@ -1442,7 +1446,7 @@
   }
 
   // version des règles : le serveur et l'app doivent avoir la même (sinon : serveur du NAS à mettre à jour)
-  const RULES_VERSION = '2026.11.29-3';
+  const RULES_VERSION = '2026.11.30-1';
   const api = {
     RULES_VERSION,
     weekOf, weekPoints, ensureWeek, SEASON_TIERS, seasonOf, seasonTier, seasonName, ensureSeason,
@@ -1455,7 +1459,7 @@
     BOX, boxInfo, openBox, priceOf, inPromo, SHOP_PROMO, VIP_DISCOUNT,
     SERIES, PACK, PACK_MULT, PACK_RANGE, cardMult, packPrice, seriesOpen, openPack,
     RUN, QUOTAS, BET_STEPS, gameMin, FORTUNE, quotaOf, niceDown, palierFactor, runMaxBet, runMinBet, runActive, runTotal, isUnlocked, RUN_ITEMS, runItem, itemPrice, runReward,
-    noteGain, runStart, runEndDay, runOver, runCheckBroke, runTick, runBuy, runNext,
+    noteGain, gameEntry, canPlayAny, runStart, runEndDay, runOver, runCheckBroke, runTick, runBuy, runNext,
     LOTO, lotoDiscount, lotoPackCost,
     tradeable, MARKET_FEE, MARKET_FEE_VIP, RARITY, RARITY_ORDER, BOOSTER, boosterInfo, openBooster, craftCard,
     VIP_PASS, VIP_PERKS, isVip, buyVip, grantVip, WHEEL, wheelInfo, spinWheel,

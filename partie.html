@@ -52,6 +52,8 @@
     .done-head { text-align: center; } .done-head .big { font-size: 3rem; animation: pop .7s cubic-bezier(.2,1.6,.4,1); }
     @keyframes pop { from { transform: scale(.2); opacity: 0; } }
     .games a.game.locked { pointer-events: auto; }
+    .games a.game.poor { filter: grayscale(.6) brightness(.55); }
+    #games .game .lock-badge.poor-badge { color: #fca5a5; border-color: #7f1d1d; }
     #games { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .7rem; }
     #games .game { min-height: 150px; padding: .9rem; gap: .5rem; border-width: 3px; }
     #games .game h2 { font-size: 1.1rem; } #games .game p, #games .game .tags { display: none; }

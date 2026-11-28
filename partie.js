@@ -173,9 +173,11 @@
     Array.from(grid.querySelectorAll('a.game[data-game]')).sort((x, y) => (R.RUN.UNLOCK[x.dataset.game] || 99) - (R.RUN.UNLOCK[y.dataset.game] || 99)).forEach((a) => grid.appendChild(a));
     document.querySelectorAll('#games a.game[data-game]').forEach((a) => {
       const g = a.dataset.game, need = R.RUN.UNLOCK[g], locked = !(need <= r.palier);
-      a.classList.toggle('locked', locked);
+      // débloqué mais trop cher pour ce qu'il reste dans la caisse (jeux en cours compris)
+      const entry = R.gameEntry(P, g), poor = !locked && entry > R.runTotal(P);
+      a.classList.toggle('locked', locked); a.classList.toggle('poor', poor); a.dataset.entry = entry;
       let lb = a.querySelector('.lock-badge');
-      if (locked) { if (!lb) { lb = el('span', 'lock-badge'); a.appendChild(lb); } lb.textContent = '🔒 Palier ' + need; } else if (lb) lb.remove();
+      if (locked || poor) { if (!lb) { lb = el('span', 'lock-badge'); a.appendChild(lb); } lb.textContent = locked ? '🔒 Palier ' + need : '💸 ' + fmt(entry) + ' € min.'; lb.classList.toggle('poor-badge', poor); } else if (lb) lb.remove();
       void ses;
     });
   }
@@ -235,6 +237,8 @@
     if (await Casino.confirm({ icon: '🏳️', title: shop ? 'Arrêter la partie ?' : 'Abandonner la partie ?', text: shop ? 'Tu touches les jetons des ' + r.palier + ' paliers réussis. La partie se termine.' : 'La mafia passe tout de suite. Tu gardes les jetons des paliers déjà réussis.', ok: shop ? 'Arrêter' : 'Abandonner' })) op('run.abandon');
   });
   document.getElementById('games').addEventListener('click', (e) => {
+    const pa = e.target.closest('a.game.poor');
+    if (pa) { e.preventDefault(); Casino.toast('Pas assez dans ta caisse', 'Il te faut au moins ' + fmt(pa.dataset.entry) + ' € pour jouer ici. Essaie un jeu à plus petite mise.', '💸'); return; }
     const a = e.target.closest('a.game.locked'); if (!a) return;
     e.preventDefault();
     const need = R.RUN.UNLOCK[a.dataset.game];

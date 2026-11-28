@@ -865,8 +865,9 @@ function handle(state, ctx) {
     default: fail('Opération inconnue.');
   }
   // Plus assez d'argent nulle part pour miser (caisse + tables, manches finies) : banqueroute
+  const busy = !!((S.tr && S.tr.pos && S.tr.pos.length > 0) || (S.bj && S.bj.round && S.bj.round.phase !== 'over') || (S.sl && S.sl.free > 0) || (S.mn && S.mn.round && S.mn.round.active) || (S.cr && S.cr.round && !S.cr.round.done && S.cr.round.bet));
+  result.idle = !busy; // aucune manche en cours : l'appli peut renvoyer le joueur vers la partie s'il ne peut plus miser ici
   if (R.runActive(P)) {
-    const busy = (S.tr && S.tr.pos && S.tr.pos.length > 0) || (S.bj && S.bj.round && S.bj.round.phase !== 'over') || (S.sl && S.sl.free > 0) || (S.mn && S.mn.round && S.mn.round.active) || (S.cr && S.cr.round && !S.cr.round.done && S.cr.round.bet);
     const b = busy ? null : R.runCheckBroke(P, now, N);
     if (b && b.over) result.dayOver = 'over'; else if (b && b.warned) result.dayOver = 'warn';
   }

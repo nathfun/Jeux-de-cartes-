@@ -194,7 +194,7 @@
       // coffre : seul le prix est annoncé (le contenu reste une surprise jusqu'à l'ouverture)
       txReason = op === 'box.open' ? null : TX_LABEL[op] || null;
       applyServer(res);
-      try { runWatch(res.result || {}); } catch (e) { /* ignore */ }
+      try { runWatch(res.result || {}); kickWatch(res.result || {}); } catch (e) { /* ignore */ }
       return res.result || {};
     } catch (e) {
       const msg = e && e.code === 'functions/failed-precondition' ? e.message : (e && e.code === 'functions/unavailable') || /network|internet|fetch/i.test(String(e && e.message)) ? 'Pas de connexion au serveur.' : errText(e);
@@ -633,7 +633,9 @@
    * opts : { game, min, suggest, realNote, onStart(mode, amount, resumed) }
    */
   const autoSat = {};
+  let curGame = null;
   function modePicker(box, opts) {
+    curGame = opts.game;
     injectStyle();
     load();
     const host = box.parentNode;
@@ -778,7 +780,26 @@
     if (holding) { pendingOver = show; return; }
     setTimeout(() => { if (holding) pendingOver = show; else show(); }, over ? 4500 : 0);
   }
-  let pendingOver = null;
+  let pendingOver = null, pendingKick = null, kicking = false;
+  /** Plus assez d'argent pour miser sur CE jeu (manche finie) : on prévient puis on ramène à la partie. */
+  function kickWatch(res) {
+    if (typeof document === 'undefined' || !hudEl || !curGame || kicking || Casino.training) return;
+    if (res.dayOver || res.idle !== true) return;
+    const poor = () => { const P = load(); if (!R.runActive(P)) return null; const ss = P.sessions[curGame]; if (!ss) return null; const tot = Math.round(((ss.stack || 0) + (P.run.cash || 0)) * 100) / 100, entry = R.gameEntry(P, curGame); return tot < entry ? { tot, entry } : null; };
+    if (!poor()) return;
+    const show = () => {
+      const p = poor(); if (!p || kicking || document.querySelector('.run-over')) return;
+      kicking = true; injectStyle();
+      const ov = mk('div', 'run-over'), box = mk('div', 'ro-box');
+      const go = mk('a', 'cm-cta', 'Retour à la partie'); go.href = '#';
+      const leave = () => { Casino.cashOut(curGame).then((r) => { if (!r || r.error) location.href = '../partie.html'; }); };
+      go.onclick = (e) => { e.preventDefault(); leave(); };
+      box.append(mk('div', 'ro-title', '💸 Plus assez pour jouer ici'), mk('p', '', 'Il te reste ' + fmtE(p.tot) + ' et ' + (curGame === 'boosters' ? 'un paquet coûte ' : 'la mise minimale de ce jeu est de ') + fmtE(p.entry) + '. Choisis un autre jeu dans ta partie.'), go);
+      ov.appendChild(box); document.body.appendChild(ov);
+      setTimeout(leave, 3500);
+    };
+    if (holding) pendingKick = show; else setTimeout(show, 1600);
+  }
   function runOverlay(title, text) {
     if (document.querySelector('.run-over')) return;
     injectStyle();
@@ -894,7 +915,7 @@
     },
     /** Retient les annonces (et le bandeau du quota) jusqu'à la fin de l'animation en cours. */
     hold() { holding = true; clearTimeout(holdTimer); holdTimer = setTimeout(() => Casino.release(), 20000); },
-    release() { clearTimeout(holdTimer); if (!holding) return; holding = false; const n = held; held = []; showNotes(n); listeners.forEach((f) => { try { f(load()); } catch (e) { /* ignore */ } }); if (pendingOver) { const f = pendingOver; pendingOver = null; setTimeout(f, 2500); } },
+    release() { clearTimeout(holdTimer); if (!holding) return; holding = false; const n = held; held = []; showNotes(n); listeners.forEach((f) => { try { f(load()); } catch (e) { /* ignore */ } }); if (pendingOver) { const f = pendingOver; pendingOver = null; setTimeout(f, 2500); } else if (pendingKick) { const f = pendingKick; pendingKick = null; setTimeout(f, 1800); } },
     get holding() { return holding; },
     /** Ouvre un booster du Parrain (serveur, ou mêmes règles dans le navigateur sans serveur). */
     async openPack(series) {
