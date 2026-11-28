@@ -20,6 +20,7 @@ const store = require('./store.js');
 // Conseils de l'IA pour les membres VIP (Claude, via le SDK officiel) : actifs seulement si ANTHROPIC_API_KEY est défini dans .env
 let anthropic = null;
 try { if (process.env.ANTHROPIC_API_KEY) { const A = require('@anthropic-ai/sdk'); anthropic = new (A.default || A.Anthropic || A)(); } } catch (e) { console.error('[casino] SDK Anthropic indisponible :', e.message); }
+console.log(anthropic ? '[casino] Coach IA : activé (clé ANTHROPIC_API_KEY trouvée).' : '[casino] Coach IA : désactivé (pas de ANTHROPIC_API_KEY dans .env).');
 const AI_PER_DAY = 20, aiUse = new Map();
 // Mode maintenance : réglé depuis l'administration, gardé sur le disque (survit aux redémarrages)
 const fs0 = require('fs'), path0 = require('path');

@@ -121,11 +121,18 @@ Si le serveur n'a pas changé, il ne fait rien. Il se met aussi à jour lui-mêm
 Tu n'as besoin de le lancer que quand je te dis que **le serveur** a changé : le reste de l'app (jeux, écrans) se met à jour tout seul.
 
 **Coach IA pour les VIP (facultatif)** : la page « Apprendre à jouer » propose aux membres VIP de poser une question à une IA (20 questions par jour et par joueur).
-Pour l'activer, crée une clé sur console.anthropic.com (l'usage est facturé par Anthropic), puis ajoute cette ligne dans `server/.env` sur le NAS et relance le serveur :
+L'usage de la clé est facturé par Anthropic (console.anthropic.com). Pour l'activer, en SSH sur le NAS :
+```bash
+cd /volume1/docker/casino/app/server
+sudo nano .env
 ```
-ANTHROPIC_API_KEY=ta-clé-ici
+Descends tout en bas avec les flèches, ajoute une ligne `ANTHROPIC_API_KEY=` puis colle ta clé juste après le `=` (clic droit ou Maj+Inser dans le terminal), sans espace ni guillemets.
+Enregistre avec **Ctrl+O** puis **Entrée**, quitte avec **Ctrl+X**. Ensuite (important : un simple « restart » ne relit pas le fichier `.env`) :
+```bash
+sudo docker compose up -d --force-recreate casino
+sudo docker compose logs casino | grep "Coach IA"
 ```
-Sans clé, le reste fonctionne normalement : la case du coach IA indique juste qu'elle n'est pas activée.
+Tu dois lire « Coach IA : activé ». Sans clé, le reste fonctionne normalement : la case du coach IA indique juste qu'elle n'est pas activée.
 
 **Mode maintenance** : depuis la page admin (section « Maintenance »), tu peux couper le jeu pour tout le monde avec un message.
 Les joueurs voient une bannière et ne peuvent plus jouer jusqu'à ce que tu le désactives.
