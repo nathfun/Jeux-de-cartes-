@@ -525,6 +525,12 @@ function handle(state, ctx) {
     }
   }
 
+  // Le Parrain : mise minimale de chaque jeu (10 € au palier 1, roulette 2 €), vérifiée par le serveur
+  const MIN_GAME = { 'cr.round': 'crash', 'pl.drop': 'plinko', 'lo.draw': 'loto', 'mn.start': 'mines', 'tr.open': 'trader', 'sl.spin': 'slots', 'gd.spin': 'gold' };
+  if (MIN_GAME[ctx.op] && R.runActive(P)) {
+    const b = Number((ctx.data || {}).bet) || 0, mn = R.gameMin(P, MIN_GAME[ctx.op]);
+    if (b > 0 && b < mn && !(ctx.op === 'sl.spin' && S.sl && S.sl.free > 0)) fail('Mise minimale : ' + mn + ' € à ce palier.');
+  }
   switch (ctx.op) {
     case 'sync': break;
     case 'profile.set': {
@@ -683,7 +689,7 @@ function handle(state, ctx) {
       for (const k of Object.keys(bets)) {
         const v = bets[k];
         const minIn = R.gameMin(P, 'roulette'), outside = B.byKey[k] && ['simple', 'douzaine', 'colonne'].includes(B.byKey[k].type);
-        if (B.byKey[k] && P.run && v < (outside ? minIn * 2 : minIn)) fail('Mise minimale : ' + (outside ? minIn * 2 : minIn) + ' € ' + (outside ? 'sur les chances simples, douzaines et colonnes.' : 'sur un numéro.'));
+        if (B.byKey[k] && P.run && v < minIn) fail('Mise minimale : ' + minIn + ' € par case.'); void outside;
         const cap = B.byKey[k] ? Math.min(Math.round(B.byKey[k].max * R.palierFactor(P.run ? P.run.palier : 1) * (R.isVip(P, now) ? R.RUN.VIP_BET : 1)), MAX_BET) : 0;
         if (!B.byKey[k] || !(int(v) >= 1) || v > cap) fail('Mise invalide sur ' + k + ' (au plus ' + cap + ' €).');
         staked += v;

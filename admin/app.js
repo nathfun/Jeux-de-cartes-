@@ -45,12 +45,12 @@
     if (API) {
       let r;
       try { r = await adm('list'); } catch (e) { $('stats').textContent = 'Serveur du Casino injoignable : ' + e.message; return; }
-      players = r.players.map((p) => ({ uid: p.uid, pseudo: p.pseudo, avatar: p.avatar, level: p.level, xp: p.xp, wallet: p.wallet, onTables: p.onTables, updatedAt: p.updated, vipUntil: p.vipUntil || 0, ses: Object.keys(p.sessions).length ? p.sessions : null }));
+      players = r.players.map((p) => ({ uid: p.uid, pseudo: p.pseudo, avatar: p.avatar, level: p.level, xp: p.xp, wallet: p.wallet, onTables: p.onTables, updatedAt: p.updated, vipUntil: p.vipUntil || 0, ses: Object.keys(p.sessions).length ? p.sessions : null, bestPalier: p.bestPalier || 0, runs: p.runs || 0, run: p.run || null, runP: p.run ? p.run.palier : 0, lastRun: p.lastRun || null, mt: p.mt || null, bestGain: p.bestGain || 0 }));
       r.players.forEach((p) => { if (p.banned) banned[p.uid] = banned[p.uid] || true; });
-      const total = players.reduce((a, p) => a + p.wallet + (p.onTables || 0), 0);
+      const total = players.reduce((a, p) => a + p.wallet + (p.mt ? p.mt.amount || 0 : 0), 0);
       const notYet = Object.keys(profiles || {}).filter((u) => !players.some((p) => p.uid === u)).length;
-      $('stats').innerHTML = '<span>Comptes sur le serveur : <b>' + players.length + '</b></span><span>Argent total (banques + tables) : <b>' + fmt(total) + ' €</b></span><span>Actifs (7 j) : <b>' + players.filter((p) => Date.now() - p.updatedAt < 7 * 864e5).length + '</b></span>'
-        + (notYet ? '<span>Pas encore passés sur le serveur : <b>' + notYet + '</b> (repris à leur prochaine connexion)</span>' : '') + '<span>Mouvements au journal : <b>' + fmt(r.stats.ledger) + '</b></span>';
+      $('stats').innerHTML = '<span>Comptes : <b>' + players.length + '</b></span><span>Jetons de tous les joueurs : <b>' + fmt(total) + ' 🪙</b></span><span>Actifs (7 j) : <b>' + players.filter((p) => Date.now() - p.updatedAt < 7 * 864e5).length + '</b></span><span>En partie maintenant : <b>' + players.filter((p) => p.run).length + '</b></span>'
+        + (notYet ? '<span>Pas encore passés sur le serveur : <b>' + notYet + '</b></span>' : '');
       draw();
       return;
     }
@@ -71,7 +71,8 @@
     list.forEach((p) => {
       const tr = document.createElement('tr'); tr.className = 'row' + (sel && sel.uid === p.uid ? ' sel' : '');
       const td = (t, c) => { const x = document.createElement('td'); x.textContent = t; if (c) x.className = c; tr.appendChild(x); };
-      td(p.avatar + ' ' + p.pseudo + (banned[p.uid] ? ' ⛔' : '')); td(String(p.level)); td(fmt(p.wallet) + ' €', 'num');
+      td(p.avatar + ' ' + p.pseudo + (p.vipUntil ? ' 👑' : '') + (banned[p.uid] ? ' ⛔' : '')); td(String(p.level)); td(fmt(p.wallet), 'num'); td(p.bestPalier ? String(p.bestPalier) : '–', 'num');
+      td(p.run ? 'Palier ' + p.run.palier + ' · ' + fmt(p.run.caisse) + ' €' + (p.run.status === 'shop' ? ' (boutique)' : '') : '–');
       td(p.updatedAt ? new Date(p.updatedAt).toLocaleDateString('fr-FR') : '–');
       tr.addEventListener('click', () => open(p));
       tb.appendChild(tr);
@@ -84,12 +85,19 @@
   async function open(p) {
     sel = p; draw(); msg('');
     $('edit-panel').hidden = false;
+    setTimeout(() => $('edit-panel').scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
     $('ed-title').textContent = p.avatar + ' ' + p.pseudo;
     $('ed-uid').textContent = p.uid;
     $('ed-wallet').value = Math.round(p.wallet);
     $('ed-vip').textContent = !API ? 'Nécessite le serveur.' : p.vipUntil ? 'Membre jusqu\'au ' + new Date(p.vipUntil).toLocaleDateString('fr-FR') : 'Pas membre';
     $('act-ban').textContent = banned[p.uid] ? '✅ Débloquer' : '⛔ Bloquer';
-    $('ed-sessions').textContent = p.ses ? 'Parties réelles en cours : ' + Object.entries(p.ses).map(([g, v]) => g + ' (' + fmt(v) + ' €' + (API ? ' sur la table' : ' apportés') + ')').join(', ') : '';
+    $('ed-sessions').textContent = p.ses ? 'Argent posé sur les jeux : ' + Object.entries(p.ses).map(([g, v]) => (R.GAMES[g] || g) + ' ' + fmt(v) + ' €').join(', ') : '';
+    const run = p.run, lr = p.lastRun;
+    $('ed-run').innerHTML = '';
+    const line = (t) => { const d = document.createElement('div'); d.textContent = t; $('ed-run').appendChild(d); };
+    line(run ? '🕴️ Partie en cours : palier ' + run.palier + (run.status === 'shop' ? ' (chez le receleur)' : '') + ' · caisse ' + fmt(run.caisse) + ' € / quota ' + fmt(run.quota) + ' €' + (run.lives !== undefined && run.lives !== null ? ' · ' + '❤️'.repeat(run.lives) : '') : '🕴️ Pas de partie en cours.');
+    line('🏆 Meilleur palier : ' + (p.bestPalier || 0) + ' · ' + fmt(p.runs || 0) + ' partie(s) jouée(s)' + (lr ? ' · dernière : palier ' + lr.palier + ' (' + ({ quota: 'quota raté', banqueroute: 'banqueroute', abandon: 'abandon' }[lr.why] || lr.why || '') + ', +' + fmt(lr.jetons) + ' jetons)' : ''));
+    line('🪙 Meilleur gain : +' + fmt(p.bestGain || 0) + ' jetons' + (p.mt ? ' · ' + fmt(p.mt.amount) + ' jetons posés à une table multijoueur (' + p.mt.game + ')' : '') + (p.vipUntil ? ' · 👑 VIP jusqu\'au ' + new Date(p.vipUntil).toLocaleDateString('fr-FR') : ''));
     let led = $('ed-ledger');
     if (!led) { led = document.createElement('details'); led.id = 'ed-ledger'; led.className = 'small'; $('ed-sessions').after(led); }
     led.hidden = !API; led.innerHTML = '';
@@ -97,10 +105,10 @@
       let r;
       try { r = await adm('get', { uid: p.uid }); } catch (e) { msg('Serveur : ' + e.message, 'err'); return; }
       saveData = { pseudo: r.brief.pseudo, xp: r.brief.xp, owned: r.owned, achievements: r.achievements };
-      const sm = document.createElement('summary'); sm.textContent = '📒 Journal de l\'argent (' + r.ledger.length + ' derniers mouvements)'; led.appendChild(sm);
+      const sm = document.createElement('summary'); sm.textContent = '📒 Journal des mouvements (' + r.ledger.length + ' derniers)'; led.appendChild(sm);
       const ul = document.createElement('ul'); ul.style.cssText = 'margin:.4rem 0;padding-left:1rem;max-height:220px;overflow:auto';
       r.ledger.forEach((x) => { const li = document.createElement('li'); const dw = x.wallet_after - x.wallet_before, dt = x.table_after - x.table_before;
-        li.textContent = new Date(x.at).toLocaleString('fr-FR') + ' · ' + x.op + ' · banque ' + (dw >= 0 ? '+' : '') + fmt(dw) + ' → ' + fmt(x.wallet_after) + ' €' + (dt ? ' · table ' + (dt >= 0 ? '+' : '') + fmt(dt) : ''); ul.appendChild(li); });
+        li.textContent = new Date(x.at).toLocaleString('fr-FR') + ' · ' + opName(x.op) + (dw ? ' · jetons ' + (dw >= 0 ? '+' : '') + fmt(dw) + ' → ' + fmt(x.wallet_after) : '') + (dt ? ' · caisse ' + (dt >= 0 ? '+' : '') + fmt(dt) + ' €' : ''); ul.appendChild(li); });
       led.appendChild(ul);
     } else {
       const sv = await get('saves/' + p.uid).catch(() => null);
@@ -134,7 +142,7 @@
   $('save-wallet').addEventListener('click', async () => {
     if (!sel) return;
     const v = Math.max(0, Math.round(Number($('ed-wallet').value) || 0));
-    if (API) { try { await adm('wallet', { uid: sel.uid, wallet: v }); await refresh('Banque mise à jour : ' + fmt(v) + ' €. Le joueur la voit à sa prochaine action.', 'ok'); } catch (e) { msg('Refusé : ' + e.message, 'err'); } return; }
+    if (API) { try { await adm('wallet', { uid: sel.uid, wallet: v }); await refresh('Jetons mis à jour : ' + fmt(v) + '. Le joueur les voit à sa prochaine action.', 'ok'); } catch (e) { msg('Refusé : ' + e.message, 'err'); } return; }
     try {
       await D.runTransaction(ref('bank/' + sel.uid), (cur) => {
         const o = cur ? Object.assign({}, cur) : {};
@@ -187,7 +195,7 @@
 
   $('act-close').addEventListener('click', async () => {
     if (!sel) return;
-    if (API) { try { await adm('close', { uid: sel.uid }); await refresh('Parties fermées : l\'argent des tables est revenu dans sa banque.', 'ok'); } catch (e) { msg('Refusé : ' + e.message, 'err'); } return; }
+    if (API) { try { await adm('close', { uid: sel.uid }); await refresh('Jeux débloqués : l\'argent posé sur les jeux est revenu dans la caisse de sa partie.', 'ok'); } catch (e) { msg('Refusé : ' + e.message, 'err'); } return; }
     try {
       let back = 0;
       await bankSet(sel.uid, (o) => { back = sesTotal(o.ses); o.wallet = Math.round((o.wallet + back) * 100) / 100; delete o.ses; });
@@ -197,7 +205,7 @@
   });
 
   $('act-reset').addEventListener('click', async () => {
-    if (!sel || !sure('Remettre ' + sel.pseudo + ' à zéro ? Banque à ' + fmt(R.START_WALLET) + ' €, niveau 1, objets et succès retirés. Le pseudo et le compte sont gardés.')) return;
+    if (!sel || !sure('Remettre ' + sel.pseudo + ' à zéro ? Jetons de départ, niveau 1, objets et succès retirés, partie arrêtée. Le pseudo et le compte sont gardés.')) return;
     if (API) { try { await adm('reset', { uid: sel.uid }); await refresh('Compte remis à zéro.', 'ok'); } catch (e) { msg('Refusé : ' + e.message, 'err'); } return; }
     try {
       const now = Date.now();
@@ -252,19 +260,22 @@
     const v = Math.round(Number($('gift').value) || 0);
     if (!(v > 0)) return;
     const list = players.filter((p) => !banned[p.uid]);
-    if (!sure('Créditer ' + fmt(v) + ' € à ' + list.length + ' compte(s) ?')) return;
+    if (!sure('Offrir ' + fmt(v) + ' jetons à ' + list.length + ' compte(s) ?')) return;
     $('gift-go').disabled = true;
     if (API) { try { const r = await adm('gift', { amount: v }); tmsg(fmt(v) + ' jetons crédités à ' + r.count + ' compte(s).', 'ok'); load(); } catch (e) { tmsg('Refusé : ' + e.message, 'err'); } $('gift-go').disabled = false; return; }
     let ok = 0;
     for (const p of list) { try { await bankSet(p.uid, (o) => { o.wallet = Math.round(((o.wallet || 0) + v) * 100) / 100; }); ok++; } catch (e) { /* compte suivant */ } }
     $('gift-go').disabled = false;
-    tmsg(fmt(v) + ' € crédités à ' + ok + ' compte(s).', 'ok'); load();
+    tmsg(fmt(v) + ' jetons crédités à ' + ok + ' compte(s).', 'ok'); load();
   });
   $('lobby-clear').addEventListener('click', async () => {
     try { const l = (await get('lobby')) || {}; await Promise.all(Object.keys(l).map((k) => D.remove(ref('lobby/' + k)))); tmsg('Liste des parties vidée.', 'ok'); load(); }
     catch (e) { tmsg('Refusé : ' + e.message, 'err'); }
   });
 
+  // noms lisibles des actions du journal
+  const OPN = { 'run.start': '🕴️ Partie lancée', 'run.end': '🕴️ Fin de journée', 'run.next': '🕴️ Palier suivant', 'run.buy': '🛍️ Receleur', 'run.abandon': '🏳️ Abandon', 'session.start': '🎲 Assis à un jeu', 'session.cashout': '💼 Retour à la caisse', 'box.open': '🎁 Coffre', 'shop.buy': '🎨 Boutique', 'vip.buy': '👑 Pass VIP', 'bonus.claim': '🎁 Bonus du jour', 'challenge.claim': '🎯 Défi', 'wheel.spin': '🎡 Roue du jour', 'mt.sit': '👥 Table multi (assis)', 'mt.leave': '👥 Table multi (parti)', 'pk.buyin': '♠ Poker (entrée)', 'pk.claim': '♠ Poker (gain)', 'pk.refund': '♠ Poker (remboursé)', 'ev.bet': '🏇 Grand Prix (pari)', 'ev.info': '🏇 Grand Prix (gain)', 'ev.claim': '🏇 Grand Prix (gain)', 'ref': '🎁 Parrainage', econ: '🔄 Passage aux jetons' };
+  const opName = (op) => OPN[op] || (op.startsWith('admin:') ? '🛠️ Admin (' + op.slice(6) + ')' : op);
   // ---------- Tableau de bord ----------
   const fmt2 = (n) => (n >= 0 ? '+' : '−') + fmt(Math.abs(n));
   function barChart(box, items, series, opts) {
@@ -280,7 +291,7 @@
         const x = padL + i * step + 1 + j * (bw + 2), yy = y(v), h = Math.max(0, H - padB - yy);
         svg += '<rect data-i="' + i + '" x="' + x + '" y="' + yy + '" width="' + bw + '" height="' + h + '" rx="' + Math.min(4, bw / 2) + '" fill="' + series[j].color + '"/>';
       });
-      if (i % 5 === 0 || i === n - 1) svg += '<text x="' + (padL + i * step + step / 2) + '" y="' + (H - 8) + '" fill="#9aa5b1" font-size="18" text-anchor="middle">' + it.label + '</text>';
+      if (opts.every || i % 5 === 0 || i === n - 1) svg += '<text x="' + (padL + i * step + step / 2) + '" y="' + (H - 8) + '" fill="#9aa5b1" font-size="18" text-anchor="middle">' + it.label + '</text>';
     });
     // zones de survol (plus larges que les barres)
     items.forEach((it, i) => { svg += '<rect class="hit" data-i="' + i + '" x="' + (padL + i * step) + '" y="0" width="' + step + '" height="' + (H - padB) + '" fill="transparent"/>'; });
@@ -304,21 +315,31 @@
     let d;
     try { d = await adm('dashboard'); } catch (e) { $('dash-kpis').textContent = 'Tableau de bord indisponible : ' + e.message; return; }
     $('dash-at').textContent = 'mis à jour à ' + new Date(d.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    const created30 = d.days.reduce((a, x) => a + x.created - x.destroyed, 0);
+    // le serveur a-t-il les mêmes règles que l'app ?
+    $('dash-ver').innerHTML = '';
+    if (!d.jetons || d.rules !== R.RULES_VERSION) { const w = document.createElement('div'); w.className = 'ver-warn'; w.textContent = '⏳ Le serveur du NAS n\'a pas les dernières règles du jeu (paliers, mises…). Lance la mise à jour : sudo sh /volume1/docker/casino/update.sh'; $('dash-ver').appendChild(w); if (!d.jetons) return; }
+    const net30 = d.days.reduce((a, x) => a + x.gained - x.spent, 0);
     const kpi = (label, val, sub) => '<div class="kpi"><small>' + label + '</small><b>' + val + '</b>' + (sub ? '<span>' + sub + '</span>' : '') + '</div>';
-    $('dash-kpis').innerHTML = kpi('Joueurs', fmt(d.players.total), '+' + fmt(d.days.reduce((a, x) => a + x.fresh, 0)) + ' en 30 jours')
-      + kpi('Actifs aujourd\'hui', fmt(d.players.active1), fmt(d.players.active7) + ' sur 7 j · ' + fmt(d.players.active30) + ' sur 30 j')
-      + kpi('Argent en circulation', fmt(d.money.total) + ' €', 'moyenne ' + fmt(d.money.avg) + ' € par joueur')
-      + kpi('Création nette (30 j)', fmt2(created30) + ' €', created30 > 0 ? 'il entre plus d\'argent qu\'il n\'en sort' : 'il sort plus d\'argent qu\'il n\'en entre');
+    $('dash-kpis').innerHTML = kpi('👥 Joueurs', fmt(d.players.total), '+' + fmt(d.days.reduce((a, x) => a + x.fresh, 0)) + ' nouveaux en 30 jours')
+      + kpi('🟢 Actifs aujourd\'hui', fmt(d.players.active1), fmt(d.players.active7) + ' cette semaine · ' + fmt(d.players.active30) + ' ce mois')
+      + kpi('👑 VIP', fmt(d.players.vip), d.players.total ? Math.round(d.players.vip / d.players.total * 100) + ' % des joueurs' : '')
+      + kpi('🪙 Jetons des joueurs', fmt(d.jetons.total), 'en moyenne ' + fmt(d.jetons.avg) + ' par joueur')
+      + kpi('📈 Jetons créés (30 j)', fmt2(net30), net30 > 0 ? 'les joueurs gagnent plus qu\'ils ne dépensent' : 'les joueurs dépensent plus qu\'ils ne gagnent')
+      + kpi('🕴️ Parties du Parrain', fmt(d.parrain.live) + ' en cours', fmt(d.parrain.runs30) + ' lancées en 30 j · ' + fmt(d.parrain.runs) + ' au total')
+      + kpi('🏆 Fin de partie moyenne', 'palier ' + String(d.parrain.avgDone).replace('.', ','), 'paliers réussis en moyenne à la dernière partie');
     $('dash-alerts').innerHTML = '';
-    d.alerts.forEach((a) => { const x = document.createElement('div'); x.className = 'alert'; x.textContent = '⚠️ ' + a.name + ' a gagné ' + fmt(a.gained) + ' € en 24 h (seuil d\'alerte : ' + fmt(d.alertThreshold) + ' €). Vérifie son journal de l\'argent.'; $('dash-alerts').appendChild(x); });
+    d.alerts.forEach((a) => { const x = document.createElement('div'); x.className = 'alert'; x.textContent = '⚠️ ' + a.name + ' a gagné ' + fmt(a.gained) + ' jetons en 24 h (seuil d\'alerte : ' + fmt(d.alertThreshold) + '). Vérifie son journal.'; $('dash-alerts').appendChild(x); });
     const lbl = (s) => s.slice(8) + '/' + s.slice(5, 7);
-    barChart($('ch-active'), d.days.map((x) => ({ label: lbl(x.d), title: new Date(x.d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }), values: [x.active] })), [{ name: 'Joueurs actifs', color: 'var(--s1)' }], { aria: 'Joueurs actifs par jour' });
+    const ttl = (x) => new Date(x.d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    barChart($('ch-active'), d.days.map((x) => ({ label: lbl(x.d), title: ttl(x), values: [x.active, x.runs] })), [{ name: 'Joueurs actifs', color: 'var(--s1)' }, { name: 'Parties lancées', color: 'var(--s3)' }], { aria: 'Joueurs actifs et parties lancées par jour' });
     const kshort = (v) => (v >= 1000 ? Math.round(v / 1000) + 'k' : fmt(v));
-    barChart($('ch-money'), d.days.map((x) => ({ label: lbl(x.d), title: new Date(x.d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }), values: [x.created, x.destroyed] })), [{ name: 'Créé', color: 'var(--s1)' }, { name: 'Détruit', color: 'var(--s2)' }], { aria: 'Argent créé et détruit par jour', short: kshort, fmt: (v) => fmt(v) + ' €' });
-    table($('tb-cats'), ['Source', 'Solde'], d.categories.filter((c) => Math.abs(c.v) >= 1).map((c) => [c.k, { t: fmt2(c.v) + ' €', cls: c.v >= 0 ? 'pos' : 'neg' }]));
+    barChart($('ch-money'), d.days.map((x) => ({ label: lbl(x.d), title: ttl(x), values: [x.gained, x.spent] })), [{ name: 'Gagnés', color: 'var(--s1)' }, { name: 'Dépensés', color: 'var(--s2)' }], { aria: 'Jetons gagnés et dépensés par jour', short: kshort, fmt: (v) => fmt(v) + ' jetons' });
+    table($('tb-cats'), ['Source', 'Gagnés', 'Dépensés', 'Solde'], d.sources.map((c) => [c.k, c.gained ? '+' + fmt(c.gained) : '–', c.spent ? '−' + fmt(c.spent) : '–', { t: fmt2(c.net), cls: c.net >= 0 ? 'pos' : 'neg' }]));
+    table($('tb-rich'), ['Joueur', 'Niv.', 'Jetons'], d.richest.map((r) => [r.name + (r.vip ? ' 👑' : ''), String(r.level), fmt(r.jetons)]));
+    barChart($('ch-best'), d.parrain.best.map((b) => ({ label: b.k === '0' ? 'aucun' : b.k, title: b.k === '0' ? 'Aucun palier réussi' : 'Meilleur palier : ' + b.k, values: [b.n] })), [{ name: 'Joueurs', color: 'var(--s3)' }], { aria: 'Meilleur palier par joueur', every: 1 });
+    table($('tb-live'), ['Joueur', 'Palier', 'Caisse / quota', 'Vies'], d.parrain.liveList.length ? d.parrain.liveList.map((r) => [r.name + (r.status === 'shop' ? ' 🛍️' : ''), String(r.palier), fmt(r.caisse) + ' / ' + fmt(r.quota) + ' €', r.lives != null ? '❤️'.repeat(r.lives) : '–']) : [['Personne en partie', '', '', '']]);
+    table($('tb-top'), ['Joueur', 'Meilleur palier', 'Parties'], d.parrain.top.map((r) => [r.name, String(r.best), fmt(r.runs)]));
     table($('tb-games'), ['Jeu', 'Coups', 'Joueurs', 'Résultat des joueurs'], d.games.map((g) => [g.name, fmt(g.ops), fmt(g.players), { t: fmt2(g.net) + ' €', cls: g.net >= 0 ? 'pos' : 'neg' }]));
-    table($('tb-rich'), ['Joueur', 'Niv.', 'Argent'], d.richest.map((r) => [r.name, String(r.level), fmt(r.money) + ' €']));
   }
   $('dash-reload').addEventListener('click', loadDash);
   document.querySelectorAll('[data-vip]').forEach((b) => b.addEventListener('click', async () => {

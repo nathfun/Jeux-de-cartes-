@@ -48,6 +48,11 @@
     table.mini { font-size: .85rem; } table.mini td, table.mini th { padding: .3rem .35rem; } .pos { color: var(--good); } .neg { color: var(--bad); }
     .kpi.warn { border-color: var(--bad); }
     .alert { background: rgba(248,81,73,.1); border: 1px solid var(--bad); border-radius: 12px; padding: .6rem .8rem; margin-bottom: .8rem; font-size: .9rem; }
+    .dash { --s3: #a855f7; }
+    .help { font-size: .88rem; color: #cbd5e1; background: rgba(51,140,237,.08); border: 1px solid rgba(51,140,237,.35); border-radius: 10px; padding: .55rem .75rem; margin: .6rem 0; }
+    h3.sec { color: var(--gold); font-size: 1rem; margin: 1.2rem 0 .5rem; border-bottom: 1px solid var(--border); padding-bottom: .3rem; }
+    .ed-run { font-size: .88rem; background: #0d1117; border: 1px solid var(--border); border-radius: 10px; padding: .55rem .7rem; margin: .4rem 0; }
+    .ver-warn { background: rgba(242,193,78,.1); border: 1px solid var(--gold); border-radius: 12px; padding: .6rem .8rem; margin-bottom: .6rem; font-size: .9rem; }
     .stats { display: flex; gap: .8rem; flex-wrap: wrap; margin-bottom: .6rem; font-size: .9rem; } .stats b { color: var(--gold); }
   </style>
 </head>
@@ -65,18 +70,30 @@
       <h2>Comptes</h2>
       <div class="stats" id="stats"></div>
       <div class="row2"><input id="search" placeholder="Rechercher un pseudo…" style="flex:1"><button id="reload" type="button">↻ Actualiser</button></div>
-      <table><thead><tr><th data-k="pseudo">Joueur</th><th data-k="level">Niv.</th><th data-k="wallet" class="num">Banque</th><th data-k="updatedAt">Vu</th></tr></thead><tbody id="rows"></tbody></table>
+      <table><thead><tr><th data-k="pseudo">Joueur</th><th data-k="level">Niv.</th><th data-k="wallet" class="num">🪙 Jetons</th><th data-k="bestPalier" class="num">Palier max</th><th data-k="runP">Partie en cours</th><th data-k="updatedAt">Vu</th></tr></thead><tbody id="rows"></tbody></table>
     </section>
     <section id="dash-panel" class="panel dash" hidden style="grid-column:1/-1">
       <div class="dash-head"><h2>📊 Tableau de bord</h2><span id="dash-at" class="small muted"></span><button id="dash-reload" type="button">↻</button></div>
+      <p class="help">💡 Deux monnaies : les <b>🪙 jetons</b> sont l'argent du compte (gardé, sert au style, au VIP, au multijoueur). Les <b>€</b> sont la <b>caisse d'une partie du Parrain</b> : de l'argent de jeu, remis à zéro à chaque nouvelle partie.</p>
+      <div id="dash-ver"></div>
       <div id="dash-kpis" class="kpis"></div>
       <div id="dash-alerts"></div>
+      <h3 class="sec">👥 Activité</h3>
       <div class="dash-grid">
-        <div class="card"><h3>Joueurs actifs par jour <small class="muted">(30 derniers jours)</small></h3><div id="ch-active" class="chart"></div></div>
-        <div class="card"><h3>Argent créé et détruit par jour</h3><div class="legend"><span><i style="background:var(--s1)"></i>Créé (gains, bonus, cadeaux…)</span><span><i style="background:var(--s2)"></i>Détruit (pertes, achats)</span></div><div id="ch-money" class="chart"></div></div>
-        <div class="card"><h3>D'où vient l'argent <small class="muted">(30 jours, solde par source)</small></h3><table class="mini" id="tb-cats"></table></div>
-        <div class="card"><h3>Jeux <small class="muted">(30 jours)</small></h3><table class="mini" id="tb-games"></table><p class="small muted">« Résultat des joueurs » : ce que les joueurs ont gagné (+) ou perdu (−) au total. Négatif = le casino gagne, c'est normal.</p></div>
+        <div class="card"><h3>Joueurs actifs et parties lancées <small class="muted">(30 jours)</small></h3><div class="legend"><span><i style="background:var(--s1)"></i>Joueurs actifs</span><span><i style="background:var(--s3)"></i>Parties du Parrain lancées</span></div><div id="ch-active" class="chart"></div></div>
+        <div class="card"><h3>🪙 Jetons gagnés et dépensés par jour</h3><div class="legend"><span><i style="background:var(--s1)"></i>Gagnés par les joueurs</span><span><i style="background:var(--s2)"></i>Dépensés (style, VIP, coffres…)</span></div><div id="ch-money" class="chart"></div></div>
+      </div>
+      <h3 class="sec">🪙 Économie des jetons <small class="muted">(30 jours)</small></h3>
+      <div class="dash-grid">
+        <div class="card"><h3>D'où viennent les jetons, où ils partent</h3><table class="mini" id="tb-cats"></table><p class="small muted">Solde positif = jetons créés pour les joueurs. Négatif = jetons retirés du jeu (achats).</p></div>
         <div class="card"><h3>Les plus riches</h3><table class="mini" id="tb-rich"></table></div>
+      </div>
+      <h3 class="sec">🕴️ Le Parrain</h3>
+      <div class="dash-grid">
+        <div class="card"><h3>Meilleur palier atteint par joueur</h3><div id="ch-best" class="chart"></div></div>
+        <div class="card"><h3>Parties en cours</h3><table class="mini" id="tb-live"></table></div>
+        <div class="card"><h3>Meilleurs joueurs</h3><table class="mini" id="tb-top"></table></div>
+        <div class="card"><h3>Jeux de la partie <small class="muted">(30 jours, en € de caisse)</small></h3><table class="mini" id="tb-games"></table><p class="small muted">« Résultat des joueurs » : ce que les joueurs ont gagné (+) ou perdu (−) avec leur caisse. Négatif = la banque gagne, c'est normal.</p></div>
       </div>
     </section>
     <section id="status-panel" class="panel dash" hidden style="grid-column:1/-1">
@@ -116,10 +133,11 @@
     <section id="edit-panel" class="panel" hidden>
       <h2 id="ed-title">Joueur</h2>
       <p class="small muted">Identifiant : <code id="ed-uid"></code></p>
-      <h3>Banque</h3>
-      <div class="row2"><input id="ed-wallet" type="number" min="0" step="1" style="width:9em"> €
+      <div id="ed-run" class="ed-run"></div>
+      <h3>🪙 Jetons du compte</h3>
+      <div class="row2"><input id="ed-wallet" type="number" min="0" step="1" style="width:9em"> jetons
         <button type="button" data-add="100">+100</button><button type="button" data-add="1000">+1 000</button><button type="button" data-add="-100">−100</button>
-        <button id="save-wallet" class="gold" type="button">Enregistrer la banque</button></div>
+        <button id="save-wallet" class="gold" type="button">Enregistrer les jetons</button></div>
       <p class="small muted" id="ed-sessions"></p>
       <h3>👑 Pass VIP</h3>
       <div class="row2"><span id="ed-vip" class="small"></span>
@@ -138,12 +156,12 @@
       </div>
       <h3>Actions sur le compte</h3>
       <div class="row2">
-        <button id="act-close" type="button" title="Rend au joueur l'argent apporté sur ses tables en cours">💼 Fermer ses parties en cours</button>
-        <button id="act-reset" type="button" title="Banque à 1 000 €, niveau 1, objets et succès retirés">♻️ Remettre à zéro</button>
+        <button id="act-close" type="button" title="Ramène dans sa caisse l'argent posé sur les jeux de sa partie en cours">💼 Débloquer ses jeux en cours</button>
+        <button id="act-reset" type="button" title="Jetons de départ, niveau 1, objets et succès retirés, partie arrêtée">♻️ Remettre à zéro</button>
         <button id="act-ban" type="button">⛔ Bloquer</button>
         <button id="act-del" class="danger" type="button">🗑️ Supprimer le compte</button>
       </div>
-      <label class="small muted" style="display:flex;gap:.4rem;align-items:center;margin-top:.4rem"><input id="del-block" type="checkbox" checked> En supprimant, empêcher ce compte de revenir (sinon il pourra revenir avec une nouvelle banque de 1 000 €)</label>
+      <label class="small muted" style="display:flex;gap:.4rem;align-items:center;margin-top:.4rem"><input id="del-block" type="checkbox" checked> En supprimant, empêcher ce compte de revenir (sinon il pourra revenir avec un compte neuf)</label>
       <p id="no-save" class="small muted" hidden>Ce joueur n'a pas de sauvegarde de compte : seule sa banque est modifiable.</p>
       <p id="ed-msg" class="msg" role="status"></p>
     </section>

@@ -44,14 +44,15 @@
   function showStory(short) {
     return new Promise((done) => {
       const scenes = short ? [STORY[1], STORY[4]] : STORY;
-      let k = 0, timer = null, typing = null;
+      let k = 0, timer = null, typing = null, amb = null;
+      const stopAmb = () => { if (amb) { amb.stop(); amb = null; } };
       const ov = el('div', 'cine'); ov.setAttribute('role', 'dialog');
       const stage = el('div', 'cine-stage'), bars = [el('i', 'cine-bar top'), el('i', 'cine-bar bot')];
       const skip = el('button', 'cine-skip', 'Passer ⏭'); skip.type = 'button';
       const tap = el('div', 'cine-tap', 'Touche pour continuer');
       ov.append(stage, bars[0], bars[1], skip, tap);
       document.body.appendChild(ov);
-      const finish = () => { clearTimeout(timer); clearInterval(typing); ov.classList.add('out'); try { localStorage.setItem('dette-story', '1'); } catch (e) { /* ignore */ } setTimeout(() => { ov.remove(); done(); }, 500); };
+      const finish = () => { clearTimeout(timer); clearInterval(typing); stopAmb(); ov.classList.add('out'); try { localStorage.setItem('dette-story', '1'); } catch (e) { /* ignore */ } setTimeout(() => { ov.remove(); done(); }, 500); };
       const draw = () => {
         const sc = scenes[k];
         clearInterval(typing); clearTimeout(timer);
@@ -61,9 +62,9 @@
         stage.append(fx, art, t, x, dots);
         if (sc.bg === 'rain') for (let i = 0; i < 40; i++) { const d = el('i'); d.style.left = Math.random() * 100 + '%'; d.style.animationDelay = (-Math.random() * 1.2) + 's'; d.style.animationDuration = (0.6 + Math.random() * 0.6) + 's'; fx.appendChild(d); }
         if (sc.bg === 'casino') for (let i = 0; i < 14; i++) { const d = el('b', '', ['🪙', '💵', '🎲', '♠️', '♥️'][i % 5]); d.style.left = Math.random() * 100 + '%'; d.style.animationDelay = (-Math.random() * 4) + 's'; fx.appendChild(d); }
-        if (window.Sfx) { if (sc.bg === 'blood' && Sfx.heartbeat) Sfx.heartbeat(); else if (Sfx.chips) Sfx.chips(); }
+        stopAmb(); if (window.Sfx && Sfx.ambience) amb = Sfx.ambience(sc.bg);
         let i = 0;
-        typing = setInterval(() => { i++; x.textContent = sc.x.slice(0, i); if (i >= sc.x.length) { clearInterval(typing); timer = setTimeout(next, 2600); } }, 24);
+        typing = setInterval(() => { i++; x.textContent = sc.x.slice(0, i); if (window.Sfx && Sfx.type && i % 2 === 0 && sc.x[i - 1] !== ' ') Sfx.type(); if (i >= sc.x.length) { clearInterval(typing); timer = setTimeout(next, 2600); } }, 24);
       };
       const next = () => { if (k < scenes.length - 1) { k++; draw(); } else finish(); };
       ov.addEventListener('click', (e) => {
@@ -91,7 +92,7 @@
       const b = el('button', 'cta pulse', '▶ Commencer la journée'); b.type = 'button';
       b.onclick = () => { ov.remove(); done(); };
       box.append(el('div', 'icons', '🕴️'), el('div', 'kicker', 'LE PARRAIN · JOUR ' + n), el('div', 'pal', 'PALIER ' + n), el('p', '', palierText(n)), facts, b);
-      if (window.Sfx) Sfx.chips();
+      if (window.Sfx) { if (Sfx.sting) setTimeout(() => Sfx.sting(), 200); else Sfx.chips(); }
     });
   }
   function showWarn(r) {

@@ -1172,7 +1172,7 @@
       $('bonus').addEventListener('click', async () => {
         $('bonus').disabled = true;
         const v = await Casino.claimBonus();
-        if (v) { Casino.bigWin(v, 'BONUS DU JOUR'); }
+        if (v) { Casino.bigWin(v, 'BONUS DU JOUR', ' jetons'); }
         render();
       });
       // ---------- Banque du temps ----------
@@ -1215,7 +1215,7 @@
         setTimeout(() => {
           clearInterval(tick); wheelBusy = false;
           $('wh-result').textContent = '🎉 +' + fmt(r.amount) + ' € !';
-          if (r.amount >= 250) Casino.bigWin(r.amount, r.amount >= 1000 ? 'JACKPOT DE LA ROUE !' : 'ROUE DU JOUR');
+          if (r.amount >= 250) Casino.bigWin(r.amount, r.amount >= 1000 ? 'JACKPOT DE LA ROUE !' : 'ROUE DU JOUR', ' jetons');
           else Casino.toast('Roue du jour', '+' + fmt(r.amount) + ' € sur ta banque', '🎡', 'gold');
           render();
         }, 4700);
@@ -1271,7 +1271,7 @@
           const am = document.createElement('b'); am.className = 'camt'; am.textContent = fmt(c.amount) + ' €';
           const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'bonus-btn'; btn.textContent = 'Ouvrir le coffre';
           btn.disabled = c.amount < 1;
-          btn.addEventListener('click', async () => { btn.disabled = true; const v = await Casino.claimChest(); if (v) Casino.bigWin(v, 'COFFRE OUVERT'); lastChestKey = ''; render(); });
+          btn.addEventListener('click', async () => { btn.disabled = true; const v = await Casino.claimChest(); if (v) Casino.bigWin(v, 'COFFRE OUVERT', ' jetons'); lastChestKey = ''; render(); });
           top.append(ic, am, btn);
           const bar = document.createElement('div'); bar.className = 'bar'; const f = document.createElement('div'); f.style.width = pct + '%'; bar.appendChild(f);
           const note = document.createElement('small'); note.className = 'cnote muted'; note.textContent = c.full ? 'Plein ! Ouvre-le pour qu\'il recommence à se remplir.' : 'Plein dans ' + dur(c.fullIn);
@@ -1688,7 +1688,7 @@
           setTimeout(() => { o.addEventListener('click', (e) => { if (!e.target.closest('button')) close(false); }); }, 400);
           wrap.innerHTML = ''; wrap.appendChild(pz);
           if (window.Sfx) { if (rk >= 3 && Sfx.win) Sfx.win(); else if (Sfx.chips) Sfx.chips(); }
-          if (rk >= 3 && Casino.bigWin) setTimeout(() => Casino.bigWin(r.jetons, Casino.RARITY[r.rarity].name.toUpperCase() + ' !'), 200);
+          if (rk >= 3 && Casino.bigWin) setTimeout(() => Casino.bigWin(r.jetons, Casino.RARITY[r.rarity].name.toUpperCase() + ' !', ' jetons'), 200);
         };
       }
       $('bx-free').addEventListener('click', () => openBoxFx(false));

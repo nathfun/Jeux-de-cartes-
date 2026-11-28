@@ -16,7 +16,9 @@
 
   const S = { mode: null, stack: 0, betIx: 1, busy: false, auto: 0, stats: { spins: 0, bet: 0, won: 0, bonus: 0, best: 0 } };
   const srv = () => S.mode === 'real' && window.Casino && Casino.server;
-  const bet = () => E.BETS[S.betIx];
+  // Le Parrain : pas de mise sous le minimum du palier (10 € au palier 1)
+  const minIx = () => { if (!(window.Casino && S.mode === 'real' && Casino.minBet)) return 0; const m = Casino.minBet('gold'); const i = E.BETS.findIndex((b) => b >= m); return i < 0 ? 0 : i; };
+  const bet = () => { if (S.betIx < minIx()) S.betIx = minIx(); return E.BETS[S.betIx]; };
   const turbo = () => $('turbo').checked;
 
   // ---------- Grille ----------
@@ -184,7 +186,7 @@
   // ---------- Commandes ----------
   $('spin').addEventListener('click', spin);
   document.addEventListener('keydown', (e) => { if (e.code === 'Space' && !/INPUT|BUTTON|SELECT/.test(document.activeElement.tagName)) { e.preventDefault(); spin(); } });
-  $('bet-minus').addEventListener('click', () => { if (S.busy) return; S.betIx = Math.max(0, S.betIx - 1); renderJackpots(); showWallet(); if (window.Sfx) Sfx.chips(); });
+  $('bet-minus').addEventListener('click', () => { if (S.busy) return; S.betIx = Math.max(minIx(), S.betIx - 1); renderJackpots(); showWallet(); if (window.Sfx) Sfx.chips(); });
   $('bet-plus').addEventListener('click', () => { if (S.busy) return; const top = E.BETS.filter((b) => b <= (window.Casino && S.mode === 'real' ? Casino.maxBet() : 500)).length - 1; if (S.betIx >= top && S.mode === 'real' && window.Casino) Casino.toast('Mise maximale', E.BETS[top].toLocaleString('fr-FR') + ' € à ce palier (elle monte avec les paliers).', '🕴️'); S.betIx = Math.min(top, S.betIx + 1); renderJackpots(); showWallet(); if (window.Sfx) Sfx.chips(); });
   function updateAuto() { const a = $('auto'); a.classList.toggle('on', S.auto > 0); a.textContent = S.auto > 0 ? '■ Stop (' + S.auto + ')' : 'Auto ×10'; }
   function stopAuto() { S.auto = 0; updateAuto(); }

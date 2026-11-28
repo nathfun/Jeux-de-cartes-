@@ -190,7 +190,8 @@
         if (!r.ok) return { error: j.error === 'Opération inconnue.' ? 'Le serveur du Casino n\'est pas à jour pour cette fonction : l\'administrateur doit lancer la mise à jour du NAS (sudo sh /volume1/docker/casino/update.sh).' : j.error || 'Erreur du serveur (' + r.status + ').' };
         res = j;
       } else res = (await f.fn({ op, data: data || {} })).data;
-      txReason = TX_LABEL[op] || null;
+      // coffre : seul le prix est annoncé (le contenu reste une surprise jusqu'à l'ouverture)
+      txReason = op === 'box.open' ? null : TX_LABEL[op] || null;
       applyServer(res);
       try { runWatch(res.result || {}); } catch (e) { /* ignore */ }
       return res.result || {};
@@ -209,7 +210,11 @@
     b.textContent = text;
   }
   if (SERVER && API && typeof fetch !== 'undefined') {
-    fetch(API + '/api/info').then((r) => r.json()).then((j) => { if (j && j.maintenance && j.maintenance.on) showMaint('🛠️ ' + (j.maintenance.msg || 'Le Casino est en maintenance : reviens dans quelques minutes, tes parties sont gardées.')); }).catch(() => {});
+    fetch(API + '/api/info').then((r) => r.json()).then((j) => {
+      if (j && j.maintenance && j.maintenance.on) showMaint('🛠️ ' + (j.maintenance.msg || 'Le Casino est en maintenance : reviens dans quelques minutes, tes parties sont gardées.'));
+      // serveur pas à jour : ses règles (paliers, mises…) diffèrent de celles de l'app
+      else if (j && j.rules !== R.RULES_VERSION) { Casino.serverOutdated = true; showMaint('⏳ Mise à jour du serveur en cours : certains jeux peuvent afficher d\'anciennes règles quelques minutes.'); }
+    }).catch(() => {});
   }
   let syncing = null;
   function sync() {
@@ -491,13 +496,14 @@
     } catch (e) { /* partage annulé */ }
   }
 
-  function bigWin(amount, label) {
+  function bigWin(amount, label, unit) {
+    unit = unit || ' €';
     injectStyle();
     const o = document.createElement('div');
     o.className = 'casino-bigwin';
     const box = document.createElement('div'); box.className = 'cb-box';
     const t = document.createElement('div'); t.className = 'cb-title'; t.textContent = label || 'GROS GAIN !';
-    const v = document.createElement('div'); v.className = 'cb-amount'; v.textContent = '+0 €';
+    const v = document.createElement('div'); v.className = 'cb-amount'; v.textContent = '+0' + unit;
     box.append(t, v);
     o.appendChild(box);
     for (let k = 0; k < 28; k++) {
@@ -516,7 +522,7 @@
     const t0 = performance.now(), D = 1600;
     (function step(t) {
       const u = Math.min(1, (t - t0) / D);
-      v.textContent = '+' + Math.round(amount * (1 - Math.pow(1 - u, 3))).toLocaleString('fr-FR') + ' €';
+      v.textContent = '+' + Math.round(amount * (1 - Math.pow(1 - u, 3))).toLocaleString('fr-FR') + unit;
       if (u < 1) requestAnimationFrame(step);
     })(t0);
     // bouton « Partager » : une image du gain + ton lien d'invitation
@@ -843,8 +849,10 @@
     // ----- Coffres mystères et prix de la boutique -----
     boxInfo() { return R.boxInfo(load(), Date.now()); },
     async openBox(paid) {
-      if (SERVER) return call('box.open', { paid: !!paid });
-      return local((N) => R.openBox(P, !!paid, Date.now(), (n) => Math.floor(Math.random() * n), N));
+      const price = paid ? R.boxInfo(load(), Date.now()).price : 0;
+      const r = SERVER ? await call('box.open', { paid: !!paid }) : await local((N) => { const x = R.openBox(P, !!paid, Date.now(), (n) => Math.floor(Math.random() * n), N); return x; });
+      if (r && !r.error && price && typeof document !== 'undefined') { try { txBanner(-price, 'coffre mystère'); } catch (e) { /* ignore */ } }
+      return r;
     },
     priceOf(kind, id) { return R.priceOf(load(), kind, id, Date.now()); },
     inPromo(kind, id) { return R.inPromo(kind, id, Date.now()); },
@@ -1080,7 +1088,7 @@
         const r = await call('multi.prize', info || {});
         // duels en cours entre joueurs de cette table : réglés tout de suite par le serveur
         if (info && info.table) call('duel.settle', { game: info.game, table: info.table }).then((d) => { if (d.settled && d.settled.length) setTimeout(() => call('deals.list'), 2500); }).catch(() => {});
-        if (r.amount > 0) setTimeout(() => bigWin(r.amount, place === 1 ? 'VICTOIRE ENTRE AMIS !' : '2e PLACE !'), 2200);
+        if (r.amount > 0) setTimeout(() => bigWin(r.amount, place === 1 ? 'VICTOIRE ENTRE AMIS !' : '2e PLACE !', ' jetons'), 2200);
         return r.amount || 0;
       }
       if (BANK) {
@@ -1088,11 +1096,11 @@
         const amt = R.prizeFor(place, players);
         if (!amt) { local((N) => R.applyPrize(P, key, place, players, Date.now(), N)); return 0; }
         const r = await bankOp('gain', amt, () => ({ x: amt }), (N) => R.applyPrize(P, key, place, players, Date.now(), N));
-        if (r.ok) setTimeout(() => bigWin(amt, place === 1 ? 'VICTOIRE ENTRE AMIS !' : '2e PLACE !'), 2200);
+        if (r.ok) setTimeout(() => bigWin(amt, place === 1 ? 'VICTOIRE ENTRE AMIS !' : '2e PLACE !', ' jetons'), 2200);
         return r.ok ? amt : 0;
       }
       const v = local((N) => R.applyPrize(P, key, place, players, Date.now(), N));
-      if (v > 0) setTimeout(() => bigWin(v, place === 1 ? 'VICTOIRE ENTRE AMIS !' : '2e PLACE !'), 2200);
+      if (v > 0) setTimeout(() => bigWin(v, place === 1 ? 'VICTOIRE ENTRE AMIS !' : '2e PLACE !', ' jetons'), 2200);
       return v;
     },
     showRanking, celebrate, confirm: confirmBox,

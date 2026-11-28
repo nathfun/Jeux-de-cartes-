@@ -1020,6 +1020,20 @@
     renderCount,
   };
 
+  // Jetons : 10, 25, 50, 100 en partie du Parrain (grossis selon le palier), 1, 5, 10, 25 sinon
+  function setChips() {
+    const real = mode === 'real' && window.Casino;
+    let vals = [1, 5, 10, 25];
+    if (real) {
+      const min = minBet(), f = Math.max(1, Math.round(min / 10));
+      vals = [10, 25, 50, 100].map((v) => v * f);
+      if (bet < min) bet = min;
+    }
+    document.querySelectorAll('#bet-controls [data-chip]').forEach((b, i) => { b.dataset.chip = vals[i]; b.textContent = vals[i].toLocaleString('fr-FR'); });
+    const hint = document.querySelector('#bet-controls .bet-line .muted');
+    if (hint) hint.textContent = '(min ' + minBet() + ' € · max ' + maxBetNow().toLocaleString('fr-FR') + ' €)';
+  }
+
   // ---------- Événements ----------
   document.querySelectorAll('[data-chip]').forEach((b) => b.addEventListener('click', () => {
     const v = parseInt(b.dataset.chip, 10);
@@ -1061,7 +1075,7 @@
     stats.bankroll = keep;
     saveStats();
     round = null;
-    bet = 10;
+    bet = Math.max(10, minBet());
     $('feedback').className = 'feedback empty';
     $('feedback').textContent = 'Tes décisions seront analysées ici.';
     setMessage('Place ta mise et clique sur « Distribuer ».');
@@ -1116,6 +1130,7 @@
     $('bank-label').textContent = mode === 'real' ? 'Sur la table' : mode === 'train' ? 'Crédit d\'apprentissage' : mode === 'defi' ? 'Jetons de défi' : 'Caisse';
     if (!mode && window.Casino) { $('bankroll').textContent = (Math.round(Casino.wallet() * 100) / 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 }); }
     $('cashout').textContent = mode === 'train' ? 'Terminer' : 'Encaisser';
+    setChips();
     if (!playing) { renderPicker(); return; }
     render();
   }

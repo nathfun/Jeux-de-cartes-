@@ -1224,13 +1224,14 @@
     const p = P && P.run && P.run.status !== 'over' ? P.run.palier : 1;
     return niceDown(250 * palierFactor(p) * (isVip(P, now) ? RUN.VIP_BET : 1));
   }
-  const runMinBet = (P) => Math.max(1, niceDown(5 * palierFactor(P && P.run ? P.run.palier : 1)));
+  const runMinBet = (P) => Math.max(1, niceDown(10 * palierFactor(P && P.run ? P.run.palier : 1)));
   // Mises possibles aux machines (de 1 € à plusieurs millions)
   const BET_STEPS = (() => { const a = []; for (let e = 1; e <= 1e8; e *= 10) [1, 2, 5].forEach((m) => a.push(m * e)); [25, 250, 2500, 25000, 250000].forEach((v) => a.push(v)); return a.sort((x, y) => x - y); })();
-  /** Mise minimale d'un jeu au palier du joueur (blackjack 5 €, les autres 1 € au palier 1). */
+  /** Mise minimale d'un jeu au palier du joueur (10 € au palier 1, roulette 2 €). */
   function gameMin(P, game) {
     const m = runMinBet(P);
-    return game === 'blackjack' ? m : Math.max(1, niceDown(m / 5));
+    // Le Parrain : 10 € minimum partout (grossit avec les paliers), sauf la roulette : 2 €
+    return game === 'roulette' ? Math.max(1, niceDown(m / 5)) : m;
   }
   // Roue de la fortune : 12 cases égales, dans l'ordre de la roue (redistribution ≈ 95,8 %)
   const FORTUNE = [
@@ -1430,7 +1431,10 @@
     };
   }
 
+  // version des règles : le serveur et l'app doivent avoir la même (sinon : serveur du NAS à mettre à jour)
+  const RULES_VERSION = '2026.11.28-2';
   const api = {
+    RULES_VERSION,
     weekOf, weekPoints, ensureWeek, SEASON_TIERS, seasonOf, seasonTier, seasonName, ensureSeason,
     AVATARS, FELTS, BACKS, SHOP, SHOP_LABELS, DEFAULT_EQUIP, itemOf, canUse, buyItem, unlocksAt, CHALLENGES, ACHIEVEMENTS, TIME_PACKS, START_WALLET, GAMES,
     need, levelOf, title, today, fresh, normalize, addXP, unlock, checkWallet, ensureDaily, track,

@@ -34,6 +34,8 @@
   function setStack(v) { S.stack = Math.max(0, Math.round(v * 100) / 100); if (S.mode === 'real' && window.Casino) Casino.setStack('loto', S.stack); }
   const readBet = () => Math.floor(Number($('bet').value));
   function maxB() { return Math.min(C.MAX_BET, window.Casino && S.mode === 'real' ? Casino.maxBet() : C.MAX_BET); }
+  // Le Parrain : mise minimale du palier (10 € au palier 1) ; apprentissage : celle du jeu
+  function minB() { return window.Casino && S.mode === 'real' && Casino.minBet ? Math.max(C.MIN_BET, Casino.minBet('loto')) : C.MIN_BET; }
 
   // ---------- Grille ----------
   const nums = [];
@@ -130,7 +132,7 @@
     if (!S.mode || busy) return;
     const picks = store.picks.slice().sort((a, b) => a - b), v = readBet();
     if (!E.validPicks(picks)) { toast('Coche au moins un numéro (jusqu\'à ' + C.MAX_PICK + ').', true); stopAuto(); return; }
-    if (!(v >= C.MIN_BET && v <= maxB())) { toast('Mise entre ' + C.MIN_BET + ' et ' + maxB() + ' €.', true); stopAuto(); return; }
+    if (!(v >= minB() && v <= maxB())) { toast('Mise entre ' + minB() + ' et ' + maxB() + ' €.', true); stopAuto(); return; }
     if (S.mode === 'train' && S.stack < v) setStack(Math.max(S.stack, window.Casino ? Casino.TRAIN_BANK : 1000));
     if (v > S.stack) { toast('Pas assez d\'argent sur la table.', true); stopAuto(); return; }
     busy = true; clearDraw(); ui();
@@ -246,10 +248,10 @@
   $('clear-btn').addEventListener('click', () => { if (busy) return; clearDraw(); store.picks = []; persist(); ui(); });
   document.querySelectorAll('#flash button').forEach((b) => b.addEventListener('click', () => flash(Number(b.dataset.k))));
   document.querySelectorAll('#quick button').forEach((b) => b.addEventListener('click', () => { $('bet').value = b.dataset.v; if (window.Sfx) Sfx.chips(); ui(); }));
-  $('bet-half').addEventListener('click', () => { $('bet').value = Math.max(C.MIN_BET, Math.floor(readBet() / 2)); ui(); });
-  $('bet-double').addEventListener('click', () => { $('bet').value = Math.min(maxB(), Math.max(C.MIN_BET, readBet() * 2)); ui(); });
+  $('bet-half').addEventListener('click', () => { $('bet').value = Math.max(minB(), Math.floor(readBet() / 2)); ui(); });
+  $('bet-double').addEventListener('click', () => { $('bet').value = Math.min(maxB(), Math.max(minB(), readBet() * 2)); ui(); });
   $('bet').addEventListener('input', () => ui());
-  $('bet').addEventListener('change', () => { const v = readBet(); $('bet').value = Math.min(maxB(), Math.max(C.MIN_BET, isFinite(v) ? v : C.MIN_BET)); ui(); });
+  $('bet').addEventListener('change', () => { const v = readBet(); $('bet').value = Math.min(maxB(), Math.max(minB(), isFinite(v) ? v : minB())); ui(); });
   document.addEventListener('keydown', (e) => {
     if (e.code !== 'Space' || /INPUT|TEXTAREA|SELECT|BUTTON/.test(document.activeElement.tagName)) return;
     e.preventDefault(); play();
@@ -266,7 +268,8 @@
   function applyMax() {
     const m = maxB(); if (m === maxShown) return; maxShown = m;
     $('bet').max = m; if (readBet() > m) $('bet').value = m;
-    document.querySelectorAll('#quick button').forEach((b) => { b.disabled = Number(b.dataset.v) > m; b.title = b.disabled ? 'Mise maximale à ce palier : ' + m + ' €' : ''; });
+    document.querySelectorAll('#quick button').forEach((b) => { const v = Number(b.dataset.v); b.disabled = v > m || v < minB(); b.hidden = v < minB(); b.title = v > m ? 'Mise maximale à ce palier : ' + m + ' €' : ''; });
+    if ($('bet') && readBet() < minB() && document.activeElement !== $('bet')) $('bet').value = minB();
   }
   function renderPay() {
     const k = store.picks.length, box = $('paytable'); box.innerHTML = '';
@@ -376,7 +379,7 @@
   function renderPicker(msg) {
     const box = $('mode-picker');
     if (!window.Casino) { startGame('train', 1000); return; }
-    Casino.modePicker(box, { game: 'loto', min: C.MIN_BET, suggest: 100, onStart: (mode, amount) => startGame(mode, amount) });
+    Casino.modePicker(box, { game: 'loto', min: minB(), suggest: 100, onStart: (mode, amount) => startGame(mode, amount) });
     if (msg) { const p = document.createElement('p'); p.className = 'muted'; p.textContent = msg; box.prepend(p); }
   }
   renderPicker(); showWallet();

@@ -60,7 +60,7 @@
   async function drop() {
     if (!S.mode) return false;
     const v = readBet();
-    if (!(v >= C.MIN_BET && v <= maxB())) { toast('Mise entre ' + C.MIN_BET + ' et ' + maxB() + ' € par bille.', true); return false; }
+    if (!(v >= minB() && v <= maxB())) { toast('Mise entre ' + minB() + ' et ' + maxB() + ' € par bille.', true); return false; }
     if (inPlay().length + dropping >= MAX_IN_PLAY) { toast('Déjà ' + MAX_IN_PLAY + ' billes sur le plateau !', true); return false; }
     if (S.mode === 'train' && S.stack < v) setStack(Math.max(S.stack, window.Casino ? Casino.TRAIN_BANK : 1000));
     if (v > S.stack) { toast('Pas assez d\'argent sur la table.', true); return false; }
@@ -150,10 +150,10 @@
     if (e.code === 'Space' && !/INPUT|TEXTAREA|SELECT|BUTTON/.test(document.activeElement.tagName)) { e.preventDefault(); drop(); }
   });
   document.querySelectorAll('#quick button').forEach((b) => b.addEventListener('click', () => { $('bet').value = b.dataset.v; if (window.Sfx) Sfx.chips(); ui(); }));
-  $('bet-half').addEventListener('click', () => { $('bet').value = Math.max(C.MIN_BET, Math.floor(readBet() / 2)); ui(); });
-  $('bet-double').addEventListener('click', () => { $('bet').value = Math.min(maxB(), Math.max(C.MIN_BET, readBet() * 2)); ui(); });
+  $('bet-half').addEventListener('click', () => { $('bet').value = Math.max(minB(), Math.floor(readBet() / 2)); ui(); });
+  $('bet-double').addEventListener('click', () => { $('bet').value = Math.min(maxB(), Math.max(minB(), readBet() * 2)); ui(); });
   $('bet').addEventListener('input', () => ui());
-  $('bet').addEventListener('change', () => { const v = readBet(); $('bet').value = Math.min(maxB(), Math.max(C.MIN_BET, isFinite(v) ? v : C.MIN_BET)); ui(); });
+  $('bet').addEventListener('change', () => { const v = readBet(); $('bet').value = Math.min(maxB(), Math.max(minB(), isFinite(v) ? v : minB())); ui(); });
   function pick(kind, v) {
     if (inPlay().length || autoTimer) { toast('Attends que les billes soient tombées pour changer le plateau.', true); return; }
     store[kind] = kind === 'rows' ? Number(v) : v; persist();
@@ -176,12 +176,15 @@
   }
   // mise maximale : salon VIP en partie réelle (le serveur vérifie aussi)
   function maxB() { return (window.Casino && S.mode === 'real' ? Casino.maxBet() : 500); }
+  // Le Parrain : mise minimale du palier (10 € au palier 1) ; apprentissage : celle du jeu
+  function minB() { return window.Casino && S.mode === 'real' && Casino.minBet ? Math.max(C.MIN_BET, Casino.minBet('plinko')) : C.MIN_BET; }
   let maxShown = null;
   function applyMax() {
     const m = maxB(); if (m === maxShown) return; maxShown = m;
     $('bet').max = m;
     if (readBet() > m) $('bet').value = m;
-    document.querySelectorAll('#quick button').forEach((b) => { b.disabled = Number(b.dataset.v) > m; b.title = b.disabled ? 'Mise maximale à ce palier : ' + m + ' €' : ''; });
+    document.querySelectorAll('#quick button').forEach((b) => { const v = Number(b.dataset.v); b.disabled = v > m || v < minB(); b.hidden = v < minB(); b.title = v > m ? 'Mise maximale à ce palier : ' + m + ' €' : ''; });
+    if ($('bet') && readBet() < minB() && document.activeElement !== $('bet')) $('bet').value = minB();
     let hint = document.getElementById('vip-hint');
     if (!hint) { hint = document.createElement('div'); hint.id = 'vip-hint'; hint.className = 'vip-hint'; $('quick').after(hint); }
     if (window.Casino && S.mode === 'real') { hint.textContent = '🕴️ Palier ' + ((Casino.run || {}).palier || 1) + ' · mise max ' + m.toLocaleString('fr-FR') + ' € (elle monte avec les paliers)'; hint.hidden = false; }
@@ -309,7 +312,7 @@
   function renderPicker(msg) {
     const box = $('mode-picker');
     if (!window.Casino) { startGame('train', 10000); return; }
-    Casino.modePicker(box, { game: 'plinko', min: C.MIN_BET, suggest: 100, onStart: (mode, amount) => startGame(mode, amount) });
+    Casino.modePicker(box, { game: 'plinko', min: minB(), suggest: 100, onStart: (mode, amount) => startGame(mode, amount) });
     if (msg) { const p = document.createElement('p'); p.className = 'muted'; p.textContent = msg; box.prepend(p); }
   }
   // Quitter la page avec des billes en l'air : leur chemin est déjà tiré, on règle tout de suite

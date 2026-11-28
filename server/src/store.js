@@ -66,7 +66,8 @@ function open(dir) {
   const get = db.prepare('SELECT state FROM players WHERE uid = ?');
   const ins = db.prepare('INSERT INTO players (uid, state, created, updated) VALUES (?, ?, ?, ?) ON CONFLICT(uid) DO UPDATE SET state = excluded.state, updated = excluded.updated');
   const led = db.prepare('INSERT INTO ledger (uid, at, op, wallet_before, wallet_after, table_before, table_after) VALUES (?, ?, ?, ?, ?, ?, ?)');
-  const tableSum = (P) => (P && P.sessions ? Object.values(P.sessions).reduce((a, s) => a + (s.stack || 0), 0) : 0);
+  // « table » du journal = la caisse de la partie du Parrain en cours (caisse + argent posé sur les jeux), en €
+  const tableSum = (P) => (P && P.run && P.run.status !== 'over' ? P.run.cash || 0 : 0) + (P && P.sessions ? Object.values(P.sessions).reduce((a, s) => a + (s.stack || 0), 0) : 0);
   const money = (P) => ({ w: P ? Math.round((P.wallet || 0) * 100) / 100 : 0, t: Math.round(tableSum(P) * 100) / 100 });
 
   return {

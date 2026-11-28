@@ -67,7 +67,59 @@
 
   let lastCard = 0;
   const buzz = (p) => { if (window.Casino) Casino.vibrate(p); };
+  // ---------- Ambiances de la cinématique du Parrain (boucles qu'on arrête avec la fonction renvoyée) ----------
+  let longNoise = null;
+  function loopNoise(filterType, freq, q, gain) {
+    if (!longNoise) { longNoise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate); const d = longNoise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+    const src = ctx.createBufferSource(); src.buffer = longNoise; src.loop = true;
+    const f = ctx.createBiquadFilter(); f.type = filterType; f.frequency.value = freq; f.Q.value = q;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, ctx.currentTime); g.gain.exponentialRampToValueAtTime(gain, ctx.currentTime + 1.2);
+    src.connect(f); f.connect(g); g.connect(master); src.start();
+    return { stop() { const t = ctx.currentTime; g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(Math.max(0.0001, g.gain.value), t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6); src.stop(t + 0.7); } };
+  }
+  function drone(freqs, gain, cutoff) {
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, ctx.currentTime); g.gain.exponentialRampToValueAtTime(gain, ctx.currentTime + 1.5);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = cutoff || 400;
+    lp.connect(g); g.connect(master);
+    const os = freqs.map((f) => { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.connect(lp); o.start(); return o; });
+    return { stop() { const t = ctx.currentTime; g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(Math.max(0.0001, g.gain.value), t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.8); os.forEach((o) => o.stop(t + 0.9)); } };
+  }
+  function every(ms, fn) { fn(); const id = setInterval(fn, ms); return { stop() { clearInterval(id); } }; }
+
   const Sfx = {
+    /** Ambiance d'une scène de la cinématique : 'rain', 'smoke', 'casino', 'deal', 'blood'. Renvoie { stop }. */
+    ambience(kind) {
+      if (!ac()) return { stop() {} };
+      const parts = [];
+      if (kind === 'rain') {
+        parts.push(loopNoise('bandpass', 2600, 0.5, 0.14), loopNoise('lowpass', 400, 0.7, 0.06));
+        parts.push(every(4200, () => { const t = ctx.currentTime + Math.random(); tone(t, 45, 'sine', 0.35, 0.3, 2.4, 30); noiseBurst(t, 120, 0.6, 0.12, 1.6); }));
+      } else if (kind === 'smoke') {
+        parts.push(drone([55, 55.4, 82.4], 0.07, 320));
+        parts.push(every(2600, () => { const t = ctx.currentTime; tone(t, 196, 'triangle', 0.05, 0.4, 1.8); tone(t + 0.9, 233, 'triangle', 0.04, 0.4, 1.8); }));
+      } else if (kind === 'casino') {
+        parts.push(loopNoise('bandpass', 900, 0.4, 0.05));
+        const notes = [261.6, 311.1, 392, 466.2, 523.3, 622.3];
+        parts.push(every(300, () => { const t = ctx.currentTime; tone(t, notes[Math.floor(Math.random() * notes.length)], 'triangle', 0.07, 0.005, 0.35); if (Math.random() < 0.3) Sfx.chips(); }));
+        parts.push(drone([65.4, 98], 0.05, 260));
+      } else if (kind === 'deal') {
+        parts.push(drone([73.4, 110, 146.8], 0.06, 380));
+        setTimeout(() => { if (!ctx) return; const t = ctx.currentTime; tone(t, 1568, 'sine', 0.12, 0.002, 0.9); tone(t + 0.08, 2093, 'sine', 0.09, 0.002, 1.1); }, 700);
+      } else if (kind === 'blood') {
+        parts.push(drone([41.2, 43.6], 0.08, 200));
+        parts.push(every(1100, () => Sfx.heartbeat()));
+      }
+      return { stop() { parts.forEach((x) => { try { x.stop(); } catch (e) { /* ignore */ } }); } };
+    },
+    /** Frappe de machine à écrire. */
+    type() { if (ac()) noiseBurst(ctx.currentTime, 3200 + Math.random() * 800, 3, 0.05, 0.025); },
+    /** Coup de théâtre (titre « PALIER N ») : grosse caisse + accord grave. */
+    sting() {
+      if (!ac()) return;
+      const t = ctx.currentTime;
+      tone(t, 70, 'sine', 0.7, 0.005, 0.9, 38); noiseBurst(t, 200, 0.5, 0.25, 0.4);
+      [130.8, 155.6, 196].forEach((f, i) => tone(t + 0.05 + i * 0.02, f, 'sawtooth', 0.05, 0.02, 1.6));
+    },
     card() {
       if (!ac()) return;
       const t = ctx.currentTime;

@@ -13,10 +13,11 @@
   function scaleChips(real) {
     const f = real && window.Casino && Casino.betFactor ? Casino.betFactor() : 1;
     let m = 1; [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000].forEach((x) => { if (x <= f) m = x; });
-    CHIPS = BASE_CHIPS.map((v) => v * m);
+    // en partie du Parrain : pas de jeton de 1 (mise minimale 2)
+    CHIPS = (real && window.Casino ? [2, 5, 10, 25, 100, 500] : BASE_CHIPS).map((v) => v * m);
     if (!CHIPS.includes(selected)) selected = CHIPS[1];
   }
-  const chipBase = (v) => BASE_CHIPS[Math.max(0, CHIPS.indexOf(v))];
+  const chipBase = (v) => BASE_CHIPS[Math.max(0, CHIPS.indexOf(v))] || 1;
   const SPIN_MS = 9000;
   const RESULT_MS = 5500;
   const now = () => Date.now();
@@ -521,7 +522,7 @@
       const cap = Casino.maxBet(), staked = Object.values(S.bets).reduce((a, v) => a + v, 0);
       const caseCap = Math.min(cap, Math.round(B.byKey[key].max * Casino.betFactor()));
       // mises minimales : 1 € sur un numéro, 2 € sur les chances simples, douzaines et colonnes (elles montent avec les paliers)
-      const out = ['simple', 'douzaine', 'colonne'].includes(B.byKey[key].type), minIn = Casino.minBet('roulette'), mn = out ? minIn * 2 : minIn;
+      const out = ['simple', 'douzaine', 'colonne'].includes(B.byKey[key].type), minIn = Casino.minBet('roulette'), mn = minIn;
       if ((S.bets[key] || 0) + amount < mn) { $('sub-message').textContent = 'Mise minimale : ' + mn + ' € ' + (out ? 'sur les chances simples, douzaines et colonnes.' : 'sur un numéro.'); return false; }
       if ((S.bets[key] || 0) + amount > caseCap) { $('sub-message').textContent = 'À ce palier, au plus ' + caseCap.toLocaleString('fr-FR') + ' € sur cette case.'; return false; }
       if (staked + amount > cap * 2) { $('sub-message').textContent = 'À ce palier, au plus ' + (cap * 2).toLocaleString('fr-FR') + ' € par tour.'; return false; }

@@ -61,7 +61,7 @@ const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'jeux-de-cartes-81cdf';
 const DB_URL = process.env.FIREBASE_DATABASE_URL || 'https://jeux-de-cartes-81cdf-default-rtdb.europe-west1.firebasedatabase.app';
 const MAX_BODY = 32 * 1024;
 // version du serveur (affichée dans l'admin et sur /health) : à changer à chaque mise à jour du serveur
-const SERVER_VERSION = '2026.11.28-1';
+const SERVER_VERSION = '2026.11.28-2';
 const TABLES = { blackjack: 'tables/', poker: 'ptables/', roulette: 'rtables/', loto: 'ltables/' };
 
 // ---------- Firebase (vérification des comptes, profil public, lecture des tables entre amis) ----------
@@ -514,10 +514,13 @@ const userError = (msg) => Object.assign(new Error(msg), { userMessage: msg });
 const sum = (o) => Object.values(o || {}).reduce((a, s) => a + (s.stack || 0), 0);
 const r2 = (v) => Math.round(v * 100) / 100;
 function brief(uid, st, created, updated) {
-  const P = st.player || {};
+  const P = st.player || {}, r = P.run && P.run.status !== 'over' ? P.run : null;
   return { uid, pseudo: P.pseudo || '(sans pseudo)', avatar: P.avatar || '🎩', xp: P.xp || 0, level: R.levelOf(P.xp || 0), wallet: r2(P.wallet || 0), onTables: r2(sum(P.sessions)),
     sessions: Object.fromEntries(Object.entries(P.sessions || {}).map(([g, x]) => [g, x.stack])), achievements: Object.keys(P.achievements || {}).length, owned: Object.keys(P.owned || {}).length,
-    hands: (P.totals && P.totals.hands) || 0, vipUntil: R.isVip(P, Date.now()) ? P.vipUntil : 0, created, updated };
+    hands: (P.totals && P.totals.hands) || 0, vipUntil: R.isVip(P, Date.now()) ? P.vipUntil : 0, created, updated,
+    bestPalier: P.bestPalier || 0, runs: (P.totals && P.totals.runs) || 0, bestGain: (P.totals && P.totals.bestJetons) || 0,
+    run: r ? { palier: r.palier, status: r.status, caisse: r2((r.cash || 0) + sum(P.sessions)), quota: r.quota, lives: r.lives, dayEnd: r.dayEnd } : null,
+    lastRun: P.lastRun || null, mt: P.mt ? { game: P.mt.game, amount: P.mt.amount } : null };
 }
 // applique une modification de l'administrateur à un joueur, avec une ligne au journal de l'argent
 function adminEdit(target, op, fn) {
@@ -532,55 +535,76 @@ function adminEdit(target, op, fn) {
     return brief(target, after);
   });
 }
-// ---------- Tableau de bord (page admin) : activité, économie, jeux, alertes ----------
-const GAME_OF = { bj: 'Blackjack', pk: 'Poker', rl: 'Roulette', sl: 'Casino Royal', gd: 'Ruée vers l\'Or', cr: 'Rocket Crash', pl: 'Plinko', mn: 'Mines', tr: 'Bourse Flash', lo: 'Loto Express' };
-function categoryOf(r) {
-  if (!r.wb && !r.tb) return 'Nouveaux comptes';
+// ---------- Tableau de bord (page admin) : activité, jetons, mode Le Parrain, jeux, alertes ----------
+// Deux monnaies : les JETONS (compte du joueur, durables) et les € de la CAISSE d'une partie du Parrain (fictifs, perdus en fin de partie).
+const GAME_OF = { bj: 'Blackjack', rl: 'Roulette', sl: 'Casino Royal', gd: 'Ruée vers l\'Or', cr: 'Rocket Crash', pl: 'Plinko', mn: 'Mines', tr: 'Bourse Flash', lo: 'Loto Express', wh: 'Roue de la fortune', bo: 'Boosters', hc: 'Course de chevaux', hs: 'Le Braquage' };
+/** D'où viennent (ou où partent) les jetons d'une ligne du journal. */
+function jetonSource(r) {
   const op = r.op, pre = op.split('.')[0];
-  if (op.startsWith('admin:')) return 'Admin';
+  if (!r.wb && !r.tb && r.wa >= 0 && op !== 'admin:gift' && !op.startsWith('admin:')) { if (op === 'sync' || op === 'profile.set') return 'Nouveaux comptes'; }
+  if (op.startsWith('admin:')) return op === 'admin:gift' ? 'Cadeaux de l\'admin' : 'Admin (corrections)';
   if (op === 'ref') return 'Parrainage';
-  if (op.startsWith('mk.')) return 'Marché (frais)';
+  if (pre === 'mk') return 'Marché';
   if (op.startsWith('trade')) return 'Échanges';
   if (op.startsWith('duel')) return 'Duels';
-  if (op.startsWith('loto')) return 'Loto entre amis';
-  if (GAME_OF[pre] && op !== 'session.start') return 'Jeux';
-  return { 'bonus.claim': 'Bonus du jour', 'challenge.claim': 'Défis', 'time.claim': 'Banque du temps', 'chest.claim': 'Coffre', 'wheel.spin': 'Roue du jour', 'vip.buy': 'Pass VIP', 'rescue.claim': 'Aide de secours', 'multi.prize': 'Entre amis', 'shop.buy': 'Boutique', 'session.start': 'Tables (aller)', 'session.cashout': 'Tables (retour)', 'run.start': 'Le Parrain', 'run.end': 'Le Parrain', 'run.over': 'Le Parrain', 'run.abandon': 'Le Parrain' }[op] || 'Autre';
+  if (pre === 'mt') return 'Tables multijoueur';
+  if (pre === 'pk') return 'Poker entre joueurs';
+  if (pre === 'ev') return 'Grand Prix du soir';
+  if (op === 'box.open') return 'Coffres mystères';
+  if (pre === 'run' || GAME_OF[pre] || op === 'session.start' || op === 'session.cashout' || op === 'sync') return 'Le Parrain (fins de partie)';
+  return { 'bonus.claim': 'Bonus du jour', 'challenge.claim': 'Défis du jour', 'wheel.spin': 'Roue du jour', 'chest.claim': 'Coffre', 'vip.buy': 'Pass VIP', 'shop.buy': 'Boutique (style)', 'multi.prize': 'Entre amis', 'econ': 'Passage aux jetons' }[op] || 'Autre (' + op + ')';
 }
 function dashboard() {
   const now = Date.now(), DAY = 864e5, day = (t) => R.today(t);
   const all = db.all();
   const days = []; for (let k = 29; k >= 0; k--) days.push(day(now - k * DAY));
-  const active = Object.fromEntries(days.map((d) => [d, new Set()])), fresh = Object.fromEntries(days.map((d) => [d, 0]));
-  const rows = db.ledgerSince(now - 30 * DAY).filter((r) => r.op !== 'econ');
-  rows.forEach((r) => { const d = day(r.at); if (active[d]) active[d].add(r.uid); });
+  const active = Object.fromEntries(days.map((d) => [d, new Set()])), fresh = Object.fromEntries(days.map((d) => [d, 0])), runsPerDay = Object.fromEntries(days.map((d) => [d, 0]));
+  // on ignore les anciennes lignes en euros (d'avant le passage aux jetons de chaque joueur)
+  const raw = db.ledgerSince(now - 30 * DAY), econAt = {};
+  raw.forEach((r) => { if (r.op === 'econ') econAt[r.uid] = r.at; });
+  const rows = raw.filter((r) => r.op !== 'econ' && !(econAt[r.uid] && r.at < econAt[r.uid]));
+  rows.forEach((r) => { const d = day(r.at); if (active[d]) active[d].add(r.uid); if (r.op === 'run.start' && runsPerDay[d] !== undefined) runsPerDay[d]++; });
   all.forEach((p) => { const d = day(p.created); if (fresh[d] !== undefined) fresh[d]++; });
-  // économie : argent créé / détruit par catégorie, par jour
-  const cats = {}, perDay = Object.fromEntries(days.map((d) => [d, { created: 0, destroyed: 0 }]));
+  // jetons gagnés / dépensés, par source et par jour ; résultat des jeux du Parrain (€ de caisse)
+  const cats = {}, perDay = Object.fromEntries(days.map((d) => [d, { gained: 0, spent: 0 }]));
   const games = {}, gain24 = {};
   rows.forEach((r) => {
-    const delta = (r.wa + r.ta) - (r.wb + r.tb);
-    const c = categoryOf(r);
-    cats[c] = (cats[c] || 0) + delta;
-    const d = day(r.at);
-    if (perDay[d]) { if (delta > 0) perDay[d].created += delta; else perDay[d].destroyed += -delta; }
-    const pre = r.op.split('.')[0];
-    if (GAME_OF[pre] && r.op !== 'session.start') { const g = games[pre] = games[pre] || { name: GAME_OF[pre], ops: 0, net: 0, players: new Set() }; g.ops++; g.net += delta; g.players.add(r.uid); }
-    if (r.at >= now - DAY && delta > 0 && c !== 'Nouveaux comptes' && c !== 'Tables (retour)') gain24[r.uid] = (gain24[r.uid] || 0) + delta;
+    const dw = r.wa - r.wb, dt = r.ta - r.tb, d = day(r.at), pre = r.op.split('.')[0];
+    if (dw) {
+      const c = jetonSource(r);
+      const e = cats[c] = cats[c] || { gained: 0, spent: 0 };
+      if (dw > 0) e.gained += dw; else e.spent += -dw;
+      if (perDay[d]) { if (dw > 0) perDay[d].gained += dw; else perDay[d].spent += -dw; }
+      if (r.at >= now - DAY && dw > 0 && !r.op.startsWith('admin:')) gain24[r.uid] = (gain24[r.uid] || 0) + dw;
+    }
+    if (GAME_OF[pre] && dt) { const g = games[pre] = games[pre] || { name: GAME_OF[pre], ops: 0, net: 0, players: new Set() }; g.ops++; g.net += dt; g.players.add(r.uid); }
   });
-  const name = Object.fromEntries(all.map((p) => [p.uid, (p.state.player && p.state.player.pseudo) || '(sans pseudo)']));
-  const money = (p) => { const P = p.state.player || {}; return (P.wallet || 0) + Object.values(P.sessions || {}).reduce((a, s) => a + (s.stack || 0), 0); };
-  const total = all.reduce((a, p) => a + money(p), 0);
-  const ALERT = 5000;
+  const pl = all.map((p) => ({ uid: p.uid, P: p.state.player || {}, created: p.created, updated: p.updated })).filter((x) => x.P.pseudo || x.P.xp);
+  const name = Object.fromEntries(pl.map((x) => [x.uid, x.P.pseudo || '(sans pseudo)']));
+  const jetons = pl.reduce((a, x) => a + (x.P.wallet || 0), 0) + pl.reduce((a, x) => a + (x.P.mt ? x.P.mt.amount || 0 : 0), 0);
+  // Le Parrain
+  const live = pl.filter((x) => x.P.run && x.P.run.status !== 'over');
+  const best = {}; pl.forEach((x) => { const b = x.P.bestPalier || 0; const k = b >= 10 ? '10+' : String(b); best[k] = (best[k] || 0) + 1; });
+  const lastDone = pl.filter((x) => x.P.lastRun).map((x) => x.P.lastRun.done || 0);
+  const ALERT = 3000;
   const alerts = Object.entries(gain24).filter(([, v]) => v >= ALERT).sort((a, b) => b[1] - a[1]).map(([uid, v]) => ({ uid, name: name[uid] || uid.slice(0, 6), gained: r2(v) }));
   return {
     at: now,
-    players: { total: all.length, active1: all.filter((p) => now - p.updated < DAY).length, active7: all.filter((p) => now - p.updated < 7 * DAY).length, active30: all.filter((p) => now - p.updated < 30 * DAY).length },
-    money: { total: r2(total), avg: all.length ? r2(total / all.length) : 0 },
-    days: days.map((d) => ({ d, active: active[d].size, fresh: fresh[d], created: r2(perDay[d].created), destroyed: r2(perDay[d].destroyed) })),
-    categories: Object.entries(cats).map(([k, v]) => ({ k, v: r2(v) })).sort((a, b) => b.v - a.v),
+    players: { total: pl.length, active1: pl.filter((x) => now - x.updated < DAY).length, active7: pl.filter((x) => now - x.updated < 7 * DAY).length, active30: pl.filter((x) => now - x.updated < 30 * DAY).length, vip: pl.filter((x) => R.isVip(x.P, now)).length },
+    jetons: { total: r2(jetons), avg: pl.length ? r2(jetons / pl.length) : 0 },
+    parrain: {
+      live: live.length, runs: pl.reduce((a, x) => a + ((x.P.totals && x.P.totals.runs) || 0), 0), runs30: Object.values(runsPerDay).reduce((a, b) => a + b, 0),
+      avgDone: lastDone.length ? Math.round(lastDone.reduce((a, b) => a + b, 0) / lastDone.length * 10) / 10 : 0,
+      best: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10+'].map((k) => ({ k, n: best[k] || 0 })),
+      liveList: live.map((x) => ({ name: name[x.uid], palier: x.P.run.palier, caisse: r2((x.P.run.cash || 0) + sum(x.P.sessions)), quota: x.P.run.quota, lives: x.P.run.lives, status: x.P.run.status })).sort((a, b) => b.palier - a.palier).slice(0, 15),
+      top: pl.filter((x) => x.P.bestPalier).map((x) => ({ name: name[x.uid], best: x.P.bestPalier, runs: (x.P.totals && x.P.totals.runs) || 0 })).sort((a, b) => b.best - a.best).slice(0, 10),
+    },
+    days: days.map((d) => ({ d, active: active[d].size, fresh: fresh[d], runs: runsPerDay[d], gained: r2(perDay[d].gained), spent: r2(perDay[d].spent) })),
+    sources: Object.entries(cats).map(([k, v]) => ({ k, gained: r2(v.gained), spent: r2(v.spent), net: r2(v.gained - v.spent) })).sort((a, b) => b.net - a.net),
     games: Object.values(games).map((g) => ({ name: g.name, ops: g.ops, net: r2(g.net), players: g.players.size })).sort((a, b) => b.ops - a.ops),
-    richest: all.map((p) => ({ uid: p.uid, name: name[p.uid], money: r2(money(p)), level: R.levelOf((p.state.player || {}).xp || 0) })).sort((a, b) => b.money - a.money).slice(0, 10),
+    richest: pl.map((x) => ({ name: name[x.uid], jetons: r2((x.P.wallet || 0) + (x.P.mt ? x.P.mt.amount || 0 : 0)), level: R.levelOf(x.P.xp || 0), vip: R.isVip(x.P, now) })).sort((a, b) => b.jetons - a.jetons).slice(0, 10),
     alerts, alertThreshold: ALERT,
+    rules: R.RULES_VERSION || null, version: SERVER_VERSION,
   };
 }
 async function adminOp(uid, op, d) {
@@ -662,7 +686,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (req.method === 'GET' && url.pathname === '/api/push-key') { send(req, res, 200, { key: vapid.publicKey }); return; }
-    if (req.method === 'GET' && url.pathname === '/api/info') { send(req, res, 200, { version: SERVER_VERSION, maintenance: maint.on ? { on: true, msg: maint.msg } : { on: false } }); return; }
+    if (req.method === 'GET' && url.pathname === '/api/info') { send(req, res, 200, { version: SERVER_VERSION, rules: R.RULES_VERSION || null, maintenance: maint.on ? { on: true, msg: maint.msg } : { on: false } }); return; }
     if (req.method === 'GET' && url.pathname === '/health') { send(req, res, 200, Object.assign({ ok: true, version: SERVER_VERSION, at: Date.now() }, db.stats())); return; }
     if (req.method !== 'POST' || (url.pathname !== '/api/casino' && url.pathname !== '/api/admin')) { send(req, res, 404, { error: 'Introuvable.' }); return; }
     if (req.headers.origin && !ORIGINS.includes(req.headers.origin) && !ORIGINS.includes('*')) { send(req, res, 403, { error: 'Origine non autorisée.' }); return; }
