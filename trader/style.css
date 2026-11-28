@@ -1,7 +1,7 @@
 /* ================= Bourse Flash (même direction artistique que Rocket Crash) ================= */
 .assets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
 .asset { display: flex; flex-direction: column; align-items: flex-start; gap: .1rem; text-align: left; background: var(--c-glass); border: 1px solid var(--c-line); border-radius: 14px; padding: .5rem .7rem; color: #fff; min-width: 0; }
-.asset:hover:not(:disabled) { background: rgba(139, 92, 246, .18); border-color: var(--c-violet); }
+@media (hover: hover) { .asset:hover:not(:disabled) { background: rgba(139, 92, 246, .18); border-color: var(--c-violet); } }
 .asset.on { border-color: var(--c-cyan); box-shadow: 0 0 0 1px rgba(34, 211, 238, .4), 0 0 18px rgba(34, 211, 238, .2); background: rgba(34, 211, 238, .08); }
 .asset .a-name { font-size: .78rem; font-weight: 700; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .asset .a-price { font-size: 1.05rem; font-weight: 900; font-variant-numeric: tabular-nums; }
@@ -21,7 +21,7 @@
 .tr-news.up { border-left-color: var(--c-green); }
 .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: .3rem; }
 .seg button { background: rgba(139, 92, 246, .12); border: 1px solid var(--c-line); color: #ddd6fe; border-radius: 12px; font-weight: 800; padding: .45rem 0; font-size: .85rem; }
-.seg button:hover:not(:disabled) { background: rgba(139, 92, 246, .28); border-color: var(--c-violet); }
+@media (hover: hover) { .seg button:hover:not(:disabled) { background: rgba(139, 92, 246, .28); border-color: var(--c-violet); } }
 .seg button.on { background: rgba(34, 211, 238, .2); border-color: var(--c-cyan); color: #cffafe; box-shadow: 0 0 12px rgba(34, 211, 238, .25); }
 .bet-side { display: flex; flex-direction: column; gap: .55rem; }
 .bet-side .quick { margin: 0; }
@@ -32,9 +32,9 @@
 .btn-buy small, .btn-sell small { display: block; font-size: .78rem; font-weight: 700; letter-spacing: 0; opacity: .9; }
 .btn-buy { background: linear-gradient(135deg, #10b981, var(--c-cyan)); color: #032b2a; box-shadow: 0 8px 24px rgba(16, 185, 129, .35); }
 .btn-sell { background: linear-gradient(135deg, var(--c-pink), var(--c-red)); box-shadow: 0 8px 24px rgba(244, 114, 182, .35); }
-.btn-buy:hover:not(:disabled), .btn-sell:hover:not(:disabled) { filter: brightness(1.1); }
-.btn-buy:hover:not(:disabled) { background: linear-gradient(135deg, #10b981, var(--c-cyan)); }
-.btn-sell:hover:not(:disabled) { background: linear-gradient(135deg, var(--c-pink), var(--c-red)); }
+@media (hover: hover) { .btn-buy:hover:not(:disabled), .btn-sell:hover:not(:disabled) { filter: brightness(1.1); } }
+@media (hover: hover) { .btn-buy:hover:not(:disabled) { background: linear-gradient(135deg, #10b981, var(--c-cyan)); } }
+@media (hover: hover) { .btn-sell:hover:not(:disabled) { background: linear-gradient(135deg, var(--c-pink), var(--c-red)); } }
 .btn-buy:active:not(:disabled), .btn-sell:active:not(:disabled) { transform: scale(.97); }
 .tr-pos-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
 .tr-pos-head h2 { margin: 0; }
@@ -48,7 +48,7 @@
 .pos .p-pnl { text-align: right; font-weight: 900; font-variant-numeric: tabular-nums; font-size: 1.05rem; }
 .pos .p-pnl small { display: block; font-size: .75rem; font-weight: 700; }
 .pos .p-close { border-radius: 12px; font-weight: 800; background: rgba(139, 92, 246, .18); border: 1px solid var(--c-line); color: #ede9fe; padding: .5rem .7rem; }
-.pos .p-close:hover:not(:disabled) { background: rgba(139, 92, 246, .35); }
+@media (hover: hover) { .pos .p-close:hover:not(:disabled) { background: rgba(139, 92, 246, .35); } }
 .pos .p-risk { grid-column: 1 / -1; height: 5px; border-radius: 999px; background: rgba(255, 255, 255, .08); overflow: hidden; }
 .pos .p-risk i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--c-green), #facc15, var(--c-red)); transition: width .2s; }
 .pos .p-risk-label { grid-column: 1 / -1; font-size: .7rem; color: var(--muted); margin-top: -.15rem; }

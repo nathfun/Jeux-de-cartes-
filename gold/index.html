@@ -38,7 +38,7 @@
           </div>
           <div id="banner" class="banner" hidden></div>
         </div>
-        <div class="win-bar"><div id="win-text" class="win-text" role="status">Bonne chance, prospecteur !</div></div>
+        <div class="win-bar"><div id="win-text" class="win-text" role="status">Bonne chance, prospecteur !</div><div id="win-detail" class="win-detail"></div></div>
         <div class="controls">
           <div class="bet-box">
             <button id="bet-minus" class="round" type="button" aria-label="Baisser la mise">−</button>
@@ -73,11 +73,11 @@
       </section>
       <details class="panel" open>
         <summary><h2>Table des gains</h2></summary>
-        <p class="small muted">243 façons : un symbole paie s'il apparaît sur des rouleaux qui se suivent depuis la gauche, multiplié par le nombre de combinaisons. Gains en × la mise, pour une combinaison.</p>
-        <table class="pays"><thead><tr><th></th><th>×3</th><th>×4</th><th>×5</th></tr></thead><tbody id="pays"></tbody></table>
+        <p id="pays-cap" class="small muted">243 façons : un symbole paie s'il apparaît sur des rouleaux qui se suivent depuis la gauche.</p>
+        <table class="pays"><thead><tr><th></th><th>3 rouleaux</th><th>4 rouleaux</th><th>5 rouleaux</th></tr></thead><tbody id="pays"></tbody></table>
         <p class="small"><b>🧨 Dynamite</b> : remplace tout (rouleaux 2 à 4). <b>Coup de grisou</b> : au hasard, des rouleaux entiers explosent en dynamite.</p>
         <p class="small"><b>🟡 Pépites</b> : 6 ou plus lancent <b>Le Filon</b>. Les pépites restent, 3 relances, chaque nouvelle pépite remet les relances à 3.
-          <b>🚃 Wagon</b> ramasse toutes les pépites, <b>💥 Filon</b> les double. Grille pleine : <b>GRAND jackpot 1 000×</b>.</p>
+          <b>🚃 Wagon</b> ramasse toutes les pépites, <b>💥 Filon</b> les double. Grille pleine : <b>GRAND jackpot, 1 000 fois ta mise</b>.</p>
       </details>
     </aside>
   </main>

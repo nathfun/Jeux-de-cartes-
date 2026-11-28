@@ -7,6 +7,7 @@ window.CASINO_NEWS = [
     '⛏️ Ruée vers l\'Or : moins de petits gains ridicules, de plus gros gains avec 4 ou 5 symboles.',
     '🏆 Fanfare et confettis à chaque palier réussi.',
     '🕴️ Le Parrain : plus de vies, les quotas suffisent.',
+    '🎰 Machines à sous : tables de gains en euros pour ta mise et détail de chaque gain. Auto ×10 sur Le Braquage.',
   ] },
   { date: '2026-11-28', title: 'Le Parrain, plus fun', items: [
     '🕴️ « La Dette » devient « Le Parrain », avec une vraie cinématique au lancement.',

@@ -186,6 +186,15 @@
     if (window.Casino) Casino.track('sl', { bet: free ? 0 : b, net, jackpot: res.jackpot, freeTrigger: res.freeSpins > 0 });
 
     const wt = $('win-text');
+    // détail du gain, toujours visible (aides ou non) : quelle ligne, combien
+    const wd = $('win-detail');
+    if (wd) {
+      const lb = b / E.LINES.length;
+      wd.innerHTML = '';
+      res.wins.slice(0, 6).forEach((w) => { const d = document.createElement('div'); d.textContent = w.scatter ? w.count + ' × 🎰 bonus : +' + fmt(w.amount) + ' € et ' + res.freeSpins + ' tours gratuits' : 'Ligne ' + (w.line + 1) + ' · ' + w.count + ' × ' + icon(w.symbol) + ' : +' + fmt(w.amount) + ' €' + (free ? ' (×2 tour gratuit)' : ''); d.style.color = w.scatter ? '' : LINE_COLORS[w.line]; wd.appendChild(d); });
+      if (res.wins.length > 6) wd.appendChild(Object.assign(document.createElement('div'), { textContent: '… et ' + (res.wins.length - 6) + ' autres lignes' }));
+      void lb;
+    }
     if (res.total > 0) {
       countUp(wt, res.total, Math.min(1500, 300 + res.total / b * 60));
       if (window.Sfx) Sfx.win();
@@ -229,6 +238,7 @@
     $('bet-minus').disabled = locked || S.auto > 0 || S.betIndex === 0;
     $('bet-plus').disabled = locked || S.auto > 0 || S.betIndex === BETS.length - 1;
     $('bet').textContent = S.free > 0 ? S.freeBet : bet();
+    if (payFor !== (S.free > 0 ? S.freeBet : bet())) renderPaytable();
     $('jackpot-value').textContent = fmt(E.byId.sept.pays[5] * (S.free > 0 ? S.freeBet : bet()) / E.LINES.length) + ' €';
     $('auto').textContent = S.auto > 0 ? `Stop (${S.auto})` : 'Auto ×10';
     $('spin').textContent = S.free > 0 ? 'GRATUIT' : 'JOUER';
@@ -246,15 +256,18 @@
     $('s-rtp').textContent = S.staked ? Math.round(S.won / S.staked * 100) + ' %' : '–';
     $('s-best').textContent = S.best ? `Meilleur gain : ${fmt(S.best)} €. Sur une courte session, le retour réel peut être très loin de 94 % (dans un sens ou dans l'autre).` : '';
   }
+  let payFor = null;
   function renderPaytable() {
-    const t = $('paytable');
+    const t = $('paytable'); t.innerHTML = '';
+    const b = S.free > 0 ? S.freeBet : bet(), lb = b / E.LINES.length; payFor = b;
+    const cap = $('pay-cap'); if (cap) cap.textContent = 'Gains en € pour ta mise de ' + fmt(b) + ' € (répartie sur les 10 lignes : ' + fmt(lb) + ' € par ligne). Symboles alignés de gauche à droite sur une ligne.';
     const head = document.createElement('tr');
     ['', '×3', '×4', '×5'].forEach((h) => { const th = document.createElement('th'); th.textContent = h; head.appendChild(th); });
     t.appendChild(head);
     E.SYMBOLS.filter((s) => s.pays).slice().reverse().forEach((s) => {
       const tr = document.createElement('tr');
       const td0 = document.createElement('td'); td0.textContent = s.icon; tr.appendChild(td0);
-      [3, 4, 5].forEach((k) => { const td = document.createElement('td'); td.textContent = s.pays[k] + (s.id === 'sept' && k === 5 ? ' 🏆' : ''); tr.appendChild(td); });
+      [3, 4, 5].forEach((k) => { const td = document.createElement('td'); td.textContent = fmt(s.pays[k] * lb) + ' €' + (s.id === 'sept' && k === 5 ? ' 🏆' : ''); tr.appendChild(td); });
       t.appendChild(tr);
     });
   }

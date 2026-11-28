@@ -12,12 +12,12 @@ button {
   font: inherit; cursor: pointer; border: 1px solid var(--panel-border); background: #2b3540; color: var(--text);
   padding: .55rem 1rem; border-radius: 8px; transition: background .15s, transform .05s;
 }
-button:hover:not(:disabled) { background: #364250; }
+@media (hover: hover) { button:hover:not(:disabled) { background: #364250; } }
 button:active:not(:disabled) { transform: translateY(1px); }
 button:disabled { opacity: .4; cursor: not-allowed; }
 button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 button.primary { background: var(--gold); color: #222; border-color: var(--gold); font-weight: 600; }
-button.primary:hover:not(:disabled) { background: #f5cf70; }
+@media (hover: hover) { button.primary:hover:not(:disabled) { background: #f5cf70; } }
 button.ghost { background: transparent; }
 button.small { font-size: .85rem; padding: .35rem .7rem; }
 button.big { font-size: 1.05rem; padding: .75rem 1.4rem; }
@@ -181,3 +181,5 @@ body.no-aides #aides { display: none; }
 
 /* v9 : on choisit Apprentissage / Multijoueur sur l'accueil */
 .topbar .tabs { display: none !important; }
+
+.win-detail { text-align: center; font-size: .82rem; font-weight: 700; line-height: 1.45; min-height: 1.2em; margin-top: .15rem; }

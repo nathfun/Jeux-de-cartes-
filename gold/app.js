@@ -51,9 +51,11 @@
   }
   function renderPays() {
     const tb = $('pays'); tb.innerHTML = '';
+    const b = bet(), u = b / E.UNIT;
+    const cap = $('pays-cap'); if (cap) cap.textContent = 'Gains en € pour ta mise de ' + fmt(b) + ' €, pour UNE combinaison. 243 façons : le symbole doit être sur des rouleaux qui se suivent depuis la gauche (3, 4 ou 5 rouleaux). S\'il apparaît plusieurs fois sur un rouleau, le gain est multiplié (2 façons, 4 façons…).';
     ['P', 'S', 'T', 'M', 'X', 'C', 'L', 'R'].forEach((s) => {
       const tr = document.createElement('tr'); const p = E.SYMBOLS[s].pay;
-      [ICON(s), p[3] / E.UNIT, p[4] / E.UNIT, p[5] / E.UNIT].forEach((v, k) => { const td = document.createElement('td'); td.textContent = k ? String(Math.round(v * 100) / 100).replace('.', ',') + '×' : v; tr.appendChild(td); });
+      [ICON(s), p[3] * u, p[4] * u, p[5] * u].forEach((v, k) => { const td = document.createElement('td'); td.textContent = k ? fmt(v) + ' €' : v; tr.appendChild(td); });
       tb.appendChild(tr);
     });
   }
@@ -77,7 +79,7 @@
       'Monter la mise ne change pas tes chances : ça multiplie juste les gains… et les pertes.',
     ].map((x) => '<div class="tip">' + x + '</div>').join('');
   }
-  function winText(t, big) { const w = $('win-text'); w.textContent = t; w.classList.toggle('big', !!big); }
+  function winText(t, big) { const w = $('win-text'); w.textContent = t; w.classList.toggle('big', !!big); const wd = $('win-detail'); if (wd) wd.innerHTML = ''; }
   async function banner(text, sub, ms) {
     const b = $('banner'); b.innerHTML = '<div></div>'; b.firstChild.textContent = text;
     if (sub) { const s = document.createElement('small'); s.textContent = sub; b.firstChild.appendChild(s); }
@@ -126,8 +128,10 @@
     if (r.wins.length) {
       const hit = new Set(); r.wins.forEach((w) => w.cells.forEach((i) => hit.add(i)));
       cells.forEach((c, i) => c.classList.toggle('win', hit.has(i)));
-      const best = r.wins.slice().sort((a, x) => x.win - a.win)[0];
-      winText('+' + fmt(r.base) + ' € · ' + ICON(best.s) + ' ×' + best.count + (best.ways > 1 ? ' (' + best.ways + ' façons)' : ''), r.base >= b * 5);
+      const sorted = r.wins.slice().sort((a, x) => x.win - a.win);
+      winText('+' + fmt(r.base) + ' €', r.base >= b * 5);
+      const wd = $('win-detail');
+      if (wd) wd.innerHTML = sorted.slice(0, 4).map((w) => w.count + ' × ' + ICON(w.s) + (w.ways > 1 ? ' sur ' + w.ways + ' façons' : '') + ' : +' + fmt(w.win) + ' €').join('<br>') + (sorted.length > 4 ? '<br>…' : '');
       if (window.Sfx) Sfx.win();
       await sleep((r.bonus ? 900 : 700) * t);
     } else if (!r.bonus) winText(r.nuggets >= 4 ? r.nuggets + ' pépites… il en faut 6 pour Le Filon !' : 'Pas de gain cette fois.');
@@ -186,8 +190,8 @@
   // ---------- Commandes ----------
   $('spin').addEventListener('click', spin);
   document.addEventListener('keydown', (e) => { if (e.code === 'Space' && !/INPUT|BUTTON|SELECT/.test(document.activeElement.tagName)) { e.preventDefault(); spin(); } });
-  $('bet-minus').addEventListener('click', () => { if (S.busy) return; S.betIx = Math.max(minIx(), S.betIx - 1); renderJackpots(); showWallet(); if (window.Sfx) Sfx.chips(); });
-  $('bet-plus').addEventListener('click', () => { if (S.busy) return; const top = E.BETS.filter((b) => b <= (window.Casino && S.mode === 'real' ? Casino.maxBet() : 500)).length - 1; if (S.betIx >= top && S.mode === 'real' && window.Casino) Casino.toast('Mise maximale', E.BETS[top].toLocaleString('fr-FR') + ' € à ce palier (elle monte avec les paliers).', '🕴️'); S.betIx = Math.min(top, S.betIx + 1); renderJackpots(); showWallet(); if (window.Sfx) Sfx.chips(); });
+  $('bet-minus').addEventListener('click', () => { if (S.busy) return; S.betIx = Math.max(minIx(), S.betIx - 1); renderJackpots(); renderPays(); showWallet(); if (window.Sfx) Sfx.chips(); });
+  $('bet-plus').addEventListener('click', () => { if (S.busy) return; const top = E.BETS.filter((b) => b <= (window.Casino && S.mode === 'real' ? Casino.maxBet() : 500)).length - 1; if (S.betIx >= top && S.mode === 'real' && window.Casino) Casino.toast('Mise maximale', E.BETS[top].toLocaleString('fr-FR') + ' € à ce palier (elle monte avec les paliers).', '🕴️'); S.betIx = Math.min(top, S.betIx + 1); renderJackpots(); renderPays(); showWallet(); if (window.Sfx) Sfx.chips(); });
   function updateAuto() { const a = $('auto'); a.classList.toggle('on', S.auto > 0); a.textContent = S.auto > 0 ? '■ Stop (' + S.auto + ')' : 'Auto ×10'; }
   function stopAuto() { S.auto = 0; updateAuto(); }
   $('auto').addEventListener('click', () => { if (S.auto > 0) { stopAuto(); return; } S.auto = 10; updateAuto(); if (!S.busy) spin(); });
@@ -202,7 +206,7 @@
     const badge = $('mode-badge'); badge.hidden = false;
     badge.textContent = mode === 'real' ? '🕴️ Le Parrain · ta caisse · sans aides' : '🎓 Apprentissage · crédit illimité, aides et conseils';
     $('cashout').textContent = mode === 'train' ? 'Terminer' : 'Encaisser';
-    renderJackpots(); showWallet(); renderStats(); renderAides();
+    renderJackpots(); renderPays(); showWallet(); renderStats(); renderAides();
   }
   async function endSession() {
     if (S.busy) return;

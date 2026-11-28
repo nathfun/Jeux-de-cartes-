@@ -5,17 +5,27 @@
   const $ = (id) => document.getElementById(id);
   const fmt = (v) => (Math.round(v * 100) / 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 });
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  const S = { mode: null, stack: 0, betIx: 0, busy: false };
+  const S = { mode: null, stack: 0, betIx: 0, busy: false, auto: 0, payFor: null, lastBonus: false };
   const srv = () => S.mode === 'real' && window.Casino && Casino.server;
   const cells = [];
   for (let i = 0; i < 9; i++) { const c = document.createElement('div'); c.className = 'hs-cell'; c.textContent = E.SYMBOLS[i % 6].s; $('grid').appendChild(c); cells.push(c); }
-  $('pay').innerHTML = E.SYMBOLS.filter((x) => x.pay).map((x) => '<span>' + x.s + x.s + x.s + ' ×' + x.pay + '</span>').join('') + '<span style="grid-column:1/-1">🔐🔐🔐 = Le Coffre : ×5 à ×100 la mise · gains de ligne = mise ÷ 5 × le multiplicateur</span>';
+  // table des gains en euros, pour la mise choisie (une ligne gagnante paie la mise ÷ 5 × le coefficient)
+  function renderPay() {
+    const b = bet() || 1, lb = b / E.LINES.length;
+    $('pay').innerHTML = '<span class="hs-pay-h" style="grid-column:1/-1">Gains pour ta mise de ' + fmt(b) + ' € (par ligne gagnante)</span>'
+      + E.SYMBOLS.filter((x) => x.pay).map((x) => '<span>' + x.s + x.s + x.s + '<b>' + fmt(lb * x.pay) + ' €</b></span>').join('')
+      + '<span style="grid-column:1/-1">🕴️ remplace tous les symboles · 🔐🔐🔐 n\'importe où = Le Coffre : de ' + fmt(b * 5) + ' à ' + fmt(b * 100) + ' €</span>'
+      + '<span class="hs-pay-n" style="grid-column:1/-1">5 lignes : les 3 rangées et les 2 diagonales. Ta mise est répartie sur les 5 lignes (' + fmt(lb) + ' € chacune).</span>';
+  }
 
   const bets = () => { const min = S.mode === 'real' ? Casino.minBet('heist') : 1, max = S.mode === 'real' ? Casino.maxBet() : 500; return R.BET_STEPS.filter((b) => b >= min && b <= max); };
   const bet = () => bets()[Math.min(S.betIx, bets().length - 1)];
   function ui() {
     $('bet').textContent = fmt(bet()) + ' €'; $('stack').textContent = fmt(S.stack) + ' €';
     $('spin').disabled = S.busy || bet() > S.stack; $('end-btn').disabled = S.busy;
+    $('auto').textContent = S.auto ? '⏹ Stop (' + S.auto + ')' : '🔁 Auto ×10'; $('auto').classList.toggle('on', !!S.auto);
+    $('auto').disabled = !S.auto && (S.busy || bet() > S.stack);
+    if (S.payFor !== bet()) { S.payFor = bet(); renderPay(); }
     $('bet-minus').disabled = S.busy || S.betIx <= 0; $('bet-plus').disabled = S.busy || S.betIx >= bets().length - 1;
     $('wallet').textContent = window.Casino ? fmt(Casino.wallet()) : '–';
   }
@@ -71,15 +81,29 @@
     clearInterval(timer);
     r.wins.forEach((w) => w.cells.forEach((i) => cells[i].classList.add('win')));
     const lines = Math.round(r.wins.reduce((a, w) => a + w.win, 0) * 100) / 100;
-    if (lines > 0) { $('win').textContent = '+' + fmt(lines) + ' € · ' + r.wins.length + ' ligne' + (r.wins.length > 1 ? 's' : ''); if (window.Sfx) Sfx.win(); }
+    const LN = ['ligne du haut', 'ligne du milieu', 'ligne du bas', 'diagonale ↘', 'diagonale ↗'];
+    if (lines > 0) { $('win').innerHTML = '+' + fmt(lines) + ' €<small>' + r.wins.map((w) => w.s + w.s + w.s + ' ' + LN[w.line] + ' : +' + fmt(w.win) + ' €').join('<br>') + '</small>'; if (window.Sfx) Sfx.win(); }
     else $('win').textContent = r.bonus ? '🔐 🔐 🔐 LE COFFRE !' : 'Pas de butin cette fois.';
+    S.lastBonus = !!r.bonus;
     if (r.bonus) { await sleep(700); await safes(r.bonus); $('win').textContent = 'Butin total : +' + fmt(r.total) + ' €'; }
     S.stack = r.stack;
     if (r.total >= b * 20 && window.Casino && Casino.bigWin) Casino.bigWin(r.total, 'GROS BRAQUAGE !');
     S.busy = false; ui();
     if (window.Casino && Casino.holding) setTimeout(() => Casino.release(), 600);
   }
-  $('spin').addEventListener('click', spin);
+  $('spin').addEventListener('click', () => { S.auto = 0; spin(); });
+  // Auto ×10 : 10 tours d'affilée (s'arrête sur Le Coffre, si l'argent manque, ou en touchant Stop)
+  $('auto').addEventListener('click', async () => {
+    if (S.auto) { S.auto = 0; ui(); return; }
+    S.auto = 10; ui();
+    while (S.auto > 0 && !S.busy && bet() <= S.stack) {
+      await spin(); if (!S.auto) break;
+      S.auto--; ui();
+      if (S.lastBonus) { S.auto = 0; break; }
+      if (S.auto) await sleep(450);
+    }
+    S.auto = 0; ui();
+  });
   $('bet-minus').addEventListener('click', () => { S.betIx = Math.max(0, S.betIx - 1); ui(); });
   $('bet-plus').addEventListener('click', () => { S.betIx = Math.min(bets().length - 1, S.betIx + 1); ui(); });
   function startGame(mode, amount) {

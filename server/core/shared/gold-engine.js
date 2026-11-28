@@ -13,7 +13,7 @@
  * Jackpots MINI / MINEUR / MAJEUR : pépites rares de 20, 50 et 200 × la mise.
  *
  * Le hasard vient d'une fonction rng() → [0, 1[ (cryptographique dans l'app, crypto.randomInt sur le serveur).
- * Vérifié par simulation (simulate, 800 000 tours) : taux de retour ≈ 96–97 %, 38 % de tours gagnants,
+ * Vérifié par simulation (simulate, 800 000 tours) : taux de retour ≈ 96–97 %, 21 % de tours gagnants (pas de petits gains à 3 symboles modestes),
  * bonus « Le Filon » environ 1 tour sur 120 (≈ 37 % des gains).
  */
 (function (root) {
@@ -24,12 +24,12 @@
   const SYMBOLS = {
     P: { icon: '🤠', name: 'Prospecteur', pay: [0, 0, 0, 8, 30, 120] },
     S: { icon: '💰', name: 'Sac d\'or', pay: [0, 0, 0, 5, 20, 75] },
-    T: { icon: '🚂', name: 'Train', pay: [0, 0, 0, 3, 12, 50] },
-    M: { icon: '🐴', name: 'Mule', pay: [0, 0, 0, 2, 9, 36] },
-    X: { icon: '⛏️', name: 'Pioche', pay: [0, 0, 0, 0.7, 3.5, 14] },
-    C: { icon: '🧭', name: 'Boussole', pay: [0, 0, 0, 0.7, 3.2, 12] },
-    L: { icon: '🔦', name: 'Lampe', pay: [0, 0, 0, 0.4, 2.8, 10] },
-    R: { icon: '🪨', name: 'Roche', pay: [0, 0, 0, 0.4, 2.8, 10] },
+    T: { icon: '🚂', name: 'Train', pay: [0, 0, 0, 3.5, 12, 50] },
+    M: { icon: '🐴', name: 'Mule', pay: [0, 0, 0, 2.5, 9, 36] },
+    X: { icon: '⛏️', name: 'Pioche', pay: [0, 0, 0, 0, 4, 14] },
+    C: { icon: '🧭', name: 'Boussole', pay: [0, 0, 0, 0, 3.6, 13] },
+    L: { icon: '🔦', name: 'Lampe', pay: [0, 0, 0, 0, 3, 10] },
+    R: { icon: '🪨', name: 'Roche', pay: [0, 0, 0, 0, 3, 10] },
     W: { icon: '🧨', name: 'Dynamite (joker)', wild: true },
     N: { icon: '🟡', name: 'Pépite', nugget: true },
   };

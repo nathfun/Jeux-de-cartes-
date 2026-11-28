@@ -19,7 +19,7 @@
 .mn-cell.open { transform: rotateY(180deg); cursor: default; }
 .mn-cell.open.gem .b { animation: mnPop .5s .2s cubic-bezier(.2,.9,.3,1.6) both; }
 .mn-cell.boom .b { animation: mnBoom .6s .15s ease-out both; }
-.mn-grid.live .mn-cell:not(.open):hover .f { background: linear-gradient(160deg, #3b3f8f, #1f2460); transform: translateY(-3px); box-shadow: inset 0 -5px 0 rgba(0,0,0,.35), 0 0 18px rgba(139, 92, 246, .5); }
+@media (hover: hover) { .mn-grid.live .mn-cell:not(.open):hover .f { background: linear-gradient(160deg, #3b3f8f, #1f2460); transform: translateY(-3px); box-shadow: inset 0 -5px 0 rgba(0,0,0,.35), 0 0 18px rgba(139, 92, 246, .5); } }
 .mn-grid:not(.live) .mn-cell:not(.open) { cursor: default; }
 .mn-grid.shake { animation: shake .5s; }
 .mn-range { width: 100%; accent-color: var(--c-cyan); }

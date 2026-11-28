@@ -12,12 +12,12 @@ button {
   font: inherit; cursor: pointer; border: 1px solid var(--panel-border); background: #2b3540; color: var(--text);
   padding: .55rem 1rem; border-radius: 8px; transition: background .15s, transform .05s;
 }
-button:hover:not(:disabled) { background: #364250; }
+@media (hover: hover) { button:hover:not(:disabled) { background: #364250; } }
 button:active:not(:disabled) { transform: translateY(1px); }
 button:disabled { opacity: .4; cursor: not-allowed; }
 button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 button.primary { background: var(--gold); color: #222; border-color: var(--gold); font-weight: 600; }
-button.primary:hover:not(:disabled) { background: #f5cf70; }
+@media (hover: hover) { button.primary:hover:not(:disabled) { background: #f5cf70; } }
 button.ghost { background: transparent; }
 button.small { font-size: .85rem; padding: .35rem .7rem; }
 button.big { font-size: 1.05rem; padding: .75rem 1.4rem; }
@@ -186,7 +186,7 @@ body { background: radial-gradient(1200px 600px at 20% -10%, #1b1450 0%, transpa
   border: 1px solid var(--c-line); border-radius: 12px; padding: .55rem .7rem; font-variant-numeric: tabular-nums; }
 .bet-input input:focus, .auto-row input:focus { outline: none; border-color: var(--c-cyan); box-shadow: 0 0 0 3px rgba(34, 211, 238, .2); }
 .bet-input button, .quick button { background: rgba(139, 92, 246, .12); border: 1px solid var(--c-line); color: #ddd6fe; border-radius: 12px; font-weight: 800; }
-.bet-input button:hover:not(:disabled), .quick button:hover:not(:disabled) { background: rgba(139, 92, 246, .28); border-color: var(--c-violet); box-shadow: 0 0 14px rgba(139, 92, 246, .35); }
+@media (hover: hover) { .bet-input button:hover:not(:disabled), .quick button:hover:not(:disabled) { background: rgba(139, 92, 246, .28); border-color: var(--c-violet); box-shadow: 0 0 14px rgba(139, 92, 246, .35); } }
 .quick { display: grid; grid-template-columns: repeat(6, 1fr); gap: .35rem; margin: .55rem 0; }
 .quick button { padding: .45rem 0; font-size: .85rem; }
 .quick button.on { background: rgba(34, 211, 238, .2); border-color: var(--c-cyan); color: #cffafe; }
@@ -198,17 +198,17 @@ body { background: radial-gradient(1200px 600px at 20% -10%, #1b1450 0%, transpa
 .balance b { font-size: 1.05rem; color: #fff; font-variant-numeric: tabular-nums; }
 .btn-bet, .btn-cash { border: 0; border-radius: 16px; padding: 1rem; font-size: 1.25rem; font-weight: 900; letter-spacing: .06em; color: #fff; transition: transform .08s, box-shadow .2s, filter .2s; }
 .btn-bet { background: linear-gradient(135deg, var(--c-violet), var(--c-blue)); box-shadow: 0 8px 26px rgba(99, 102, 241, .45); }
-.btn-bet:hover:not(:disabled) { filter: brightness(1.12); box-shadow: 0 10px 34px rgba(99, 102, 241, .65); background: linear-gradient(135deg, var(--c-violet), var(--c-blue)); }
+@media (hover: hover) { .btn-bet:hover:not(:disabled) { filter: brightness(1.12); box-shadow: 0 10px 34px rgba(99, 102, 241, .65); background: linear-gradient(135deg, var(--c-violet), var(--c-blue)); } }
 .btn-bet.queued { background: linear-gradient(135deg, #334155, #1e293b); box-shadow: none; }
 .btn-cash { background: linear-gradient(135deg, #10b981, var(--c-cyan)); color: #032b2a; font-size: 1.45rem; padding: 1.15rem; box-shadow: 0 0 0 0 rgba(34, 211, 238, .7);
   animation: cashPulse 1s ease-in-out infinite; }
 .btn-cash small { display: block; font-size: .95rem; font-weight: 800; letter-spacing: 0; }
-.btn-cash:hover:not(:disabled) { filter: brightness(1.08); background: linear-gradient(135deg, #10b981, var(--c-cyan)); }
+@media (hover: hover) { .btn-cash:hover:not(:disabled) { filter: brightness(1.08); background: linear-gradient(135deg, #10b981, var(--c-cyan)); } }
 @keyframes cashPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, .55), 0 10px 30px rgba(16, 185, 129, .45); transform: scale(1); }
   50% { box-shadow: 0 0 0 10px rgba(34, 211, 238, 0), 0 10px 40px rgba(16, 185, 129, .7); transform: scale(1.02); } }
 .btn-bet:active:not(:disabled), .btn-cash:active:not(:disabled) { transform: scale(.98); }
 .btn-ghost { background: transparent; border: 1px solid var(--c-line); color: var(--muted); border-radius: 12px; font-size: .85rem; }
-.btn-ghost:hover:not(:disabled) { color: #fff; border-color: var(--c-violet); background: rgba(139, 92, 246, .12); }
+@media (hover: hover) { .btn-ghost:hover:not(:disabled) { color: #fff; border-color: var(--c-violet); background: rgba(139, 92, 246, .12); } }
 @media (max-width: 640px) {
   /* téléphone : le bouton d'action reste collé en bas de l'écran pendant le jeu */
   .action-side { position: sticky; bottom: 0; z-index: 20; background: linear-gradient(transparent, rgba(5, 7, 26, .95) 25%); padding: .6rem 0 max(.4rem, env(safe-area-inset-bottom)); margin: 0 -.2rem; }

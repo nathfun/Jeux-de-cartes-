@@ -38,6 +38,7 @@
         </div>
         <div class="win-bar">
           <div id="win-text" class="win-text" role="status">Bonne chance !</div>
+          <div id="win-detail" class="win-detail" aria-live="polite"></div>
         </div>
         <div class="controls">
           <div class="bet-box">
@@ -75,9 +76,9 @@
       </section>
       <details class="panel" open>
         <summary><h2>Table des gains</h2></summary>
-        <p class="muted small">Gains pour 3, 4 ou 5 symboles alignés de gauche à droite, en multiple de la mise par ligne (mise ÷ 10 lignes).</p>
+        <p id="pay-cap" class="muted small">Gains pour 3, 4 ou 5 symboles alignés de gauche à droite.</p>
         <table id="paytable" class="pay-table"></table>
-        <p class="small">🃏 <b>Joker</b> : remplace tous les symboles sauf 🎰 (rouleaux 2 à 4).<br>🎰 <b>Bonus</b> n'importe où : 3 → 2 × la mise + 8 tours gratuits, 4 → 10 × + 12 tours, 5 → 50 × + 20 tours. Pendant les tours gratuits, tous les gains sont doublés.</p>
+        <p class="small">🃏 <b>Joker</b> : remplace tous les symboles sauf 🎰 (rouleaux 2 à 4).<br>🎰 <b>Bonus</b> n'importe où : 3 → 2 fois ta mise + 8 tours gratuits, 4 → 10 fois ta mise + 12 tours, 5 → 50 fois ta mise + 20 tours. Pendant les tours gratuits, tous les gains sont doublés.</p>
       </details>
     </aside>
   </main>

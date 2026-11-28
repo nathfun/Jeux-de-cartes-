@@ -8,7 +8,7 @@
 .pl-inplay { background: rgba(139, 92, 246, .2); border: 1px solid rgba(139, 92, 246, .5); color: #ddd6fe; font-weight: 800; font-size: .8rem; border-radius: 999px; padding: .3rem .7rem; }
 .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: .3rem; }
 .seg button { background: rgba(139, 92, 246, .12); border: 1px solid var(--c-line); color: #ddd6fe; border-radius: 12px; font-weight: 800; padding: .45rem 0; font-size: .85rem; }
-.seg button:hover:not(:disabled) { background: rgba(139, 92, 246, .28); border-color: var(--c-violet); }
+@media (hover: hover) { .seg button:hover:not(:disabled) { background: rgba(139, 92, 246, .28); border-color: var(--c-violet); } }
 .seg button.on { background: rgba(34, 211, 238, .2); border-color: var(--c-cyan); color: #cffafe; box-shadow: 0 0 12px rgba(34, 211, 238, .25); }
 .bet-side { display: flex; flex-direction: column; gap: .55rem; }
 .bet-side .quick { margin: 0; }

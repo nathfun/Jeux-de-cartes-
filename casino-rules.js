@@ -1441,7 +1441,7 @@
   }
 
   // version des règles : le serveur et l'app doivent avoir la même (sinon : serveur du NAS à mettre à jour)
-  const RULES_VERSION = '2026.11.29-1';
+  const RULES_VERSION = '2026.11.29-2';
   const api = {
     RULES_VERSION,
     weekOf, weekPoints, ensureWeek, SEASON_TIERS, seasonOf, seasonTier, seasonName, ensureSeason,

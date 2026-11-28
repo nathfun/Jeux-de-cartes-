@@ -82,3 +82,5 @@ body.real-mode #aides { display: none; }
 @keyframes fadeIn { from { opacity: 0; } } @keyframes zoom { from { transform: scale(.4); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .cell, .sign span, .jp, .window, .banner div { animation: none !important; } }
 @media (max-width: 560px) { .jp b { font-size: .78rem; } .jp small { font-size: .6rem; letter-spacing: .06em; } .jackpots { gap: .3rem; } }
+
+.win-detail { text-align: center; font-size: .8rem; font-weight: 700; color: #fde68a; line-height: 1.45; opacity: .9; }

@@ -31,11 +31,11 @@ button {
   border-radius: 8px;
   transition: background .15s, transform .05s;
 }
-button:hover:not(:disabled) { background: #364250; }
+@media (hover: hover) { button:hover:not(:disabled) { background: #364250; } }
 button:active:not(:disabled) { transform: translateY(1px); }
 button:disabled { opacity: .4; cursor: not-allowed; }
 button.primary { background: var(--gold); color: #222; border-color: var(--gold); font-weight: 600; }
-button.primary:hover:not(:disabled) { background: #f5cf70; }
+@media (hover: hover) { button.primary:hover:not(:disabled) { background: #f5cf70; } }
 button.ghost { background: transparent; }
 button.small { font-size: .85rem; padding: .35rem .7rem; margin-top: .8rem; }
 
@@ -203,7 +203,7 @@ summary { cursor: pointer; }
 .tabs { display: flex; gap: .3rem; background: #1a2129; padding: .25rem; border-radius: 10px; }
 .tab { border: none; background: transparent; padding: .4rem .9rem; border-radius: 8px; }
 .tab.active { background: var(--gold); color: #222; font-weight: 600; }
-.tab.active:hover { background: #f5cf70; }
+@media (hover: hover) { .tab.active:hover { background: #f5cf70; } }
 .main-col { min-width: 0; display: flex; flex-direction: column; gap: 1rem; }
 .row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
 input[type="text"], input:not([type]), input[inputmode] {
@@ -314,7 +314,7 @@ body.no-coach .coach-only { display: none !important; }
 .spot.main { width: 86px; height: 86px; border-color: var(--gold); }
 .spot.side { border-color: #ff6b6b; background: rgba(198, 40, 40, .28); }
 button.spot.side { cursor: pointer; }
-button.spot.side:hover { background: rgba(198, 40, 40, .45); }
+@media (hover: hover) { button.spot.side:hover { background: rgba(198, 40, 40, .45); } }
 .spot.side.filled { background: rgba(198, 40, 40, .55); box-shadow: 0 0 0 3px rgba(255,107,107,.25); }
 .spot-label { font-size: .66rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 700; opacity: .9; }
 .spot-chip {
@@ -464,7 +464,7 @@ body.no-coach .coach-bubble { display: none; }
 .topbar .tabs { display: none !important; }
 /* table en jetons : gros bouton pour partir, jetons de mise lisibles, « je ne joue pas » */
 .leave-btn { font-weight: 800; background: #7f1d1d; border-color: #b91c1c; color: #fff; padding: .5rem .9rem; border-radius: 10px; }
-.leave-btn:hover:not(:disabled) { background: #991b1b; }
+@media (hover: hover) { .leave-btn:hover:not(:disabled) { background: #991b1b; } }
 .seat-chips { justify-content: center; flex-wrap: wrap; margin: .3rem 0; }
 .seat-chips .chip { width: 46px; height: 46px; font-size: .9rem; }
 .skip-btn { display: block; width: 100%; margin: .3rem 0; font-weight: 700; background: rgba(0,0,0,.35); border: 1px dashed rgba(255,255,255,.4); }

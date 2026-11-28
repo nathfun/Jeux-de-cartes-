@@ -30,3 +30,13 @@ body.hs-page { background: radial-gradient(900px 600px at 50% 0%, #3b0a2a 0%, tr
 .hs-safe.open { background: linear-gradient(160deg, #fde047, #ca8a04); border-color: #fef08a; color: #1c1300; font-size: 1.6rem; font-weight: 900; }
 .hs-safe.other { opacity: .5; font-size: 1.2rem; font-weight: 800; }
 .hs-safes button.go { font: inherit; font-weight: 900; border: 0; border-radius: 14px; padding: .8rem 1.4rem; background: linear-gradient(135deg, #fde047, #f59e0b); color: #1c1300; }
+
+.hs-btns { display: grid; grid-template-columns: 1fr auto; gap: .4rem; }
+.hs-auto { font: inherit; font-weight: 800; font-size: .9rem; border-radius: 14px; padding: .6rem .7rem; border: 2px solid #ca8a04; background: rgba(202,138,4,.12); color: #fde68a; cursor: pointer; }
+.hs-auto.on { background: #7f1d1d; border-color: #f87171; color: #fff; }
+.hs-auto:disabled { opacity: .45; }
+.hs-spin:active:not(:disabled) { transform: scale(.97); }
+.hs-win small { display: block; font-size: .78rem; font-weight: 700; color: #fef3c7; opacity: .9; margin-top: .2rem; line-height: 1.4; }
+.hs-pay span b { display: block; color: #fde047; font-size: .95rem; }
+.hs-pay .hs-pay-h { font-weight: 800; color: #fde68a; background: transparent; }
+.hs-pay .hs-pay-n { font-size: .75rem; color: var(--muted); background: transparent; }
