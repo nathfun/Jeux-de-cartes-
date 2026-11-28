@@ -362,7 +362,7 @@
       + kpi('Requêtes', fmt(d.requests.m5) + ' / 5 min', fmt(d.requests.h1) + ' sur 1 h · ' + fmt(d.requests.rejected) + ' refusées (règles)')
       + kpi('Temps de réponse', d.latency.p50 + ' ms', 'moyenne ' + d.latency.avg + ' ms · 95 % sous ' + d.latency.p95 + ' ms · max ' + d.latency.max + ' ms', d.latency.p95 > 800)
       + kpi('Erreurs (1 h)', fmt(d.requests.errors), fmt(d.requests.limited) + ' requêtes freinées (anti-abus) depuis le démarrage', d.requests.errors > 0)
-      + kpi('Mémoire', bytes(d.memory.rss), memPct + ' % de la limite (' + bytes(d.memory.limit) + ')', memPct > 80)
+      + kpi('Mémoire du serveur', bytes(d.memory.rss), memPct + ' % de la limite (' + bytes(d.memory.limit) + ')' + (d.memory.heap ? ' · dont ' + bytes(d.memory.heap) + ' de données du jeu' : '') + ' · le chiffre de Docker inclut aussi le cache disque', memPct > 80)
       + kpi('Base de données', bytes(d.db.size), fmt(d.db.players) + ' joueurs · ' + fmt(d.db.ledger) + ' lignes au journal · ' + fmt(d.db.push || 0) + ' appareils abonnés aux notifications')
       + kpi('Charge du NAS', d.load[0].toFixed(2), d.cpus + ' cœurs · 5 min ' + d.load[1].toFixed(2) + ' · 15 min ' + d.load[2].toFixed(2), d.load[0] > d.cpus);
     barChart($('ch-req'), d.minutes.map((m, i) => ({ label: i === 59 ? 'maint.' : '−' + (59 - i) + ' min', title: (59 - i) ? 'il y a ' + (59 - i) + ' min' : 'cette minute', values: [m.n, m.err] })), [{ name: 'Requêtes', color: 'var(--s1)' }, { name: 'Erreurs', color: 'var(--s2)' }], { aria: 'Requêtes par minute', fmt: (v) => fmt(v) });

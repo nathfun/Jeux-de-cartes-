@@ -21,4 +21,5 @@ RUN chmod -R a+rX /app && mkdir -p /data && chown node:node /data
 USER node
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD wget -qO- http://127.0.0.1:8080/health >/dev/null || exit 1
-CMD ["node", "--disable-warning=ExperimentalWarning", "--max-old-space-size=192", "src/server.js"]
+# mémoire JavaScript plafonnée à 128 Mo : le ramasse-miettes nettoie plus tôt (le conteneur est limité à 256 Mo au total)
+CMD ["node", "--disable-warning=ExperimentalWarning", "--max-old-space-size=128", "src/server.js"]

@@ -62,7 +62,7 @@ const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'jeux-de-cartes-81cdf';
 const DB_URL = process.env.FIREBASE_DATABASE_URL || 'https://jeux-de-cartes-81cdf-default-rtdb.europe-west1.firebasedatabase.app';
 const MAX_BODY = 32 * 1024;
 // version du serveur (affichée dans l'admin et sur /health) : à changer à chaque mise à jour du serveur
-const SERVER_VERSION = '2026.12.02-2';
+const SERVER_VERSION = '2026.12.03-1';
 const TABLES = { blackjack: 'tables/', poker: 'ptables/', roulette: 'rtables/', loto: 'ltables/' };
 
 // ---------- Firebase (vérification des comptes, profil public, lecture des tables entre amis) ----------
@@ -112,8 +112,10 @@ async function pushRound() {
   try {
     const t = Date.now(), h = parisHour(t), day = R.today(t);
     const quiet = h < 9 || h >= 22; // pas de notification la nuit
+    // chaque profil n'est lu qu'une fois par tournée (avant : relu pour chaque ami de chaque joueur)
+    const cache = new Map(), load = (u) => { if (!cache.has(u)) cache.set(u, db.load(u)); return cache.get(u); };
     for (const uid of db.pushUids()) {
-      const st = db.load(uid), P = st.player;
+      const st = load(uid), P = st.player;
       if (!P) continue;
       // (l'ancien « coffre plein » en euros n'existe plus : pas de notification)
       // 🎁 bonus du jour + roue (une fois par jour, en fin d'après-midi)
@@ -126,13 +128,13 @@ async function pushRound() {
       const subs = db.pushOf(uid), friends = [...new Set(subs.flatMap((s) => (s.prefs && s.prefs.friendList) || []))].slice(0, 100);
       if (friends.length && !quiet) {
         const mine = P.econ === 3 ? P.bestPalier || 0 : 0;
-        const best = (f) => { const F = db.load(f).player; return F && F.econ === 3 ? F.bestPalier || 0 : 0; };
+        const best = (f) => { const F = load(f).player; return F && F.econ === 3 ? F.bestPalier || 0 : 0; };
         const ahead = friends.filter((f) => best(f) > mine);
         const before = JSON.parse(db.getState(uid, 'aheadp') || 'null');
         if (before) {
           const fresh = ahead.filter((f) => !before.includes(f));
           if (fresh.length) {
-            const F = db.load(fresh[0]).player;
+            const F = load(fresh[0]).player;
             await pushTo(uid, 'friends', { title: '🏆 ' + (F.pseudo || 'Un ami') + ' t\'a dépassé !', body: 'Il a atteint le palier ' + (F.bestPalier || 0) + ' du Parrain (ton record : ' + mine + '). Reprends ta place !', tag: 'friends' });
           }
         }
