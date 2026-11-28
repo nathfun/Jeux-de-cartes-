@@ -76,3 +76,12 @@ a.game:focus-visible { border-color: var(--gold); }
 .mini-race { margin-top: auto; display: flex; gap: .4rem; font-size: 1.8rem; } .mini-race span:not(:last-child) { transform: scaleX(-1); }
 .game.heist { background: radial-gradient(ellipse at 30% 10%, #3b0a2a 0%, #18181b 55%, #09090b 100%); border-color: #ca8a04; }
 .game.heist h2 { color: #fde047; }
+
+/* nouveaux jeux : Plus ou Moins, Le Casse, 421 */
+.game.hilo { background: radial-gradient(ellipse at 30% 10%, #1d6b45 0%, #0f4029 55%, #0a2a1b 100%); border-color: #a16207; } .game.hilo h2 { color: #bbf7d0; }
+.game.casse { background: radial-gradient(ellipse at 30% 10%, #312e81 0%, #111827 55%, #07080f 100%); border-color: #6366f1; } .game.casse h2 { color: #c7d2fe; }
+.game.des { background: radial-gradient(ellipse at 30% 10%, #166534 0%, #422006 60%, #1a0f07 100%); border-color: #78350f; } .game.des h2 { color: #fde68a; }
+.mini-hilo, .mini-casse, .mini-dice { display: flex; gap: .35rem; align-items: center; margin-top: auto; }
+.mini-hilo span { background: #fffdf7; color: #c81e1e; font-weight: 900; border-radius: 6px; padding: .3rem .4rem; font-size: 1rem; } .mini-hilo span:last-child { color: #111; } .mini-hilo b { color: #fde68a; }
+.mini-casse span { font-size: 1.6rem; } .mini-casse span:last-child { animation: miniAlarm 1s steps(2) infinite; } @keyframes miniAlarm { 50% { opacity: .3; } }
+.mini-dice span { font-size: 2.2rem; line-height: 1; color: #fffef8; }

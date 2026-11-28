@@ -485,7 +485,7 @@
   const refDone = (P) => (P.bestPalier || 0) >= 1;
   // Tables multijoueur en jetons (blackjack, roulette) : mise d'entrée minimale, gain plafonné (×CAP de l'apport)
   const MT = { MIN: 50, CAP: 10, TABLES: 2, PRESETS: [100, 250, 500, 1000] };
-  const GAMES = { blackjack: 'Blackjack', poker: 'Poker', roulette: 'Roulette', slots: 'Machine à sous', crash: 'Rocket Crash', plinko: 'Plinko', trader: 'Bourse Flash', mines: 'Mines', gold: 'Ruée vers l\'Or', loto: 'Loto Express', wheel: 'Roue de la fortune', boosters: 'Boosters', horses: 'Course de chevaux', heist: 'Le Braquage' };
+  const GAMES = { blackjack: 'Blackjack', poker: 'Poker', roulette: 'Roulette', slots: 'Machine à sous', crash: 'Rocket Crash', plinko: 'Plinko', trader: 'Bourse Flash', mines: 'Mines', gold: 'Ruée vers l\'Or', loto: 'Loto Express', wheel: 'Roue de la fortune', boosters: 'Boosters', horses: 'Course de chevaux', heist: 'Le Braquage', hilo: 'Plus ou Moins', casse: 'Le Casse', des: '421' };
   const pad = (n) => String(n).padStart(2, '0');
   // Date du jour (et de la veille) à l'heure de Paris : les défis et le bonus changent à minuit
   function dayOf(ms) {
@@ -621,7 +621,7 @@
   function track(P, type, d, now, N) {
     d = d || {};
     const T = P.totals;
-    const isRound = ['bj', 'pk', 'rl', 'sl', 'cr', 'pl', 'tr', 'mn', 'lo'].includes(type);
+    const isRound = ['bj', 'pk', 'rl', 'sl', 'cr', 'pl', 'tr', 'mn', 'lo', 'hl', 'cs', 'dq'].includes(type);
     if (isRound) {
       T.hands++;
       T.netBy = T.netBy || {};
@@ -1285,7 +1285,7 @@
   const RUN = {
     START_CASH: 1000, START_CASH_VIP: 1100, DAY_MS: 10 * 60000, VIP_BET: 1.6,
     // jeux débloqués selon le palier (le reste viendra : boosters, loto, bourse, course de chevaux…)
-    UNLOCK: { blackjack: 1, roulette: 1, slots: 1, wheel: 1, crash: 1, mines: 1, plinko: 2, boosters: 2, gold: 2, loto: 3, horses: 3, trader: 4, heist: 5 },
+    UNLOCK: { blackjack: 1, roulette: 1, slots: 1, wheel: 1, crash: 1, mines: 1, hilo: 1, casse: 2, des: 3, plinko: 2, boosters: 2, gold: 2, loto: 3, horses: 3, trader: 4, heist: 5 },
     PRIME: 0.1, // commission versée dans la caisse à chaque palier réussi (en % du quota)
   };
   // Quotas : +30 % à chaque palier (une croissance exponentielle douce), arrondis à 2 chiffres
@@ -1510,7 +1510,7 @@
   }
 
   // version des règles : le serveur et l'app doivent avoir la même (sinon : serveur du NAS à mettre à jour)
-  const RULES_VERSION = '2026.12.01-1';
+  const RULES_VERSION = '2026.12.02-1';
   const api = {
     RULES_VERSION,
     weekOf, weekPoints, ensureWeek, SEASON_TIERS, seasonOf, seasonTier, seasonName, ensureSeason,

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Plus ou Moins</title>
+  <meta name="theme-color" content="#0b1a14">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../icons/icon-192.png">
+  <link rel="stylesheet" href="../crash/style.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="../firebase-config.js"></script>
+  <script src="../gate.js"></script>
+</head>
+<body class="crash-page hl-page">
+  <header class="topbar">
+    <h1><a id="home-link" class="home-link" href="../index.html" hidden aria-label="Retour">←</a> 🃏 Plus ou Moins</h1>
+    <div class="bank"><span id="bank-label">Caisse</span> : <strong id="wallet">–</strong> € <button id="sound-toggle" class="ghost icon-btn" type="button">🔊</button></div>
+  </header>
+  <main class="hl-main">
+    <section id="setup" class="glass setup">
+      <h2>🃏 Plus ou Moins</h2>
+      <p class="muted">Une carte est retournée. La suivante sera-t-elle plus haute ou plus basse ? Chaque bonne réponse fait grimper ton gain : prends-le quand tu veux… avant de te tromper ! L'As est la plus petite carte, le Roi la plus grande.</p>
+      <div id="mode-picker"></div>
+    </section>
+    <section id="game" hidden>
+      <div id="mode-badge" class="mode-badge"></div>
+      <div class="hl-table">
+        <div class="hl-streak" id="streak"></div>
+        <div class="hl-cards">
+          <div id="card" class="hl-card back"><span class="r"></span><span class="s"></span></div>
+        </div>
+        <div id="msg" class="hl-msg" role="status">Mise, puis retourne la première carte.</div>
+        <div class="hl-pot"><small>Gain en jeu</small><b id="pot">–</b><span id="pot-mult" class="muted"></span></div>
+        <div id="choices" class="hl-choices">
+          <button id="hi" type="button" class="hl-btn hi"><b>⬆ Plus haut</b><small></small></button>
+          <button id="eq" type="button" class="hl-btn eq"><b>= Égal</b><small></small></button>
+          <button id="lo" type="button" class="hl-btn lo"><b>⬇ Plus bas</b><small></small></button>
+        </div>
+        <div class="hl-row">
+          <button id="skip" type="button" class="hl-small">🔄 Changer de carte <span id="skips"></span></button>
+          <button id="take" type="button" class="hl-take">💰 Prendre le gain</button>
+        </div>
+        <ol id="hist" class="hl-hist" aria-label="Cartes de la manche"></ol>
+      </div>
+      <div class="glass hl-controls">
+        <div class="hl-bet"><button id="bet-minus" type="button" aria-label="Baisser la mise">−</button><div><small>Mise</small><b id="bet">–</b></div><button id="bet-plus" type="button" aria-label="Monter la mise">+</button></div>
+        <button id="deal" class="hl-deal" type="button">🃏 Distribuer</button>
+        <div class="hl-stack"><small id="stack-label">Sur la table</small><b id="stack">–</b></div>
+        <button id="end-btn" class="btn-ghost" type="button">Terminer</button>
+      </div>
+      <p class="muted small hl-rules">« Plus » ou « moins » sur une carte de même valeur : égalité, on continue sans rien perdre. Le pari « égal » paie gros (une chance sur 13). Tu as 3 jokers pour changer de carte sans risque.</p>
+    </section>
+  </main>
+  <script src="../sounds.js"></script>
+  <script src="../casino-rules.js"></script>
+  <script src="../profile.js"></script>
+  <script src="../account.js"></script>
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+  <script src="../pwa.js"></script>
+</body>
+</html>

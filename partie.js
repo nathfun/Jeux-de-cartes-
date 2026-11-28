@@ -11,7 +11,7 @@
   if (wantStart) history.replaceState(null, '', location.pathname + QS);
   Casino.setLearn(false);
 
-  const GAME_PATH = { horses: 'courses/index.html', heist: 'heist/index.html', boosters: 'boosters/index.html', wheel: 'roue/index.html', blackjack: 'blackjack/index.html', roulette: 'roulette/index.html', slots: 'slots/index.html', gold: 'gold/index.html', crash: 'crash/index.html', plinko: 'plinko/index.html', trader: 'trader/index.html', mines: 'mines/index.html', loto: 'loto/index.html' };
+  const GAME_PATH = { hilo: 'plusmoins/index.html', casse: 'casse/index.html', des: 'des/index.html', horses: 'courses/index.html', heist: 'heist/index.html', boosters: 'boosters/index.html', wheel: 'roue/index.html', blackjack: 'blackjack/index.html', roulette: 'roulette/index.html', slots: 'slots/index.html', gold: 'gold/index.html', crash: 'crash/index.html', plinko: 'plinko/index.html', trader: 'trader/index.html', mines: 'mines/index.html', loto: 'loto/index.html' };
   const NAME = (g) => (Casino.GAMES[g] || { boosters: 'Boosters', horses: 'Course de chevaux', slots: 'Casino Royal' }[g] || g);
 
   // ---------- Histoire ----------
@@ -26,8 +26,8 @@
   const PALIER_TEXT = [
     '',
     'Premier soir. Le parrain t\'a confié sa mise de départ : ramène-lui le quota avant la fermeture.',
-    'Le parrain est satisfait… pour l\'instant. De nouvelles tables s\'ouvrent à toi : Plinko, boosters et la Ruée vers l\'Or.',
-    'On commence à parler de toi au Lounge. L\'hippodrome du parrain et le Loto t\'ouvrent leurs portes.',
+    'Le parrain est satisfait… pour l\'instant. De nouvelles tables s\'ouvrent à toi : Le Casse, Plinko, boosters et la Ruée vers l\'Or.',
+    'On commence à parler de toi au Lounge. L\'hippodrome du parrain, le Loto et la table de 421 t\'ouvrent leurs portes.',
     'Un rival du parrain t\'observe depuis le bar. La Bourse Flash est à toi.',
     'Le parrain t\'ouvre son coffre-fort : la machine « Le Braquage » t\'attend. Les mises montent… la pression aussi.',
     'Le parrain t\'invite à sa table. Il veut voir si tu as les nerfs solides.',

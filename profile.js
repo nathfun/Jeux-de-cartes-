@@ -451,8 +451,8 @@
   // Effet « gros gain » : montant qui défile, pièces qui tombent
   // ---------- Partage d'un gros gain (image + lien d'invitation) ----------
   const SITE = (() => { try { const src = (document.currentScript && document.currentScript.src) || ''; return src ? src.replace(/profile\.js(\?.*)?$/, '') : location.href.replace(/[^/]*$/, ''); } catch (e) { return location.href.replace(/[^/]*$/, ''); } })();
-  const GAME_ICON = { blackjack: '🂡', poker: '♠', roulette: '🎡', slots: '🎰', crash: '🚀', plinko: '🔮', trader: '📈', mines: '💎', loto: '🎱', gold: '⛏️' };
-  function gameHere() { const m = /\/(blackjack|poker|roulette|slots|crash|plinko|trader|mines|loto|gold)\//.exec(location.pathname); return m ? m[1] : null; }
+  const GAME_ICON = { blackjack: '🂡', poker: '♠', roulette: '🎡', slots: '🎰', crash: '🚀', plinko: '🔮', trader: '📈', mines: '💎', loto: '🎱', gold: '⛏️', heist: '🔐', boosters: '🃏', wheel: '🎡', horses: '🏇', hilo: '🃏', casse: '🏦', des: '🎲' };
+  function gameHere() { const m = /\/(blackjack|poker|roulette|slots|crash|plinko|trader|mines|loto|gold|heist|boosters|roue|courses|plusmoins|casse|des)\//.exec(location.pathname); return m ? ({ roue: 'wheel', courses: 'horses', plusmoins: 'hilo' }[m[1]] || m[1]) : null; }
   function loadImg(src) { return new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; }); }
   async function winCard(o, noIcon) {
     const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H;
@@ -748,7 +748,7 @@
         if (holding) { toast('Encore un instant', 'Attends la fin du tour pour encaisser.', '⏳'); return; }
         const g = curGame || (location.pathname.split('/').slice(-2, -1)[0]);
         cash.disabled = true; cash.textContent = '💼 …';
-        const r = await Casino.cashOut(g === 'roue' ? 'wheel' : g === 'courses' ? 'horses' : g);
+        const r = await Casino.cashOut({ roue: 'wheel', courses: 'horses', plusmoins: 'hilo' }[g] || g);
         if (!r || r.error) { // rien sur la table : on retourne simplement à la partie
           if (r && r.error && !/Aucune/.test(r.error)) { toast('Encaisser', r.error, '⚠️'); cash.disabled = false; cash.textContent = '💼 Encaisser'; return; }
           location.href = '../partie.html' + (/[?&]backend=local/.test(location.search) ? '?backend=local' : '');

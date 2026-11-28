@@ -1,5 +1,5 @@
 // Service worker : réseau d'abord (pour toujours avoir la dernière version), cache en secours hors ligne.
-const CACHE = 'casino-v76';
+const CACHE = 'casino-v77';
 const CORE = [
   './', './index.html', './manifest.webmanifest', './pwa.js', './firebase-config.js', './sounds.js', './casino-rules.js', './news.js', './profile.js', './social.js', './account.js', './gate.js',
   './icons/icon-192.png', './icons/icon-512.png',
@@ -23,6 +23,9 @@ const CORE = [
   './heist/', './heist/index.html', './heist/style.css', './heist/engine.js', './heist/app.js',
   './boosters/', './boosters/index.html', './boosters/style.css', './boosters/app.js',
   './roue/', './roue/index.html', './roue/style.css', './roue/app.js',
+  './plusmoins/', './plusmoins/index.html', './plusmoins/style.css', './plusmoins/engine.js', './plusmoins/app.js',
+  './casse/', './casse/index.html', './casse/style.css', './casse/engine.js', './casse/app.js',
+  './des/', './des/index.html', './des/style.css', './des/engine.js', './des/app.js',
 ];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)).then(() => self.skipWaiting()));

@@ -62,7 +62,7 @@ const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'jeux-de-cartes-81cdf';
 const DB_URL = process.env.FIREBASE_DATABASE_URL || 'https://jeux-de-cartes-81cdf-default-rtdb.europe-west1.firebasedatabase.app';
 const MAX_BODY = 32 * 1024;
 // version du serveur (affichée dans l'admin et sur /health) : à changer à chaque mise à jour du serveur
-const SERVER_VERSION = '2026.12.01-1';
+const SERVER_VERSION = '2026.12.02-1';
 const TABLES = { blackjack: 'tables/', poker: 'ptables/', roulette: 'rtables/', loto: 'ltables/' };
 
 // ---------- Firebase (vérification des comptes, profil public, lecture des tables entre amis) ----------
@@ -534,7 +534,7 @@ function adminEdit(target, op, fn) {
 }
 // ---------- Tableau de bord (page admin) : activité, jetons, mode Le Parrain, jeux, alertes ----------
 // Deux monnaies : les JETONS (compte du joueur, durables) et les € de la CAISSE d'une partie du Parrain (fictifs, perdus en fin de partie).
-const GAME_OF = { bj: 'Blackjack', rl: 'Roulette', sl: 'Casino Royal', gd: 'Ruée vers l\'Or', cr: 'Rocket Crash', pl: 'Plinko', mn: 'Mines', tr: 'Bourse Flash', lo: 'Loto Express', wh: 'Roue de la fortune', bo: 'Boosters', hc: 'Course de chevaux', hs: 'Le Braquage' };
+const GAME_OF = { bj: 'Blackjack', rl: 'Roulette', sl: 'Casino Royal', gd: 'Ruée vers l\'Or', cr: 'Rocket Crash', pl: 'Plinko', mn: 'Mines', tr: 'Bourse Flash', lo: 'Loto Express', wh: 'Roue de la fortune', bo: 'Boosters', hc: 'Course de chevaux', hs: 'Le Braquage', hl: 'Plus ou Moins', cs: 'Le Casse', dq: '421' };
 /** D'où viennent (ou où partent) les jetons d'une ligne du journal. */
 function jetonSource(r) {
   const op = r.op, pre = op.split('.')[0];

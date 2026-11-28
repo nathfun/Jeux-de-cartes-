@@ -23,6 +23,9 @@ const MN = require('./shared/mines-engine.js');
 const GD = require('./shared/gold-engine.js');
 const TR = require('./shared/trader-engine.js');
 const HS = require('./shared/heist-engine.js');
+const HL = require('./shared/hilo-engine.js');
+const CS = require('./shared/casse-engine.js');
+const DQ = require('./shared/des-engine.js');
 const nodeCrypto = require('crypto');
 const hmacHex = (key, msg) => nodeCrypto.createHmac('sha256', key).update(msg).digest('hex');
 const sha256Hex = (t) => nodeCrypto.createHash('sha256').update(t).digest('hex');
@@ -513,20 +516,24 @@ function handle(state, ctx) {
     if (game === 'slots') S.sl = null;
     if (game === 'blackjack') S.bj = { shoe: S.bj && S.bj.shoe, round: null };
     if (game === 'trader') traderCloseAll(P, S, ctx, now, track);
+    // nouveaux jeux : une manche en cours est réglée (gain acquis encaissé, mise rendue si rien n'a été joué)
+    if (game === 'hilo' && S.hl && S.hl.active) { const h = S.hl, ss = P.sessions.hilo; const pay = h.steps ? round2(h.bet * HL.payMult(h.fair)) : h.bet; ss.stack = round2(ss.stack + pay); h.active = false; if (h.steps) track('hl', { bet: h.bet, net: round2(pay - h.bet) }); }
+    if (game === 'casse' && S.cs && S.cs.active) { const c = S.cs, ss = P.sessions.casse; const pay = c.floor ? round2(c.bet * CS.multAt(c.mode, c.floor)) : c.bet; ss.stack = round2(ss.stack + pay); c.active = false; if (c.floor) track('cs', { bet: c.bet, net: round2(pay - c.bet) }); }
+    if (game === 'des' && S.dq && S.dq.active) { const g = S.dq, ss = P.sessions.des; const pay = round2(g.bet * DQ.payMult(g.dice, g.throws)); ss.stack = round2(ss.stack + pay); g.active = false; track('dq', { bet: g.bet, net: round2(pay - g.bet) }); }
   };
   // La journée est-elle finie ? (le chrono est vérifié par le serveur à chaque action)
   if (R.runActive(P) && now >= P.run.dayEnd && ctx.op !== 'run.end') {
     Object.keys(P.sessions).forEach((g) => settle(g, false));
     const r = R.runEndDay(P, now, N, 'time');
     result.dayOver = r.over ? 'over' : r.warned ? 'warn' : 'shop';
-    if (/^(bj|rl|sl|cr|gd|pl|lo|mn|wh|pk|bo|tr|hc|hs)\./.test(ctx.op) || ctx.op === 'session.start' || ctx.op === 'session.cashout') {
+    if (/^(bj|rl|sl|cr|gd|pl|lo|mn|wh|pk|bo|tr|hc|hs|hl|cs|dq)\./.test(ctx.op) || ctx.op === 'session.start' || ctx.op === 'session.cashout') {
       state.player = P; state.secret = S;
       return { state, result: { dayOver: result.dayOver, run: P.run }, notes: N };
     }
   }
 
   // Le Parrain : mise minimale de chaque jeu (10 € au palier 1, roulette 2 €), vérifiée par le serveur
-  const MIN_GAME = { 'cr.round': 'crash', 'pl.drop': 'plinko', 'lo.draw': 'loto', 'mn.start': 'mines', 'tr.open': 'trader', 'sl.spin': 'slots', 'gd.spin': 'gold' };
+  const MIN_GAME = { 'hl.start': 'hilo', 'cs.start': 'casse', 'dq.roll': 'des', 'cr.round': 'crash', 'pl.drop': 'plinko', 'lo.draw': 'loto', 'mn.start': 'mines', 'tr.open': 'trader', 'sl.spin': 'slots', 'gd.spin': 'gold' };
   if (MIN_GAME[ctx.op] && R.runActive(P)) {
     const b = Number((ctx.data || {}).bet) || 0, mn = R.gameMin(P, MIN_GAME[ctx.op]);
     if (b > 0 && b < mn && !(ctx.op === 'sl.spin' && S.sl && S.sl.free > 0)) fail('Mise minimale : ' + mn + ' € à ce palier.');
@@ -602,6 +609,115 @@ function handle(state, ctx) {
       ss.stack = round2(ss.stack - bet + r.total);
       track('sl', { bet, net: round2(r.total - bet), jackpot: !!r.bonus && r.bonus.mult >= 25, freeTrigger: !!r.bonus });
       result = Object.assign(r, { stack: ss.stack });
+      break;
+    }
+
+    // ----- Plus ou Moins : le serveur retourne les cartes -----
+    case 'hl.start': case 'hl.guess': case 'hl.skip': case 'hl.cash': {
+      const ss = sess('hilo');
+      S.hl = S.hl || null;
+      const h = S.hl;
+      const cash = () => { const pay = round2(h.bet * HL.payMult(h.fair)); ss.stack = round2(ss.stack + pay); h.active = false; track('hl', { bet: h.bet, net: round2(pay - h.bet), mult: pay / h.bet }); return pay; };
+      if (ctx.op === 'hl.start') {
+        if (h && h.active) fail('Une manche est déjà en cours.');
+        const bet = int(d.bet);
+        if (!(bet >= R.gameMin(P, 'hilo') && bet <= MAX_BET)) fail('Mise entre ' + R.gameMin(P, 'hilo') + ' et ' + MAX_BET + ' € à ce palier.');
+        if (bet > ss.stack) fail('Pas assez d\'argent sur la table.');
+        ss.stack = round2(ss.stack - bet);
+        S.hl = { bet, card: HL.draw(ctx.rnd), fair: 1, steps: 0, skips: HL.SKIPS, active: true };
+        result = { card: S.hl.card, skips: S.hl.skips, fair: 1, steps: 0, stack: ss.stack };
+        break;
+      }
+      if (!h || !h.active) fail('Pas de manche en cours : mise d\'abord.');
+      if (ctx.op === 'hl.skip') {
+        if (h.skips <= 0) fail('Plus de joker pour changer de carte.');
+        h.skips--; h.card = HL.draw(ctx.rnd);
+        result = { card: h.card, skips: h.skips, fair: h.fair, steps: h.steps, stack: ss.stack };
+        break;
+      }
+      if (ctx.op === 'hl.cash') {
+        if (h.steps < 1) fail('Trouve au moins une carte avant d\'encaisser.');
+        const pay = cash();
+        result = { cashed: true, payout: pay, stack: ss.stack };
+        break;
+      }
+      const dir = ['hi', 'lo', 'eq'].includes(d.dir) ? d.dir : fail('Choix inconnu.');
+      const o = HL.odds(h.card.r)[dir];
+      if (!o) fail('Ce pari est impossible avec cette carte.');
+      const next = HL.draw(ctx.rnd), out = HL.judge(h.card.r, next.r, dir);
+      if (out === 'win') { h.fair *= o; h.steps++; }
+      const prev = h.card; h.card = next;
+      if (out === 'lose') { h.active = false; track('hl', { bet: h.bet, net: -h.bet, mult: 0 }); }
+      let payout = 0;
+      if (out === 'win' && h.fair >= HL.MAX_FAIR) payout = cash(); // plafond atteint : encaissé d'office
+      result = { prev, card: next, out, fair: h.fair, steps: h.steps, mult: HL.payMult(h.fair), active: h.active, payout, stack: ss.stack };
+      break;
+    }
+    // ----- Le Casse : la tour (et ses alarmes) reste secrète sur le serveur -----
+    case 'cs.start': case 'cs.pick': case 'cs.cash': {
+      const ss = sess('casse');
+      const c = S.cs;
+      const cash = () => { const pay = round2(c.bet * CS.multAt(c.mode, c.floor)); ss.stack = round2(ss.stack + pay); c.active = false; track('cs', { bet: c.bet, net: round2(pay - c.bet), mult: pay / c.bet }); return pay; };
+      if (ctx.op === 'cs.start') {
+        if (c && c.active) fail('Un casse est déjà en cours.');
+        const bet = int(d.bet), mode = CS.MODES[d.mode] ? d.mode : 'normal';
+        if (!(bet >= R.gameMin(P, 'casse') && bet <= MAX_BET)) fail('Mise entre ' + R.gameMin(P, 'casse') + ' et ' + MAX_BET + ' € à ce palier.');
+        if (bet > ss.stack) fail('Pas assez d\'argent sur la table.');
+        ss.stack = round2(ss.stack - bet);
+        S.cs = { bet, mode, tower: CS.newTower(mode, ctx.rnd), floor: 0, active: true };
+        result = { mode, floor: 0, stack: ss.stack };
+        break;
+      }
+      if (!c || !c.active) fail('Pas de casse en cours : mise d\'abord.');
+      if (ctx.op === 'cs.cash') {
+        if (c.floor < 1) fail('Passe au moins un étage avant de t\'enfuir.');
+        const pay = cash();
+        result = { cashed: true, payout: pay, floor: c.floor, tower: c.tower, stack: ss.stack };
+        break;
+      }
+      const door = int(d.door);
+      if (!(door >= 0 && door < CS.MODES[c.mode].doors)) fail('Porte inconnue.');
+      const alarms = c.tower[c.floor];
+      if (alarms.includes(door)) {
+        c.active = false; track('cs', { bet: c.bet, net: -c.bet, mult: 0 });
+        result = { alarm: true, floor: c.floor, alarms, tower: c.tower, stack: ss.stack };
+        break;
+      }
+      c.floor++;
+      let payout = 0;
+      if (c.floor >= CS.FLOORS) payout = cash(); // sommet atteint : le butin est encaissé
+      result = { alarm: false, floor: c.floor, alarms, mult: CS.multAt(c.mode, c.floor), next: CS.multAt(c.mode, c.floor + 1), active: c.active, payout, tower: c.active ? undefined : c.tower, stack: ss.stack };
+      break;
+    }
+    // ----- 421 : le serveur lance les dés -----
+    case 'dq.roll': case 'dq.stop': {
+      const ss = sess('des');
+      const g = S.dq;
+      const finish = () => { const m = DQ.payMult(g.dice, g.throws), pay = round2(g.bet * m); ss.stack = round2(ss.stack + pay); g.active = false; track('dq', { bet: g.bet, net: round2(pay - g.bet), mult: m, combo: DQ.evaluate(g.dice).id }); return { pay, m }; };
+      if (ctx.op === 'dq.stop') {
+        if (!g || !g.active) fail('Pas de partie en cours.');
+        const f = finish();
+        result = { dice: g.dice, throws: g.throws, combo: DQ.evaluate(g.dice), mult: f.m, payout: f.pay, done: true, stack: ss.stack };
+        break;
+      }
+      if (!g || !g.active) {
+        const bet = int(d.bet);
+        if (!(bet >= R.gameMin(P, 'des') && bet <= MAX_BET)) fail('Mise entre ' + R.gameMin(P, 'des') + ' et ' + MAX_BET + ' € à ce palier.');
+        if (bet > ss.stack) fail('Pas assez d\'argent sur la table.');
+        ss.stack = round2(ss.stack - bet);
+        const rf = () => ctx.rnd(6) / 6;
+        S.dq = { bet, dice: [DQ.roll(rf), DQ.roll(rf), DQ.roll(rf)], throws: 1, active: true };
+        result = { dice: S.dq.dice, throws: 1, combo: DQ.evaluate(S.dq.dice), mult: DQ.payMult(S.dq.dice, 1), done: false, stack: ss.stack };
+        break;
+      }
+      const keep = Array.isArray(d.keep) ? d.keep.slice(0, 3).map(Boolean) : [];
+      if (keep.length !== 3 || keep.every(Boolean)) fail('Choisis au moins un dé à relancer.');
+      const rf = () => ctx.rnd(6) / 6;
+      g.dice = g.dice.map((x, i) => (keep[i] ? x : DQ.roll(rf)));
+      g.throws++;
+      let payout = 0, m = DQ.payMult(g.dice, g.throws), done = false;
+      if (g.throws >= DQ.ROLLS) { const f = finish(); payout = f.pay; m = f.m; done = true; }
+      result = { dice: g.dice, throws: g.throws, combo: DQ.evaluate(g.dice), mult: m, payout, done, stack: ss.stack };
       break;
     }
 
@@ -865,7 +981,7 @@ function handle(state, ctx) {
     default: fail('Opération inconnue.');
   }
   // Plus assez d'argent nulle part pour miser (caisse + tables, manches finies) : banqueroute
-  const busy = !!((S.tr && S.tr.pos && S.tr.pos.length > 0) || (S.bj && S.bj.round && S.bj.round.phase !== 'over') || (S.sl && S.sl.free > 0) || (S.mn && S.mn.round && S.mn.round.active) || (S.cr && S.cr.round && !S.cr.round.done && S.cr.round.bet));
+  const busy = !!((S.tr && S.tr.pos && S.tr.pos.length > 0) || (S.bj && S.bj.round && S.bj.round.phase !== 'over') || (S.sl && S.sl.free > 0) || (S.mn && S.mn.round && S.mn.round.active) || (S.cr && S.cr.round && !S.cr.round.done && S.cr.round.bet) || (S.hl && S.hl.active) || (S.cs && S.cs.active) || (S.dq && S.dq.active));
   result.idle = !busy; // aucune manche en cours : l'appli peut renvoyer le joueur vers la partie s'il ne peut plus miser ici
   if (R.runActive(P)) {
     const b = busy ? null : R.runCheckBroke(P, now, N);

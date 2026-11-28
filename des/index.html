@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>421</title>
+  <meta name="theme-color" content="#1a0f07">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../icons/icon-192.png">
+  <link rel="stylesheet" href="../crash/style.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="../firebase-config.js"></script>
+  <script src="../gate.js"></script>
+</head>
+<body class="crash-page dq-page">
+  <header class="topbar">
+    <h1><a id="home-link" class="home-link" href="../index.html" hidden aria-label="Retour">←</a> 🎲 421</h1>
+    <div class="bank"><span id="bank-label">Caisse</span> : <strong id="wallet">–</strong> € <button id="sound-toggle" class="ghost icon-btn" type="button">🔊</button></div>
+  </header>
+  <main class="dq-main">
+    <section id="setup" class="glass setup">
+      <h2>🎲 421</h2>
+      <p class="muted">Le jeu de dés des comptoirs. Lance trois dés (secoue ton téléphone ou appuie sur Lancer). Garde les dés qui te plaisent et relance les autres une fois… ou arrête-toi tout de suite pour un bonus ×1,5. Le roi des coups : 4-2-1 !</p>
+      <div id="mode-picker"></div>
+    </section>
+    <section id="game" hidden>
+      <div id="mode-badge" class="mode-badge"></div>
+      <div class="dq-mat">
+        <div id="dice" class="dq-dice"></div>
+        <div id="combo" class="dq-combo"></div>
+        <div id="msg" class="dq-msg" role="status">Mise, puis lance les dés !</div>
+        <div id="coach" class="dq-coach" hidden></div>
+      </div>
+      <div class="dq-acts">
+        <button id="roll" class="dq-roll" type="button">🎲 Lancer</button>
+        <button id="stop" class="dq-stop" type="button" hidden>✋ Je garde</button>
+      </div>
+      <button id="shake-btn" class="dq-shake" type="button" hidden>📳 Activer « secouer pour lancer »</button>
+      <div class="glass dq-controls">
+        <div class="dq-bet"><button id="bet-minus" type="button" aria-label="Baisser la mise">−</button><div><small>Mise</small><b id="bet">–</b></div><button id="bet-plus" type="button" aria-label="Monter la mise">+</button></div>
+        <div class="dq-stack"><small>Sur la table</small><b id="stack">–</b></div>
+        <button id="end-btn" class="btn-ghost" type="button">Terminer</button>
+      </div>
+      <div class="glass dq-pays"><h3>Gains pour ta mise de <span id="pay-bet"></span></h3><div id="pays"></div><p class="muted small">Arrêt au 1er lancer : gain ×1,5. Une seule relance possible. Touche un dé pour le garder 🔒.</p></div>
+    </section>
+  </main>
+  <script src="../sounds.js"></script>
+  <script src="../casino-rules.js"></script>
+  <script src="../profile.js"></script>
+  <script src="../account.js"></script>
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+  <script src="../pwa.js"></script>
+</body>
+</html>

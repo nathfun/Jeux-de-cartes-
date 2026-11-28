@@ -1,5 +1,10 @@
 /* Nouveautés du Lucky Lounge : la plus récente en premier. Ajoute une entrée à chaque mise à jour. */
 window.CASINO_NEWS = [
+  { date: '2026-12-02', title: 'Trois nouveaux jeux', items: [
+    '🃏 Plus ou Moins (palier 1) : plus haut, plus bas ou égal ? Prends ton gain avant de te tromper.',
+    '🏦 Le Casse (palier 2) : 8 étages, une porte à choisir à chaque fois… et une alarme quelque part.',
+    '🎲 421 (palier 3) : secoue ton téléphone pour lancer les dés, garde, relance, vise le 4-2-1 !',
+  ] },
   { date: '2026-12-01', title: '60 nouvelles cartes', items: [
     '🃏 Pègre & Casino et L\'Âge d\'or : 20 communes et 10 rares de plus chacune (227 cartes en tout).',
     '📦 Paquets de 8 cartes : 6 communes et 2 rares ou mieux. Une épique rend toujours le paquet gagnant.',

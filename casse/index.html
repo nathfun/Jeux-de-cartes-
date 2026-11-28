@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Le Casse</title>
+  <meta name="theme-color" content="#0a0d18">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="apple-touch-icon" href="../icons/icon-192.png">
+  <link rel="stylesheet" href="../crash/style.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="../firebase-config.js"></script>
+  <script src="../gate.js"></script>
+</head>
+<body class="crash-page cs-page">
+  <header class="topbar">
+    <h1><a id="home-link" class="home-link" href="../index.html" hidden aria-label="Retour">←</a> 🏦 Le Casse</h1>
+    <div class="bank"><span id="bank-label">Caisse</span> : <strong id="wallet">–</strong> € <button id="sound-toggle" class="ghost icon-btn" type="button">🔊</button></div>
+  </header>
+  <main class="cs-main">
+    <section id="setup" class="glass setup">
+      <h2>🏦 Le Casse</h2>
+      <p class="muted">Huit étages entre toi et le coffre de la banque. À chaque étage, choisis une porte : derrière l'une d'elles, l'alarme ! Chaque porte franchie fait grimper ton butin. Enfuis-toi quand tu veux… avant que les sirènes hurlent.</p>
+      <div id="mode-picker"></div>
+    </section>
+    <section id="game" hidden>
+      <div id="mode-badge" class="mode-badge"></div>
+      <div id="modes" class="cs-modes" role="radiogroup" aria-label="Niveau de risque"></div>
+      <div id="building" class="cs-building">
+        <div class="cs-roof">🏦 <b>COFFRE</b> 💰</div>
+        <div id="floors" class="cs-floors"></div>
+        <div class="cs-street">🚐 <span>Ta camionnette t'attend…</span></div>
+        <div id="siren" class="cs-siren" hidden></div>
+      </div>
+      <div id="msg" class="cs-msg" role="status">Choisis ton style, ta mise, et lance le casse.</div>
+      <div class="cs-loot"><small>Butin</small><b id="loot">–</b><span id="loot-next" class="muted"></span></div>
+      <button id="flee" class="cs-flee" type="button" hidden>🏃 S'enfuir avec le butin</button>
+      <div class="glass cs-controls">
+        <div class="cs-bet"><button id="bet-minus" type="button" aria-label="Baisser la mise">−</button><div><small>Mise</small><b id="bet">–</b></div><button id="bet-plus" type="button" aria-label="Monter la mise">+</button></div>
+        <button id="go" class="cs-go" type="button">🧤 Lancer le casse</button>
+        <div class="cs-stack"><small>Sur la table</small><b id="stack">–</b></div>
+        <button id="end-btn" class="btn-ghost" type="button">Terminer</button>
+      </div>
+    </section>
+  </main>
+  <script src="../sounds.js"></script>
+  <script src="../casino-rules.js"></script>
+  <script src="../profile.js"></script>
+  <script src="../account.js"></script>
+  <script src="engine.js"></script>
+  <script src="app.js"></script>
+  <script src="../pwa.js"></script>
+</body>
+</html>
