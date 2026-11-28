@@ -4,6 +4,7 @@ window.CASINO_NEWS = [
     '🃏 Plus ou Moins (palier 1) : plus haut, plus bas ou égal ? Prends ton gain avant de te tromper.',
     '🏦 Le Casse (palier 2) : 8 étages, une porte à choisir à chaque fois… et une alarme quelque part.',
     '🎲 421 (palier 3) : secoue ton téléphone pour lancer les dés, garde, relance, vise le 4-2-1 !',
+    '📈 Bourse Flash : un marché trois fois plus nerveux (des gains bien plus gros), et une partie guidée dans l\'Apprentissage.',
   ] },
   { date: '2026-12-01', title: '60 nouvelles cartes', items: [
     '🃏 Pègre & Casino et L\'Âge d\'or : 20 communes et 10 rares de plus chacune (227 cartes en tout).',

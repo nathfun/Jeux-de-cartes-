@@ -11,8 +11,9 @@
  *   valeur = M × (1 + sens × L × (prix / prix d'entrée − 1)) − frais
  *   frais = FEE × M × L (payés à l'ouverture) ;
  *   liquidation : si la valeur tombe sous LIQ × M, la position est fermée et la mise est perdue.
+ * Le marché est volontairement nerveux (une mise de 20 € avec levier peut rapporter 10 à 30 € en une minute).
  * Avantage du casino ≈ les frais + la liquidation (on perd tout un peu avant zéro). Vérifié par simulation :
- * selon le levier et la durée, les stratégies simples rendent entre 92 et 99,7 % des mises (levier max. par action : ×20, ×10, ×3).
+ * selon le levier et la durée, les stratégies simples rendent entre 95 et 99,8 % des mises (levier max. par action : ×20, ×10, ×3).
  */
 (function (root) {
   'use strict';
@@ -20,15 +21,15 @@
     DT: 0.25,          // secondes par pas de cours
     BURST: 8,          // un krach / une envolée dure 8 pas (2 s), cotation suspendue pendant ce temps
     FEE: 0.003,        // frais : 0,3 % de la somme engagée (mise × levier)
-    LIQ: 0.15,         // liquidation quand il ne reste que 15 % de la mise
+    LIQ: 0.1,          // liquidation quand il ne reste que 10 % de la mise
     LEVERS: [1, 2, 3, 5, 10, 20],
     MIN_BET: 1, MAX_BET: 1e9, MAX_WIN: 1e12, MAX_POS: 5,
   };
   // Les trois actions (fictives) : volatilité par √seconde, fréquence et taille des sauts
   const ASSETS = [
-    { id: 'neon', name: 'Néon Corp', short: 'NÉON', icon: '💡', maxLev: 20, start: 120, sigma: 0.0016, jumpRate: 1 / 150, jump: 0.03, desc: 'Grosse entreprise solide : ça bouge doucement.' },
-    { id: 'orbit', name: 'Orbit Motors', short: 'ORBT', icon: '🛰️', maxLev: 10, start: 48, sigma: 0.0035, jumpRate: 1 / 75, jump: 0.06, desc: 'Start-up spatiale : des hauts et des bas.' },
-    { id: 'moon', name: 'MoonCoin', short: 'MOON', icon: '🌙', maxLev: 3, start: 3.2, sigma: 0.0075, jumpRate: 1 / 40, jump: 0.14, desc: 'Crypto-monnaie folle : krachs et envolées.' },
+    { id: 'neon', name: 'Néon Corp', short: 'NÉON', icon: '💡', maxLev: 20, start: 120, sigma: 0.0048, jumpRate: 1 / 150, jump: 0.045, desc: 'Grosse entreprise solide : ça bouge doucement.' },
+    { id: 'orbit', name: 'Orbit Motors', short: 'ORBT', icon: '🛰️', maxLev: 10, start: 48, sigma: 0.0105, jumpRate: 1 / 75, jump: 0.09, desc: 'Start-up spatiale : des hauts et des bas.' },
+    { id: 'moon', name: 'MoonCoin', short: 'MOON', icon: '🌙', maxLev: 3, start: 3.2, sigma: 0.0225, jumpRate: 1 / 40, jump: 0.21, desc: 'Crypto-monnaie folle : krachs et envolées.' },
   ];
   const NEWS = {
     up: ['Rumeur de rachat géant chez {n} !', '{n} annonce des résultats record !', 'Un milliardaire achète massivement {n} !', 'Contrat historique signé par {n} !'],

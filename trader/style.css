@@ -63,3 +63,6 @@
 .bet-side, .action-side, .tr-auto .field { min-width: 0; }
 .tr-auto .auto-row input { width: 100%; }
 @media (max-width: 640px) { .trader-page .controls { grid-template-columns: minmax(0, 1fr); } .seg button { font-size: .78rem; } }
+
+.guide-btn { align-self: center; font: inherit; font-weight: 800; font-size: .9rem; border-radius: 999px; padding: .45rem 1rem; border: 2px solid #facc15; background: rgba(250,204,21,.12); color: #fde68a; cursor: pointer; margin: .2rem auto; display: block; }
+.guide-btn[hidden] { display: none; }

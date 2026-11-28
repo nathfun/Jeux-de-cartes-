@@ -381,6 +381,12 @@
     const badge = $('mode-badge'); badge.hidden = false;
     badge.className = 'mode-badge' + (mode === 'real' ? ' real' : '');
     badge.textContent = mode === 'real' ? '🕴️ Le Parrain · ta caisse · sans aides' : '🎓 Apprentissage · crédit illimité, aides et conseils';
+    // Apprentissage : bouton « Partie guidée », lancée d'office la première fois (ou depuis la page Apprentissage)
+    let gb = $('guide-btn');
+    if (!gb) { gb = document.createElement('button'); gb.id = 'guide-btn'; gb.type = 'button'; gb.className = 'guide-btn'; gb.textContent = '🎓 Partie guidée'; gb.onclick = () => window.TraderTour && TraderTour.start(); badge.after(gb); }
+    gb.hidden = mode !== 'train';
+    let seen = false; try { seen = localStorage.getItem('tr-tour-done') === '1'; } catch (e) { /* ignore */ }
+    if (mode === 'train' && (!seen || /[?&]guide=1/.test(location.search))) setTimeout(() => { if (window.TraderTour && S.mode === 'train') TraderTour.start(); }, 900);
     $('end-btn').hidden = mode === 'train';
     if (srv()) { positions = []; queue = []; lastK = -1; poll(); }
     renderStats(); renderAides(); renderPositions(true);
