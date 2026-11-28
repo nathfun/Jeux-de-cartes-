@@ -21,7 +21,7 @@
     { bg: 'smoke', art: '🕴️', t: 'Le parrain te reçoit.', x: '« Ton frère me doit beaucoup. Toi, tu vas me rembourser. Une journée à la fois. »' },
     { bg: 'casino', art: '🎰🃏🎲', t: 'Le Lucky Lounge.', x: 'Il te confie une caisse. Chaque journée dure 10 minutes : fais-la fructifier aux tables et atteins le quota du soir.' },
     { bg: 'deal', art: '🤝💼', t: 'Le marché.', x: 'Chaque palier réussi : une prime du parrain, des objets chez le receleur et de nouveaux jeux. Mais les quotas montent.' },
-    { bg: 'blood', art: '❤️❤️❤️', t: 'Trois chances.', x: 'Quota raté ou caisse vide : tu perds une vie. Plus de vies… et la mafia passe. Jusqu\'où iras-tu ?' },
+    { bg: 'blood', art: '🕴️🔪', t: 'Pas de seconde chance.', x: 'Quota raté ou caisse vide : la mafia passe, et la partie s\'arrête. Tu gardes les jetons gagnés. Jusqu\'où iras-tu ?' },
   ];
   const PALIER_TEXT = [
     '',
@@ -76,15 +76,13 @@
     });
   }
   /** Annonce d'un palier : « PALIER 2 », la petite histoire, le quota et les nouveautés, puis « Commencer ». */
-  function showPalier(n, quota, cash, lives) {
+  function showPalier(n, quota, cash) {
     return new Promise((done) => {
       const [ov, box] = full('palier');
       const news = Object.keys(R.RUN.UNLOCK).filter((g) => R.RUN.UNLOCK[g] === n && (n > 1));
       const facts = el('div', 'facts');
       const q = el('span', '', '🎯 Quota : 0 €');
       facts.append(q, el('span', '', '⏱ 10 min'), el('span', '', '💼 Caisse : ' + fmt(cash) + ' €'));
-      const lv = lives === undefined ? (Casino.isVip() ? R.RUN.LIVES_VIP : R.RUN.LIVES) : lives;
-      facts.appendChild(el('span', '', '❤️'.repeat(Math.max(0, lv)) + ' ' + lv + ' vie' + (lv > 1 ? 's' : '')));
       const t0 = performance.now();
       const up = (t) => { const f = Math.min(1, (t - t0 - 600) / 900); if (f > 0) q.textContent = '🎯 Quota : ' + fmt(quota * (1 - Math.pow(1 - f, 3))) + ' €'; if (f < 1 && q.isConnected) requestAnimationFrame(up); };
       requestAnimationFrame(up);
@@ -94,16 +92,6 @@
       box.append(el('div', 'icons', '🕴️'), el('div', 'kicker', 'LE PARRAIN · JOUR ' + n), el('div', 'pal', 'PALIER ' + n), el('p', '', palierText(n)), facts, b);
       if (window.Sfx) { if (Sfx.sting) setTimeout(() => Sfx.sting(), 200); else Sfx.chips(); }
     });
-  }
-  function showWarn(r) {
-    if (document.querySelector('.full.mafia')) return;
-    const [ov, box] = full('mafia warn');
-    const b = el('button', 'cta', 'Rejouer la journée'); b.type = 'button'; b.onclick = () => ov.remove();
-    const left = r.lives || 0;
-    box.append(el('div', 'icons', '🕴️💢'), el('h3', '', 'Avertissement du parrain'),
-      el('p', '', '« Je n\'aime pas attendre mon argent. Tu as une journée de plus pour me rembourser… ne me déçois pas. »'),
-      el('div', 'lives big', '❤️'.repeat(left) + '🖤'.repeat(Math.max(1, (r.maxLives || (Casino.isVip() ? R.RUN.LIVES_VIP : R.RUN.LIVES)) - left))), el('p', '', left <= 1 ? 'C\'est ta dernière vie !' : 'Il te reste ' + left + ' vies.'), b);
-    if (window.Sfx && Sfx.lose) Sfx.lose();
   }
   function showMafia(run) {
     if (document.querySelector('.full.mafia')) return;
@@ -147,11 +135,7 @@
       return;
     }
     if (r.status === 'over') { ['day', 'day-card', 'games', 'shop-card', 'abandon'].forEach((id) => { $(id).hidden = true; }); showMafia(r); return; }
-    // une vie perdue (ici ou sur un jeu) : écran d'avertissement
-    const lk = 'run-lives-' + r.id;
-    let seenL = null; try { seenL = localStorage.getItem(lk); } catch (e) { /* ignore */ }
-    if (r.lives !== undefined) { if (seenL !== null && Number(seenL) > r.lives) showWarn(r); try { localStorage.setItem(lk, String(r.lives)); } catch (e) { /* ignore */ } }
-    const k = JSON.stringify([r.status, r.palier, r.lives, Math.floor(r.cash), r.offer, r.items, Object.keys(P.sessions || {}).map((g) => g + Math.floor(P.sessions[g].stack))]);
+    const k = JSON.stringify([r.status, r.palier, Math.floor(r.cash), r.offer, r.items, Object.keys(P.sessions || {}).map((g) => g + Math.floor(P.sessions[g].stack))]);
     if (k === key) { tick(); return; }
     key = k;
     const playing = r.status === 'playing';
@@ -164,7 +148,6 @@
   function drawDay(P, r) {
     const tot = R.runTotal(P), ok = tot >= r.quota;
     $('chip').textContent = 'Palier ' + r.palier;
-    $('lives').textContent = r.lives === undefined ? '' : '❤️'.repeat(r.lives);
     $('cash').textContent = fmt(r.cash) + ' €';
     const bar = $('qbar'); bar.classList.toggle('ok', ok);
     bar.firstChild.style.width = Math.min(100, tot / r.quota * 100) + '%';
@@ -181,7 +164,7 @@
     b.style.marginTop = '.8rem';
     if (!ok) { b.style.background = '#2a2015'; b.style.color = '#b8a77e'; b.style.boxShadow = 'none'; }
     b.onclick = async () => {
-      const go = ok || await Casino.confirm({ icon: '🔫', title: 'Fermer la journée sans le quota ?', text: 'Il te manque ' + fmt(r.quota - tot) + ' €. ' + ((r.lives || 1) > 1 ? 'Tu perdras une vie et tu rejoueras la journée.' : 'C\'est ta dernière vie : la mafia passe et la partie est terminée.'), ok: 'Fermer quand même' });
+      const go = ok || await Casino.confirm({ icon: '🔫', title: 'Fermer la journée sans le quota ?', text: 'Il te manque ' + fmt(r.quota - tot) + ' €. Si tu fermes maintenant, la mafia passe et la partie est terminée.', ok: 'Fermer quand même' });
       if (go) op('run.end');
     };
     card.appendChild(b);
@@ -202,6 +185,15 @@
     const head = el('div', 'done-head');
     head.append(el('div', 'big', '✅'), el('h2', '', 'Palier ' + r.palier + ' remboursé !'), el('p', 'sub', 'Les hommes du parrain ont compté la caisse : le compte est bon.' + (r.prime ? ' Il te verse une prime de ' + fmt(r.prime) + ' €.' : '') + ' Le receleur t\'attend dans l\'arrière-salle.'));
     card.appendChild(head);
+    // palier réussi : fanfare et confettis (une seule fois par palier)
+    const fk = 'fanfare-' + r.id + '-' + r.palier;
+    let played = false; try { played = sessionStorage.getItem(fk) === '1'; sessionStorage.setItem(fk, '1'); } catch (e) { /* ignore */ }
+    if (!played) {
+      if (window.Sfx && Sfx.fanfare) Sfx.fanfare();
+      const cf = el('div', 'confetti'); const cols = ['#facc15', '#f59e0b', '#22c55e', '#38bdf8', '#f472b6', '#fff'];
+      for (let i = 0; i < 70; i++) { const c = el('i'); c.style.left = Math.random() * 100 + '%'; c.style.background = cols[i % cols.length]; c.style.animationDelay = Math.random() * 0.6 + 's'; c.style.animationDuration = 1.8 + Math.random() * 1.6 + 's'; c.style.setProperty('--dx', (Math.random() * 200 - 100) + 'px'); cf.appendChild(c); }
+      document.body.appendChild(cf); setTimeout(() => cf.remove(), 4200);
+    }
     const facts = el('div', 'tables');
     facts.append(el('a', '', '💼 Caisse : ' + fmt(r.cash) + ' €'), el('a', '', '🎯 Prochain quota : ' + fmt(nq) + ' €'));
     card.appendChild(facts);
@@ -226,7 +218,7 @@
     const own = Object.keys(r.items || {}).filter((x) => R.runItem(x));
     if (own.length) card.appendChild(el('p', 'owned', 'Dans ta poche : ' + own.map((x) => R.runItem(x).icon + ' ' + R.runItem(x).name).join(', ')));
     const b = el('button', 'cta pulse', '▶ Passer au palier ' + next); b.type = 'button'; b.style.marginTop = '.8rem';
-    b.onclick = async () => { await showPalier(next, nq, r.cash, r.lives); op('run.next'); };
+    b.onclick = async () => { await showPalier(next, nq, r.cash); op('run.next'); };
     card.appendChild(b);
   }
   function tick() {

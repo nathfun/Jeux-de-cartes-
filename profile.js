@@ -163,8 +163,9 @@
       toast(n.title, n.text, n.icon, n.kind);
       if (n.kind === 'salon' || n.kind === 'vip') celebrate(n);
       if (n.kind === 'level') { vibrate([40, 30, 80]); if (window.Sfx) Sfx.win(); }
-      else if (n.kind === 'achievement') vibrate([30, 30, 30, 30, 90]);
-      else if (n.kind === 'challenge') vibrate([40, 30, 40]);
+      else if (n.kind === 'achievement') { vibrate([30, 30, 30, 30, 90]); if (window.Sfx && Sfx.chime) Sfx.chime(); }
+      else if (n.kind === 'challenge') { vibrate([40, 30, 40]); if (window.Sfx && Sfx.chime) Sfx.chime(); }
+      else if (n.kind === 'gold' && window.Sfx && Sfx.chime) Sfx.chime();
     });
   }
   const errText = (e) => (e && e.message ? String(e.message).replace(/^.*?:\s*/, '') : 'Le serveur ne répond pas.');
@@ -731,7 +732,7 @@
 
 
   // ---------- Le Parrain : bandeau de la journée sur les pages de jeu ----------
-  let hudTimer = null, hudEl = null, endShown = false;
+  let hudTimer = null, hudEl = null, endShown = false, hudLast = null;
   const fmtClock = (ms) => { const t = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
   function runHud() {
     if (typeof document === 'undefined' || !R.runActive(load())) return;
@@ -753,6 +754,13 @@
       const a = mk('span', 'rh-p', 'P' + r.palier), b = mk('span', 'rh-t', '⏱ ' + fmtClock(left));
       const c = mk('span', 'rh-q'); const bar = mk('i'); bar.style.width = pc + '%'; c.append(bar, mk('b', '', fmtE(Math.floor(tot)) + ' / ' + fmtE(r.quota)));
       hudEl.append(a, b, c);
+      // la caisse bouge : petit éclair vert (gain) ou rouge (perte)
+      if (hudLast !== null && Math.abs(tot - hudLast) >= 1) {
+        const up = tot > hudLast, d = mk('span', 'rh-delta ' + (up ? 'up' : 'down'), (up ? '+' : '−') + fmtE(Math.round(Math.abs(tot - hudLast))));
+        document.body.appendChild(d); setTimeout(() => d.remove(), 1500); hudEl.classList.remove('flash-up', 'flash-down'); void hudEl.offsetWidth; hudEl.classList.add(up ? 'flash-up' : 'flash-down');
+        if (up && window.Sfx && Sfx.coins && tot - hudLast >= 1) Sfx.coins();
+      }
+      hudLast = tot;
       if (left <= 0 && !endShown) { endShown = true; Casino.runTick(); }
     };
     draw();
@@ -1269,6 +1277,17 @@
     const ringCss = (R.SHOP.frame || []).filter((f) => f.ring).map((f) => '.fr-' + f.id + '{border-color:' + f.ring + ' !important;box-shadow:0 0 0 2px ' + f.ring + ',0 0 16px ' + f.glow + ' !important;' + (f.anim === 'hue' ? 'animation:fr-hue 4s linear infinite;' : f.anim === 'pulse' ? 'animation:fr-pulse 1.8s ease-in-out infinite;' : '') + '}').join('');
     s.textContent = ringCss + `
 .cm-leaving body > *:not(.run-hud) { visibility: hidden !important; }
+/* finitions communes : arrivée en fondu, appui sur les boutons */
+@keyframes cm-pagein { from { opacity: 0; transform: translateY(6px); } }
+body > main, body > header { animation: cm-pagein .35s ease-out both; }
+button:not(:disabled):active, a.cm-cta:active, .game:active { scale: .97; transition: scale .06s; }
+.rh-delta { position: fixed; z-index: 71; left: 50%; margin-left: 60px; bottom: calc(52px + env(safe-area-inset-bottom)); font-weight: 900; font-size: .9rem; pointer-events: none; animation: cm-delta 1.4s ease-out forwards; text-shadow: 0 2px 6px rgba(0,0,0,.8); }
+.rh-delta.up { color: #4ade80; } .rh-delta.down { color: #f87171; }
+@keyframes cm-delta { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-26px); opacity: 0; } }
+.run-hud.flash-up { animation: cm-hudup .7s ease-out; } .run-hud.flash-down { animation: cm-huddown .7s ease-out; }
+@keyframes cm-hudup { 30% { box-shadow: 0 0 0 3px rgba(74,222,128,.8), 0 0 24px rgba(74,222,128,.6); } }
+@keyframes cm-huddown { 30% { box-shadow: 0 0 0 3px rgba(248,113,113,.8), 0 0 24px rgba(248,113,113,.5); } }
+@media (prefers-reduced-motion: reduce) { body > main, body > header { animation: none; } }
 /* ===== Habillage premium des membres VIP (toutes les pages) ===== */
 html.is-vip body { background-color: #0b0906; }
 html.is-vip body::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;

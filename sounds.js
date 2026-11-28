@@ -111,6 +111,28 @@
       }
       return { stop() { parts.forEach((x) => { try { x.stop(); } catch (e) { /* ignore */ } }); } };
     },
+    /** Fanfare de victoire (palier réussi) : cuivres en arpège, accord final et cymbale. */
+    fanfare() {
+      if (!ac()) return;
+      const t = ctx.currentTime;
+      [[392, 0], [392, 0.12], [392, 0.24], [523.3, 0.36], [392, 0.62], [523.3, 0.74]].forEach(([f, d]) => { tone(t + d, f, 'sawtooth', 0.09, 0.01, 0.16); tone(t + d, f * 2, 'square', 0.025, 0.01, 0.12); });
+      [523.3, 659.3, 784, 1046.5].forEach((f) => { tone(t + 0.95, f, 'sawtooth', 0.07, 0.03, 1.4); tone(t + 0.95, f * 1.003, 'triangle', 0.05, 0.03, 1.5); });
+      noiseBurst(t + 0.95, 7000, 0.6, 0.18, 1.2); noiseBurst(t + 0.95, 3500, 0.8, 0.12, 0.8);
+      tone(t + 0.95, 65.4, 'sine', 0.5, 0.005, 0.9, 40);
+      buzz([40, 30, 40, 30, 160]);
+    },
+    /** Petit carillon (annonce dorée, succès, défi). */
+    chime() {
+      if (!ac()) return;
+      const t = ctx.currentTime;
+      [1318.5, 1760, 2637].forEach((f, i) => tone(t + i * 0.07, f, 'sine', 0.06, 0.004, 0.5));
+    },
+    /** Pièces qui tombent dans la caisse (gain). */
+    coins() {
+      if (!ac()) return;
+      const t = ctx.currentTime;
+      for (let k = 0; k < 5; k++) { tone(t + k * 0.06, 2400 + Math.random() * 900, 'triangle', 0.045, 0.002, 0.12); noiseBurst(t + k * 0.06, 5200, 4, 0.025, 0.04); }
+    },
     /** Frappe de machine à écrire. */
     type() { if (ac()) noiseBurst(ctx.currentTime, 3200 + Math.random() * 800, 3, 0.05, 0.025); },
     /** Coup de théâtre (titre « PALIER N ») : grosse caisse + accord grave. */

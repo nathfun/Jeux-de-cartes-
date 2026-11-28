@@ -55,9 +55,16 @@
       if (!r || r.error) { Casino.release(); S.busy = false; ui(); Casino.toast('Boosters', (r && r.error) || 'Impossible d\'ouvrir le paquet.', '⚠️'); return; }
       S.stack = r.stack;
     } else {
-      const fake = { stack: S.stack }, P = { run: { palier: 99 }, totals: {}, col: {} };
+      // apprentissage : paquet à 100 € (toutes les séries ouvertes), rien n'est gardé
+      const fake = { stack: 1e15 }, P = { run: { palier: 99 }, totals: {}, col: {} };
       r = R.openPack(P, fake, S.series, (n) => Math.floor(Math.random() * n));
-      r.price = 100; S.stack = fake.stack; // apprentissage : rien n'est gardé
+      if (!r || r.error) { S.busy = false; ui(); return; }
+      const k = 100 / r.price; r.cards.forEach((c) => { c.value = Math.round(c.value * k * 100) / 100; });
+      r.total = Math.round(r.total * k * 100) / 100; r.price = 100;
+      if (S.stack < 100) { S.busy = false; ui(); return; }
+      S.stack = Math.round((S.stack - 100 + r.total) * 100) / 100;
+      const me = (window.Casino && Casino.profile) || {};
+      r.cards.forEach((c) => { c.fresh = !((me.dex || {})[c.id] || (me.col || {})[c.id]); });
     }
     const best = r.cards.reduce((m, c) => (RANK[c.rarity] > RANK[m.rarity] ? c : m), r.cards[0]);
     S.hist.push({ price: r.price, total: r.total, god: r.god, best: R.RARITY[best.rarity].name + ' : ' + R.COL_BY_ID[best.id].name });
@@ -73,6 +80,7 @@
     const front = document.createElement('div'); front.className = 'bo-face bo-front col';
     front.appendChild(Casino.cardEl(c.id, { size: big ? 'big' : '', count: c.count > 1 ? c.count : 0, fact: big }));
     inn.append(back, front); el.appendChild(inn);
+    if (c.fresh) { const nw = document.createElement('span'); nw.className = 'bo-new'; nw.textContent = 'NEW'; el.appendChild(nw); }
     return el;
   }
   function burst(layer, n, emojis, spread) {
@@ -141,7 +149,8 @@
         title.textContent = 'Carte ' + (i + 1) + ' / ' + cards.length + ' · touche pour la retourner';
         if (window.Sfx && Sfx.card) Sfx.card();
         busy = false;
-        el.onclick = (e) => { e.stopPropagation(); if (!busy) reveal(c, el); };
+        // une fois retournée, toucher la carte passe à la suivante (le clic remonte jusqu'au fond)
+        el.onclick = (e) => { if (el.classList.contains('flip')) return; e.stopPropagation(); if (!busy) reveal(c, el); };
       }
       async function reveal(c, el) {
         busy = true; title.textContent = '';
@@ -162,6 +171,7 @@
         if (rk >= 3 && Casino.vibrate) Casino.vibrate(rk >= 4 ? [120, 50, 120, 50, 300] : [60, 40, 60, 40, 120]);
         if (rk >= 3) { const big = document.createElement('div'); big.className = 'bp-slam c' + rk; big.textContent = rk === 5 ? 'ULTIME !' : rk === 4 ? 'MYTHIQUE !' : 'LÉGENDAIRE !'; fx.appendChild(big); }
         gained += c.value;
+        if (c.fresh && window.Sfx && Sfx.sting) setTimeout(() => { if (Sfx.chips) Sfx.chips(); }, 250);
         val.textContent = '+' + fmt(c.value) + ' €  ·  total ' + fmt(gained) + ' €';
         if (c.keep) { tag.textContent = c.isNew ? '✨ NOUVELLE CARTE DANS TA COLLECTION' : 'Ajoutée à ta collection (×' + c.count + ')'; tag.className = 'bp-tag show' + (c.isNew ? '' : ' dup'); }
         await wait(rk >= 3 ? 1300 : 350);

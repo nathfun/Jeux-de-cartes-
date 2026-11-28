@@ -76,7 +76,10 @@
     @keyframes slam { from { transform: scale(3); opacity: 0; } }
     .lives { font-size: .95rem; letter-spacing: .05em; }
     .lives.big { font-size: 2.2rem; margin: .4rem 0; animation: pop .7s both; }
-    .full.warn .box { border-color: #b91c1c; }
+    .confetti { position: fixed; inset: 0; pointer-events: none; z-index: 150; overflow: hidden; }
+    .confetti i { position: absolute; top: -12px; width: 8px; height: 14px; border-radius: 2px; animation: conf 2.4s cubic-bezier(.2,.6,.4,1) forwards; }
+    @keyframes conf { to { transform: translate(var(--dx), 105vh) rotate(720deg); opacity: .9; } }
+    .done-head h2 { animation: pop .8s cubic-bezier(.2,1.6,.4,1) both .15s; }
     .full.palier { background: radial-gradient(circle at 50% 30%, rgba(120,53,15,.75), rgba(0,0,0,.985) 65%); backdrop-filter: blur(6px); }
     .full.palier .box { position: relative; overflow: hidden; }
     .full.palier .box::before { content: ''; position: absolute; inset: -40%; background: conic-gradient(from 0deg, transparent, rgba(250,204,21,.18), transparent 30%); animation: spin 6s linear infinite; pointer-events: none; }
@@ -120,7 +123,6 @@
     <div id="day" hidden>
       <div class="bar-top">
         <span id="chip" class="chip">P1</span>
-        <span id="lives" class="lives" title="Vies"></span>
         <span id="clock" class="clock">10:00</span>
         <div class="cash"><small>Caisse</small><b id="cash">–</b></div>
         <div id="qbar" class="qbar"><i></i><span></span></div>

@@ -20,18 +20,22 @@
   <main class="hc-main">
     <section id="setup" class="glass setup">
       <h2>🏇 Course de chevaux</h2>
-      <p class="muted">Six chevaux, chacun avec sa cote. Parie sur un ou plusieurs chevaux, puis regarde la course : si ton cheval gagne, ta mise est multipliée par sa cote.</p>
+      <p class="muted">Six chevaux, chacun avec sa cote. Parie « gagnant » (il finit 1er) ou « placé » (1er ou 2e, cote plus petite) sur un ou plusieurs chevaux, puis regarde la course commentée en direct.</p>
       <div id="mode-picker"></div>
     </section>
     <section id="game" hidden>
       <div id="mode-badge" class="mode-badge"></div>
       <div class="hc-track glass" id="track" aria-label="La piste"></div>
+      <div id="hc-comment" class="hc-comment" aria-live="polite">Faites vos paris !</div>
       <div id="hc-result" class="hc-result" role="status"></div>
       <div class="glass">
+        <div id="hc-kind" class="hc-kind" role="tablist"><button type="button" data-kind="win" class="on">🏆 Gagnant</button><button type="button" data-kind="place">🥈 Placé (1er ou 2e)</button></div>
+        <p id="hc-kind-help" class="muted hc-help"></p>
         <div class="hc-chips" id="chips"></div>
         <div id="card" class="hc-card"></div>
         <div class="hc-row">
-          <button id="clear" class="btn-ghost" type="button">Effacer</button>
+          <button id="undo" class="btn-ghost" type="button" title="Retirer la dernière mise">↩ Annuler</button>
+          <button id="clear" class="btn-ghost" type="button">Tout effacer</button>
           <button id="go" class="hc-go" type="button">🏁 Lancer la course</button>
         </div>
         <div class="hc-row"><span class="muted">Sur la table</span><b id="stack">–</b><button id="end-btn" class="btn-ghost" type="button">Encaisser et quitter</button></div>

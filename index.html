@@ -555,6 +555,9 @@
     .lobby-play .lp-art { font-size: 3.4rem; line-height: 1; filter: drop-shadow(0 6px 14px rgba(0,0,0,.6)); }
     .lobby-play h2 { justify-content: center; font-size: 1.9rem; letter-spacing: .04em; color: #fde68a; margin: .3rem 0 .4rem; }
     .lobby-play .lp-start { width: 100%; max-width: 360px; font-size: 1.25rem; padding: 1rem; margin: .4rem auto 0; display: block; }
+    .lobby-play .lp-start.go { animation: lpGo .65s ease-in forwards; }
+    @keyframes lpGo { 30% { transform: scale(1.06); box-shadow: 0 0 50px rgba(250,204,21,.9); } to { transform: scale(1.4); opacity: 0; filter: blur(4px); } }
+    .lobby-play .lp-art { animation: lpFloat 3s ease-in-out infinite; } @keyframes lpFloat { 50% { transform: translateY(-6px) rotate(-3deg); } }
     .lobby-play .lp-learn { display: block; max-width: 360px; margin: .9rem auto 0; padding: .7rem 1rem; border-radius: 14px; border: 1px solid #1e5a78; background: rgba(79,195,247,.08); color: #bae6fd; text-decoration: none; font-weight: 800; }
     .lobby-play .lp-learn small { display: block; font-weight: 400; color: #7fb6cf; font-size: .78rem; margin-top: .15rem; }
     /* écran de la mafia et histoire */
@@ -734,7 +737,7 @@
     <section id="lobby-play" class="panel dette lobby-play" aria-label="Le Parrain">
       <div class="lp-art" aria-hidden="true">🕴️</div>
       <h2>Le Parrain</h2>
-      <p class="dt-sub">Ton frère doit une fortune au parrain. Rembourse-le palier après palier : chaque journée de 10 minutes a son quota, et tu as 3 vies (4 en VIP 👑). Jusqu'où iras-tu ?</p>
+      <p class="dt-sub">Ton frère doit une fortune au parrain. Rembourse-le palier après palier : chaque journée de 10 minutes a son quota, et les quotas grimpent. Jusqu'où iras-tu ?</p>
       <button id="lp-start" class="dt-cta lp-start" type="button">▶ Lancer une partie</button>
       <p id="lp-best" class="dt-best"></p>
       <a id="learn-btn" class="lp-learn" href="apprendre.html" onclick="this.href='apprendre.html'+location.search">🎓 Apprentissage <small>tous les jeux, crédit illimité, aides du coach</small></a>
@@ -1066,7 +1069,12 @@
       // une partie en cours ? on est « dans la partie » : impossible de rester dans le lobby
       function inRun() { const r = Casino.profile.run; return !!(r && (r.status === 'playing' || r.status === 'shop' || (r.status === 'over' && !r.seen))); }
       if (inRun()) location.replace('partie.html' + location.search);
-      $('lp-start').addEventListener('click', () => { location.href = 'partie.html' + (location.search ? location.search + '&' : '?') + 'start=1'; });
+      $('lp-start').addEventListener('click', () => {
+        // coup de théâtre avant la cinématique (et le son est « débloqué » par ce geste)
+        $('lp-start').disabled = true; $('lp-start').classList.add('go');
+        if (window.Sfx && Sfx.sting) Sfx.sting();
+        setTimeout(() => { location.href = 'partie.html' + (location.search ? location.search + '&' : '?') + 'start=1'; }, 650);
+      });
       function renderDette() {
         if (inRun()) { location.replace('partie.html' + location.search); return; }
         const P = Casino.profile;

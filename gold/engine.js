@@ -22,20 +22,20 @@
   const REELS = 5, ROWS = 3, CELLS = REELS * ROWS;
   const UNIT = 20; // les gains du tableau sont en « mise ÷ 20 »
   const SYMBOLS = {
-    P: { icon: '🤠', name: 'Prospecteur', pay: [0, 0, 0, 9, 29, 115] },
-    S: { icon: '💰', name: 'Sac d\'or', pay: [0, 0, 0, 6.5, 18, 72] },
-    T: { icon: '🚂', name: 'Train', pay: [0, 0, 0, 4.5, 13, 50] },
-    M: { icon: '🐴', name: 'Mule', pay: [0, 0, 0, 3.5, 10, 36] },
-    X: { icon: '⛏️', name: 'Pioche', pay: [0, 0, 0, 1.5, 3.5, 14] },
-    C: { icon: '🧭', name: 'Boussole', pay: [0, 0, 0, 1.5, 3, 11] },
-    L: { icon: '🔦', name: 'Lampe', pay: [0, 0, 0, 0.75, 2.25, 7.5] },
-    R: { icon: '🪨', name: 'Roche', pay: [0, 0, 0, 0.75, 2.25, 7.5] },
+    P: { icon: '🤠', name: 'Prospecteur', pay: [0, 0, 0, 8, 30, 120] },
+    S: { icon: '💰', name: 'Sac d\'or', pay: [0, 0, 0, 5, 20, 75] },
+    T: { icon: '🚂', name: 'Train', pay: [0, 0, 0, 3, 12, 50] },
+    M: { icon: '🐴', name: 'Mule', pay: [0, 0, 0, 2, 9, 36] },
+    X: { icon: '⛏️', name: 'Pioche', pay: [0, 0, 0, 0.7, 3.5, 14] },
+    C: { icon: '🧭', name: 'Boussole', pay: [0, 0, 0, 0.7, 3.2, 12] },
+    L: { icon: '🔦', name: 'Lampe', pay: [0, 0, 0, 0.4, 2.8, 10] },
+    R: { icon: '🪨', name: 'Roche', pay: [0, 0, 0, 0.4, 2.8, 10] },
     W: { icon: '🧨', name: 'Dynamite (joker)', wild: true },
     N: { icon: '🟡', name: 'Pépite', nugget: true },
   };
   // poids de tirage de chaque case (par rouleau) : les rouleaux du milieu ont la dynamite
   const BASE_W = { P: 3, S: 4, T: 5, M: 6, X: 10, C: 11, L: 13, R: 13 };
-  const WILD_W = [0, 3, 3, 3, 0];
+  const WILD_W = [0, 2, 2, 2, 0];
   const NUGGET_W = 10;           // chance d'une pépite par case (jeu de base)
   const GRISOU = 1 / 16;          // « Coup de grisou » : rouleaux de dynamite
   const TRIGGER = 6;              // pépites pour lancer le bonus

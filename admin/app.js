@@ -95,7 +95,7 @@
     const run = p.run, lr = p.lastRun;
     $('ed-run').innerHTML = '';
     const line = (t) => { const d = document.createElement('div'); d.textContent = t; $('ed-run').appendChild(d); };
-    line(run ? '🕴️ Partie en cours : palier ' + run.palier + (run.status === 'shop' ? ' (chez le receleur)' : '') + ' · caisse ' + fmt(run.caisse) + ' € / quota ' + fmt(run.quota) + ' €' + (run.lives !== undefined && run.lives !== null ? ' · ' + '❤️'.repeat(run.lives) : '') : '🕴️ Pas de partie en cours.');
+    line(run ? '🕴️ Partie en cours : palier ' + run.palier + (run.status === 'shop' ? ' (chez le receleur)' : '') + ' · caisse ' + fmt(run.caisse) + ' € / quota ' + fmt(run.quota) + ' €'  : '🕴️ Pas de partie en cours.');
     line('🏆 Meilleur palier : ' + (p.bestPalier || 0) + ' · ' + fmt(p.runs || 0) + ' partie(s) jouée(s)' + (lr ? ' · dernière : palier ' + lr.palier + ' (' + ({ quota: 'quota raté', banqueroute: 'banqueroute', abandon: 'abandon' }[lr.why] || lr.why || '') + ', +' + fmt(lr.jetons) + ' jetons)' : ''));
     line('🪙 Meilleur gain : +' + fmt(p.bestGain || 0) + ' jetons' + (p.mt ? ' · ' + fmt(p.mt.amount) + ' jetons posés à une table multijoueur (' + p.mt.game + ')' : '') + (p.vipUntil ? ' · 👑 VIP jusqu\'au ' + new Date(p.vipUntil).toLocaleDateString('fr-FR') : ''));
     let led = $('ed-ledger');
@@ -337,7 +337,7 @@
     table($('tb-cats'), ['Source', 'Gagnés', 'Dépensés', 'Solde'], d.sources.map((c) => [c.k, c.gained ? '+' + fmt(c.gained) : '–', c.spent ? '−' + fmt(c.spent) : '–', { t: fmt2(c.net), cls: c.net >= 0 ? 'pos' : 'neg' }]));
     table($('tb-rich'), ['Joueur', 'Niv.', 'Jetons'], d.richest.map((r) => [r.name + (r.vip ? ' 👑' : ''), String(r.level), fmt(r.jetons)]));
     barChart($('ch-best'), d.parrain.best.map((b) => ({ label: b.k === '0' ? 'aucun' : b.k, title: b.k === '0' ? 'Aucun palier réussi' : 'Meilleur palier : ' + b.k, values: [b.n] })), [{ name: 'Joueurs', color: 'var(--s3)' }], { aria: 'Meilleur palier par joueur', every: 1 });
-    table($('tb-live'), ['Joueur', 'Palier', 'Caisse / quota', 'Vies'], d.parrain.liveList.length ? d.parrain.liveList.map((r) => [r.name + (r.status === 'shop' ? ' 🛍️' : ''), String(r.palier), fmt(r.caisse) + ' / ' + fmt(r.quota) + ' €', r.lives != null ? '❤️'.repeat(r.lives) : '–']) : [['Personne en partie', '', '', '']]);
+    table($('tb-live'), ['Joueur', 'Palier', 'Caisse / quota'], d.parrain.liveList.length ? d.parrain.liveList.map((r) => [r.name + (r.status === 'shop' ? ' 🛍️' : ''), String(r.palier), fmt(r.caisse) + ' / ' + fmt(r.quota) + ' €']) : [['Personne en partie', '', '']]);
     table($('tb-top'), ['Joueur', 'Meilleur palier', 'Parties'], d.parrain.top.map((r) => [r.name, String(r.best), fmt(r.runs)]));
     table($('tb-games'), ['Jeu', 'Coups', 'Joueurs', 'Résultat des joueurs'], d.games.map((g) => [g.name, fmt(g.ops), fmt(g.players), { t: fmt2(g.net) + ' €', cls: g.net >= 0 ? 'pos' : 'neg' }]));
   }

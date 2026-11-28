@@ -428,7 +428,7 @@
     { id: 'month', name: 'Pass VIP · 30 jours', days: 30, price: 25000, best: true },
   ];
   const VIP_PERKS = [
-    { icon: '❤️', text: 'Le Parrain : une 4ᵉ vie et 1 100 € au départ de chaque partie (au lieu de 1 000 €)' },
+    { icon: '💶', text: 'Le Parrain : 1 100 € au départ de chaque partie (au lieu de 1 000 €)' },
     { icon: '💰', text: 'Limites de mise relevées d\'environ 60 % à chaque palier' },
     { icon: '🎁', text: '2 coffres mystères gratuits par jour (au lieu d\'1)' },
     { icon: '🏷️', text: '−20 % sur toute la boutique et sur les coffres' },
@@ -1136,6 +1136,30 @@
     const p = []; order.forEach((h, k) => { p[h] = HORSE_P[k]; });
     return { p, odds: p.map((x) => Math.floor(HORSE_RTP / x * 10) / 10), id: rnd(1e9) };
   }
+  /** Cotes « placé » : le cheval finit 1er ou 2e (même taux de retour que le pari gagnant). */
+  function placeOdds(card) {
+    return card.p.map((pi, i) => {
+      let q = pi; card.p.forEach((pj, j) => { if (j !== i) q += pj * pi / (1 - pj); });
+      return Math.max(1.1, Math.floor(HORSE_RTP / q * 10) / 10);
+    });
+  }
+  /** Le 2e de la course, tiré parmi les autres chevaux selon leurs chances. */
+  function horseSecond(card, win, rnd) {
+    const rest = card.p.map((x, i) => (i === win ? 0 : x)), tot = rest.reduce((a, b) => a + b, 0);
+    let x = rnd(1e6) / 1e6 * tot;
+    for (let i = 0; i < 6; i++) { x -= rest[i]; if (x < 0 && i !== win) return i; }
+    return win === 5 ? 4 : 5;
+  }
+  /** Gains d'une course : paris « gagnant » (clé « 0 »…« 5 ») et « placé » (clé « p0 »…« p5 »). */
+  function horsePayout(card, bets, win, second) {
+    const po = placeOdds(card); let back = 0;
+    Object.keys(bets || {}).forEach((k) => {
+      const v = Number(bets[k]) || 0;
+      if (/^p\d$/.test(k)) { const i = +k.slice(1); if (i === win || i === second) back += v * po[i]; }
+      else if (+k === win) back += v * card.odds[win];
+    });
+    return Math.round(back * 100) / 100;
+  }
   function horseRace(card, rnd) {
     const x = rnd(1e6) / 1e6; let acc = 0, win = 5;
     for (let i = 0; i < 6; i++) { acc += card.p[i]; if (x < acc) { win = i; break; } }
@@ -1151,12 +1175,12 @@
     { id: 's3', name: "L'Âge d'or", icon: '🎷', palier: 6, color: '#a16207' },
   ];
   // 8 communes, puis 2 cartes rare ou mieux ; 1 paquet sur 200 est un « God Pack » (10 légendaires ou mieux)
-  const PACK = { SIZE: 10, COMMONS: 8, GOD: 200, RTP: 0.92, PRICE_PCT: 0.04,
+  const PACK = { SIZE: 10, COMMONS: 8, GOD: 200, RTP: 0.94, PRICE_PCT: 0.04,
     HIGH: { rare: 700, epique: 220, legendaire: 65, mythique: 13, ultime: 2 },
     GODW: { legendaire: 800, mythique: 170, ultime: 30 } };
   // valeur de revente (en fraction du prix du paquet), recalée pour que le paquet rende PACK.RTP en moyenne
   const PACK_MULT = (() => {
-    const base = { commun: 0.03, rare: 0.12, epique: 0.4, legendaire: 1.5, mythique: 6, ultime: 40 };
+    const base = { commun: 0.045, rare: 0.17, epique: 0.45, legendaire: 1.5, mythique: 6, ultime: 40 };
     const avg = (w) => { const t = Object.values(w).reduce((a, b) => a + b, 0); return Object.keys(w).reduce((a, r) => a + w[r] / t * base[r], 0); };
     const normal = PACK.COMMONS * base.commun + (PACK.SIZE - PACK.COMMONS) * avg(PACK.HIGH), god = PACK.SIZE * avg(PACK.GODW);
     const ev = (1 - 1 / PACK.GOD) * normal + god / PACK.GOD, k = PACK.RTP / ev;
@@ -1180,10 +1204,12 @@
       const c = pool[rnd(pool.length)];
       const value = Math.round(price * PACK_MULT[r] * 100) / 100;
       const keep = RARITY_ORDER.indexOf(r) >= RARITY_ORDER.indexOf('epique');
-      P.col = P.col || {};
+      P.col = P.col || {}; P.dex = P.dex || {};
       const isNew = keep && !P.col[c.id];
+      const fresh = !P.dex[c.id] && !P.col[c.id]; // jamais vue auparavant : autocollant « NEW »
+      P.dex[c.id] = 1;
       if (keep) P.col[c.id] = (P.col[c.id] || 0) + 1;
-      cards.push({ kind: 'col', id: c.id, rarity: r, value, keep, isNew, count: keep ? P.col[c.id] : 0 });
+      cards.push({ kind: 'col', id: c.id, rarity: r, value, keep, isNew, fresh, count: keep ? P.col[c.id] : 0 });
     }
     const total = Math.round(cards.reduce((a, c) => a + c.value, 0) * 100) / 100;
     ss.stack = Math.round((ss.stack + total) * 100) / 100;
@@ -1199,7 +1225,6 @@
     START_CASH: 1000, START_CASH_VIP: 1100, DAY_MS: 10 * 60000, VIP_BET: 1.6,
     // jeux débloqués selon le palier (le reste viendra : boosters, loto, bourse, course de chevaux…)
     UNLOCK: { blackjack: 1, roulette: 1, slots: 1, wheel: 1, crash: 1, mines: 1, plinko: 2, boosters: 2, gold: 2, loto: 3, horses: 3, trader: 4, heist: 5 },
-    LIVES: 3, LIVES_VIP: 4, // avertissements du parrain avant la fin de la partie
     PRIME: 0.1, // commission versée dans la caisse à chaque palier réussi (en % du quota)
   };
   const QUOTAS = [1200, 1500, 1900, 2400, 3000, 3800, 4800, 6000, 7500, 9500, 12000, 15000, 19000, 24000, 30000];
@@ -1261,8 +1286,7 @@
     if (P.run && P.run.status !== 'over') return { error: 'Une partie est déjà en cours.' };
     const cash = isVip(P, now) ? RUN.START_CASH_VIP : RUN.START_CASH;
     P.sessions = {};
-    P.run = { id: (P.totals.runs || 0) + 1, palier: 1, cash, quota: quotaOf(1), status: 'playing', dayStart: now, dayEnd: now + RUN.DAY_MS, dayStartTotal: cash, items: {}, greed: 0, startedAt: now, lives: isVip(P, now) ? RUN.LIVES_VIP : RUN.LIVES };
-    P.run.maxLives = P.run.lives;
+    P.run = { id: (P.totals.runs || 0) + 1, palier: 1, cash, quota: quotaOf(1), status: 'playing', dayStart: now, dayEnd: now + RUN.DAY_MS, dayStartTotal: cash, items: {}, greed: 0, startedAt: now };
     P.totals.runs = (P.totals.runs || 0) + 1;
     N.push({ kind: 'run', title: 'Palier 1', text: 'Atteins ' + quotaOf(1).toLocaleString('fr-FR') + ' € avant la fin de la journée. Le parrain compte sur toi…', icon: '🕴️' });
     return { run: P.run };
@@ -1278,12 +1302,6 @@
     if (r.items.trefle && r.cash > r.dayStartTotal) { const b = Math.round((r.cash - r.dayStartTotal) * 0.05); r.cash += b; delete r.items.trefle; N.push({ kind: 'gold', title: '🍀 Trèfle porte-bonheur', text: '+' + b.toLocaleString('fr-FR') + ' € de bonus sur ta journée.', icon: '🍀' }); }
     let ok = r.cash >= r.quota;
     if (!ok && r.items.totem && r.cash >= r.quota * 0.8) { ok = true; delete r.items.totem; N.push({ kind: 'gold', title: '🛡️ Totem d\'immunité', text: 'Il te manquait un peu… le parrain ferme les yeux pour cette fois.', icon: '🛡️' }); }
-    if (!ok && lifeLeft(r)) {
-      // avertissement du parrain : on recommence la journée du même palier avec la caisse actuelle
-      r.lives -= 1;
-      r.dayStart = now; r.dayEnd = now + RUN.DAY_MS; r.dayStartTotal = r.cash;
-      return { warned: true, run: r };
-    }
     if (!ok) return runOver(P, now, N, 'quota');
     const prime = Math.round(r.quota * RUN.PRIME);
     r.cash = Math.round((r.cash + prime) * 100) / 100; r.prime = prime;
@@ -1307,9 +1325,6 @@
   }
   /** Meilleur gain du compte, en jetons (fin de partie, tables multijoueur, Grand Prix ; pas le poker). */
   function noteGain(P, v) { P.totals = P.totals || {}; if (v > (P.totals.bestJetons || 0)) P.totals.bestJetons = Math.round(v); }
-  /** Avertissements restants (les parties d'avant n'en avaient pas : 1 de base, sans retour possible). */
-  const lifeLeft = (r) => (r.lives === undefined ? 0 : Math.max(0, r.lives - 1));
-  const livesText = (n) => (n <= 1 ? 'C\'est ta dernière vie !' : 'Il te reste ' + n + ' vies.');
   /** Fin de la partie : la mafia passe. On garde les jetons et l'XP gagnés. */
   function runOver(P, now, N, why) {
     const r = P.run;
@@ -1333,12 +1348,6 @@
     if (!runActive(P)) return null;
     if (runTotal(P) >= gameMin(P, 'roulette')) return null;
     if (r.items.parapluie) { delete r.items.parapluie; r.cash = Math.round(r.quota * 0.1); N.push({ kind: 'gold', title: '☂️ Parapluie', text: 'Le parrain te dépanne de ' + r.cash.toLocaleString('fr-FR') + ' €. Dernière chance !', icon: '☂️' }); return null; }
-    if (lifeLeft(r)) {
-      r.lives -= 1;
-      r.cash = Math.round(r.cash + niceDown(r.quota * 0.5));
-      N.push({ kind: 'run', title: '🔫 Le parrain te renfloue', text: 'Caisse vide : il t\'avance ' + niceDown(r.quota * 0.5).toLocaleString('fr-FR') + ' €… mais ça te coûte une vie. ' + livesText(r.lives), icon: '🕴️' });
-      return { warned: true, run: r };
-    }
     return runOver(P, now, N, 'banqueroute');
   }
   /** À chaque action : la journée est-elle finie ? */
@@ -1432,7 +1441,7 @@
   }
 
   // version des règles : le serveur et l'app doivent avoir la même (sinon : serveur du NAS à mettre à jour)
-  const RULES_VERSION = '2026.11.28-2';
+  const RULES_VERSION = '2026.11.29-1';
   const api = {
     RULES_VERSION,
     weekOf, weekPoints, ensureWeek, SEASON_TIERS, seasonOf, seasonTier, seasonName, ensureSeason,
@@ -1441,7 +1450,7 @@
     bonusInfo, claimBonus, claimChallenge, timeInfo, startTime, claimTime, startSession, cashOut,
     prizeFor, prizeText, applyPrize, publicProfile, REF_BONUS, REF_MIN_HANDS, REF_MAX, refDone, MT,
     COL_CATS, COLLECTION, COL_BY_ID, COTE_BASE, INSTANT_RATE, instantPrice, coteOf, rarityOfKey, countOf, instantSell,
-    HORSES, horseCard, horseRace,
+    HORSES, horseCard, horseRace, placeOdds, horseSecond, horsePayout,
     BOX, boxInfo, openBox, priceOf, inPromo, SHOP_PROMO, VIP_DISCOUNT,
     SERIES, PACK, PACK_MULT, packPrice, seriesOpen, openPack,
     RUN, QUOTAS, BET_STEPS, gameMin, FORTUNE, quotaOf, niceDown, palierFactor, runMaxBet, runMinBet, runActive, runTotal, isUnlocked, RUN_ITEMS, runItem, itemPrice, runReward,

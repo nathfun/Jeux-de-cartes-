@@ -25,3 +25,19 @@ body.hc-page { background: radial-gradient(900px 600px at 50% 0%, #14401c 0%, tr
 .hc-hist { list-style: none; display: flex; flex-wrap: wrap; gap: .3rem; padding: 0; margin: 0; justify-content: center; }
 .hc-hist li { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 900; font-size: .75rem; color: #fff; border: 2px solid #fff; }
 .mode-badge { text-align: center; font-size: .85rem; color: var(--muted); }
+
+/* type de pari, commentaire en direct, petites animations */
+.hc-kind { display: flex; gap: .3rem; background: rgba(0,0,0,.3); border-radius: 12px; padding: .25rem; margin-bottom: .3rem; }
+.hc-kind button { flex: 1; font: inherit; font-weight: 800; border: 0; border-radius: 9px; padding: .55rem .3rem; background: transparent; color: #b9c9b9; cursor: pointer; }
+.hc-kind button.on { background: linear-gradient(135deg, #fde047, #f59e0b); color: #1c1300; }
+.hc-help { font-size: .8rem; margin: .1rem 0 .5rem; text-align: center; }
+.hc-card .od small { display: block; font-size: .65rem; font-weight: 600; opacity: .65; }
+.hc-comment { text-align: center; font-weight: 900; font-size: 1.05rem; color: #fde68a; min-height: 1.5em; margin: .4rem 0; text-shadow: 0 2px 10px rgba(0,0,0,.6); }
+.hc-comment.pop { animation: hcPop .45s cubic-bezier(.2,1.6,.4,1); }
+@keyframes hcPop { from { transform: scale(.7); opacity: .2; } }
+.hc-h.bump { animation: hcBump .3s ease-out; }
+@keyframes hcBump { 50% { transform: scale(1.04); box-shadow: 0 0 18px rgba(250,204,21,.6); } }
+.horse { transition: filter .2s; }
+.horse.mine-lead { filter: drop-shadow(0 0 8px #facc15); }
+.horse.winner { animation: hcWin .6s ease-in-out 3; filter: drop-shadow(0 0 12px #22c55e); }
+@keyframes hcWin { 50% { transform: translateY(-8px) scale(1.2); } }

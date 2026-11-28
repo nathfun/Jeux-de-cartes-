@@ -605,7 +605,7 @@ function handle(state, ctx) {
       break;
     }
 
-    // ----- Course de chevaux (palier 8) -----
+    // ----- Course de chevaux (palier 3) : paris gagnant et placé -----
     case 'hc.card': { sess('horses'); S.hc = S.hc || { card: R.horseCard(ctx.rnd) }; result = { card: S.hc.card, stack: P.sessions.horses.stack }; break; }
     case 'hc.race': {
       const ss = sess('horses');
@@ -613,19 +613,19 @@ function handle(state, ctx) {
       const card = S.hc.card, bets = d.bets || {}, min = R.gameMin(P, 'horses');
       let staked = 0;
       Object.keys(bets).forEach((k) => {
-        const i = int(+k), v = int(bets[k]);
-        if (!(i >= 0 && i < 6)) fail('Cheval inconnu.');
+        const i = int(+String(k).replace(/^p/, '')), v = int(bets[k]);
+        if (!/^p?[0-5]$/.test(String(k)) || !(i >= 0 && i < 6)) fail('Cheval inconnu.');
         if (!(v >= min && v <= MAX_BET)) fail('Mise entre ' + min + ' et ' + MAX_BET + ' € par cheval à ce palier.');
         staked += v;
       });
       if (!staked) fail('Aucun pari.');
       if (staked > ss.stack) fail('Pas assez d\'argent sur la table.');
-      const win = R.horseRace(card, ctx.rnd);
-      const back = round2((int(bets[win]) || 0) * card.odds[win]);
+      const win = R.horseRace(card, ctx.rnd), second = R.horseSecond(card, win, ctx.rnd);
+      const back = round2(R.horsePayout(card, bets, win, second));
       ss.stack = round2(ss.stack - staked + back);
       track('sl', { bet: staked, net: round2(back - staked), jackpot: back >= staked * 8 && back > 0, freeTrigger: false });
       S.hc.card = R.horseCard(ctx.rnd);
-      result = { win, back, staked, odds: card.odds, seed: ctx.rnd(1e9), next: S.hc.card, stack: ss.stack };
+      result = { win, second, back, staked, odds: card.odds, seed: ctx.rnd(1e9), next: S.hc.card, stack: ss.stack };
       break;
     }
 

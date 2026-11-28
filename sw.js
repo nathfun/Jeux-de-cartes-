@@ -1,5 +1,5 @@
 // Service worker : réseau d'abord (pour toujours avoir la dernière version), cache en secours hors ligne.
-const CACHE = 'casino-v68';
+const CACHE = 'casino-v69';
 const CORE = [
   './', './index.html', './manifest.webmanifest', './pwa.js', './firebase-config.js', './sounds.js', './casino-rules.js', './news.js', './profile.js', './social.js', './account.js', './gate.js',
   './icons/icon-192.png', './icons/icon-512.png',

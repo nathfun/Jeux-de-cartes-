@@ -1,8 +1,15 @@
 /* Nouveautés du Lucky Lounge : la plus récente en premier. Ajoute une entrée à chaque mise à jour. */
 window.CASINO_NEWS = [
+  { date: '2026-11-29', title: 'Plus de spectacle', items: [
+    '🎡 Nouvelle roue de la fortune : ampoules qui clignotent, aiguille qui claque, jackpot illuminé.',
+    '🏇 Course de chevaux : pari « placé » (1er ou 2e), bouton ↩ Annuler et commentaire en direct.',
+    '🃏 Boosters : autocollant NEW sur les cartes jamais vues, cartes un peu mieux revendues.',
+    '⛏️ Ruée vers l\'Or : moins de petits gains ridicules, de plus gros gains avec 4 ou 5 symboles.',
+    '🏆 Fanfare et confettis à chaque palier réussi.',
+    '🕴️ Le Parrain : plus de vies, les quotas suffisent.',
+  ] },
   { date: '2026-11-28', title: 'Le Parrain, plus fun', items: [
     '🕴️ « La Dette » devient « Le Parrain », avec une vraie cinématique au lancement.',
-    '❤️ 3 vies par partie (4 en VIP) : un quota raté ne termine plus tout de suite la partie.',
     '🎯 Quotas plus doux, prime du parrain à chaque palier, 6 jeux dès le palier 1.',
     '👑 Les membres VIP profitent d\'un habillage doré sur toutes les pages.',
     '🏆 Grand Prix : un seul pari par soir, avec confirmation.',
