@@ -3,6 +3,7 @@ window.CASINO_NEWS = [
   { date: '2026-11-29', title: 'Plus de spectacle', items: [
     '🎡 Nouvelle roue de la fortune : ampoules qui clignotent, aiguille qui claque, jackpot illuminé.',
     '🏇 Course de chevaux : pari « placé » (1er ou 2e), bouton ↩ Annuler et commentaire en direct.',
+    '📖 Ma collection : toutes les cartes des boosters, découvertes ou à trouver, depuis l\'accueil.',
     '🃏 Boosters : chaque carte a son propre prix, et une épique (ou mieux) rend toujours le paquet gagnant. Autocollant NEW sur les cartes jamais vues.',
     '⛏️ Ruée vers l\'Or : moins de petits gains ridicules, de plus gros gains avec 4 ou 5 symboles.',
     '🏆 Fanfare et confettis à chaque palier réussi.',

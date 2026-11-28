@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>Album Légendes</title>
+  <title>Ma collection</title>
   <meta name="theme-color" content="#0b1020">
   <link rel="manifest" href="../manifest.webmanifest">
   <link rel="apple-touch-icon" href="../icons/icon-192.png">
@@ -44,30 +44,33 @@
     .msg { min-height: 1.2em; font-size: .85rem; color: #fca5a5; text-align: center; }
     .note { color: var(--muted); font-size: .82rem; line-height: 1.45; }
     .empty { color: var(--muted); text-align: center; padding: 2rem 0; }
+    .muted-s { color: var(--muted); font-size: .8rem; display: block; margin-top: .3rem; }
+    .rars { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .8rem; }
+    .rars span { font-size: .75rem; font-weight: 800; padding: .2rem .55rem; border-radius: 999px; border: 1px solid; background: rgba(0,0,0,.25); }
+    .slot .tag { font-size: .68rem; font-weight: 800; padding: .08rem .45rem; border-radius: 999px; }
+    .slot .tag.kept { background: rgba(250,204,21,.15); color: #fde68a; } .slot .tag.seen { background: rgba(56,189,248,.12); color: #7dd3fc; } .slot .tag.miss { color: var(--muted); }
+    .ser-head { grid-column: 1 / -1; justify-self: stretch; display: flex; align-items: center; gap: .5rem; margin: .6rem 0 .1rem; font-weight: 900; }
+    .ser-head small { color: var(--muted); font-weight: 600; margin-left: auto; }
   </style>
 </head>
 <body>
   <header>
-    <a href="../index.html#shop">← Lounge</a>
-    <h1>📖 Album Légendes</h1>
-    <span class="bank">🏦 <b id="wallet">0</b> €</span>
+    <a id="back" href="../index.html">← Lobby</a>
+    <h1>📖 Ma collection</h1>
+    <span class="bank"><b id="have-top">0</b> / <span id="all-top">0</span></span>
   </header>
   <main>
     <section class="hero">
-      <div class="prog"><b id="prog-txt">0 / 0 cartes</b><div class="bar"><div id="prog-bar" style="width:0"></div></div></div>
-      <div class="val"><small>Valeur de ta collection</small><b id="value">0 €</b><small id="value-sub"></small></div>
+      <div class="prog"><b id="prog-txt">0 / 0 cartes découvertes</b><div class="bar"><div id="prog-bar" style="width:0"></div></div><small id="prog-sub" class="muted-s"></small></div>
     </section>
-    <div class="btns">
-      <a class="btn" href="../index.html#shop">🃏 Ouvrir des boosters</a>
-      <button id="sell-dups" class="btn ghost" type="button">💰 Vendre mes doublons au Casino</button>
-    </div>
+    <div id="rars" class="rars"></div>
     <div id="tabs" class="tabs" role="tablist"></div>
     <div class="filters">
-      <select id="f-show"><option value="all">Toutes les cartes</option><option value="mine">Mes cartes</option><option value="miss">Il me manque</option><option value="dup">Mes doublons</option></select>
-      <select id="f-sort"><option value="n">Numéro</option><option value="rar">Rareté</option><option value="cote">Cote</option></select>
+      <select id="f-show" aria-label="Afficher"><option value="all">Toutes les cartes</option><option value="mine">Découvertes</option><option value="miss">Il me manque</option><option value="kept">Dans mon album (épiques et mieux)</option><option value="dup">En double</option></select>
+      <select id="f-sort" aria-label="Trier"><option value="n">Numéro</option><option value="rar">Rareté</option></select>
     </div>
     <div id="grid" class="grid"></div>
-    <p class="note">Chaque carte a une <b>cote</b> : elle part de sa rareté, puis suit les prix des ventes entre joueurs sur le marché. Tu peux revendre une carte aux autres joueurs (marché du Lounge, onglet Mon style), l'échanger, la mettre en jeu dans un duel, ou la vendre tout de suite au Casino (40 % de la cote, plafonné). Tout l'argent gagné sert dans les jeux.</p>
+    <p class="note">Les cartes se trouvent dans les <b>boosters</b>, pendant une partie du Parrain (Légendes dès le palier 2, Pègre &amp; Casino au palier 4, L'Âge d'or au palier 6). Toute carte tirée est <b>découverte</b> ; les <b>épiques et mieux</b> sont aussi gardées dans ton album, avec leur nombre d'exemplaires. Une carte grisée ❓ ne t'est jamais encore tombée dessus.</p>
   </main>
   <script src="../casino-rules.js"></script>
   <script src="../profile.js"></script>

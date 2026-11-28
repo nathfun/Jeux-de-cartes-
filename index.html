@@ -559,6 +559,7 @@
     @keyframes lpGo { 30% { transform: scale(1.06); box-shadow: 0 0 50px rgba(250,204,21,.9); } to { transform: scale(1.4); opacity: 0; filter: blur(4px); } }
     .lobby-play .lp-art { animation: lpFloat 3s ease-in-out infinite; } @keyframes lpFloat { 50% { transform: translateY(-6px) rotate(-3deg); } }
     .lobby-play .lp-learn { display: block; max-width: 360px; margin: .9rem auto 0; padding: .7rem 1rem; border-radius: 14px; border: 1px solid #1e5a78; background: rgba(79,195,247,.08); color: #bae6fd; text-decoration: none; font-weight: 800; }
+    .lobby-play .lp-col { border-color: #6d28d9; background: rgba(139,92,246,.1); color: #ddd6fe; }
     .lobby-play .lp-learn small { display: block; font-weight: 400; color: #7fb6cf; font-size: .78rem; margin-top: .15rem; }
     /* écran de la mafia et histoire */
     .mafia { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 16px; background: radial-gradient(circle at 50% 30%, rgba(127,29,29,.55), rgba(0,0,0,.95) 70%); }
@@ -740,6 +741,7 @@
       <p class="dt-sub">Ton frère doit une fortune au parrain. Rembourse-le palier après palier : chaque journée de 10 minutes a son quota, et les quotas grimpent. Jusqu'où iras-tu ?</p>
       <button id="lp-start" class="dt-cta lp-start" type="button">▶ Lancer une partie</button>
       <p id="lp-best" class="dt-best"></p>
+      <a id="col-btn" class="lp-learn lp-col" href="cartes/index.html" onclick="this.href='cartes/index.html'+location.search">📖 Ma collection de cartes <small id="col-count">toutes les cartes des boosters, découvertes ou à trouver</small></a>
       <a id="learn-btn" class="lp-learn" href="apprendre.html" onclick="this.href='apprendre.html'+location.search">🎓 Apprentissage <small>tous les jeux, crédit illimité, aides du coach</small></a>
     </section>
 
@@ -931,7 +933,7 @@
       </div>
       <div id="bo-rar" class="bo-rar"></div>
       <div id="bo-btns" class="bo-btns"></div>
-      <a class="album-link" href="cartes/index.html"><span>📖</span><span><b>Album Légendes</b><small id="bo-album">Pays, légendes de l'Histoire, sport, monuments, mythologie, espace…</small></span><span>›</span></a>
+      <a class="album-link" href="cartes/index.html"><span>📖</span><span><b>Ma collection de cartes</b><small id="bo-album">Pays, légendes de l'Histoire, sport, monuments, mythologie, espace…</small></span><span>›</span></a>
       <p class="muted small-p">Chaque booster mélange des <b>cartes Légendes</b> (à collectionner, revendre ou échanger, avec leur cote) et des objets de style introuvables ailleurs. Un doublon se transforme en éclats ✨, qui permettent de fabriquer la carte de ton choix. Chances par carte : <span id="bo-odds"></span>.</p>
     </section>
 
@@ -2087,6 +2089,11 @@
       document.querySelectorAll('.vs-tabs button').forEach((x) => x.classList.toggle('on', x === b));
       document.querySelectorAll('.vs-pane').forEach((p) => { p.hidden = p.dataset.vsPane !== b.dataset.vs; });
     }));
+    // compteur de la collection sur l'accueil
+    (function colCount() {
+      const upd = () => { const P = Casino.profile, all = Casino.COLLECTION.filter((c) => c.series); const n = all.filter((c) => (P.col || {})[c.id] > 0 || (P.dex || {})[c.id]).length; const e = document.getElementById('col-count'); if (e) e.textContent = n + ' / ' + all.length + ' cartes découvertes'; };
+      upd(); Casino.onChange(upd);
+    })();
     // ---------- Grand Prix du soir (21 h, pour tous les joueurs) ----------
     (function grandPrix() {
       const box = $('gp-panel'); if (!box || !Casino.server) return;
