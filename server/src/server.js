@@ -62,7 +62,7 @@ const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'jeux-de-cartes-81cdf';
 const DB_URL = process.env.FIREBASE_DATABASE_URL || 'https://jeux-de-cartes-81cdf-default-rtdb.europe-west1.firebasedatabase.app';
 const MAX_BODY = 32 * 1024;
 // version du serveur (affichée dans l'admin et sur /health) : à changer à chaque mise à jour du serveur
-const SERVER_VERSION = '2026.11.30-1';
+const SERVER_VERSION = '2026.11.30-2';
 const TABLES = { blackjack: 'tables/', poker: 'ptables/', roulette: 'rtables/', loto: 'ltables/' };
 
 // ---------- Firebase (vérification des comptes, profil public, lecture des tables entre amis) ----------
@@ -115,32 +115,28 @@ async function pushRound() {
     for (const uid of db.pushUids()) {
       const st = db.load(uid), P = st.player;
       if (!P) continue;
-      // 🧰 coffre plein (une fois par remplissage)
-      const c = R.chestInfo(P, t);
-      if (c.full && !quiet && db.getState(uid, 'chest') !== String(P.chestAt)) {
-        db.setState(uid, 'chest', P.chestAt);
-        await pushTo(uid, 'chest', { title: '🧰 Ton coffre est plein !', body: c.cap + ' € t\'attendent. Ouvre-le pour qu\'il recommence à se remplir.', tag: 'chest' });
-      }
+      // (l'ancien « coffre plein » en euros n'existe plus : pas de notification)
       // 🎁 bonus du jour + roue (une fois par jour, en fin d'après-midi)
       if (h >= 17 && h < 21 && db.getState(uid, 'bonus') !== day && (!P.bonus || P.bonus.last !== day)) {
         db.setState(uid, 'bonus', day);
         const streak = P.bonus && P.bonus.last === R.yesterday(t) ? P.bonus.streak : 0;
-        await pushTo(uid, 'bonus', { title: '🎁 Ton bonus du jour t\'attend', body: (streak ? 'Ne casse pas ta série de ' + streak + ' jour' + (streak > 1 ? 's' : '') + ' ! ' : '') + 'Et un tour de roue gratuit, jusqu\'à 1 000 €.', tag: 'bonus' });
+        await pushTo(uid, 'bonus', { title: '🎁 Ton bonus du jour t\'attend', body: (streak ? 'Ne casse pas ta série de ' + streak + ' jour' + (streak > 1 ? 's' : '') + ' ! ' : '') + 'Tes jetons gratuits du jour t\'attendent.', tag: 'bonus' });
       }
-      // 🏆 un ami passe devant au classement « Gains du mois »
+      // 🏆 un ami bat ton meilleur palier du Parrain (seulement les comptes à jour, passés aux jetons)
       const subs = db.pushOf(uid), friends = [...new Set(subs.flatMap((s) => (s.prefs && s.prefs.friendList) || []))].slice(0, 100);
       if (friends.length && !quiet) {
-        const mine = monthNetOf(P, t);
-        const ahead = friends.filter((f) => { const F = db.load(f).player; return F && monthNetOf(F, t) > mine; });
-        const before = JSON.parse(db.getState(uid, 'ahead:' + R.seasonOf(t)) || 'null');
+        const mine = P.econ === 3 ? P.bestPalier || 0 : 0;
+        const best = (f) => { const F = db.load(f).player; return F && F.econ === 3 ? F.bestPalier || 0 : 0; };
+        const ahead = friends.filter((f) => best(f) > mine);
+        const before = JSON.parse(db.getState(uid, 'aheadp') || 'null');
         if (before) {
           const fresh = ahead.filter((f) => !before.includes(f));
           if (fresh.length) {
             const F = db.load(fresh[0]).player;
-            await pushTo(uid, 'friends', { title: '🏆 ' + (F.pseudo || 'Un ami') + ' t\'a dépassé !', body: 'Il est devant toi dans les gains du mois (+' + Math.round(monthNetOf(F, t)).toLocaleString('fr-FR') + ' €). Reprends ta place !', tag: 'friends' });
+            await pushTo(uid, 'friends', { title: '🏆 ' + (F.pseudo || 'Un ami') + ' t\'a dépassé !', body: 'Il a atteint le palier ' + (F.bestPalier || 0) + ' du Parrain (ton record : ' + mine + '). Reprends ta place !', tag: 'friends' });
           }
         }
-        db.setState(uid, 'ahead:' + R.seasonOf(t), JSON.stringify(ahead));
+        db.setState(uid, 'aheadp', JSON.stringify(ahead));
       }
     }
   } catch (e) { console.error('[casino] tournée des rappels', e.message); }
@@ -316,7 +312,7 @@ async function casino(uid, token, op, data) {
     const prefs = {}; PUSH_PREFS.forEach((k) => { prefs[k] = !(d.prefs && d.prefs[k] === false); });
     prefs.friendList = Array.isArray(d.friends) ? d.friends.filter((f) => typeof f === 'string' && /^[A-Za-z0-9]{10,40}$/.test(f) && f !== uid).slice(0, 100) : [];
     db.pushAdd(uid, { endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } }, prefs);
-    if (d.test) await pushTo(uid, 'chest', { title: '🔔 Notifications activées', body: 'Tu seras prévenu quand ton coffre est plein, pour ton bonus et quand un ami te dépasse.', tag: 'test' });
+    if (d.test) await pushTo(uid, 'chest', { title: '🔔 Notifications activées', body: 'Tu seras prévenu pour ton bonus du jour et quand un ami bat ton record.', tag: 'test' });
     return { result: { ok: true } };
   }
   // un visiteur sans compte (connexion anonyme) ne crée rien sur le serveur : il faut un compte pour jouer

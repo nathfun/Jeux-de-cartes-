@@ -183,7 +183,7 @@
   }
   function drawShop(P, r) {
     const card = $('shop-card'); card.innerHTML = '';
-    const next = r.palier + 1, nq = Math.round(R.quotaOf(next) * (r.items && r.items.pret ? 1.15 : 1));
+    const next = r.palier + 1, nq = R.nextQuota(r);
     const head = el('div', 'done-head');
     head.append(el('div', 'big', '✅'), el('h2', '', 'Palier ' + r.palier + ' remboursé !'), el('p', 'sub', 'Les hommes du parrain ont compté la caisse : le compte est bon.' + (r.prime ? ' Il te verse une prime de ' + fmt(r.prime) + ' €.' : '') + ' Le receleur t\'attend dans l\'arrière-salle.'));
     card.appendChild(head);

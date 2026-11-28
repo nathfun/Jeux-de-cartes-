@@ -1,5 +1,11 @@
 /* Nouveautés du Lucky Lounge : la plus récente en premier. Ajoute une entrée à chaque mise à jour. */
 window.CASINO_NEWS = [
+  { date: '2026-11-30', title: 'Le Parrain plus juste', items: [
+    '📈 Quotas +30 % par palier, et toujours au moins +20 % sur ta caisse : un jackpot ne fait plus sauter 10 paliers.',
+    '💼 Un seul bouton « Encaisser », le même sur tous les jeux, sans confirmation.',
+    '💸 Plus assez pour miser sur un jeu ? Retour automatique à la partie, les jeux trop chers sont signalés.',
+    '🪙 Récompenses de fin de partie revues à la baisse pour garder la boutique précieuse.',
+  ] },
   { date: '2026-11-29', title: 'Plus de spectacle', items: [
     '🎡 Nouvelle roue de la fortune : ampoules qui clignotent, aiguille qui claque, jackpot illuminé.',
     '🏇 Course de chevaux : pari « placé » (1er ou 2e), bouton ↩ Annuler et commentaire en direct.',

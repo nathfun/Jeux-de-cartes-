@@ -1228,7 +1228,10 @@
     UNLOCK: { blackjack: 1, roulette: 1, slots: 1, wheel: 1, crash: 1, mines: 1, plinko: 2, boosters: 2, gold: 2, loto: 3, horses: 3, trader: 4, heist: 5 },
     PRIME: 0.1, // commission versée dans la caisse à chaque palier réussi (en % du quota)
   };
-  const QUOTAS = [1200, 1500, 1900, 2400, 3000, 3800, 4800, 6000, 7500, 9500, 12000, 15000, 19000, 24000, 30000];
+  // Quotas : +30 % à chaque palier (une croissance exponentielle douce), arrondis à 2 chiffres
+  const QUOTA_BASE = 1200, QUOTA_GROWTH = 1.3, QUOTA_CARRY = 1.2;
+  const roundSig = (v) => { const e = Math.pow(10, Math.floor(Math.log10(v)) - 1); return Math.round(v / e) * e; };
+  const QUOTAS = Array.from({ length: 15 }, (_, k) => roundSig(QUOTA_BASE * Math.pow(QUOTA_GROWTH, k)));
   /** Arrondi « joli » : 1, 1,5, 2, 2,5, 3, 4, 5, 6, 8 × 10^k (vers le bas). */
   function niceDown(v) {
     if (!(v > 0)) return 0;
@@ -1237,12 +1240,13 @@
     let best = 1; steps.forEach((x) => { if (x <= m + 1e-9) best = x; });
     return Math.round(best * e);
   }
-  /** Quota du palier p : la table ci-dessus, puis ×1,6 à chaque palier (sans fin). */
-  function quotaOf(p) {
-    if (p <= QUOTAS.length) return QUOTAS[p - 1];
-    let q = QUOTAS[QUOTAS.length - 1];
-    for (let k = QUOTAS.length; k < p; k++) q *= 1.25;
-    return niceDown(q);
+  /** Quota « de base » du palier p (sans tenir compte de la caisse). */
+  function quotaOf(p) { return roundSig(QUOTA_BASE * Math.pow(QUOTA_GROWTH, Math.max(0, (p || 1) - 1))); }
+  /** Quota réel du palier suivant : celui du barème, mais au moins +20 % sur la caisse de fin de journée
+   *  (un gros jackpot ne permet pas d'enchaîner les paliers sans jouer). */
+  function nextQuota(r) {
+    const base = Math.round(quotaOf(r.palier + 1) * (r.items && r.items.pret ? 1.15 : 1));
+    return Math.max(base, roundSig((r.dayEndCash || 0) * QUOTA_CARRY));
   }
   /** Les mises montent avec les quotas (blackjack : 5 à 250 € au palier 1) ; le VIP relève le plafond. */
   const palierFactor = (p) => quotaOf(Math.max(1, p || 1)) / QUOTAS[0];
@@ -1281,7 +1285,7 @@
   const runItem = (id) => RUN_ITEMS.find((x) => x.id === id);
   const itemPrice = (it, p) => Math.max(10, niceDown(quotaOf(p + 1) * it.pct));
   // jetons gagnés : base selon les paliers réussis + bonus de gourmandise (argent au-delà des quotas)
-  const runReward = (done, greed) => ({ jetons: 40 * done + 8 * done * done + Math.round(greed || 0), xp: 40 * done + 10 * done * done });
+  const runReward = (done, greed) => ({ jetons: 30 * done + 2 * done * done + Math.round(greed || 0), xp: 40 * done + 10 * done * done });
 
   function runStart(P, now, N) {
     if (P.run && P.run.status !== 'over') return { error: 'Une partie est déjà en cours.' };
@@ -1305,8 +1309,8 @@
     if (!ok && r.items.totem && r.cash >= r.quota * 0.8) { ok = true; delete r.items.totem; N.push({ kind: 'gold', title: '🛡️ Totem d\'immunité', text: 'Il te manquait un peu… le parrain ferme les yeux pour cette fois.', icon: '🛡️' }); }
     if (!ok) return runOver(P, now, N, 'quota');
     const prime = Math.round(r.quota * RUN.PRIME);
-    r.cash = Math.round((r.cash + prime) * 100) / 100; r.prime = prime;
-    r.greed += Math.min(2, Math.max(0, (r.cash - r.quota) / r.quota)) * 40 * r.palier;
+    r.cash = Math.round((r.cash + prime) * 100) / 100; r.prime = prime; r.dayEndCash = r.cash;
+    r.greed += Math.min(1, Math.max(0, (r.cash - r.quota) / r.quota)) * 5 * r.palier;
     r.status = 'shop';
     r.done = r.palier;
     // 3 objets au hasard dans la boutique du palier
@@ -1321,7 +1325,7 @@
     if (r.palier >= 15) unlock(P, 'run_p15', N);
     if (r.palier >= 20) unlock(P, 'run_p20', N);
     P.bestPalier = Math.max(P.bestPalier || 0, r.palier);
-    N.push({ kind: 'gold', title: '✅ Palier ' + r.palier + ' réussi !', text: 'Quota atteint ! Le parrain te verse une prime de ' + prime.toLocaleString('fr-FR') + ' €. Prochain quota : ' + quotaOf(r.palier + 1).toLocaleString('fr-FR') + ' €.', icon: '🏆' });
+    N.push({ kind: 'gold', title: '✅ Palier ' + r.palier + ' réussi !', text: 'Quota atteint ! Le parrain te verse une prime de ' + prime.toLocaleString('fr-FR') + ' €. Prochain quota : ' + nextQuota(r).toLocaleString('fr-FR') + ' €.', icon: '🏆' });
     return { ok: true, run: r };
   }
   /** Meilleur gain du compte, en jetons (fin de partie, tables multijoueur, Grand Prix ; pas le poker). */
@@ -1376,7 +1380,7 @@
     const r = P.run;
     if (!r || r.status !== 'shop') return { error: 'Termine d\'abord la journée.' };
     r.palier++;
-    r.quota = Math.round(quotaOf(r.palier) * (r.items.pret ? 1.15 : 1));
+    r.palier--; r.quota = nextQuota(r); r.palier++;
     delete r.items.pret;
     let extra = 0;
     if (r.items.montre) { extra += 2 * 60000 * r.items.montre; delete r.items.montre; }
@@ -1446,7 +1450,7 @@
   }
 
   // version des règles : le serveur et l'app doivent avoir la même (sinon : serveur du NAS à mettre à jour)
-  const RULES_VERSION = '2026.11.30-1';
+  const RULES_VERSION = '2026.11.30-2';
   const api = {
     RULES_VERSION,
     weekOf, weekPoints, ensureWeek, SEASON_TIERS, seasonOf, seasonTier, seasonName, ensureSeason,
@@ -1458,7 +1462,7 @@
     HORSES, horseCard, horseRace, placeOdds, horseSecond, horsePayout,
     BOX, boxInfo, openBox, priceOf, inPromo, SHOP_PROMO, VIP_DISCOUNT,
     SERIES, PACK, PACK_MULT, PACK_RANGE, cardMult, packPrice, seriesOpen, openPack,
-    RUN, QUOTAS, BET_STEPS, gameMin, FORTUNE, quotaOf, niceDown, palierFactor, runMaxBet, runMinBet, runActive, runTotal, isUnlocked, RUN_ITEMS, runItem, itemPrice, runReward,
+    RUN, QUOTAS, BET_STEPS, gameMin, FORTUNE, quotaOf, nextQuota, niceDown, palierFactor, runMaxBet, runMinBet, runActive, runTotal, isUnlocked, RUN_ITEMS, runItem, itemPrice, runReward,
     noteGain, gameEntry, canPlayAny, runStart, runEndDay, runOver, runCheckBroke, runTick, runBuy, runNext,
     LOTO, lotoDiscount, lotoPackCost,
     tradeable, MARKET_FEE, MARKET_FEE_VIP, RARITY, RARITY_ORDER, BOOSTER, boosterInfo, openBooster, craftCard,

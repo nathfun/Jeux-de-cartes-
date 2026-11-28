@@ -740,22 +740,39 @@
     if (typeof document === 'undefined' || !R.runActive(load())) return;
     injectStyle();
     if (!hudEl) {
-      hudEl = document.createElement('a'); hudEl.className = 'run-hud'; hudEl.href = '../partie.html'; hudEl.title = 'Retour à la partie';
+      // bandeau du Parrain : palier, chrono, quota… et LE bouton « Encaisser » commun à tous les jeux
+      hudEl = document.createElement('div'); hudEl.className = 'run-hud';
+      const info = mk('a', 'rh-info'); info.href = '../partie.html'; info.title = 'Retour à la partie';
+      const cash = mk('button', 'rh-cash', '💼 Encaisser'); cash.type = 'button'; cash.title = 'Ramène tout dans ta caisse et retourne à la liste des jeux';
+      cash.onclick = async () => {
+        if (holding) { toast('Encore un instant', 'Attends la fin du tour pour encaisser.', '⏳'); return; }
+        const g = curGame || (location.pathname.split('/').slice(-2, -1)[0]);
+        cash.disabled = true; cash.textContent = '💼 …';
+        const r = await Casino.cashOut(g === 'roue' ? 'wheel' : g === 'courses' ? 'horses' : g);
+        if (!r || r.error) { // rien sur la table : on retourne simplement à la partie
+          if (r && r.error && !/Aucune/.test(r.error)) { toast('Encaisser', r.error, '⚠️'); cash.disabled = false; cash.textContent = '💼 Encaisser'; return; }
+          location.href = '../partie.html' + (/[?&]backend=local/.test(location.search) ? '?backend=local' : '');
+        }
+      };
+      hudEl.append(info, cash);
       document.body.appendChild(hudEl);
-      document.body.style.paddingBottom = 'calc(64px + env(safe-area-inset-bottom))';
+      document.documentElement.classList.add('cm-run');
+      document.body.style.paddingBottom = 'calc(74px + env(safe-area-inset-bottom))';
     }
+    const info = hudEl.querySelector('.rh-info');
     const draw = () => {
       const p = load(), r = p.run;
       if (!r || r.status !== 'playing') { hudEl.hidden = true; return; }
-      if (holding && hudEl.childElementCount) { const t = hudEl.querySelector('.rh-t'); if (t) t.textContent = '⏱ ' + fmtClock(r.dayEnd - Date.now()); return; }
+      if (holding && info.childElementCount) { const t = hudEl.querySelector('.rh-t'); if (t) t.textContent = '⏱ ' + fmtClock(r.dayEnd - Date.now()); return; }
       hudEl.hidden = false;
+      document.documentElement.classList.toggle('cm-run', !Casino.training);
       const left = r.dayEnd - Date.now(), tot = R.runTotal(p), pc = Math.min(100, tot / r.quota * 100);
       hudEl.classList.toggle('late', left < 60000);
       hudEl.classList.toggle('ok', tot >= r.quota);
-      hudEl.innerHTML = '';
+      info.innerHTML = '';
       const a = mk('span', 'rh-p', 'P' + r.palier), b = mk('span', 'rh-t', '⏱ ' + fmtClock(left));
       const c = mk('span', 'rh-q'); const bar = mk('i'); bar.style.width = pc + '%'; c.append(bar, mk('b', '', fmtE(Math.floor(tot)) + ' / ' + fmtE(r.quota)));
-      hudEl.append(a, b, c);
+      info.append(a, b, c);
       // la caisse bouge : petit éclair vert (gain) ou rouge (perte)
       if (hudLast !== null && Math.abs(tot - hudLast) >= 1) {
         const up = tot > hudLast, d = mk('span', 'rh-delta ' + (up ? 'up' : 'down'), (up ? '+' : '−') + fmtE(Math.round(Math.abs(tot - hudLast))));
@@ -1330,7 +1347,11 @@ html.is-vip .vip-sparkles i { position: absolute; width: 3px; height: 3px; borde
 @media (prefers-reduced-motion: reduce) { html.is-vip body::after, html.is-vip .panel h2, html.is-vip .card h2, html.is-vip .vip-sparkles i { animation: none !important; } }
 
 #casino-maint { position: fixed; top: 0; left: 0; right: 0; z-index: 300; padding: max(.5rem, env(safe-area-inset-top)) 16px .5rem; text-align: center; font: 800 .9rem/1.3 system-ui, sans-serif; color: #1c1300; background: linear-gradient(90deg, #fde047, #f59e0b); box-shadow: 0 4px 16px rgba(0,0,0,.4); }
-.run-hud { position: fixed; z-index: 70; left: 50%; transform: translateX(-50%); bottom: max(10px, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: .5rem; padding: .35rem .7rem; border-radius: 999px;
+.run-hud .rh-info { display: flex; align-items: center; gap: .5rem; color: inherit; text-decoration: none; min-width: 0; }
+.run-hud .rh-cash { font: 900 .9rem/1 system-ui, sans-serif; border: 0; border-radius: 999px; padding: .55rem .85rem; cursor: pointer; color: #052e16; background: linear-gradient(135deg, #86efac, #22c55e); box-shadow: 0 0 14px rgba(34,197,94,.45); white-space: nowrap; }
+.run-hud .rh-cash:disabled { opacity: .6; }
+html.cm-run #cashout, html.cm-run #end-btn, html.cm-run #b-end { display: none !important; }
+.run-hud { position: fixed; z-index: 70; left: 50%; transform: translateX(-50%); bottom: max(10px, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: .5rem; padding: .35rem .4rem .35rem .7rem; border-radius: 999px;
   background: rgba(12,10,8,.92); border: 1px solid rgba(250,204,21,.45); color: #fde68a; font: 700 .82rem/1.2 system-ui, sans-serif; text-decoration: none; box-shadow: 0 8px 24px rgba(0,0,0,.5); white-space: nowrap; max-width: calc(100vw - 32px); }
 .run-hud[hidden] { display: none; }
 .run-hud .rh-p { background: #facc15; color: #1c1300; border-radius: 999px; padding: .05rem .45rem; }

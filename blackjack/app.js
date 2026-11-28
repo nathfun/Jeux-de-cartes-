@@ -17,6 +17,8 @@
   // ---------- État ----------
   let shoe = [];
   let bet = 10;
+  // montants affichés sans virgule (un abandon peut rendre une demi-mise : 2 500,5 € → 2 500 €)
+  const money = (v) => Math.floor((v || 0) + 1e-9).toLocaleString('fr-FR');
   let round = null; // { dealer: [], hands: [], active, phase, decisions: [] }
   const side = { pp: 0, t213: 0 }; // paris annexes choisis
   let lastSituation = null;        // dernière situation analysée (pour les détails et le chat)
@@ -133,8 +135,8 @@
   }
 
   function render() {
-    $('bankroll').textContent = stats.bankroll;
-    $('bet').textContent = bet;
+    $('bankroll').textContent = money(stats.bankroll);
+    $('bet').textContent = money(bet);
 
     const dc = $('dealer-cards');
     dc.innerHTML = '';
@@ -482,9 +484,9 @@
       wagered += h.bet;
       stats.hands++;
       let back = 0;
-      if (h.surrendered) { back = h.bet / 2; set(h, 'Abandon −' + h.bet / 2 + ' €', 'lose'); stats.losses++; }
+      if (h.surrendered) { back = h.bet / 2; set(h, 'Abandon −' + money(h.bet / 2) + ' €', 'lose'); stats.losses++; }
       else if (pBJ && dealerBJ) { back = h.bet; set(h, 'Égalité', 'push'); stats.pushes++; }
-      else if (pBJ) { back = h.bet * 2.5; set(h, 'Blackjack ! +' + h.bet * 1.5 + ' €', 'win'); stats.wins++; stats.blackjacks++; }
+      else if (pBJ) { back = h.bet * 2.5; set(h, 'Blackjack ! +' + money(h.bet * 1.5) + ' €', 'win'); stats.wins++; stats.blackjacks++; }
       else if (dealerBJ) { set(h, 'Blackjack du croupier', 'lose'); stats.losses++; }
       else if (p > 21) { set(h, 'Sauté', 'lose'); stats.losses++; }
       else if (d > 21 || p > d) { back = h.bet * 2; set(h, 'Gagné +' + h.bet + ' €', 'win'); stats.wins++; }
@@ -539,13 +541,13 @@
       stats.bankroll = TRAIN_BANK;
     }
     if (stats.bankroll < minBet() && mode === 'real') setTimeout(() => endSession(true), 2500);
-    if (bet > stats.bankroll) bet = Math.max(0, Math.min(bet, stats.bankroll));
+    if (bet > stats.bankroll) bet = Math.max(0, Math.floor(Math.min(bet, stats.bankroll)));
     saveStats();
     render();
     maybeQuiz();
     if (defi) {
       defi.hands++;
-      $('defi-count').textContent = 'Main ' + Math.min(defi.hands + 1, defi.meta.rounds) + ' / ' + defi.meta.rounds + ' · solde de défi : ' + stats.bankroll + ' €';
+      $('defi-count').textContent = 'Main ' + Math.min(defi.hands + 1, defi.meta.rounds) + ' / ' + defi.meta.rounds + ' · solde de défi : ' + money(stats.bankroll) + ' €';
       if (defi.hands >= defi.meta.rounds || stats.bankroll < minBet()) endDefi();
     }
   }
@@ -883,7 +885,7 @@
     $('s-accuracy').textContent = acc;
     $('s-decisions').textContent = stats.decisions;
     $('s-hands').textContent = stats.hands;
-    $('s-net').textContent = (stats.net > 0 ? '+' : '') + stats.net + (document.body.dataset.mode === 'multi' ? ' jetons' : ' €');
+    $('s-net').textContent = (stats.net > 0 ? '+' : stats.net < 0 ? '−' : '') + money(Math.abs(stats.net)) + (document.body.dataset.mode === 'multi' ? ' jetons' : ' €');
     $('s-net').style.color = stats.net > 0 ? 'var(--good)' : stats.net < 0 ? 'var(--bad)' : '';
 
     const bars = $('cat-bars');
@@ -1128,7 +1130,7 @@
     badge.textContent = mode === 'real' ? '🕴️ Le Parrain · sans aides · « Encaisser » ramène l\'argent dans ta caisse' : '🎓 Apprentissage · crédit illimité, aides et conseils · ne compte pas';
     $('cashout').hidden = mode === 'defi' || mode === 'train';
     $('bank-label').textContent = mode === 'real' ? 'Sur la table' : mode === 'train' ? 'Crédit d\'apprentissage' : mode === 'defi' ? 'Jetons de défi' : 'Caisse';
-    if (!mode && window.Casino) { $('bankroll').textContent = (Math.round(Casino.wallet() * 100) / 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 }); }
+    if (!mode && window.Casino) { $('bankroll').textContent = money(Casino.wallet()); }
     $('cashout').textContent = mode === 'train' ? 'Terminer' : 'Encaisser';
     setChips();
     if (!playing) { renderPicker(); return; }
@@ -1147,7 +1149,7 @@
       if (r && r.error) { setMessage('⚠️ ' + r.error); return; }
       const diff = r ? r.diff : 0;
       msg = broke ? 'Tout est perdu : il ne reste plus assez pour la mise minimale.' :
-        'Tu encaisses ' + (r ? r.end : stats.bankroll) + ' € (' + (diff >= 0 ? '+' : '−') + Math.abs(diff) + ' € par rapport à la somme apportée).';
+        'Tu encaisses ' + money(r ? r.end : stats.bankroll) + ' € (' + (diff >= 0 ? '+' : '−') + money(Math.abs(diff)) + ' € par rapport à la somme apportée).';
       Casino.toast(broke ? 'Partie perdue' : 'Encaissé !', msg, broke ? '💸' : '💰', diff > 0 ? 'gold' : '');
     }
     mode = null;
@@ -1161,7 +1163,7 @@
     if (busy || (round && round.phase !== 'over')) { setMessage('Termine la main en cours avant d\'encaisser.'); return; }
     if (!cashArmed) {
       cashArmed = true;
-      $('cashout').textContent = mode === 'train' ? 'Sûr ?' : 'Encaisser ' + stats.bankroll + ' € ?';
+      $('cashout').textContent = mode === 'train' ? 'Sûr ?' : 'Encaisser ' + money(stats.bankroll) + ' € ?';
       setTimeout(() => { cashArmed = false; if (mode) $('cashout').textContent = mode === 'train' ? 'Terminer' : 'Encaisser'; }, 3000);
       return;
     }
