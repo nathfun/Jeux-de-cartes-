@@ -1,4 +1,4 @@
-/* Course de chevaux (La Dette, palier 8) : on parie sur un ou plusieurs chevaux, le serveur tire le vainqueur. */
+/* Course de chevaux (Le Parrain, palier 3) : on parie sur un ou plusieurs chevaux, le serveur tire le vainqueur. */
 (function () {
   'use strict';
   const R = window.CasinoRules, H = R.HORSES;
@@ -118,7 +118,7 @@
     S.mode = mode; S.stack = amount; S.bets = {}; S.hist = [];
     if (window.Casino) Casino.training = mode === 'train';
     $('setup').hidden = true; $('game').hidden = false;
-    $('mode-badge').textContent = mode === 'real' ? '🕴️ La Dette · ta caisse' : '🎓 Apprentissage · crédit illimité';
+    $('mode-badge').textContent = mode === 'real' ? '🕴️ Le Parrain · ta caisse' : '🎓 Apprentissage · crédit illimité';
     $('end-btn').hidden = mode === 'train';
     renderChips(); loadCard(); resetTrack(); ui();
   }

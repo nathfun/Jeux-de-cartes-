@@ -33,7 +33,7 @@
   let lastWallet = null, txReason = null;
   const bootAt = Date.now();
   // Page restaurée depuis le cache du navigateur (bouton retour), autre onglet, retour sur l'app :
-  // on relit le profil enregistré pour ne jamais réécrire une vieille copie par-dessus (ex. une partie de La Dette en cours)
+  // on relit le profil enregistré pour ne jamais réécrire une vieille copie par-dessus (ex. une partie du Parrain en cours)
   function reloadFromStorage() {
     if (!P) return;
     let raw = null;
@@ -424,7 +424,16 @@
   }
   if (typeof document !== 'undefined') {
     setTimeout(() => { try { if (Casino.pushState() === 'on' && Date.now() - (load().settings.pushAt || 0) > 86400000) Casino.pushEnable(); } catch (e) { /* ignore */ } }, 5000);
-    const boot = () => { injectStyle(); salonPill(); try { document.documentElement.classList.toggle('is-vip', R.isVip(load(), Date.now())); } catch (e) { /* ignore */ } };
+    const boot = () => {
+      injectStyle(); salonPill();
+      try { document.documentElement.classList.toggle('is-vip', R.isVip(load(), Date.now())); } catch (e) { /* ignore */ }
+      // VIP : quelques paillettes dorées dans le décor
+      if (!document.querySelector('.vip-sparkles') && document.body) {
+        const sp = document.createElement('div'); sp.className = 'vip-sparkles'; sp.setAttribute('aria-hidden', 'true');
+        for (let i = 0; i < 18; i++) { const d = document.createElement('i'); d.style.left = Math.random() * 100 + '%'; d.style.top = Math.random() * 100 + '%'; d.style.animationDelay = (-Math.random() * 5) + 's'; d.style.animationDuration = (3.5 + Math.random() * 3) + 's'; sp.appendChild(d); }
+        document.body.prepend(sp);
+      }
+    };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else setTimeout(boot, 0);
   }
 
@@ -648,10 +657,10 @@
     card.appendChild(gameHero(opts.game));
     const panel = mk('div', 'cm-panel');
     const cur = P.sessions[opts.game];
-    // Pas de journée de La Dette en cours, ou jeu pas encore débloqué : retour à l'accueil
-    const lockMsg = !R.runActive(P) ? ['Aucune journée en cours', 'Les jeux se jouent pendant une partie de La Dette : lance-la depuis le lobby (ou passe par 🎓 Apprentissage pour t\'entraîner).']
+    // Pas de journée du Parrain en cours, ou jeu pas encore débloqué : retour à l'accueil
+    const lockMsg = !R.runActive(P) ? ['Aucune journée en cours', 'Les jeux se jouent pendant une partie du Parrain : lance-la depuis le lobby (ou passe par 🎓 Apprentissage pour t\'entraîner).']
       : !cur && !R.isUnlocked(P, opts.game) ? ['🔒 Se débloque au palier ' + (R.RUN.UNLOCK[opts.game] || '?'), 'Continue de rembourser la dette pour ouvrir ce jeu.'] : null;
-    // La Dette : en arrivant sur un jeu, on s'assoit tout de suite avec toute la caisse, sans afficher l'écran de lancement
+    // Le Parrain : en arrivant sur un jeu, on s'assoit tout de suite avec toute la caisse, sans afficher l'écran de lancement
     if (!lockMsg && !cur && !autoSat[opts.game] && R.runTotal(P) >= R.gameMin(P, opts.game)) {
       autoSat[opts.game] = true;
       box.innerHTML = '';
@@ -690,7 +699,7 @@
       };
       panel.append(rb, note);
     } else {
-      // La Dette : on s'installe toujours avec toute la caisse (l'argent des autres jeux suit)
+      // Le Parrain : on s'installe toujours avec toute la caisse (l'argent des autres jeux suit)
       const tot = R.runTotal(P);
       const go = mk('button', 'cm-cta', '▶ Jouer avec toute ma caisse'); go.type = 'button';
       const start = async () => {
@@ -709,13 +718,13 @@
       // en arrivant sur le jeu : on s'assoit directement (pas après « Encaisser et quitter »)
       else if (!autoSat[opts.game]) { autoSat[opts.game] = true; box.append(card); card.appendChild(panel); start(); return; }
     }
-    panel.appendChild(mk('p', 'cm-learn-tip', '🕴️ La Dette, palier ' + P.run.palier + ' : tu joues avec toute ta caisse, elle te suit d\'un jeu à l\'autre. Plus rien pour miser nulle part = banqueroute.' + (opts.realNote ? ' ' + opts.realNote : '')));
+    panel.appendChild(mk('p', 'cm-learn-tip', '🕴️ Le Parrain, palier ' + P.run.palier + ' : tu joues avec toute ta caisse, elle te suit d\'un jeu à l\'autre. Plus rien pour miser nulle part = banqueroute.' + (opts.realNote ? ' ' + opts.realNote : '')));
     card.appendChild(panel);
     box.append(card);
   }
 
 
-  // ---------- La Dette : bandeau de la journée sur les pages de jeu ----------
+  // ---------- Le Parrain : bandeau de la journée sur les pages de jeu ----------
   let hudTimer = null, hudEl = null, endShown = false;
   const fmtClock = (ms) => { const t = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); };
   function runHud() {
@@ -747,8 +756,15 @@
   /** Réponse du serveur : fin de journée, banqueroute, table perdue → écran par-dessus le jeu. */
   function runWatch(res) {
     if (typeof document === 'undefined' || !(hudEl || document.querySelector('.cm-host'))) return;
-    if (res.dayOver) return setTimeout(() => runOverlay(res.dayOver === 'over' ? '🕴️ La mafia est passée…' : '🔔 La journée est terminée', res.dayOver === 'over' ? 'Ta partie de La Dette est finie. Retourne à la partie pour le bilan.' : 'Le parrain fait les comptes. Retourne à la partie pour la suite.'), res.dayOver === 'over' ? 4500 : 0);
+    if (!res.dayOver) return;
+    const over = res.dayOver === 'over';
+    const warn = res.dayOver === 'warn';
+    const show = () => runOverlay(over ? '🕴️ La mafia est passée…' : warn ? '💢 Avertissement du parrain' : '🔔 La journée est terminée', over ? 'Ta partie est finie. Retourne à la partie pour le bilan.' : warn ? 'Tu perds une vie, mais la partie continue. Retourne à la partie pour la suite.' : 'Le parrain fait les comptes. Retourne à la partie pour la suite.');
+    // pendant une animation (roue, bille, cartes…) : l'annonce attend la fin, pour ne pas gâcher le résultat
+    if (holding) { pendingOver = show; return; }
+    setTimeout(() => { if (holding) pendingOver = show; else show(); }, over ? 4500 : 0);
   }
+  let pendingOver = null;
   function runOverlay(title, text) {
     if (document.querySelector('.run-over')) return;
     injectStyle();
@@ -794,25 +810,25 @@
     call, sync, firebase,
     get profile() { return load(); },
     onChange(f) { listeners.push(f); },
-    /** Caisse de la partie de La Dette (euros), utilisée par les jeux. */
+    /** Caisse de la partie du Parrain (euros), utilisée par les jeux. */
     wallet() { const p = load(); return Math.round(((p.run && p.run.status !== 'over' ? p.run.cash : 0) || 0) * 100) / 100; },
     /** Jetons du compte (style, VIP, multijoueur). */
     jetons() { return Math.round((load().wallet || 0) * 100) / 100; },
     get run() { return load().run || null; },
     async runCall(op, data) {
       if (SERVER) return call(op, data);
-      if (BANK) return { error: 'La Dette demande le serveur du Casino.' };
+      if (BANK) return { error: 'Le Parrain demande le serveur du Casino.' };
       const now = Date.now();
       return local((N) => {
         const t = R.runTick(P, now, N);
-        if (t && op !== 'sync') return { dayOver: t.over ? 'over' : 'shop', run: P.run };
+        if (t && op !== 'sync') return { dayOver: t.over ? 'over' : t.warned ? 'warn' : 'shop', run: P.run };
         const r = op === 'run.start' ? R.runStart(P, now, N) : op === 'run.end' ? R.runEndDay(P, now, N, 'closed') : op === 'run.buy' ? R.runBuy(P, data.id)
           : op === 'run.next' ? R.runNext(P, now, N) : op === 'run.abandon' ? R.runOver(P, now, N, 'abandon') : op === 'run.seen' ? ((P.run || {}).seen = true, {}) : {};
         if (r && r.over) r.dayOver = 'over';
         return Object.assign({ run: P.run }, r);
       });
     },
-    runTick() { return Casino.runCall('sync').then((r) => { const p = load(); if (p.run && p.run.status !== 'playing') runWatch({ dayOver: p.run.status === 'over' ? 'over' : 'shop' }); return r; }); },
+    runTick() { return Casino.runCall('sync').then((r) => { const p = load(); if (p.run && p.run.status !== 'playing') runWatch({ dayOver: p.run.status === 'over' ? 'over' : p.run.status === 'shop' ? 'shop' : 'warn' }); return r; }); },
     runHud,
     // ----- Tables multijoueur en jetons -----
     async mtSit(game, table, amount) {
@@ -862,9 +878,9 @@
     },
     /** Retient les annonces (et le bandeau du quota) jusqu'à la fin de l'animation en cours. */
     hold() { holding = true; clearTimeout(holdTimer); holdTimer = setTimeout(() => Casino.release(), 20000); },
-    release() { clearTimeout(holdTimer); if (!holding) return; holding = false; const n = held; held = []; showNotes(n); listeners.forEach((f) => { try { f(load()); } catch (e) { /* ignore */ } }); },
+    release() { clearTimeout(holdTimer); if (!holding) return; holding = false; const n = held; held = []; showNotes(n); listeners.forEach((f) => { try { f(load()); } catch (e) { /* ignore */ } }); if (pendingOver) { const f = pendingOver; pendingOver = null; setTimeout(f, 2500); } },
     get holding() { return holding; },
-    /** Ouvre un booster de La Dette (serveur, ou mêmes règles dans le navigateur sans serveur). */
+    /** Ouvre un booster du Parrain (serveur, ou mêmes règles dans le navigateur sans serveur). */
     async openPack(series) {
       if (SERVER) return call('bo.open', { series });
       return local(() => { const ss = P.sessions.boosters; if (!ss) return { error: 'Aucune somme sur la table.' }; return R.openPack(P, ss, series, (n) => Math.floor(Math.random() * n)); });
@@ -1011,7 +1027,7 @@
     /** Encaisse : la somme sur la table revient à la banque. { start, end, diff } ou { error } */
     async cashOut(game, extra) {
       const r = await Casino.cashOutRaw(game, extra);
-      // La Dette : « Encaisser et quitter » ramène directement à la partie (tous les jeux disponibles)
+      // Le Parrain : « Encaisser et quitter » ramène directement à la partie (tous les jeux disponibles)
       if (r && !r.error && load().run && load().run.status !== 'over' && typeof location !== 'undefined' && document.querySelector('.cm-host, .run-hud')) {
         Casino.training = false;
         leavingPage = true;
@@ -1245,6 +1261,26 @@
     const ringCss = (R.SHOP.frame || []).filter((f) => f.ring).map((f) => '.fr-' + f.id + '{border-color:' + f.ring + ' !important;box-shadow:0 0 0 2px ' + f.ring + ',0 0 16px ' + f.glow + ' !important;' + (f.anim === 'hue' ? 'animation:fr-hue 4s linear infinite;' : f.anim === 'pulse' ? 'animation:fr-pulse 1.8s ease-in-out infinite;' : '') + '}').join('');
     s.textContent = ringCss + `
 .cm-leaving body > *:not(.run-hud) { visibility: hidden !important; }
+/* ===== Habillage premium des membres VIP (toutes les pages) ===== */
+html.is-vip body { background-color: #0b0906; }
+html.is-vip body::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(1100px 420px at 50% -160px, rgba(250,204,21,.18), transparent 70%), radial-gradient(700px 500px at 100% 100%, rgba(180,120,20,.10), transparent 70%), radial-gradient(600px 500px at 0% 80%, rgba(250,204,21,.06), transparent 70%); }
+html.is-vip body::after { content: ''; position: fixed; left: 0; right: 0; top: 0; height: 3px; z-index: 300; pointer-events: none;
+  background: linear-gradient(90deg, transparent, #b8860b, #fde68a, #fff7d1, #fde68a, #b8860b, transparent); background-size: 200% 100%; animation: vip-line 4s linear infinite; box-shadow: 0 0 12px rgba(250,204,21,.6); }
+@keyframes vip-line { to { background-position: -200% 0; } }
+html.is-vip .panel, html.is-vip .card, html.is-vip .cm-card, html.is-vip .pp, html.is-vip .ro-box, html.is-vip .full .box {
+  border-color: rgba(212,175,55,.65) !important; box-shadow: 0 0 0 1px rgba(250,204,21,.12), 0 12px 34px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,236,170,.12) !important; }
+html.is-vip .panel h2, html.is-vip .card h2 { color: #fde68a; text-shadow: 0 0 18px rgba(250,204,21,.35), 0 1px 0 rgba(0,0,0,.6); }
+@keyframes vip-text { 50% { background-position: 100% 0; } }
+html.is-vip .run-hud { border-color: #d4af37 !important; box-shadow: 0 0 22px rgba(250,204,21,.35) !important; }
+html.is-vip .run-hud .rh-p::before { content: '👑 '; }
+html.is-vip .cm-cta, html.is-vip .cta, html.is-vip .dt-cta, html.is-vip .bonus-btn { background: linear-gradient(135deg, #fff3c4, #fbbf24 35%, #b8860b 70%, #fde68a) !important; color: #1c1300 !important; box-shadow: 0 8px 26px rgba(212,175,55,.45), inset 0 1px 0 rgba(255,255,255,.6) !important; }
+html.is-vip .vip-sparkles { position: fixed; inset: 0; pointer-events: none; z-index: -1; overflow: hidden; }
+html:not(.is-vip) .vip-sparkles { display: none; }
+html.is-vip .vip-sparkles i { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #fde68a; box-shadow: 0 0 8px #facc15; opacity: 0; animation: vip-spark 5s ease-in-out infinite; }
+@keyframes vip-spark { 0%, 100% { opacity: 0; transform: scale(.4); } 50% { opacity: .9; transform: scale(1.3) translateY(-12px); } }
+@media (prefers-reduced-motion: reduce) { html.is-vip body::after, html.is-vip .panel h2, html.is-vip .card h2, html.is-vip .vip-sparkles i { animation: none !important; } }
+
 #casino-maint { position: fixed; top: 0; left: 0; right: 0; z-index: 300; padding: max(.5rem, env(safe-area-inset-top)) 16px .5rem; text-align: center; font: 800 .9rem/1.3 system-ui, sans-serif; color: #1c1300; background: linear-gradient(90deg, #fde047, #f59e0b); box-shadow: 0 4px 16px rgba(0,0,0,.4); }
 .run-hud { position: fixed; z-index: 70; left: 50%; transform: translateX(-50%); bottom: max(10px, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: .5rem; padding: .35rem .7rem; border-radius: 999px;
   background: rgba(12,10,8,.92); border: 1px solid rgba(250,204,21,.45); color: #fde68a; font: 700 .82rem/1.2 system-ui, sans-serif; text-decoration: none; box-shadow: 0 8px 24px rgba(0,0,0,.5); white-space: nowrap; max-width: calc(100vw - 32px); }
@@ -1262,7 +1298,7 @@
 .run-over .ro-title { font-size: 1.5rem; font-weight: 900; color: #facc15; margin-bottom: .4rem; }
 a.cm-cta { display: block; text-align: center; text-decoration: none; }
 .cm-back { display: block; text-align: center; margin-top: .7rem; color: #9aa5b1; font-size: .9rem; }
-.run-over .cm-cta { display: inline-block; text-decoration: none; margin-top: .6rem; }
+.run-over .cm-cta { display: inline-block; text-decoration: none; margin-top: .6rem; padding: .9rem 1.4rem; color: #1c1300; background: linear-gradient(135deg, #fde047, #f59e0b); box-shadow: 0 8px 24px rgba(245,158,11,.4); }
 @keyframes fr-hue { to { filter: hue-rotate(360deg); } } @keyframes fr-pulse { 50% { filter: brightness(1.45) saturate(1.3); } }
 
 .lg-card { position: relative; width: 112px; height: 160px; border-radius: 12px; padding: 6px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; color: #fff; font: 12px system-ui, sans-serif; overflow: hidden;

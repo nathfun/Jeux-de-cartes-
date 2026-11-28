@@ -296,7 +296,7 @@
     const badge = $('mode-badge');
     badge.hidden = false;
     badge.className = 'cm-badge mode-line' + (mode === 'real' ? ' real' : '');
-    badge.textContent = mode === 'real' ? '🕴️ La Dette · sans aides · « Encaisser » ramène l\'argent dans ta caisse' : '🎓 Apprentissage · crédit illimité, aides et conseils · ne compte pas';
+    badge.textContent = mode === 'real' ? '🕴️ Le Parrain · sans aides · « Encaisser » ramène l\'argent dans ta caisse' : '🎓 Apprentissage · crédit illimité, aides et conseils · ne compte pas';
     $('aides-panel').hidden = mode !== 'train';
     document.body.classList.toggle('no-aides', mode !== 'train' || !aides.checked);
     $('win-text').textContent = resumed ? 'Partie reprise : ' + fmt(S.stack) + ' € sur la table.' : 'Bonne chance !';

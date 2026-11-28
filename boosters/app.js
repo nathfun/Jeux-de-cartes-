@@ -1,4 +1,4 @@
-/* Boosters de La Dette (dès le palier 3) : on ouvre des paquets de 10 cartes, revendues aussitôt dans la caisse. */
+/* Boosters du Parrain (dès le palier 2) : on ouvre des paquets de 10 cartes, revendues aussitôt dans la caisse. */
 (function () {
   'use strict';
   const R = window.CasinoRules;
@@ -187,7 +187,7 @@
     const open = R.SERIES.filter((se) => mode === 'train' || Casino.seriesOpen(se.id));
     S.series = open.length ? open[open.length - 1].id : null;
     $('setup').hidden = true; $('game').hidden = false;
-    $('mode-badge').textContent = mode === 'real' ? '🕴️ La Dette · ta caisse · les cartes épiques et mieux vont dans ta collection' : '🎓 Apprentissage · crédit illimité · rien n\'est gardé';
+    $('mode-badge').textContent = mode === 'real' ? '🕴️ Le Parrain · ta caisse · les cartes épiques et mieux vont dans ta collection' : '🎓 Apprentissage · crédit illimité · rien n\'est gardé';
     $('end-btn').hidden = mode === 'train';
     $('stack-label').textContent = mode === 'train' ? 'Crédit d\'apprentissage' : 'Sur la table';
     renderSeries(); ui();

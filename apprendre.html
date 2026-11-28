@@ -43,7 +43,7 @@
 <body>
   <main>
     <div class="top"><a class="back" href="index.html" aria-label="Retour au lobby">←</a><h1>🎓 Apprentissage</h1></div>
-    <p class="intro">Ici, <b>tous les jeux sont ouverts</b>, avec un <b>crédit illimité</b>, les <b>aides</b> et les <b>conseils du coach</b>. Rien ne compte : ni ta partie de La Dette, ni tes jetons, ni tes niveaux. Teste, apprends les règles, rate autant que tu veux !</p>
+    <p class="intro">Ici, <b>tous les jeux sont ouverts</b>, avec un <b>crédit illimité</b>, les <b>aides</b> et les <b>conseils du coach</b>. Rien ne compte : ni ta partie du Parrain, ni tes jetons, ni tes niveaux. Teste, apprends les règles, rate autant que tu veux !</p>
     <section class="learn-rules">
       <h2>📖 Les règles en bref</h2>
       <details><summary>🂡 Blackjack</summary><p>Approche-toi de 21 sans dépasser, et fais mieux que le croupier. Les figures valent 10, l'As 1 ou 11. Le croupier tire jusqu'à 17. Blackjack (As + figure) paie 3 pour 2. Tu peux tirer, rester, doubler (une carte de plus, mise doublée), séparer une paire, ou abandonner (tu récupères la moitié).</p></details>
@@ -59,13 +59,13 @@
       <details><summary>🔐 Le Braquage</summary><p>3 rouleaux, 5 lignes. Le parrain 🕴️ remplace tout. Trois 🔐 déclenchent Le Coffre : choisis un coffre-fort, jusqu'à ×100 la mise.</p></details>
       <details><summary>🃏 Boosters</summary><p>Un paquet = 10 cartes (8 communes, 2 rares ou mieux), revendues tout de suite. Les cartes épiques et mieux rejoignent ta collection. Un paquet sur 200 est un God Pack.</p></details>
       <details><summary>♠ Poker</summary><p>Texas Hold'em : 2 cartes à toi, 5 cartes communes. La meilleure main de 5 cartes gagne le pot. Les blindes montent avec le temps : le dernier joueur avec des jetons remporte la partie.</p></details>
-      <details><summary>🕴️ La Dette</summary><p>Chaque journée dure 10 minutes : atteins le quota en jouant avec ta caisse. Entre deux paliers, achète des objets chez le receleur. Quota raté ou caisse vide : la mafia passe et la partie s'arrête. Tu gardes les jetons et l'XP gagnés.</p></details>
+      <details><summary>🕴️ Le Parrain</summary><p>Chaque journée dure 10 minutes : atteins le quota en jouant avec ta caisse. Chaque palier réussi rapporte une prime du parrain (10 % du quota) et ouvre de nouveaux jeux ; entre deux paliers, achète des objets chez le receleur. Tu as 3 vies (4 en VIP) : quota raté, tu rejoues la journée ; caisse vide, le parrain te renfloue. Chaque fois, tu perds une vie. Plus de vies : la mafia passe et la partie s'arrête. Tu gardes les jetons et l'XP gagnés.</p></details>
     </section>
     <section id="ai-box" class="ai-box">
       <h2>🤖 Demande au coach <span class="ai-vip">👑 VIP</span></h2>
       <p class="muted" id="ai-lead">Une question sur une règle ou une stratégie ? Le coach (une IA) te répond en quelques phrases.</p>
       <form id="ai-form">
-        <select id="ai-game" aria-label="Jeu"><option value="">Tous les jeux</option><option>Blackjack</option><option>Roulette</option><option>Machines à sous</option><option>Roue de la fortune</option><option>Rocket Crash</option><option>Mines</option><option>Plinko</option><option>Loto Express</option><option>Bourse Flash</option><option>Course de chevaux</option><option>Le Braquage</option><option>Boosters</option><option>Poker</option><option>La Dette</option></select>
+        <select id="ai-game" aria-label="Jeu"><option value="">Tous les jeux</option><option>Blackjack</option><option>Roulette</option><option>Machines à sous</option><option>Roue de la fortune</option><option>Rocket Crash</option><option>Mines</option><option>Plinko</option><option>Loto Express</option><option>Bourse Flash</option><option>Course de chevaux</option><option>Le Braquage</option><option>Boosters</option><option>Poker</option><option>Le Parrain</option></select>
         <textarea id="ai-q" maxlength="500" rows="3" placeholder="Ex. : Faut-il doubler avec 11 contre un As ?"></textarea>
         <button id="ai-send" type="submit">Demander au coach</button>
       </form>
@@ -159,7 +159,7 @@
   <script src="account.js"></script>
   <script>
     (function () {
-      // une partie de La Dette en cours : on ne la quitte pas pour l'apprentissage
+      // une partie du Parrain en cours : on ne la quitte pas pour l'apprentissage
       const r = Casino.profile.run;
       if (r && (r.status === 'playing' || r.status === 'shop' || (r.status === 'over' && !r.seen))) { location.replace('partie.html' + location.search); return; }
       Casino.setLearn(true);

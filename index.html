@@ -483,6 +483,13 @@
     .bx-open .prize .rr { font-weight: 900; letter-spacing: .1em; color: var(--rc); text-transform: uppercase; } .bx-open .prize h3 { margin: .2rem 0; font-size: 1.4rem; color: #fff; }
     .bx-open .prize p { color: #c4b5fd; } .bx-open .prize button { margin-top: .6rem; }
     .bx-open .tip { color: #c4b5fd; margin-top: .8rem; text-align: center; }
+    .bx-open .prize .pv-big.pv-title { width: auto; min-width: 150px; max-width: min(88vw, 380px); height: auto; min-height: 90px; padding: .9rem 1.1rem; font-size: clamp(1.1rem, 5vw, 1.5rem); line-height: 1.25; white-space: normal; overflow: visible; }
+    .bx-open .prize .pv-big.pv-effect { width: auto; min-width: 150px; max-width: 88vw; padding: 0 1rem; font-size: 2.2rem; }
+    .bx-open .bx-x { position: absolute; top: max(14px, env(safe-area-inset-top)); right: 14px; width: 42px; height: 42px; border-radius: 50%; border: 1px solid #6d28d9; background: rgba(0,0,0,.5); color: #ede9fe; font-size: 1.3rem; cursor: pointer; }
+    .bx-open .prize .bx-row { display: flex; gap: .5rem; justify-content: center; flex-wrap: wrap; margin-top: .6rem; }
+    .bx-open .prize .bx-row button { margin-top: 0; }
+    .bx-open .prize .bx-close { font: inherit; font-weight: 800; border-radius: 12px; padding: .6rem 1.1rem; border: 1px solid #6d28d9; background: rgba(124,58,237,.15); color: #ede9fe; cursor: pointer; }
+    .bx-open .bx-hint { color: #8b7fb8; font-size: .78rem; margin-top: .6rem; }
     .sd-item.promo { border-color: #ef4444 !important; box-shadow: 0 0 12px rgba(239,68,68,.35); }
     /* ----- Multijoueur en jetons ----- */
     .mp-play { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; margin: .4rem 0 .8rem; }
@@ -514,7 +521,7 @@
     .mp-pick form { display: flex; gap: .4rem; margin-top: .5rem; } .mp-pick form input { flex: 1; min-width: 0; font: inherit; padding: .5rem .7rem; border-radius: 10px; border: 1px solid var(--border); background: #0b0f14; color: var(--text); text-transform: uppercase; }
     .mp-code summary { cursor: pointer; color: var(--muted); margin: .4rem 0; }
     @media (max-width: 420px) { .mp-big small { font-size: .62rem; } }
-    /* ----- La Dette ----- */
+    /* ----- Le Parrain ----- */
     .dette { position: relative; overflow: hidden; border-color: #7c5a12; background: radial-gradient(600px 260px at 100% 0%, rgba(250,204,21,.12), transparent 60%), linear-gradient(160deg, #1d1408, #120d07 60%, #0d0a06); }
     .dette h2 { display: flex; align-items: center; gap: .5rem; margin: 0 0 .4rem; }
     .dette .dt-sub { color: #d6c7a1; margin: 0 0 .8rem; line-height: 1.45; }
@@ -667,6 +674,16 @@
     .gp-chips button.on { background: #fbbf24; color: #1f1300; }
     .gp-bet { width: 100%; }
     .gp-msg { min-height: 1.2em; text-align: center; font-weight: 700; }
+    .vs-tabs { display: flex; gap: .3rem; background: rgba(0,0,0,.25); border-radius: 12px; padding: .25rem; margin: .2rem 0 .8rem; }
+    .vs-tabs button { flex: 1; font: inherit; font-weight: 700; font-size: .88rem; padding: .5rem .2rem; border: 0; border-radius: 9px; background: transparent; color: var(--muted); cursor: pointer; }
+    .vs-tabs button.on { background: rgba(250,204,21,.15); color: var(--gold); box-shadow: inset 0 0 0 1px rgba(250,204,21,.4); }
+    .vs-sub { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .3rem; }
+    .vs-pane .row-btns { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+    .vs-pane .row-btns button { width: 100%; }
+    .notif-panel summary { cursor: pointer; list-style: none; display: flex; gap: .5rem; align-items: baseline; }
+    .notif-panel summary::-webkit-details-marker { display: none; }
+    .notif-panel summary::after { content: '▾'; margin-left: auto; color: var(--muted); }
+    .notif-panel details[open] summary { margin-bottom: .5rem; }
   </style>
 </head>
 <body>
@@ -714,10 +731,10 @@
       </div>
     </section>
 
-    <section id="lobby-play" class="panel dette lobby-play" aria-label="La Dette">
+    <section id="lobby-play" class="panel dette lobby-play" aria-label="Le Parrain">
       <div class="lp-art" aria-hidden="true">🕴️</div>
-      <h2>La Dette</h2>
-      <p class="dt-sub">Ton frère doit une fortune au parrain. Rembourse-le palier après palier : chaque journée de 10 minutes a son quota… et les quotas grimpent vite. Jusqu'où iras-tu ?</p>
+      <h2>Le Parrain</h2>
+      <p class="dt-sub">Ton frère doit une fortune au parrain. Rembourse-le palier après palier : chaque journée de 10 minutes a son quota, et tu as 3 vies (4 en VIP 👑). Jusqu'où iras-tu ?</p>
       <button id="lp-start" class="dt-cta lp-start" type="button">▶ Lancer une partie</button>
       <p id="lp-best" class="dt-best"></p>
       <a id="learn-btn" class="lp-learn" href="apprendre.html" onclick="this.href='apprendre.html'+location.search">🎓 Apprentissage <small>tous les jeux, crédit illimité, aides du coach</small></a>
@@ -816,26 +833,6 @@
       
     </section>
 
-    <section class="panel" data-tab="multi" aria-label="Tournoi de poker de la semaine">
-      <h2>♚ Tournoi de poker de la semaine <small id="week-end" class="muted" style="font-weight:400;font-size:.8rem"></small></h2>
-      <p class="muted small-p">Chaque partie de poker entre amis rapporte des points : 1er 10 pts, 2e 6 pts, 3e 3 pts, sinon 1 pt. Lundi, le 1er de tes amis reçoit le titre exclusif « Roi du poker de la semaine ».</p>
-      <ol id="week-rank" class="week-rank"></ol>
-      <p><a id="week-play" class="mp-go" href="poker/index.html?multi=create">♠ Créer une table de poker</a></p>
-    </section>
-
-    <section class="panel" data-tab="multi" aria-label="Notifications">
-      <h2>🔔 Notifications</h2>
-      <p class="muted small-p">Le Casino te prévient, même app fermée : coffre plein, bonus du jour, un ami qui te dépasse au classement, une invitation à jouer. Jamais la nuit (entre 22 h et 9 h).</p>
-      <div class="push-prefs">
-        <label class="check"><input type="checkbox" data-pp="chest"> 🧰 Coffre plein</label>
-        <label class="check"><input type="checkbox" data-pp="bonus"> 🎁 Bonus du jour (et roue)</label>
-        <label class="check"><input type="checkbox" data-pp="friends"> 🏆 Un ami me dépasse</label>
-        <label class="check"><input type="checkbox" data-pp="social"> ⚔️ Duels, échanges et invitations</label>
-      </div>
-      <div class="row-btns"><button id="notif-btn" type="button" class="bonus-btn">🔔 Activer les notifications</button><button id="notif-off" type="button" class="icon-btn" hidden>Désactiver</button></div>
-      <p id="notif-state" class="muted small-p"></p>
-    </section>
-
     <section class="panel" data-tab="multi" aria-label="Amis">
       <h2>Amis et classement</h2>
       <div id="social-off" class="muted" style="font-size:.9rem" hidden>Le classement entre amis a besoin du serveur de jeu (voir FIREBASE.md).</div>
@@ -853,38 +850,62 @@
         <div class="lb-tabs" role="tablist">
           <button data-sort="bestPalier" type="button">Meilleur palier</button>
           <button data-sort="xp" class="on" type="button">Niveau</button>
-          <button data-sort="monthNet" type="button">Gains du mois</button>
-          <button data-sort="biggestWin" type="button">Plus gros gain</button>
+          <button data-sort="biggestWin" type="button">Meilleur gain</button>
           <button data-sort="achievements" type="button">Succès</button>
         </div>
         <ol id="leaderboard" class="leaderboard"><li class="muted">Chargement…</li></ol>
       </div>
     </section>
 
-    <section class="panel deals" data-tab="multi" aria-label="Duels et échanges">
-      <div class="bo-head"><h2>⚔️ Duels &amp; échanges</h2><button id="dl-refresh" class="icon-btn" type="button" aria-label="Actualiser">↻</button></div>
-      <p class="muted small-p">Défie un ami au blackjack, au poker ou à la roulette : vous misez la même somme (et pourquoi pas une carte), le Casino garde les mises au coffre, et le mieux classé à la fin de votre prochaine partie ensemble rafle tout. Tu peux aussi échanger tes cartes et objets rares avec tes amis.</p>
+    <section class="panel vs-panel" data-tab="multi" aria-label="Affronter tes amis">
+      <h2>⚔️ Affronter tes amis</h2>
+      <div class="vs-tabs" role="tablist">
+        <button type="button" data-vs="defis" class="on">🎯 Défis</button>
+        <button type="button" data-vs="duels">⚔️ Duels</button>
+        <button type="button" data-vs="poker">♚ Tournoi</button>
+      </div>
+      <div class="vs-pane" data-vs-pane="defis">
+      <div class="vs-sub"><b>Défis express</b></div>
+      <p class="muted small-p">10 tours, et tout le monde reçoit exactement les mêmes numéros (roulette) ou les mêmes cartes (blackjack). Gratuit : tu joues avec un crédit de défi, tes jetons ne sont pas touchés. Le meilleur score gagne.</p>
+      <div class="row-btns">
+        <button id="defi-roulette" class="bonus-btn" type="button">🎡 Défi roulette</button>
+        <button id="defi-blackjack" class="bonus-btn" type="button">🃏 Défi blackjack</button>
+      </div>
+      <ul id="my-defis" class="defis"></ul>
+    </div>
+      <div class="vs-pane" data-vs-pane="duels" hidden><div class="deals">
+      <div class="vs-sub"><b>Duels &amp; échanges</b><button id="dl-refresh" class="icon-btn" type="button" aria-label="Actualiser">↻</button></div>
+      <p class="muted small-p">Misez la même somme de jetons (ou une carte) : le mieux classé à la fin de votre prochaine partie ensemble rafle tout. Tu peux aussi échanger tes cartes et objets.</p>
       <div class="row-btns"><button id="dl-duel" type="button" class="bonus-btn">⚔️ Défier un ami</button><button id="dl-trade" type="button" class="icon-btn">🔁 Proposer un échange</button></div>
       <div id="dl-list" class="dl-list"></div>
+    </div></div>
+      <div class="vs-pane" data-vs-pane="poker" hidden>
+      <div class="vs-sub"><b>♚ Tournoi de poker de la semaine</b> <small id="week-end" class="muted"></small></div>
+      <p class="muted small-p">Chaque partie de poker rapporte des points (1er 10, 2e 6, 3e 3, sinon 1). Lundi, le meilleur reçoit le titre « Roi du poker ».</p>
+      <ol id="week-rank" class="week-rank"></ol>
+      <p><a id="week-play" class="mp-go" href="poker/index.html?multi=create">♠ Créer une table de poker</a></p>
+    </div>
     </section>
 
     <section class="panel referral" data-tab="multi" aria-label="Parrainage">
       <h2>🎁 Parrainage</h2>
-      <p class="ref-lead">Invite tes amis : quand ils réussissent leur <b>premier palier de La Dette</b>, vous recevez <b>+150 jetons chacun</b>.</p>
+      <p class="ref-lead">Invite tes amis : quand ils réussissent leur <b>premier palier du Parrain</b>, vous recevez <b>+150 jetons chacun</b>.</p>
       <div class="ref-link"><input id="ref-url" readonly aria-label="Ton lien de parrainage"><button id="ref-share" type="button" class="bonus-btn">📤 Inviter</button><button id="ref-copy" type="button" class="icon-btn">Copier</button></div>
       <div class="ref-stats"><span>Filleuls récompensés : <b id="ref-count">0</b></span><span>Gagné : <b id="ref-earned">0 jeton</b></span></div>
       <div id="ref-me" class="ref-me"></div>
     </section>
 
-    <section class="panel" data-tab="multi" aria-label="Défis entre amis">
-      <h2>Défis entre amis</h2>
-      <p class="muted" style="font-size:.88rem;margin:0 0 .6rem">10 tours avec 1 000 € de jetons de défi (ta banque n'est pas touchée). Tout le monde reçoit exactement les mêmes numéros à la roulette, ou le même sabot au blackjack : le meilleur solde final gagne.</p>
-      <div class="row-btns">
-        <button id="defi-roulette" class="icon-btn" type="button">🎡 Lancer un défi roulette</button>
-        <button id="defi-blackjack" class="icon-btn" type="button">🃏 Lancer un défi blackjack</button>
+    <section class="panel notif-panel" data-tab="multi" aria-label="Notifications"><details><summary><b>🔔 Notifications</b> <small class="muted">coffre, bonus, amis…</small></summary>
+      <p class="muted small-p">Le Casino te prévient, même app fermée : coffre plein, bonus du jour, un ami qui te dépasse au classement, une invitation à jouer. Jamais la nuit (entre 22 h et 9 h).</p>
+      <div class="push-prefs">
+        <label class="check"><input type="checkbox" data-pp="chest"> 🧰 Coffre plein</label>
+        <label class="check"><input type="checkbox" data-pp="bonus"> 🎁 Bonus du jour (et roue)</label>
+        <label class="check"><input type="checkbox" data-pp="friends"> 🏆 Un ami me dépasse</label>
+        <label class="check"><input type="checkbox" data-pp="social"> ⚔️ Duels, échanges et invitations</label>
       </div>
-      <ul id="my-defis" class="defis"></ul>
-    </section>
+      <div class="row-btns"><button id="notif-btn" type="button" class="bonus-btn">🔔 Activer les notifications</button><button id="notif-off" type="button" class="icon-btn" hidden>Désactiver</button></div>
+      <p id="notif-state" class="muted small-p"></p>
+    </details></section>
 
     <section class="panel ach-panel" aria-label="Succès">
       <div class="ach-head">
@@ -1039,7 +1060,7 @@
         });
       }
 
-      // =================== Lobby : lancer une partie de La Dette ===================
+      // =================== Lobby : lancer une partie du Parrain ===================
       const RR = window.CasinoRules;
       Casino.setLearn(false);
       // une partie en cours ? on est « dans la partie » : impossible de rester dans le lobby
@@ -1060,7 +1081,7 @@
         const tt = Casino.itemOf('title', Casino.equipped('title'));
         $('lvl-title').textContent = tt && tt.id ? '« ' + tt.name + ' »' : Casino.title(lv);
         $('avatar').className = 'avatar fr-' + Casino.equipped('frame');
-        // plus de salons : les mises dépendent du palier de La Dette ; le badge ne montre que le pass VIP
+        // plus de salons : les mises dépendent du palier du Parrain ; le badge ne montre que le pass VIP
         const isV = Casino.isVip();
         $('vip-badge').hidden = false;
         $('vip-badge').textContent = isV ? '👑 VIP jusqu\'au ' + new Date(Casino.vipUntil()).toLocaleDateString('fr-FR') : 'Pas VIP';
@@ -1100,7 +1121,7 @@
         renderTime();
         const T = P.totals;
         $('lifetime').innerHTML = '';
-        [['Mains et tours joués', T.hands], ['Gagnés', T.wins], ['Plus gros gain', fmt(T.biggestWin) + ' €'], ['Défis réussis', T.challenges]].forEach(([k, v]) => {
+        [['Mains et tours joués', T.hands], ['Gagnés', T.wins], ['Meilleur gain', '+' + fmt(T.bestJetons || 0) + ' 🪙'], ['Défis réussis', T.challenges]].forEach(([k, v]) => {
           const s = document.createElement('span'); const bb = document.createElement('b'); bb.textContent = v; s.append(k + ' : ', bb); $('lifetime').appendChild(s);
         });
         // défis
@@ -1655,9 +1676,16 @@
           const rr = document.createElement('div'); rr.className = 'rr'; rr.textContent = Casino.RARITY[r.rarity].name;
           const h = document.createElement('h3'); h.textContent = it.name;
           const p = document.createElement('p'); p.textContent = Casino.SHOP_LABELS[r.kind] + (r.dup ? ' · déjà à toi : converti en jetons' : ' · nouveau !') + ' · +' + fmt(r.jetons) + ' jetons';
-          const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'bonus-btn'; ok.textContent = r.dup ? 'Super !' : '✨ Équiper';
-          ok.onclick = () => { o.remove(); if (Casino.release) Casino.release(); if (!r.dup) wear(r.kind, it, true); renderBoxes(); render(); };
-          pz.append(pv, rr, h, p, ok);
+          // fermer : bouton, croix, ou toucher à côté (équiper reste un choix)
+          const close = (equip) => { if (!o.isConnected) return; o.remove(); if (Casino.release) Casino.release(); if (equip && !r.dup) wear(r.kind, it, true); renderBoxes(); render(); };
+          const row = document.createElement('div'); row.className = 'bx-row';
+          if (!r.dup) { const eq = document.createElement('button'); eq.type = 'button'; eq.className = 'bonus-btn'; eq.textContent = '✨ Équiper'; eq.onclick = (e) => { e.stopPropagation(); close(true); }; row.appendChild(eq); }
+          const cl = document.createElement('button'); cl.type = 'button'; cl.className = r.dup ? 'bonus-btn' : 'bx-close'; cl.textContent = r.dup ? 'Super !' : 'Fermer'; cl.onclick = (e) => { e.stopPropagation(); close(false); }; row.appendChild(cl);
+          const hint = document.createElement('div'); hint.className = 'bx-hint'; hint.textContent = 'Touche n\'importe où pour fermer';
+          const x = document.createElement('button'); x.type = 'button'; x.className = 'bx-x'; x.setAttribute('aria-label', 'Fermer'); x.textContent = '✕'; x.onclick = (e) => { e.stopPropagation(); close(false); };
+          pz.append(pv, rr, h, p, row, hint);
+          o.appendChild(x);
+          setTimeout(() => { o.addEventListener('click', (e) => { if (!e.target.closest('button')) close(false); }); }, 400);
           wrap.innerHTML = ''; wrap.appendChild(pz);
           if (window.Sfx) { if (rk >= 3 && Sfx.win) Sfx.win(); else if (Sfx.chips) Sfx.chips(); }
           if (rk >= 3 && Casino.bigWin) setTimeout(() => Casino.bigWin(r.jetons, Casino.RARITY[r.rarity].name.toUpperCase() + ' !'), 200);
@@ -1924,7 +1952,7 @@
       const TOUR_KEY = 'casino-tour-v1';
       const TOUR = [
         { sel: '.profile', tab: 'play', title: 'Bienvenue sur Lucky Lounge ! 🎉', text: 'Voici ton profil : ta banque de départ (10 000 € virtuels), ton niveau et ton bonus du jour. Rien à payer, jamais.' },
-        { sel: '#lobby-play', tab: 'play', title: 'La Dette', text: 'Lance une partie : 10 minutes par journée pour atteindre le quota du parrain, palier après palier. Une fois lancée, tu restes dans la partie jusqu\'au bout !' },
+        { sel: '#lobby-play', tab: 'play', title: 'Le Parrain', text: 'Lance une partie : 10 minutes par journée pour atteindre le quota du parrain, palier après palier. Une fois lancée, tu restes dans la partie jusqu\'au bout !' },
         { sel: '#learn-btn', tab: 'play', title: 'Envie d\'apprendre d\'abord ?', text: 'L\'Apprentissage ouvre tous les jeux avec un crédit illimité et les conseils du coach. Rien ne compte : entraîne-toi tranquille.' },
         { sel: '#challenges', tab: 'play', title: 'Reviens chaque jour', text: 'Trois défis du jour à relever et un bonus quotidien qui grimpe si tu viens plusieurs jours d\'affilée.' },
         { sel: '#tab-shop', tab: 'play', title: '🎨 Mon style', text: 'Tapis, cartes, avatars, cadres, fusées… Touche un objet pour l\'essayer, puis équipe-le ou achète-le avec ta banque.' },
@@ -1975,14 +2003,14 @@
       const REF_KEY = 'casino-ref';
       try { const q = new URLSearchParams(location.search).get('ref'); if (q && /^[A-Za-z0-9]{6}$/.test(q)) localStorage.setItem(REF_KEY, q.toUpperCase()); } catch (e) { /* ignore */ }
       const pendingRef = () => { try { return localStorage.getItem(REF_KEY); } catch (e) { return null; } };
-      if (pendingRef()) { const r = $('aw-ref'); r.hidden = false; r.innerHTML = '🎁 <b>Un ami t\'invite !</b> Crée ton compte : quand tu réussis ton premier palier de La Dette, vous recevez <b>+150 jetons chacun</b>.'; }
+      if (pendingRef()) { const r = $('aw-ref'); r.hidden = false; r.innerHTML = '🎁 <b>Un ami t\'invite !</b> Crée ton compte : quand tu réussis ton premier palier du Parrain, vous recevez <b>+150 jetons chacun</b>.'; }
       async function applyRef() {
         const code = pendingRef();
         if (!code || !Casino.server || !Casino.refLink) return;
         const r = await Casino.refLink(code);
         try { localStorage.removeItem(REF_KEY); } catch (e) { /* ignore */ }
         if (r && !r.error) {
-          Casino.toast('Parrainé par ' + r.name, 'Réussis ton premier palier de La Dette pour débloquer +' + (Casino.REF_BONUS || 150) + ' jetons (pour toi et pour ' + r.name + ').', '🎁', 'gold');
+          Casino.toast('Parrainé par ' + r.name, 'Réussis ton premier palier du Parrain pour débloquer +' + (Casino.REF_BONUS || 150) + ' jetons (pour toi et pour ' + r.name + ').', '🎁', 'gold');
           if (window.Social && Social.addFriendUid) Social.addFriendUid(r.uid);
         } else if (r && r.error && !/déjà un parrain/.test(r.error)) Casino.toast('Parrainage', r.error, '🎁');
       }
@@ -1997,7 +2025,7 @@
         const me = $('ref-me'); me.innerHTML = '';
         if (P.refBy && !P.refPaid) {
           me.innerHTML = '<div class="ref-prog"><span></span></div>';
-          me.querySelector('span').textContent = 'Parrainé par ' + (P.refByName || 'un ami') + ' : réussis ton premier palier de La Dette pour débloquer +' + (Casino.REF_BONUS || 150) + ' jetons chacun.';
+          me.querySelector('span').textContent = 'Parrainé par ' + (P.refByName || 'un ami') + ' : réussis ton premier palier du Parrain pour débloquer +' + (Casino.REF_BONUS || 150) + ' jetons chacun.';
         } else if (P.refPaid) me.textContent = '✔ Parrainage de ' + (P.refByName || 'ton ami') + ' débloqué.';
         else if (Casino.server && !(P.bestPalier >= 1)) {
           me.innerHTML = '<form class="inline-form" id="ref-form"><input id="ref-code" maxlength="6" placeholder="Code d\'un parrain" aria-label="Code de ton parrain" autocapitalize="characters"><button type="submit" class="icon-btn">Valider</button></form>';
@@ -2005,7 +2033,7 @@
         }
       }
       $('ref-copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('ref-url').value); $('ref-copy').textContent = 'Copié ✓'; setTimeout(() => { $('ref-copy').textContent = 'Copier'; }, 1500); } catch (e) { $('ref-url').select(); } });
-      $('ref-share').addEventListener('click', () => Social.shareLink($('ref-url').value, 'Viens jouer avec moi sur Lucky Lounge 🎰 : +150 jetons pour toi et moi quand tu réussis ton premier palier de La Dette !'));
+      $('ref-share').addEventListener('click', () => Social.shareLink($('ref-url').value, 'Viens jouer avec moi sur Lucky Lounge 🎰 : +150 jetons pour toi et moi quand tu réussis ton premier palier du Parrain !'));
 
       $('acc-form').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -2045,6 +2073,12 @@
       Casino.onChange(render);
       render();
 
+
+    // onglets du panneau « Affronter tes amis »
+    document.querySelectorAll('.vs-tabs button').forEach((b) => b.addEventListener('click', () => {
+      document.querySelectorAll('.vs-tabs button').forEach((x) => x.classList.toggle('on', x === b));
+      document.querySelectorAll('.vs-pane').forEach((p) => { p.hidden = p.dataset.vsPane !== b.dataset.vs; });
+    }));
     // ---------- Grand Prix du soir (21 h, pour tous les joueurs) ----------
     (function grandPrix() {
       const box = $('gp-panel'); if (!box || !Casino.server) return;
@@ -2067,16 +2101,16 @@
           b.querySelector('.gp-dot').style.background = window.CasinoRules.HORSES[i].c;
           b.querySelector('.gp-name span:last-child').textContent = (winShown && i === info.win ? '🏆 ' : '') + info.horses[i] + (my[i] ? ' ' : '');
           if (my[i]) { const t = document.createElement('span'); t.className = 'gp-mine'; t.textContent = '· ta mise ' + fmt(my[i]); b.querySelector('.gp-name').appendChild(t); }
-          b.disabled = !info.open;
+          b.disabled = !info.open || total > 0;
           b.addEventListener('click', () => { pick = i; render(false); });
           tr.appendChild(b);
         });
-        $('gp-form').hidden = !info.open;
+        $('gp-form').hidden = !info.open || total > 0;
         const ch = $('gp-chips'); ch.innerHTML = '';
         [10, 50, 100, 250, 500].forEach((v) => { const c = document.createElement('button'); c.type = 'button'; c.textContent = v; c.className = v === amount ? 'on' : ''; c.addEventListener('click', () => { amount = v; render(false); }); ch.appendChild(c); });
         const btn = $('gp-bet'); btn.disabled = pick < 0;
         btn.textContent = pick < 0 ? 'Choisis un cheval' : 'Parier ' + fmt(amount) + ' jetons sur ' + info.horses[pick] + ' (gain ' + fmt(amount * info.card.odds[pick]) + ')';
-        if (info.open) $('gp-msg').textContent = total ? 'Tes paris de ce soir : ' + fmt(total) + ' jetons.' : '';
+        if (info.open) { const h = Object.keys(my)[0]; $('gp-msg').textContent = total ? '🎟️ Ton pari : ' + fmt(total) + ' jetons sur ' + info.horses[h] + ' (gain possible ' + fmt(total * info.card.odds[h]) + '). Rendez-vous à 21 h !' : 'Un seul pari par soir : choisis bien ton cheval.'; }
         when();
       }
       function race() {
@@ -2117,6 +2151,8 @@
       }
       $('gp-bet').addEventListener('click', async () => {
         if (pick < 0) return;
+        const ok = await Casino.confirm({ icon: '🏇', title: 'Parier sur ' + info.horses[pick] + ' ?', text: 'Cote ×' + info.card.odds[pick].toLocaleString('fr-FR') + ' : si ' + info.horses[pick] + ' gagne à 21 h, tu touches ' + fmt(amount * info.card.odds[pick]) + ' jetons. Un seul pari par soir, impossible de le changer ensuite.', price: amount, ok: 'Valider mon pari' });
+        if (!ok) return;
         $('gp-bet').disabled = true;
         try { info = await Casino.call('ev.bet', { horse: pick, amount }); $('gp-msg').textContent = '✔ Pari enregistré !'; render(false); }
         catch (e) { $('gp-msg').textContent = e.message || 'Pari impossible.'; $('gp-bet').disabled = false; }
@@ -2135,7 +2171,7 @@
       if (!b) { $('social-off').hidden = false; $('social-on').hidden = true; $('defi-roulette').disabled = $('defi-blackjack').disabled = true; return; }
       $('my-code').textContent = (await Social.myCode()) || '—';
       let sort = 'xp', rows = [];
-      const LABEL = { bestPalier: (r) => (r.bestPalier ? 'Palier ' + r.bestPalier : '—'), xp: (r) => 'Niv. ' + r.level + ' · ' + fmt(r.xp) + ' XP', monthNet: (r) => (r.monthNet > 0 ? '+' : '') + fmt(r.monthNet) + ' €', biggestWin: (r) => '+' + fmt(r.biggestWin) + ' €', achievements: (r) => r.achievements + ' / ' + Casino.ACHIEVEMENTS.length };
+      const LABEL = { bestPalier: (r) => (r.bestPalier ? 'Palier ' + r.bestPalier : '—'), xp: (r) => 'Niv. ' + r.level + ' · ' + fmt(r.xp) + ' XP', monthNet: (r) => (r.monthNet > 0 ? '+' : '') + fmt(r.monthNet) + ' €', biggestWin: (r) => '+' + fmt(r.biggestWin) + ' 🪙', achievements: (r) => r.achievements + ' / ' + Casino.ACHIEVEMENTS.length };
       function draw() {
         const ol = $('leaderboard'); ol.innerHTML = '';
         rows.slice().sort((x, y) => (y[sort] || 0) - (x[sort] || 0)).forEach((r, k) => {

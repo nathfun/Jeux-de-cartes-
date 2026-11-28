@@ -1,4 +1,4 @@
-/* Le Braquage (La Dette, palier 10) : machine à sous 3 × 3, 5 lignes, bonus « Le Coffre ». */
+/* Le Braquage (Le Parrain, palier 5) : machine à sous 3 × 3, 5 lignes, bonus « Le Coffre ». */
 (function () {
   'use strict';
   const R = window.CasinoRules, E = window.HeistEngine;
@@ -87,7 +87,7 @@
     if (window.Casino) Casino.training = mode === 'train';
     const bs = bets(); S.betIx = Math.max(0, bs.findIndex((x) => x >= amount / 40)); if (bs[S.betIx] > amount) S.betIx = 0;
     $('setup').hidden = true; $('game').hidden = false;
-    $('mode-badge').textContent = mode === 'real' ? '🕴️ La Dette · ta caisse' : '🎓 Apprentissage · crédit illimité';
+    $('mode-badge').textContent = mode === 'real' ? '🕴️ Le Parrain · ta caisse' : '🎓 Apprentissage · crédit illimité';
     $('end-btn').hidden = mode === 'train';
     ui();
   }

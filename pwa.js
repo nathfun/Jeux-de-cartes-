@@ -5,7 +5,7 @@
   const home = document.getElementById('home-link');
   if (home) {
     home.hidden = false;
-    // retour : vers l'apprentissage, vers la partie de La Dette en cours, sinon vers le lobby
+    // retour : vers l'apprentissage, vers la partie du Parrain en cours, sinon vers le lobby
     try {
       const up = home.getAttribute('href').replace(/index\.html.*$/, '');
       const C = window.Casino, r = C && C.profile && C.profile.run;

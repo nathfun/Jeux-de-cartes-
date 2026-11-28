@@ -1,4 +1,4 @@
-/* Roue de la fortune : un jeu de la partie La Dette (débloqué dès le palier 1). Le serveur tire la case. */
+/* Roue de la fortune : un jeu de la partie Le Parrain (débloqué dès le palier 1). Le serveur tire la case. */
 (function () {
   'use strict';
   const R = window.CasinoRules, SEG = R.FORTUNE;
@@ -108,7 +108,7 @@
     const bs = bets(); S.betIx = Math.max(0, bs.findIndex((b) => b >= amount / 20)) ; if (bs[S.betIx] > amount) S.betIx = 0;
     $('setup').hidden = true; $('game').hidden = false;
     const badge = $('mode-badge'); badge.hidden = false;
-    badge.textContent = mode === 'real' ? '🕴️ La Dette · ta caisse' : '🎓 Apprentissage · crédit illimité';
+    badge.textContent = mode === 'real' ? '🕴️ Le Parrain · ta caisse' : '🎓 Apprentissage · crédit illimité';
     $('end-btn').hidden = mode === 'train';
     draw(); ui(); showWallet();
   }

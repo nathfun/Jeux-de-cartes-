@@ -322,7 +322,7 @@
     $('setup').hidden = true; $('game').hidden = false;
     const badge = $('mode-badge'); badge.hidden = false;
     badge.className = 'mode-badge' + (mode === 'real' ? ' real' : '');
-    badge.textContent = mode === 'real' ? '🕴️ La Dette · ta caisse · sans aides' : '🎓 Apprentissage · crédit illimité, aides et conseils';
+    badge.textContent = mode === 'real' ? '🕴️ Le Parrain · ta caisse · sans aides' : '🎓 Apprentissage · crédit illimité, aides et conseils';
     $('end-btn').hidden = mode === 'train';
     resetGrid(); renderHistory(); renderStats(); lastAid = ''; ui();
     ensureSeeds().then(renderFair);

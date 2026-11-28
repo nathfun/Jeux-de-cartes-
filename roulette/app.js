@@ -9,7 +9,7 @@
   const B = RouletteBets;
   const BASE_CHIPS = [1, 5, 10, 25, 100, 500];
   let CHIPS = BASE_CHIPS.slice();
-  // La Dette : les jetons grossissent avec les paliers (×2, ×5, ×10…)
+  // Le Parrain : les jetons grossissent avec les paliers (×2, ×5, ×10…)
   function scaleChips(real) {
     const f = real && window.Casino && Casino.betFactor ? Casino.betFactor() : 1;
     let m = 1; [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000].forEach((x) => { if (x <= f) m = x; });
@@ -480,7 +480,7 @@
     const badge = $('mode-badge');
     badge.hidden = mode === 'defi';
     badge.className = 'cm-badge mode-line' + (mode === 'real' ? ' real' : '');
-    badge.textContent = mode === 'real' ? '🕴️ La Dette · sans aides · « Encaisser » ramène l\'argent dans ta caisse' : '🎓 Apprentissage · crédit illimité, aides et conseils · ne compte pas';
+    badge.textContent = mode === 'real' ? '🕴️ Le Parrain · sans aides · « Encaisser » ramène l\'argent dans ta caisse' : '🎓 Apprentissage · crédit illimité, aides et conseils · ne compte pas';
     $('aides-row').hidden = mode !== 'train'; // en partie réelle : pas d'aides, on teste ce qu'on a appris
     $('setup').hidden = true;
     $('game').hidden = false;
@@ -516,7 +516,7 @@
   function addBet(key, amount) {
     if (!S || !(S.phase === 'waiting' || S.phase === 'betting')) return false;
     if (S.bankroll < amount) { $('sub-message').textContent = 'Solde insuffisant pour ce jeton.'; return false; }
-    // partie réelle : plafonds du palier de La Dette (par case selon le type, et deux fois la mise max. pour le tour)
+    // partie réelle : plafonds du palier du Parrain (par case selon le type, et deux fois la mise max. pour le tour)
     if (S.mode === 'real' && window.Casino) {
       const cap = Casino.maxBet(), staked = Object.values(S.bets).reduce((a, v) => a + v, 0);
       const caseCap = Math.min(cap, Math.round(B.byKey[key].max * Casino.betFactor()));
@@ -606,8 +606,10 @@
     if (S.defi) n = Math.floor(S.defi.rng() * 37); // défi : la même suite de numéros pour tous les amis
     else if (S.mode === 'real' && window.Casino && Casino.server) {
       // partie réelle : c'est le serveur qui lance la bille et compte l'argent
+      Casino.hold(); // l'annonce éventuelle (mafia, fin de journée) attend la fin de la bille
       const r = await Casino.call('rl.spin', { bets: S.bets });
       if (r.error) {
+        Casino.release();
         S.log.forEach((l) => { S.bankroll += l.amount; });
         S.bets = {}; S.log = []; S.phase = 'waiting'; S.deadline = null;
         soloRender();
@@ -640,6 +642,7 @@
       (n === 0 && Object.keys(S.bets).some((k) => B.byKey[k].type === 'simple') ? ' (partage : la moitié de tes chances simples t\'est rendue)' : '') : '';
     announceResult(n);
     setTimeout(() => showOutcome(r.net, r.staked), 700);
+    if (window.Casino && Casino.holding) setTimeout(() => Casino.release(), 1500);
     trackSpin(S.bets, n, r);
     if (window.Sfx && r.staked) setTimeout(() => { if (r.net > 0) Sfx.win(); else if (r.net < 0) Sfx.lose(); }, 900);
     if (r.staked) {

@@ -222,8 +222,8 @@
   TITLES.push({ id: 'membre_vip', name: 'Membre VIP', level: 1, price: 0, vipOnly: true });
   THEMES.push({ id: 'lounge', name: 'Lounge VIP', level: 1, price: 0, vipOnly: true, bg: '#0b0906', panel: '#17120a', border: '#5c4516', accent: '#f5c542' });
   EFFECTS.push({ id: 'champagne', name: 'Champagne VIP', level: 1, price: 0, vipOnly: true, emojis: ['🍾', '🥂', '✨', '👑'] });
-  // Nouveautés de la refonte : La Dette et le club VIP (objets VIP portés tant que le pass est actif)
-  TITLES.push({ id: 'rembourseur', name: 'Bon payeur', level: 3, price: 300 }, { id: 'parrain', name: 'Le Parrain', level: 1, price: 0, exclusive: 'La Dette : réussir le palier 10' });
+  // Nouveautés de la refonte : Le Parrain et le club VIP (objets VIP portés tant que le pass est actif)
+  TITLES.push({ id: 'rembourseur', name: 'Bon payeur', level: 3, price: 300 }, { id: 'parrain', name: 'Le Parrain', level: 1, price: 0, exclusive: 'Le Parrain : réussir le palier 10' });
   FELTS.push({ id: 'famille', name: 'Tapis de la Famille', level: 6, price: 800, a: '#3f3f46', b: '#09090b' },
     { id: 'or_vip', name: 'Or massif VIP', level: 1, price: 0, vipOnly: true, a: '#a16207', b: '#3a2a08' });
   BACKS.push({ id: 'vip_noir', name: 'Noir et or VIP', level: 1, price: 0, vipOnly: true, a: '#1c1917', b: '#ca8a04' });
@@ -390,7 +390,7 @@
     { id: 'rich100', icon: '👑', name: 'Millionnaire en herbe', text: 'Avoir 10 000 € en banque' },
     { id: 'vip', icon: '🥂', name: 'Salon VIP', text: 'Entrer dans le salon Argent (niveau 10)' },
     { id: 'vip_pass', icon: '👑', name: 'Membre du club', text: 'Prendre un pass VIP' },
-    { id: 'run_p1', icon: '🕴️', name: 'Premier remboursement', text: 'Réussir le palier 1 de La Dette' },
+    { id: 'run_p1', icon: '🕴️', name: 'Premier remboursement', text: 'Réussir le palier 1 du Parrain' },
     { id: 'run_p3', icon: '💼', name: 'Homme de confiance', text: 'Réussir le palier 3' },
     { id: 'run_p5', icon: '🎩', name: 'Bras droit', text: 'Réussir le palier 5' },
     { id: 'run_p10', icon: '👑', name: 'Le nouveau parrain', text: 'Réussir le palier 10' },
@@ -428,7 +428,7 @@
     { id: 'month', name: 'Pass VIP · 30 jours', days: 30, price: 25000, best: true },
   ];
   const VIP_PERKS = [
-    { icon: '💶', text: 'La Dette : 1 500 € au départ de chaque partie (au lieu de 1 000 €)' },
+    { icon: '❤️', text: 'Le Parrain : une 4ᵉ vie et 1 100 € au départ de chaque partie (au lieu de 1 000 €)' },
     { icon: '💰', text: 'Limites de mise relevées d\'environ 60 % à chaque palier' },
     { icon: '🎁', text: '2 coffres mystères gratuits par jour (au lieu d\'1)' },
     { icon: '🏷️', text: '−20 % sur toute la boutique et sur les coffres' },
@@ -480,7 +480,7 @@
   const TIME_PACKS = []; // ancienne banque du temps (remplacée par le coffre)
 
   const START_WALLET = 500; // jetons de départ d'un nouveau compte
-  // Parrainage : le filleul et son parrain reçoivent REF_BONUS jetons chacun quand le filleul réussit son premier palier de La Dette
+  // Parrainage : le filleul et son parrain reçoivent REF_BONUS jetons chacun quand le filleul réussit son premier palier du Parrain
   const REF_BONUS = 150, REF_MIN_HANDS = 10, REF_MAX = 25;
   const refDone = (P) => (P.bestPalier || 0) >= 1;
   // Tables multijoueur en jetons (blackjack, roulette) : mise d'entrée minimale, gain plafonné (×CAP de l'apport)
@@ -516,7 +516,7 @@
     P.prizes = P.prizes || {};
     P.wallet = Math.round((Number(P.wallet) || 0) * 100) / 100; // pas de 1199,9999999 € (arrondi au centime)
     P.bonus = P.bonus || { last: null, streak: 0 };
-    // Version 3 (jetons + mode « La Dette ») : tous les comptes repartent de zéro, on garde l'identité
+    // Version 3 (jetons + mode « Le Parrain ») : tous les comptes repartent de zéro, on garde l'identité
     if (P.econ !== 3) {
       const keep = { pseudo: P.pseudo, avatar: P.avatar, friendCode: P.friendCode, friendCodeUid: P.friendCodeUid, createdAt: P.createdAt, refBy: P.refBy, refByName: P.refByName, equipped: P.equipped, settings: P.settings, friends: P.friends };
       Object.keys(P).forEach((k) => delete P[k]);
@@ -606,7 +606,7 @@
     let h = 0;
     for (const c of d) h = (h * 31 + c.charCodeAt(0)) >>> 0;
     const pick = (game) => { const list = CHALLENGES.filter((c) => c.game === game); return list[h % list.length]; };
-    // 3 défis par jour, sur les jeux ouverts dès le palier 1 de La Dette
+    // 3 défis par jour, sur les jeux ouverts dès le palier 1 du Parrain
     const games = ['Blackjack', 'Roulette', 'Machine à sous'];
     const ids = games.map((g) => pick(g).id);
     P.daily = { date: d, list: ids.map((id) => ({ id, progress: 0, done: false, claimed: false })) };
@@ -1143,12 +1143,12 @@
   }
 
   // =====================================================================================================
-  // ---------- Boosters de La Dette : 10 cartes revendues tout de suite dans la caisse ----------
+  // ---------- Boosters du Parrain : 10 cartes revendues tout de suite dans la caisse ----------
   // =====================================================================================================
   const SERIES = [
-    { id: 's1', name: 'Légendes', icon: '📜', palier: 3, color: '#7c3aed' },
-    { id: 's2', name: 'Pègre & Casino', icon: '🕴️', palier: 5, color: '#9f1239' },
-    { id: 's3', name: "L'Âge d'or", icon: '🎷', palier: 8, color: '#a16207' },
+    { id: 's1', name: 'Légendes', icon: '📜', palier: 2, color: '#7c3aed' },
+    { id: 's2', name: 'Pègre & Casino', icon: '🕴️', palier: 4, color: '#9f1239' },
+    { id: 's3', name: "L'Âge d'or", icon: '🎷', palier: 6, color: '#a16207' },
   ];
   // 8 communes, puis 2 cartes rare ou mieux ; 1 paquet sur 200 est un « God Pack » (10 légendaires ou mieux)
   const PACK = { SIZE: 10, COMMONS: 8, GOD: 200, RTP: 0.92, PRICE_PCT: 0.04,
@@ -1193,14 +1193,16 @@
   }
 
   // =====================================================================================================
-  // ---------- Mode « La Dette » : monter le plus haut possible, un palier (une journée) à la fois ----------
+  // ---------- Mode « Le Parrain » : monter le plus haut possible, un palier (une journée) à la fois ----------
   // =====================================================================================================
   const RUN = {
-    START_CASH: 1000, START_CASH_VIP: 1500, DAY_MS: 10 * 60000, VIP_BET: 1.6,
+    START_CASH: 1000, START_CASH_VIP: 1100, DAY_MS: 10 * 60000, VIP_BET: 1.6,
     // jeux débloqués selon le palier (le reste viendra : boosters, loto, bourse, course de chevaux…)
-    UNLOCK: { blackjack: 1, roulette: 1, slots: 1, wheel: 1, crash: 2, mines: 3, boosters: 3, plinko: 4, gold: 5, loto: 6, trader: 7, horses: 8, heist: 10 },
+    UNLOCK: { blackjack: 1, roulette: 1, slots: 1, wheel: 1, crash: 1, mines: 1, plinko: 2, boosters: 2, gold: 2, loto: 3, horses: 3, trader: 4, heist: 5 },
+    LIVES: 3, LIVES_VIP: 4, // avertissements du parrain avant la fin de la partie
+    PRIME: 0.1, // commission versée dans la caisse à chaque palier réussi (en % du quota)
   };
-  const QUOTAS = [1500, 2500, 4000, 6500, 10000, 16000, 25000, 40000, 65000, 100000, 160000, 250000, 400000, 650000, 1000000];
+  const QUOTAS = [1200, 1500, 1900, 2400, 3000, 3800, 4800, 6000, 7500, 9500, 12000, 15000, 19000, 24000, 30000];
   /** Arrondi « joli » : 1, 1,5, 2, 2,5, 3, 4, 5, 6, 8 × 10^k (vers le bas). */
   function niceDown(v) {
     if (!(v > 0)) return 0;
@@ -1213,7 +1215,7 @@
   function quotaOf(p) {
     if (p <= QUOTAS.length) return QUOTAS[p - 1];
     let q = QUOTAS[QUOTAS.length - 1];
-    for (let k = QUOTAS.length; k < p; k++) q *= 1.6;
+    for (let k = QUOTAS.length; k < p; k++) q *= 1.25;
     return niceDown(q);
   }
   /** Les mises montent avec les quotas (blackjack : 5 à 250 € au palier 1) ; le VIP relève le plafond. */
@@ -1252,15 +1254,16 @@
   const runItem = (id) => RUN_ITEMS.find((x) => x.id === id);
   const itemPrice = (it, p) => Math.max(10, niceDown(quotaOf(p + 1) * it.pct));
   // jetons gagnés : base selon les paliers réussis + bonus de gourmandise (argent au-delà des quotas)
-  const runReward = (done, greed) => ({ jetons: 50 * done + 25 * done * done + Math.round(greed || 0), xp: 40 * done + 10 * done * done });
+  const runReward = (done, greed) => ({ jetons: 40 * done + 8 * done * done + Math.round(greed || 0), xp: 40 * done + 10 * done * done });
 
   function runStart(P, now, N) {
     if (P.run && P.run.status !== 'over') return { error: 'Une partie est déjà en cours.' };
     const cash = isVip(P, now) ? RUN.START_CASH_VIP : RUN.START_CASH;
     P.sessions = {};
-    P.run = { id: (P.totals.runs || 0) + 1, palier: 1, cash, quota: quotaOf(1), status: 'playing', dayStart: now, dayEnd: now + RUN.DAY_MS, dayStartTotal: cash, items: {}, greed: 0, startedAt: now };
+    P.run = { id: (P.totals.runs || 0) + 1, palier: 1, cash, quota: quotaOf(1), status: 'playing', dayStart: now, dayEnd: now + RUN.DAY_MS, dayStartTotal: cash, items: {}, greed: 0, startedAt: now, lives: isVip(P, now) ? RUN.LIVES_VIP : RUN.LIVES };
+    P.run.maxLives = P.run.lives;
     P.totals.runs = (P.totals.runs || 0) + 1;
-    N.push({ kind: 'run', title: 'Palier 1 : la dette', text: 'Atteins ' + quotaOf(1).toLocaleString('fr-FR') + ' € avant la fin de la journée. Le parrain compte sur toi…', icon: '🕴️' });
+    N.push({ kind: 'run', title: 'Palier 1', text: 'Atteins ' + quotaOf(1).toLocaleString('fr-FR') + ' € avant la fin de la journée. Le parrain compte sur toi…', icon: '🕴️' });
     return { run: P.run };
   }
   /** Fin de journée (temps écoulé ou fermée par le joueur) : quota atteint → boutique ; sinon la mafia. */
@@ -1274,7 +1277,15 @@
     if (r.items.trefle && r.cash > r.dayStartTotal) { const b = Math.round((r.cash - r.dayStartTotal) * 0.05); r.cash += b; delete r.items.trefle; N.push({ kind: 'gold', title: '🍀 Trèfle porte-bonheur', text: '+' + b.toLocaleString('fr-FR') + ' € de bonus sur ta journée.', icon: '🍀' }); }
     let ok = r.cash >= r.quota;
     if (!ok && r.items.totem && r.cash >= r.quota * 0.8) { ok = true; delete r.items.totem; N.push({ kind: 'gold', title: '🛡️ Totem d\'immunité', text: 'Il te manquait un peu… le parrain ferme les yeux pour cette fois.', icon: '🛡️' }); }
-    if (!ok) return runOver(P, now, N, why === 'time' ? 'quota' : 'quota');
+    if (!ok && lifeLeft(r)) {
+      // avertissement du parrain : on recommence la journée du même palier avec la caisse actuelle
+      r.lives -= 1;
+      r.dayStart = now; r.dayEnd = now + RUN.DAY_MS; r.dayStartTotal = r.cash;
+      return { warned: true, run: r };
+    }
+    if (!ok) return runOver(P, now, N, 'quota');
+    const prime = Math.round(r.quota * RUN.PRIME);
+    r.cash = Math.round((r.cash + prime) * 100) / 100; r.prime = prime;
     r.greed += Math.min(2, Math.max(0, (r.cash - r.quota) / r.quota)) * 40 * r.palier;
     r.status = 'shop';
     r.done = r.palier;
@@ -1290,9 +1301,14 @@
     if (r.palier >= 15) unlock(P, 'run_p15', N);
     if (r.palier >= 20) unlock(P, 'run_p20', N);
     P.bestPalier = Math.max(P.bestPalier || 0, r.palier);
-    N.push({ kind: 'gold', title: '✅ Palier ' + r.palier + ' réussi !', text: 'Quota atteint avec ' + Math.round(r.cash).toLocaleString('fr-FR') + ' €. Prochain quota : ' + quotaOf(r.palier + 1).toLocaleString('fr-FR') + ' €.', icon: '🏆' });
+    N.push({ kind: 'gold', title: '✅ Palier ' + r.palier + ' réussi !', text: 'Quota atteint ! Le parrain te verse une prime de ' + prime.toLocaleString('fr-FR') + ' €. Prochain quota : ' + quotaOf(r.palier + 1).toLocaleString('fr-FR') + ' €.', icon: '🏆' });
     return { ok: true, run: r };
   }
+  /** Meilleur gain du compte, en jetons (fin de partie, tables multijoueur, Grand Prix ; pas le poker). */
+  function noteGain(P, v) { P.totals = P.totals || {}; if (v > (P.totals.bestJetons || 0)) P.totals.bestJetons = Math.round(v); }
+  /** Avertissements restants (les parties d'avant n'en avaient pas : 1 de base, sans retour possible). */
+  const lifeLeft = (r) => (r.lives === undefined ? 0 : Math.max(0, r.lives - 1));
+  const livesText = (n) => (n <= 1 ? 'C\'est ta dernière vie !' : 'Il te reste ' + n + ' vies.');
   /** Fin de la partie : la mafia passe. On garde les jetons et l'XP gagnés. */
   function runOver(P, now, N, why) {
     const r = P.run;
@@ -1303,6 +1319,7 @@
     const rw = runReward(done, r.greed);
     r.status = 'over'; r.why = why; r.endedAt = now; r.reward = rw; r.reached = r.palier;
     P.wallet = Math.round(((P.wallet || 0) + rw.jetons) * 100) / 100;
+    noteGain(P, rw.jetons);
     addXP(P, rw.xp, N);
     P.bestPalier = Math.max(P.bestPalier || 0, done);
     P.totals.bestRun = Math.max(P.totals.bestRun || 0, done);
@@ -1315,6 +1332,12 @@
     if (!runActive(P)) return null;
     if (runTotal(P) >= gameMin(P, 'roulette')) return null;
     if (r.items.parapluie) { delete r.items.parapluie; r.cash = Math.round(r.quota * 0.1); N.push({ kind: 'gold', title: '☂️ Parapluie', text: 'Le parrain te dépanne de ' + r.cash.toLocaleString('fr-FR') + ' €. Dernière chance !', icon: '☂️' }); return null; }
+    if (lifeLeft(r)) {
+      r.lives -= 1;
+      r.cash = Math.round(r.cash + niceDown(r.quota * 0.5));
+      N.push({ kind: 'run', title: '🔫 Le parrain te renfloue', text: 'Caisse vide : il t\'avance ' + niceDown(r.quota * 0.5).toLocaleString('fr-FR') + ' €… mais ça te coûte une vie. ' + livesText(r.lives), icon: '🕴️' });
+      return { warned: true, run: r };
+    }
     return runOver(P, now, N, 'banqueroute');
   }
   /** À chaque action : la journée est-elle finie ? */
@@ -1400,7 +1423,7 @@
   function publicProfile(P, code) {
     return {
       pseudo: P.pseudo || 'Joueur', avatar: P.avatar, xp: P.xp, level: levelOf(P.xp), wallet: Math.round(P.wallet),
-      biggestWin: Math.round(P.totals.biggestWin || 0), hands: P.totals.hands, achievements: Object.keys(P.achievements).length,
+      biggestWin: Math.round(P.totals.bestJetons || 0), hands: P.totals.hands, achievements: Object.keys(P.achievements).length,
       code: code || null, updatedAt: Date.now(),
       monthNet: P.season && P.season.id === seasonOf(Date.now()) ? Math.round(P.season.net || 0) : 0, month: seasonOf(Date.now()),
       vipUntil: isVip(P) ? P.vipUntil : 0, bestPalier: P.bestPalier || 0,
@@ -1418,7 +1441,7 @@
     BOX, boxInfo, openBox, priceOf, inPromo, SHOP_PROMO, VIP_DISCOUNT,
     SERIES, PACK, PACK_MULT, packPrice, seriesOpen, openPack,
     RUN, QUOTAS, BET_STEPS, gameMin, FORTUNE, quotaOf, niceDown, palierFactor, runMaxBet, runMinBet, runActive, runTotal, isUnlocked, RUN_ITEMS, runItem, itemPrice, runReward,
-    runStart, runEndDay, runOver, runCheckBroke, runTick, runBuy, runNext,
+    noteGain, runStart, runEndDay, runOver, runCheckBroke, runTick, runBuy, runNext,
     LOTO, lotoDiscount, lotoPackCost,
     tradeable, MARKET_FEE, MARKET_FEE_VIP, RARITY, RARITY_ORDER, BOOSTER, boosterInfo, openBooster, craftCard,
     VIP_PASS, VIP_PERKS, isVip, buyVip, grantVip, WHEEL, wheelInfo, spinWheel,

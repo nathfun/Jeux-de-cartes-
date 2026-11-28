@@ -61,7 +61,7 @@ const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'jeux-de-cartes-81cdf';
 const DB_URL = process.env.FIREBASE_DATABASE_URL || 'https://jeux-de-cartes-81cdf-default-rtdb.europe-west1.firebasedatabase.app';
 const MAX_BODY = 32 * 1024;
 // version du serveur (affichée dans l'admin et sur /health) : à changer à chaque mise à jour du serveur
-const SERVER_VERSION = '2026.11.27-10';
+const SERVER_VERSION = '2026.11.28-1';
 const TABLES = { blackjack: 'tables/', poker: 'ptables/', roulette: 'rtables/', loto: 'ltables/' };
 
 // ---------- Firebase (vérification des comptes, profil public, lecture des tables entre amis) ----------
@@ -331,7 +331,7 @@ async function casino(uid, token, op, data) {
       if (P.ev && !P.ev.paid && (P.ev.day < day || (P.ev.day === day && !open))) {
         const e = evOf(P.ev.day), stake = Number(P.ev.bets[e.win]) || 0, gain = Math.floor(stake * e.card.odds[e.win]);
         P.ev.paid = true; P.ev.win = e.win; P.ev.gain = gain;
-        if (gain > 0) { P.wallet = Math.round((P.wallet + gain) * 100) / 100; notes.push({ kind: 'gold', icon: '🏇', title: 'Grand Prix : ' + R.HORSES[e.win].name + ' gagne !', text: '+' + gain.toLocaleString('fr-FR') + ' jetons' }); }
+        if (gain > 0) { R.noteGain(P, gain - stake); P.wallet = Math.round((P.wallet + gain) * 100) / 100; notes.push({ kind: 'gold', icon: '🏇', title: 'Grand Prix : ' + R.HORSES[e.win].name + ' gagne !', text: '+' + gain.toLocaleString('fr-FR') + ' jetons' }); }
       }
       if (op === 'ev.bet') {
         if (!open) throw userError('Les paris du Grand Prix de ce soir sont fermés : reviens demain !');
@@ -339,6 +339,7 @@ async function casino(uid, token, op, data) {
         if (!(h >= 0 && h < 6)) throw userError('Cheval inconnu.');
         if (!(amount >= EV_MIN)) throw userError('Pari minimum : ' + EV_MIN + ' jetons.');
         if (!P.ev || P.ev.day !== day) P.ev = { day, bets: {} };
+        if (Object.keys(P.ev.bets).length) throw userError('Tu as déjà parié pour le Grand Prix de ce soir : un seul pari par soir !');
         const total = Object.values(P.ev.bets).reduce((a, b) => a + b, 0), max = R.isVip(P, now) ? EV_MAX_VIP : EV_MAX;
         if (total + amount > max) throw userError('Au plus ' + max.toLocaleString('fr-FR') + ' jetons par Grand Prix' + (R.isVip(P, now) ? '.' : ' (2 500 pour les VIP 👑).'));
         if (amount > P.wallet) throw userError('Tu n\'as que ' + Math.floor(P.wallet) + ' jetons.');
@@ -367,7 +368,7 @@ async function casino(uid, token, op, data) {
         output_config: { effort: 'low' },
         betas: ['server-side-fallback-2026-07-01'],
         fallbacks: 'default',
-        system: 'Tu es le coach du Lucky Lounge, un casino de jeux gratuits entre amis (aucun argent réel). Tu réponds en français, en 2 à 6 phrases claires, aux questions sur les règles et la stratégie des jeux du Lounge : blackjack (règle européenne), roulette européenne, machines à sous, Rocket Crash, Plinko, Mines, Loto Express, Bourse Flash, course de chevaux, Le Braquage, boosters, poker Texas Hold\'em, et le mode La Dette (paliers, quotas). Rappelle si besoin que le hasard ne se bat pas sur la durée et que l\'avantage de la maison existe. Si la question sort de ce cadre, ramène gentiment vers les jeux.',
+        system: 'Tu es le coach du Lucky Lounge, un casino de jeux gratuits entre amis (aucun argent réel). Tu réponds en français, en 2 à 6 phrases claires, aux questions sur les règles et la stratégie des jeux du Lounge : blackjack (règle européenne), roulette européenne, machines à sous, Rocket Crash, Plinko, Mines, Loto Express, Bourse Flash, course de chevaux, Le Braquage, boosters, poker Texas Hold\'em, et le modu Parrain (paliers, quotas). Rappelle si besoin que le hasard ne se bat pas sur la durée et que l\'avantage de la maison existe. Si la question sort de ce cadre, ramène gentiment vers les jeux.',
         messages: [{ role: 'user', content: (game ? '[Jeu : ' + game + '] ' : '') + q }],
       });
       if (response.stop_reason === 'refusal') return { result: { answer: 'Je ne peux pas répondre à cette question. Pose-moi plutôt une question sur les règles ou la stratégie d\'un jeu du Lounge !', left: AI_PER_DAY - n - 1 } };
@@ -436,7 +437,7 @@ async function casino(uid, token, op, data) {
   const res = await serial(uid, async () => {
     let before = db.load(uid);
     if (!before.player && imported) before = { player: imported, secret: {} };
-    // passage à la nouvelle économie (version 3 : jetons + La Dette) : noté à part dans le journal, une seule fois
+    // passage à la nouvelle économie (version 3 : jetons + Le Parrain) : noté à part dans le journal, une seule fois
     if (before.player && (before.player.econ || 1) !== 3) {
       const conv = { player: R.normalize(JSON.parse(JSON.stringify(before.player)), Date.now()), secret: {} };
       db.save(uid, 'econ', before, Object.assign({}, conv, { player: Object.assign({}, conv.player, { _econMigrated: undefined }) }), Date.now());
@@ -543,7 +544,7 @@ function categoryOf(r) {
   if (op.startsWith('duel')) return 'Duels';
   if (op.startsWith('loto')) return 'Loto entre amis';
   if (GAME_OF[pre] && op !== 'session.start') return 'Jeux';
-  return { 'bonus.claim': 'Bonus du jour', 'challenge.claim': 'Défis', 'time.claim': 'Banque du temps', 'chest.claim': 'Coffre', 'wheel.spin': 'Roue du jour', 'vip.buy': 'Pass VIP', 'rescue.claim': 'Aide de secours', 'multi.prize': 'Entre amis', 'shop.buy': 'Boutique', 'session.start': 'Tables (aller)', 'session.cashout': 'Tables (retour)', 'run.start': 'La Dette', 'run.end': 'La Dette', 'run.over': 'La Dette', 'run.abandon': 'La Dette' }[op] || 'Autre';
+  return { 'bonus.claim': 'Bonus du jour', 'challenge.claim': 'Défis', 'time.claim': 'Banque du temps', 'chest.claim': 'Coffre', 'wheel.spin': 'Roue du jour', 'vip.buy': 'Pass VIP', 'rescue.claim': 'Aide de secours', 'multi.prize': 'Entre amis', 'shop.buy': 'Boutique', 'session.start': 'Tables (aller)', 'session.cashout': 'Tables (retour)', 'run.start': 'Le Parrain', 'run.end': 'Le Parrain', 'run.over': 'Le Parrain', 'run.abandon': 'Le Parrain' }[op] || 'Autre';
 }
 function dashboard() {
   const now = Date.now(), DAY = 864e5, day = (t) => R.today(t);

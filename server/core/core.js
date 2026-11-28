@@ -482,15 +482,15 @@ function traderCloseAll(P, S, ctx, now, track) {
 function handle(state, ctx) {
   const now = ctx.now, N = [];
   const P = R.normalize(state.player, now);
-  // version 3 : comptes remis à zéro (jetons + La Dette) → les manches en cours sont abandonnées
-  if (P._econMigrated) { delete P._econMigrated; state.secret = {}; N.push({ kind: 'gold', icon: '🕴️', title: 'Nouveau Lucky Lounge', text: 'Le Casino fait peau neuve : tous les comptes repartent de zéro. Tes jetons servent au style, au VIP et au multijoueur ; les euros se gagnent dans le mode La Dette.' }); }
+  // version 3 : comptes remis à zéro (jetons + Le Parrain) → les manches en cours sont abandonnées
+  if (P._econMigrated) { delete P._econMigrated; state.secret = {}; N.push({ kind: 'gold', icon: '🕴️', title: 'Nouveau Lucky Lounge', text: 'Le Casino fait peau neuve : tous les comptes repartent de zéro. Tes jetons servent au style, au VIP et au multijoueur ; les euros se gagnent dans le modu Parrain.' }); }
   MAX_BET = R.maxBet(P, now); MIN_BET = R.gameMin(P, 'blackjack');
   let result = {};
   if (!state.player || !P.pseudo) { const ps = String(ctx.data && ctx.data.pseudo || '').trim().slice(0, 16); if (ps) P.pseudo = ps; }
   const S = state.secret || {};
   const d = ctx.data || {};
   R.ensureDaily(P, now);
-  const sess = (game) => P.sessions[game] || fail(R.runActive(P) ? 'Aucune somme sur cette table : choisis combien tu apportes.' : 'Aucune journée en cours : lance une partie de La Dette depuis l\'accueil.');
+  const sess = (game) => P.sessions[game] || fail(R.runActive(P) ? 'Aucune somme sur cette table : choisis combien tu apportes.' : 'Aucune journée en cours : lance une partie du Parrain depuis l\'accueil.');
   const track = (type, data) => R.track(P, type, data, now, N);
   // Termine proprement une manche laissée en plein milieu (fin de journée ou départ de la table)
   const settle = (game, strict) => {
@@ -518,7 +518,7 @@ function handle(state, ctx) {
   if (R.runActive(P) && now >= P.run.dayEnd && ctx.op !== 'run.end') {
     Object.keys(P.sessions).forEach((g) => settle(g, false));
     const r = R.runEndDay(P, now, N, 'time');
-    result.dayOver = r.over ? 'over' : 'shop';
+    result.dayOver = r.over ? 'over' : r.warned ? 'warn' : 'shop';
     if (/^(bj|rl|sl|cr|gd|pl|lo|mn|wh|pk|bo|tr|hc|hs)\./.test(ctx.op) || ctx.op === 'session.start' || ctx.op === 'session.cashout') {
       state.player = P; state.secret = S;
       return { state, result: { dayOver: result.dayOver, run: P.run }, notes: N };
@@ -557,13 +557,13 @@ function handle(state, ctx) {
       fail('Cette fonction a été retirée du Casino.');
       break;
 
-    // ----- Mode « La Dette » -----
+    // ----- Mode « Le Parrain » -----
     case 'run.start': { const r = R.runStart(P, now, N); if (r.error) fail(r.error); S.bj = { shoe: S.bj && S.bj.shoe, round: null }; S.sl = null; S.mn = null; S.cr = null; result = r; break; }
     case 'run.end': {
       if (!R.runActive(P)) fail('Pas de journée en cours.');
       Object.keys(P.sessions).forEach((g) => settle(g, true));
       const r = R.runEndDay(P, now, N, now >= P.run.dayEnd ? 'time' : 'closed');
-      result = r; result.dayOver = r.over ? 'over' : 'shop';
+      result = r; result.dayOver = r.over ? 'over' : r.warned ? 'warn' : 'shop';
       break;
     }
     case 'run.buy': { const r = R.runBuy(P, String(d.id)); if (r.error) fail(r.error); result = r; result.run = P.run; break; }
@@ -649,7 +649,7 @@ function handle(state, ctx) {
         if (game === 'slots' && S.sl) { result.free = S.sl.free; result.freeBet = S.sl.freeBet; }
         result.session = P.sessions[game]; result.resumed = true; break;
       }
-      if (!R.runActive(P)) fail('Aucune journée en cours : lance une partie de La Dette depuis l\'accueil.');
+      if (!R.runActive(P)) fail('Aucune journée en cours : lance une partie du Parrain depuis l\'accueil.');
       if (!R.isUnlocked(P, game)) fail('Ce jeu se débloque au palier ' + (R.RUN.UNLOCK[game] || '?') + '.');
       const min = R.gameMin(P, game);
       let amount = Number(d.amount);
@@ -791,7 +791,7 @@ function handle(state, ctx) {
       P.wallet = round2(P.wallet + payout);
       const net = payout - P.mt.amount;
       result = { payout, brought: P.mt.amount, net, game: P.mt.game };
-      if (net > 0) { R.addXP(P, Math.min(60, 10 + net / 20), N); R.unlock(P, 'mt_win', N); }
+      if (net > 0) { R.addXP(P, Math.min(60, 10 + net / 20), N); R.unlock(P, 'mt_win', N); R.noteGain(P, net); }
       P.totals.multiNet = (P.totals.multiNet || 0) + net;
       P.mt = null;
       break;
@@ -862,7 +862,7 @@ function handle(state, ctx) {
   if (R.runActive(P)) {
     const busy = (S.tr && S.tr.pos && S.tr.pos.length > 0) || (S.bj && S.bj.round && S.bj.round.phase !== 'over') || (S.sl && S.sl.free > 0) || (S.mn && S.mn.round && S.mn.round.active) || (S.cr && S.cr.round && !S.cr.round.done && S.cr.round.bet);
     const b = busy ? null : R.runCheckBroke(P, now, N);
-    if (b && b.over) result.dayOver = 'over';
+    if (b && b.over) result.dayOver = 'over'; else if (b && b.warned) result.dayOver = 'warn';
   }
   if (P.run) result.run = P.run;
   state.player = P;

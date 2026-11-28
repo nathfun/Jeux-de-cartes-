@@ -140,7 +140,7 @@
     }
     await b.set('profiles/' + b.uid, {
       pseudo: p.pseudo || 'Joueur', avatar: p.avatar, xp: p.xp, level: Casino.levelOf(p.xp), wallet: Math.round(p.wallet),
-      biggestWin: Math.round(p.totals.biggestWin || 0), hands: p.totals.hands, achievements: Object.keys(p.achievements).length,
+      biggestWin: Math.round(p.totals.bestJetons || 0), hands: p.totals.hands, achievements: Object.keys(p.achievements).length,
       code: p.friendCode || null, updatedAt: Date.now(),
       frame: Casino.equipped ? Casino.equipped('frame') : 'none',
       pokerWeek: Casino.pokerWeek ? Casino.pokerWeek() : null, pokerWeekPrev: p.pokerWeekPrev || null,
@@ -164,10 +164,10 @@
     // vitrine des cartes Légendes : les 5 plus précieuses (rareté puis cote de départ)
     const ORD = ['commun', 'rare', 'epique', 'legendaire', 'mythique', 'ultime'];
     const col = Object.entries(p.col || {}).filter(([id, n]) => n > 0 && Casino.COL_BY_ID && Casino.COL_BY_ID[id]);
-    const topCards = col.sort((a, b) => ORD.indexOf(Casino.COL_BY_ID[b[0]].rarity) - ORD.indexOf(Casino.COL_BY_ID[a[0]].rarity) || b[1] - a[1]).slice(0, 5).map(([id, n]) => ({ id, n }));
+    const topCards = col.sort((a, b) => ORD.indexOf(Casino.COL_BY_ID[b[0]].rarity) - ORD.indexOf(Casino.COL_BY_ID[a[0]].rarity) || b[1] - a[1]).slice(0, 12).map(([id, n]) => ({ id, n }));
     return {
       topCards, colHave: col.length, colAll: (Casino.COLLECTION || []).length,
-      since: p.createdAt || null, hands: T.hands || 0, wins: T.wins || 0, biggestWin: Math.round(T.biggestWin || 0), multiWins: T.multiWins || 0,
+      since: p.createdAt || null, hands: T.hands || 0, wins: T.wins || 0, biggestWin: Math.round(T.bestJetons || 0), multiWins: T.multiWins || 0,
       streak: (p.bonus && p.bonus.streak) || 0, fav: counts[fav] ? fav : null, counts, ach, eq, owned,
       season: p.season ? { id: p.season.id, xp: p.season.xp || 0 } : null,
       hist: (p.multiHist || []).slice(0, 10),
@@ -239,39 +239,15 @@
     const sec = (title) => { const s = el('div', 'pp-sec'); s.appendChild(el('h3', '', title)); box.appendChild(s); return s; };
     const st = el('div', 'pp-stats');
     [['🪙 ' + fmt(pr.wallet), 'Jetons'], ['🕴️ ' + (pr.bestPalier || 0), 'Meilleur palier'], [fmt(c.hands || pr.hands), 'Mains et tours'], [(c.hands ? Math.round((c.wins || 0) / c.hands * 100) : 0) + ' %', 'Gagnés'],
-      ['+' + fmt(c.biggestWin || pr.biggestWin) + ' €', 'Plus gros gain'], [(pr.achievements || 0) + ' / ' + Casino.ACHIEVEMENTS.length, 'Succès']]
+      ['🪙 +' + fmt(c.biggestWin || 0), 'Meilleur gain'], [(pr.achievements || 0) + ' / ' + Casino.ACHIEVEMENTS.length, 'Succès']]
       .forEach(([v, l]) => { const d = el('div'); d.append(el('b', '', v), el('small', '', l)); st.appendChild(d); });
     sec('Statistiques').appendChild(st);
-    // les 5 plus belles cartes Légendes
-    if (c.topCards && c.topCards.length && Casino.cardEl) {
+    // collection : les cartes débloquées (les plus rares d'abord)
+    {
       const w = el('div', 'pp-cards');
-      c.topCards.forEach((x) => { const cd = Casino.cardEl(x.id, { count: x.n }); cd.classList.add('xs'); w.appendChild(cd); });
-      sec('Plus belles cartes · ' + (c.colHave || 0) + ' / ' + (c.colAll || 114) + ' Légendes').appendChild(w);
-    }
-    // ventes en cours sur le marché (avec le serveur du Casino)
-    if (window.Casino && Casino.server && Casino.deal) {
-      const s3 = sec('En vente sur le marché'); const list = el('div', 'pp-sales'); list.appendChild(el('small', '', 'Chargement…')); s3.appendChild(list);
-      Casino.deal('mk.of', { uid }).then((r) => {
-        list.innerHTML = '';
-        const items = (r && r.listings) || [];
-        if (!items.length) { list.appendChild(el('small', '', 'Rien en vente pour le moment.')); return; }
-        items.forEach((l) => {
-          const row2 = el('div', 'pp-sale');
-          const ico = l.kind === 'col' && Casino.COL_BY_ID[l.item] ? Casino.COL_BY_ID[l.item].icon : '🎨';
-          row2.append(el('span', '', ico + ' ' + l.name), el('b', '', fmt(l.price) + ' €'));
-          if (!me) {
-            const bb = el('button', '', 'Acheter'); bb.type = 'button';
-            bb.onclick = async () => {
-              if (!(await Casino.confirm({ icon: '🛍️', title: 'Acheter « ' + l.name + ' » ?', text: 'Vendu par ' + (pr.pseudo || 'ce joueur') + '.', price: l.price, ok: 'Acheter pour ' + fmt(l.price) + ' €' }))) return;
-              bb.disabled = true; const x2 = await Casino.deal('mk.buy', { id: l.id });
-              if (x2.error) { Casino.toast('Achat impossible', x2.error, '⚠️'); bb.disabled = false; return; }
-              Casino.toast('Acheté !', l.name + ' rejoint ta collection.', '🛍️', 'gold'); row2.remove();
-            };
-            row2.appendChild(bb);
-          }
-          list.appendChild(row2);
-        });
-      }).catch(() => { list.innerHTML = ''; list.appendChild(el('small', '', 'Marché indisponible.')); });
+      (c.topCards || []).forEach((x) => { if (!Casino.cardEl) return; const cd = Casino.cardEl(x.id, { count: x.n }); cd.classList.add('xs'); w.appendChild(cd); });
+      if (!w.children.length) w.appendChild(el('p', 'pp-sub', 'Aucune carte débloquée pour l\'instant.'));
+      sec('Collection · ' + (c.colHave || 0) + ' carte' + ((c.colHave || 0) > 1 ? 's' : '') + ' débloquée' + ((c.colHave || 0) > 1 ? 's' : '')).appendChild(w);
     }
     // jeux préférés
     if (c.counts) {
@@ -281,13 +257,6 @@
         top.forEach(([k, n]) => { const r = el('div'); const bar2 = el('i'); bar2.style.width = Math.max(6, Math.round(n / max * 100)) + '%'; const wrap = el('span', 'pp-bar'); wrap.appendChild(bar2); r.append(el('span', '', GAME_LABEL[k] || k), wrap, el('small', '', fmt(n))); g.appendChild(r); });
         sec('Jeux préférés').appendChild(g);
       }
-    }
-    // vitrine : objets équipés
-    if (c.eq && window.Casino && Casino.itemOf) {
-      const it = el('div', 'pp-items');
-      Object.entries(c.eq).forEach(([k, id]) => { const o = Casino.itemOf(k, id); if (o && (o.price || o.exclusive) && o.name) it.appendChild(el('span', '', (Casino.SHOP_LABELS[k] || k) + ' : ' + o.name)); });
-      if (!it.children.length) it.appendChild(el('span', '', 'Objets de départ'));
-      const s = sec('Vitrine · ' + (c.owned || 0) + ' objet' + ((c.owned || 0) > 1 ? 's' : '') + ' possédé' + ((c.owned || 0) > 1 ? 's' : '')); s.appendChild(it);
     }
     // succès récents
     if (c.ach && c.ach.length) {
