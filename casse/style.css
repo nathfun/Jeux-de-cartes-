@@ -39,3 +39,25 @@ body.cs-page { background: radial-gradient(900px 600px at 50% 0%, #1e1b4b 0%, tr
 .cs-go:disabled { opacity: .45; }
 @media (max-width: 520px) { .cs-controls { grid-template-columns: 1fr; } .cs-door { width: 2.3rem; height: 2.6rem; font-size: 1.1rem; } }
 #game:not([hidden]) { display: flex; flex-direction: column; gap: .7rem; }
+
+/* ----- caméra : vue d'ensemble, zoom sur l'étage, ascenseur ----- */
+.cs-building { height: 560px; }
+.cs-cam { position: absolute; inset: 0 0 auto 0; transform-origin: 0 0; transition: transform .9s cubic-bezier(.65,0,.35,1), filter .3s; will-change: transform; }
+.cs-cam.lift { filter: blur(1.2px) brightness(1.15); }
+.cs-sky { position: relative; height: 40px; background: linear-gradient(#020617, #0f172a); overflow: hidden; }
+.cs-sky i { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: #fff; opacity: .7; animation: csTw 2.4s ease-in-out infinite; }
+.cs-sky i:nth-child(1) { left: 8%; top: 10px; } .cs-sky i:nth-child(2) { left: 27%; top: 24px; animation-delay: .5s; } .cs-sky i:nth-child(3) { left: 46%; top: 8px; animation-delay: 1s; }
+.cs-sky i:nth-child(4) { left: 63%; top: 28px; animation-delay: 1.4s; } .cs-sky i:nth-child(5) { left: 80%; top: 12px; animation-delay: .2s; } .cs-sky i:nth-child(6) { left: 93%; top: 26px; animation-delay: 1.8s; }
+@keyframes csTw { 50% { opacity: .15; } }
+.cs-floor { position: relative; }
+.cs-floor::before, .cs-floor::after { content: ''; position: absolute; top: 8px; width: 10px; height: 18px; border-radius: 2px; background: #fde68a; opacity: .12; }
+.cs-floor::before { left: 3px; } .cs-floor::after { right: 3px; }
+.cs-floor:nth-child(odd)::before, .cs-floor:nth-child(3n)::after { opacity: .45; box-shadow: 0 0 8px #fde68a; }
+.cs-cam-hud { position: absolute; z-index: 3; top: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: .6rem; align-items: center; padding: .35rem .8rem; border-radius: 999px; background: rgba(2,6,23,.8); border: 1px solid #facc15; color: #fde68a; font-weight: 900; font-size: .9rem; white-space: nowrap; }
+.cs-cam-hud span { color: #86efac; }
+.cs-cam-hud.pop { animation: csHud .5s cubic-bezier(.2,1.6,.4,1); } @keyframes csHud { from { transform: translateX(-50%) scale(.6); opacity: 0; } }
+.cs-lift { position: absolute; z-index: 4; inset: 0; display: grid; place-items: center; font-size: 4rem; color: #facc15; text-shadow: 0 0 30px rgba(250,204,21,.9); pointer-events: none; animation: csLift .9s ease-out forwards; background: linear-gradient(to top, transparent, rgba(250,204,21,.08) 50%, transparent); }
+@keyframes csLift { 0% { transform: translateY(40px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(-80px); opacity: 0; } }
+.cs-building.quake { animation: csQuake .08s linear 10; }
+@keyframes csQuake { 25% { transform: translate(-6px, 3px); } 75% { transform: translate(6px, -3px); } }
+@media (max-width: 520px) { .cs-building { height: 520px; } }

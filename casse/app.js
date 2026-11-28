@@ -68,6 +68,39 @@
       row.append(lvl, doors, mult); box.appendChild(row);
     }
   }
+  // ---------- caméra : vue d'ensemble, ou zoom centré sur un étage ----------
+  function cam(target, opts) {
+    opts = opts || {};
+    const b = $('building'), c = $('cam'), rows = [...$('floors').children];
+    b.classList.toggle('zoomed', target !== 'full');
+    const W = b.clientWidth, H = b.clientHeight, natural = c.scrollHeight;
+    if (target === 'full' || !rows.length) {
+      const s = Math.min(1, H / natural);
+      c.style.transform = 'translate(' + (W - W * s) / 2 + 'px, ' + Math.max(0, (H - natural * s) / 2) + 'px) scale(' + s + ')';
+      $('cam-hud').hidden = true;
+      return;
+    }
+    // les étages sont dans l'ordre 1 → 8 (affichés de bas en haut)
+    const row = rows[target]; if (!row) return;
+    const s = opts.scale || 1.75, cy = row.offsetTop + row.offsetHeight / 2; // (position dans la caméra)
+    const ty = Math.max(H - natural * s, Math.min(0, H / 2 - cy * s)); // la caméra ne sort jamais de l'immeuble
+    c.style.transform = 'translate(' + (W - W * s) / 2 + 'px, ' + ty + 'px) scale(' + s + ')';
+    const h = S.heist, hud = $('cam-hud');
+    hud.hidden = false; $('cam-floor').textContent = 'ÉTAGE ' + (target + 1);
+    $('cam-mult').textContent = h ? '→ ' + fmt(h.bet * E.multAt(h.mode, target + 1)) + ' €' : '';
+    hud.classList.remove('pop'); void hud.offsetWidth; hud.classList.add('pop');
+  }
+  /** Effet ascenseur / drone : la caméra monte d'un étage. */
+  async function liftTo(floor) {
+    const c = $('cam'), l = $('lift');
+    c.classList.add('lift'); l.hidden = false; l.style.animation = 'none'; void l.offsetWidth; l.style.animation = '';
+    if (window.Sfx && Sfx.whoosh) Sfx.whoosh();
+    cam(floor);
+    await sleep(900);
+    c.classList.remove('lift'); l.hidden = true;
+    if (window.Sfx && Sfx.chime) Sfx.chime(); // « ding » de l'ascenseur
+  }
+
   function ui() {
     const h = S.heist;
     $('bet').textContent = fmt(bet()) + ' €'; $('stack').textContent = fmt(S.stack) + ' €';
@@ -96,6 +129,8 @@
     $('siren').hidden = true;
     if (window.Sfx && Sfx.whoosh) Sfx.whoosh();
     msg('Étage 1 : choisis une porte…'); renderTower(); ui();
+    $('building').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    cam(0); // zoom sur l'étage 1
   }
   async function pick(door) {
     const h = S.heist; if (S.busy || !on()) return;
@@ -110,6 +145,8 @@
       h.active = false; S.stack = r.stack;
       const rev = r.tower || []; rev[r.floor] = r.alarms;
       renderTower(rev); $('siren').hidden = false;
+      const bd = $('building'); bd.classList.remove('quake'); void bd.offsetWidth; bd.classList.add('quake');
+      setTimeout(() => cam('full'), 1300); // la caméra recule : tout l'immeuble
       msg('🚨 ALARME ! La police débarque… le butin est perdu.');
       if (window.Sfx) { if (Sfx.explosion) Sfx.explosion(); else if (Sfx.lose) Sfx.lose(); }
       if (window.Casino && Casino.vibrate) Casino.vibrate([200, 80, 200, 80, 200]);
@@ -117,8 +154,8 @@
       h.floor = r.floor; S.stack = r.stack;
       if (window.Sfx) Sfx.chips();
       const lb = $('loot'); lb.classList.remove('bump'); void lb.offsetWidth; lb.classList.add('bump');
-      if (r.payout) { h.active = false; renderTower(r.tower); msg('🏆 LE COFFRE ! +' + fmt(r.payout) + ' € dans la camionnette !'); if (window.Sfx) Sfx.win(); if (Casino.bigWin && r.payout >= h.bet * 10) Casino.bigWin(r.payout, 'LE CASSE DU SIÈCLE !'); }
-      else { msg('Ouf, la voie est libre ! Étage ' + (h.floor + 1) + '… ou tu t\'enfuis ?'); S.busy = false; renderTower(); }
+      if (r.payout) { h.active = false; renderTower(r.tower); setTimeout(() => cam('full'), 900); msg('🏆 LE COFFRE ! +' + fmt(r.payout) + ' € dans la camionnette !'); if (window.Sfx) Sfx.win(); if (Casino.bigWin && r.payout >= h.bet * 10) Casino.bigWin(r.payout, 'LE CASSE DU SIÈCLE !'); }
+      else { msg('Ouf, la voie est libre ! On monte…'); await sleep(450); S.busy = false; renderTower(); await liftTo(h.floor); msg('Étage ' + (h.floor + 1) + ' : une porte… ou tu t\'enfuis ?'); }
     }
     S.busy = false; ui();
     if (window.Casino && Casino.holding) setTimeout(() => Casino.release(), 700);
@@ -128,7 +165,7 @@
     S.busy = true; const r = await api('cs.cash'); S.busy = false;
     if (!r || r.error) { msg('⚠️ ' + ((r && r.error) || 'Erreur')); ui(); return; }
     h.active = false; S.stack = r.stack;
-    renderTower(r.tower);
+    renderTower(r.tower); cam('full');
     msg('🚐 Fuite réussie : +' + fmt(r.payout) + ' € !'); if (window.Sfx) Sfx.win();
     if (r.payout >= h.bet * 10 && window.Casino && Casino.bigWin) Casino.bigWin(r.payout, 'BEAU CASSE !');
     ui();
@@ -145,7 +182,7 @@
     $('setup').hidden = true; $('game').hidden = false;
     $('mode-badge').textContent = mode === 'real' ? '🕴️ Le Parrain · ta caisse' : '🎓 Apprentissage · crédit illimité';
     $('end-btn').hidden = mode === 'train';
-    renderTower(); ui();
+    renderTower(); ui(); setTimeout(() => cam('full'), 50);
   }
   async function endSession() {
     if (S.busy || on()) return;
@@ -155,6 +192,7 @@
   $('end-btn').addEventListener('click', endSession);
   function renderPicker() { Casino.modePicker($('mode-picker'), { game: 'casse', min: 1, onStart: (mode, amount) => startGame(mode, amount) }); }
   renderPicker(); renderTower(); ui();
+  window.addEventListener('resize', () => cam(on() ? S.heist.floor : 'full'));
   if (window.Casino) Casino.onChange(() => { if (!S.busy) $('wallet').textContent = fmt(Casino.wallet()); });
   window.Casse = { get state() { return S; }, pick, go };
 })();

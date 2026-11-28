@@ -27,9 +27,14 @@
       <div id="mode-badge" class="mode-badge"></div>
       <div id="modes" class="cs-modes" role="radiogroup" aria-label="Niveau de risque"></div>
       <div id="building" class="cs-building">
-        <div class="cs-roof">🏦 <b>COFFRE</b> 💰</div>
-        <div id="floors" class="cs-floors"></div>
-        <div class="cs-street">🚐 <span>Ta camionnette t'attend…</span></div>
+        <div id="cam" class="cs-cam">
+          <div class="cs-sky" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="cs-roof">🏦 <b>COFFRE</b> 💰</div>
+          <div id="floors" class="cs-floors"></div>
+          <div class="cs-street">🚐 <span>Ta camionnette t'attend…</span></div>
+        </div>
+        <div id="cam-hud" class="cs-cam-hud" hidden><b id="cam-floor">ÉTAGE 1</b><span id="cam-mult"></span></div>
+        <div id="lift" class="cs-lift" hidden>▲</div>
         <div id="siren" class="cs-siren" hidden></div>
       </div>
       <div id="msg" class="cs-msg" role="status">Choisis ton style, ta mise, et lance le casse.</div>
