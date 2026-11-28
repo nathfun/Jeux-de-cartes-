@@ -559,16 +559,19 @@ function dashboard() {
   const days = []; for (let k = 29; k >= 0; k--) days.push(day(now - k * DAY));
   const active = Object.fromEntries(days.map((d) => [d, new Set()])), fresh = Object.fromEntries(days.map((d) => [d, 0])), runsPerDay = Object.fromEntries(days.map((d) => [d, 0]));
   // on ignore les anciennes lignes en euros (d'avant le passage aux jetons de chaque joueur)
-  const raw = db.ledgerSince(now - 30 * DAY), econAt = {};
-  raw.forEach((r) => { if (r.op === 'econ') econAt[r.uid] = r.at; });
-  const rows = raw.filter((r) => r.op !== 'econ' && !(econAt[r.uid] && r.at < econAt[r.uid]));
-  rows.forEach((r) => { const d = day(r.at); if (active[d]) active[d].add(r.uid); if (r.op === 'run.start' && runsPerDay[d] !== undefined) runsPerDay[d]++; });
+  // le journal est parcouru ligne par ligne (deux passes) : rien n'est chargé en bloc en mémoire
+  const since = now - 30 * DAY, econAt = {};
+  db.ledgerEach(since, (r) => { if (r.op === 'econ') econAt[r.uid] = r.at; });
+  const keep = (r) => r.op !== 'econ' && !(econAt[r.uid] && r.at < econAt[r.uid]);
   all.forEach((p) => { const d = day(p.created); if (fresh[d] !== undefined) fresh[d]++; });
   // jetons gagnés / dépensés, par source et par jour ; résultat des jeux du Parrain (€ de caisse)
   const cats = {}, perDay = Object.fromEntries(days.map((d) => [d, { gained: 0, spent: 0 }]));
   const games = {}, gain24 = {};
-  rows.forEach((r) => {
-    const dw = r.wa - r.wb, dt = r.ta - r.tb, d = day(r.at), pre = r.op.split('.')[0];
+  db.ledgerEach(since, (r) => {
+    if (!keep(r)) return;
+    const d = day(r.at);
+    if (active[d]) active[d].add(r.uid); if (r.op === 'run.start' && runsPerDay[d] !== undefined) runsPerDay[d]++;
+    const dw = r.wa - r.wb, dt = r.ta - r.tb, pre = r.op.split('.')[0];
     if (dw) {
       const c = jetonSource(r);
       const e = cats[c] = cats[c] || { gained: 0, spent: 0 };

@@ -34,6 +34,7 @@ function open(dir) {
       table_after REAL NOT NULL
     );
     CREATE INDEX IF NOT EXISTS ledger_uid ON ledger(uid, at);
+    CREATE INDEX IF NOT EXISTS ledger_at ON ledger(at);
     CREATE TABLE IF NOT EXISTS hall (
       month TEXT NOT NULL,
       board TEXT NOT NULL,
@@ -98,6 +99,11 @@ function open(dir) {
     },
     hall(board, month) { const r = db.prepare('SELECT name, amount, machine, jackpot, at FROM hall WHERE month = ? AND board = ?').get(month, board); return r ? Object.assign({}, r) : null; },
     /** Mouvements d'argent depuis `since` (tableau de bord). */
+    /** Parcourt le journal ligne par ligne (sans tout charger en mémoire d'un coup). */
+    ledgerEach(since, fn) {
+      const st = db.prepare('SELECT uid, at, op, wallet_before wb, wallet_after wa, table_before tb, table_after ta FROM ledger WHERE at >= ? ORDER BY at');
+      if (typeof st.iterate === 'function') { for (const r of st.iterate(since)) fn(r); } else st.all(since).forEach(fn);
+    },
     ledgerSince(since) { return db.prepare('SELECT uid, at, op, wallet_before wb, wallet_after wa, table_before tb, table_after ta FROM ledger WHERE at >= ? ORDER BY at').all(since).map((r) => Object.assign({}, r)); },
     stats() {
       return {
