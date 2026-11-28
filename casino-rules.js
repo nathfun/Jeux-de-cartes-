@@ -1175,18 +1175,19 @@
     { id: 's3', name: "L'Âge d'or", icon: '🎷', palier: 6, color: '#a16207' },
   ];
   // 8 communes, puis 2 cartes rare ou mieux ; 1 paquet sur 200 est un « God Pack » (10 légendaires ou mieux)
-  const PACK = { SIZE: 10, COMMONS: 8, GOD: 200, RTP: 0.94, PRICE_PCT: 0.04,
-    HIGH: { rare: 700, epique: 220, legendaire: 65, mythique: 13, ultime: 2 },
-    GODW: { legendaire: 800, mythique: 170, ultime: 30 } };
-  // valeur de revente (en fraction du prix du paquet), recalée pour que le paquet rende PACK.RTP en moyenne
-  const PACK_MULT = (() => {
-    const base = { commun: 0.045, rare: 0.17, epique: 0.45, legendaire: 1.5, mythique: 6, ultime: 40 };
-    const avg = (w) => { const t = Object.values(w).reduce((a, b) => a + b, 0); return Object.keys(w).reduce((a, r) => a + w[r] / t * base[r], 0); };
-    const normal = PACK.COMMONS * base.commun + (PACK.SIZE - PACK.COMMONS) * avg(PACK.HIGH), god = PACK.SIZE * avg(PACK.GODW);
-    const ev = (1 - 1 / PACK.GOD) * normal + god / PACK.GOD, k = PACK.RTP / ev;
-    const out = {}; Object.keys(base).forEach((r) => { out[r] = base[r] * k; });
-    return out;
-  })();
+  const PACK = { SIZE: 10, COMMONS: 8, GOD: 400, RTP: 0.95, PRICE_PCT: 0.04,
+    HIGH: { rare: 870, epique: 95, legendaire: 28, mythique: 6, ultime: 1 },
+    GODW: { epique: 600, legendaire: 330, mythique: 60, ultime: 10 } };
+  // valeur de revente de chaque carte, en fraction du prix du paquet : chaque carte a SON prix dans la fourchette de sa rareté.
+  // Une épique rend toujours le paquet gagnant : 8 communes (≥ 0,025) + 1 rare (≥ 0,09) + 1 épique (≥ 0,72) ≥ 1,01 × le prix.
+  const PACK_RANGE = { commun: [0.025, 0.055], rare: [0.09, 0.17], epique: [0.72, 0.95], legendaire: [1.4, 2.0], mythique: [4, 6], ultime: [18, 24] };
+  const PACK_MULT = Object.fromEntries(Object.entries(PACK_RANGE).map(([r, [a, b]]) => [r, (a + b) / 2]));
+  /** Multiplicateur d'une carte précise (toujours le même pour une carte donnée). */
+  function cardMult(id, rarity) {
+    const [a, b] = PACK_RANGE[rarity] || PACK_RANGE.commun;
+    let h = 2166136261; for (let i = 0; i < id.length; i++) { h ^= id.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return a + ((h >>> 0) % 1000) / 999 * (b - a);
+  }
   const packPrice = (P) => Math.max(10, niceDown(quotaOf(P && P.run ? P.run.palier : 3) * PACK.PRICE_PCT));
   const seriesOpen = (P, id) => { const se = SERIES.find((x) => x.id === id); return !!(se && P.run && P.run.palier >= se.palier); };
   function pickWeighted(w, rnd) { const keys = Object.keys(w), t = keys.reduce((a, k) => a + w[k], 0); let x = rnd(t); for (const k of keys) { if (x < w[k]) return k; x -= w[k]; } return keys[0]; }
@@ -1202,7 +1203,7 @@
       let pool = list.filter((c) => c.rarity === r);
       while (!pool.length && r !== 'commun') { r = RARITY_ORDER[RARITY_ORDER.indexOf(r) - 1]; pool = list.filter((c) => c.rarity === r); }
       const c = pool[rnd(pool.length)];
-      const value = Math.round(price * PACK_MULT[r] * 100) / 100;
+      const value = Math.round(price * cardMult(c.id, r) * 100) / 100;
       const keep = RARITY_ORDER.indexOf(r) >= RARITY_ORDER.indexOf('epique');
       P.col = P.col || {}; P.dex = P.dex || {};
       const isNew = keep && !P.col[c.id];
@@ -1441,7 +1442,7 @@
   }
 
   // version des règles : le serveur et l'app doivent avoir la même (sinon : serveur du NAS à mettre à jour)
-  const RULES_VERSION = '2026.11.29-2';
+  const RULES_VERSION = '2026.11.29-3';
   const api = {
     RULES_VERSION,
     weekOf, weekPoints, ensureWeek, SEASON_TIERS, seasonOf, seasonTier, seasonName, ensureSeason,
@@ -1452,7 +1453,7 @@
     COL_CATS, COLLECTION, COL_BY_ID, COTE_BASE, INSTANT_RATE, instantPrice, coteOf, rarityOfKey, countOf, instantSell,
     HORSES, horseCard, horseRace, placeOdds, horseSecond, horsePayout,
     BOX, boxInfo, openBox, priceOf, inPromo, SHOP_PROMO, VIP_DISCOUNT,
-    SERIES, PACK, PACK_MULT, packPrice, seriesOpen, openPack,
+    SERIES, PACK, PACK_MULT, PACK_RANGE, cardMult, packPrice, seriesOpen, openPack,
     RUN, QUOTAS, BET_STEPS, gameMin, FORTUNE, quotaOf, niceDown, palierFactor, runMaxBet, runMinBet, runActive, runTotal, isUnlocked, RUN_ITEMS, runItem, itemPrice, runReward,
     noteGain, runStart, runEndDay, runOver, runCheckBroke, runTick, runBuy, runNext,
     LOTO, lotoDiscount, lotoPackCost,
